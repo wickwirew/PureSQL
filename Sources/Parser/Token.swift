@@ -12,157 +12,159 @@ struct Token {
     let range: Range<String.Index>
     
     static let keywords: [String: Kind] = [
-        "ABORT": .abort,
-        "ACTION": .action,
-        "ADD": .add,
-        "AFTER": .after,
-        "ALL": .all,
-        "ALTER": .alter,
-        "ALWAYS": .always,
-        "ANALYZE": .analyze,
-        "AND": .and,
-        "AS": .as,
-        "ASC": .asc,
-        "ATTACH": .attach,
-        "AUTOINCREMENT": .autoincrement,
-        "BEFORE": .before,
-        "BEGIN": .begin,
-        "BETWEEN": .between,
-        "BY": .by,
-        "CASCADE": .cascade,
-        "CASE": .case,
-        "CAST": .cast,
-        "CHECK": .check,
-        "COLLATE": .collate,
-        "COLUMN": .column,
-        "COMMIT": .commit,
-        "CONFLICT": .conflict,
-        "CONSTRAINT": .constraint,
-        "CREATE": .create,
-        "CROSS": .cross,
-        "CURRENT": .current,
-        "CURRENT_DATE": .currentDate,
-        "CURRENT_TIME": .currentTime,
-        "CURRENT_TIMESTAMP": .currentTimestamp,
-        "DATABASE": .database,
-        "DEFAULT": .default,
-        "DEFERRABLE": .deferrable,
-        "DEFERRED": .deferred,
-        "DELETE": .delete,
-        "DESC": .desc,
-        "DETACH": .detach,
-        "DISTINCT": .distinct,
-        "DO": .do,
-        "DROP": .drop,
-        "EACH": .each,
-        "ELSE": .else,
-        "END": .end,
-        "ESCAPE": .escape,
-        "EXCEPT": .except,
-        "EXCLUDE": .exclude,
-        "EXCLUSIVE": .exclusive,
-        "EXISTS": .exists,
-        "EXPLAIN": .explain,
-        "FAIL": .fail,
-        "FILTER": .filter,
-        "FIRST": .first,
-        "FOLLOWING": .following,
-        "FOR": .for,
-        "FOREIGN": .foreign,
-        "FROM": .from,
-        "FULL": .full,
-        "GENERATED": .generated,
-        "GLOB": .glob,
-        "GROUP": .group,
-        "GROUPS": .groups,
-        "HAVING": .having,
-        "IF": .if,
-        "IGNORE": .ignore,
-        "IMMEDIATE": .immediate,
-        "IN": .in,
-        "INDEX": .index,
-        "INDEXED": .indexed,
-        "INITIALLY": .initially,
-        "INNER": .inner,
-        "INSERT": .insert,
-        "INSTEAD": .instead,
-        "INTERSECT": .intersect,
-        "INTO": .into,
-        "IS": .is,
-        "ISNULL": .isnull,
-        "JOIN": .join,
-        "KEY": .key,
-        "LAST": .last,
-        "LEFT": .left,
-        "LIKE": .like,
-        "LIMIT": .limit,
-        "MATCH": .match,
-        "MATERIALIZED": .materialized,
-        "NATURAL": .natural,
-        "NO": .no,
-        "NOT": .not,
-        "NOTHING": .nothing,
-        "NOTNULL": .notnull,
-        "NULL": .null,
-        "NULLS": .nulls,
-        "OF": .of,
-        "OFFSET": .offset,
-        "ON": .on,
-        "OR": .or,
-        "ORDER": .order,
-        "OTHERS": .others,
-        "OUTER": .outer,
-        "OVER": .over,
-        "PARTITION": .partition,
-        "PLAN": .plan,
-        "PRAGMA": .pragma,
-        "PRECEDING": .preceding,
-        "PRIMARY": .primary,
-        "QUERY": .query,
-        "RAISE": .raise,
-        "RANGE": .range,
-        "RECURSIVE": .recursive,
-        "REFERENCES": .references,
-        "REGEXP": .regexp,
-        "REINDEX": .reindex,
-        "RELEASE": .release,
-        "RENAME": .rename,
-        "REPLACE": .replace,
-        "RESTRICT": .restrict,
-        "RETURNING": .returning,
-        "RIGHT": .right,
-        "ROLLBACK": .rollback,
-        "ROW": .row,
-        "ROWS": .rows,
-        "SAVEPOINT": .savepoint,
-        "SELECT": .select,
-        "SET": .set,
-        "TABLE": .table,
-        "TEMP": .temp,
-        "TEMPORARY": .temporary,
-        "THEN": .then,
-        "TIES": .ties,
-        "TO": .to,
-        "TRANSACTION": .transaction,
-        "TRIGGER": .trigger,
-        "UNBOUNDED": .unbounded,
-        "UNION": .union,
-        "UNIQUE": .unique,
-        "UPDATE": .update,
-        "USING": .using,
-        "VACUUM": .vacuum,
-        "VALUES": .values,
-        "VIEW": .view,
-        "VIRTUAL": .virtual,
-        "WHEN": .when,
-        "WHERE": .where,
-        "WINDOW": .window,
-        "WITH": .with,
-        "WITHOUT": .without,
-    ]
+        .abort,
+        .action,
+        .add,
+        .after,
+        .all,
+        .alter,
+        .always,
+        .analyze,
+        .and,
+        .as,
+        .asc,
+        .attach,
+        .autoincrement,
+        .before,
+        .begin,
+        .between,
+        .by,
+        .cascade,
+        .case,
+        .cast,
+        .check,
+        .collate,
+        .column,
+        .commit,
+        .conflict,
+        .constraint,
+        .create,
+        .cross,
+        .current,
+        .currentDate,
+        .currentTime,
+        .currentTimestamp,
+        .database,
+        .default,
+        .deferrable,
+        .deferred,
+        .delete,
+        .desc,
+        .detach,
+        .distinct,
+        .do,
+        .drop,
+        .each,
+        .else,
+        .end,
+        .escape,
+        .except,
+        .exclude,
+        .exclusive,
+        .exists,
+        .explain,
+        .fail,
+        .filter,
+        .first,
+        .following,
+        .for,
+        .foreign,
+        .from,
+        .full,
+        .generated,
+        .glob,
+        .group,
+        .groups,
+        .having,
+        .if,
+        .ignore,
+        .immediate,
+        .in,
+        .index,
+        .indexed,
+        .initially,
+        .inner,
+        .insert,
+        .instead,
+        .intersect,
+        .into,
+        .is,
+        .isnull,
+        .join,
+        .key,
+        .last,
+        .left,
+        .like,
+        .limit,
+        .match,
+        .materialized,
+        .natural,
+        .no,
+        .not,
+        .nothing,
+        .notnull,
+        .null,
+        .nulls,
+        .of,
+        .offset,
+        .on,
+        .or,
+        .order,
+        .others,
+        .outer,
+        .over,
+        .partition,
+        .plan,
+        .pragma,
+        .preceding,
+        .primary,
+        .query,
+        .raise,
+        .range,
+        .recursive,
+        .references,
+        .regexp,
+        .reindex,
+        .release,
+        .rename,
+        .replace,
+        .restrict,
+        .returning,
+        .right,
+        .rollback,
+        .row,
+        .rows,
+        .savepoint,
+        .select,
+        .set,
+        .stored,
+        .table,
+        .temp,
+        .temporary,
+        .then,
+        .ties,
+        .to,
+        .transaction,
+        .trigger,
+        .unbounded,
+        .union,
+        .unique,
+        .update,
+        .using,
+        .vacuum,
+        .values,
+        .view,
+        .virtual,
+        .when,
+        .where,
+        .window,
+        .with,
+        .without,
+    ].reduce(into: [:]) { $0[$1.description] = $1 }
     
     enum Kind: Equatable {
         case symbol(Substring)
+        case string(Substring)
         case numeric(Numeric)
         
         case abort
@@ -290,6 +292,7 @@ struct Token {
         case savepoint
         case select
         case set
+        case stored
         case table
         case temp
         case temporary
@@ -317,7 +320,6 @@ struct Token {
         case star
         case dot
         case comma
-        case singleQuote
         case openParen
         case closeParen
         case plus
@@ -356,6 +358,191 @@ struct Token {
                 self = keyword
             } else {
                 self = .symbol(word)
+            }
+        }
+        
+        var description: String {
+            switch self {
+            case .symbol(let value): String(value)
+            case .string(let value): String(value)
+            case .numeric(let value): value.description
+            case .abort: "ABORT"
+            case .action: "ACTION"
+            case .add: "ADD"
+            case .after: "AFTER"
+            case .all: "ALL"
+            case .alter: "ALTER"
+            case .always: "ALWAYS"
+            case .analyze: "ANALYZE"
+            case .and: "AND"
+            case .as: "AS"
+            case .asc: "ASC"
+            case .attach: "ATTACH"
+            case .autoincrement: "AUTOINCREMENT"
+            case .before: "BEFORE"
+            case .begin: "BEGIN"
+            case .between: "BETWEEN"
+            case .by: "BY"
+            case .cascade: "CASCADE"
+            case .case: "CASE"
+            case .cast: "CAST"
+            case .check: "CHECK"
+            case .collate: "COLLATE"
+            case .column: "COLUMN"
+            case .commit: "COMMIT"
+            case .conflict: "CONFLICT"
+            case .constraint: "CONSTRAINT"
+            case .create: "CREATE"
+            case .cross: "CROSS"
+            case .current: "CURRENT"
+            case .currentDate: "CURRENT_DATE"
+            case .currentTime: "CURRENT_TIME"
+            case .currentTimestamp: "CURRENT_TIMESTAMP"
+            case .database: "DATABASE"
+            case .default: "DEFAULT"
+            case .deferrable: "DEFERRABLE"
+            case .deferred: "DEFERRED"
+            case .delete: "DELETE"
+            case .desc: "DESC"
+            case .detach: "DETACH"
+            case .distinct: "DISTINCT"
+            case .do: "DO"
+            case .drop: "DROP"
+            case .each: "EACH"
+            case .else: "ELSE"
+            case .end: "END"
+            case .escape: "ESCAPE"
+            case .except: "EXCEPT"
+            case .exclude: "EXCLUDE"
+            case .exclusive: "EXCLUSIVE"
+            case .exists: "EXISTS"
+            case .explain: "EXPLAIN"
+            case .fail: "FAIL"
+            case .filter: "FILTER"
+            case .first: "FIRST"
+            case .following: "FOLLOWING"
+            case .for: "FOR"
+            case .foreign: "FOREIGN"
+            case .from: "FROM"
+            case .full: "FULL"
+            case .generated: "GENERATED"
+            case .glob: "GLOB"
+            case .group: "GROUP"
+            case .groups: "GROUPS"
+            case .having: "HAVING"
+            case .if: "IF"
+            case .ignore: "IGNORE"
+            case .immediate: "IMMEDIATE"
+            case .in: "IN"
+            case .index: "INDEX"
+            case .indexed: "INDEXED"
+            case .initially: "INITIALLY"
+            case .inner: "INNER"
+            case .insert: "INSERT"
+            case .instead: "INSTEAD"
+            case .intersect: "INTERSECT"
+            case .into: "INTO"
+            case .is: "IS"
+            case .isnull: "ISNULL"
+            case .join: "JOIN"
+            case .key: "KEY"
+            case .last: "LAST"
+            case .left: "LEFT"
+            case .like: "LIKE"
+            case .limit: "LIMIT"
+            case .match: "MATCH"
+            case .materialized: "MATERIALIZED"
+            case .natural: "NATURAL"
+            case .no: "NO"
+            case .not: "NOT"
+            case .nothing: "NOTHING"
+            case .notnull: "NOTNULL"
+            case .null: "NULL"
+            case .nulls: "NULLS"
+            case .of: "OF"
+            case .offset: "OFFSET"
+            case .on: "ON"
+            case .or: "OR"
+            case .order: "ORDER"
+            case .others: "OTHERS"
+            case .outer: "OUTER"
+            case .over: "OVER"
+            case .partition: "PARTITION"
+            case .plan: "PLAN"
+            case .pragma: "PRAGMA"
+            case .preceding: "PRECEDING"
+            case .primary: "PRIMARY"
+            case .query: "QUERY"
+            case .raise: "RAISE"
+            case .range: "RANGE"
+            case .recursive: "RECURSIVE"
+            case .references: "REFERENCES"
+            case .regexp: "REGEXP"
+            case .reindex: "REINDEX"
+            case .release: "RELEASE"
+            case .rename: "RENAME"
+            case .replace: "REPLACE"
+            case .restrict: "RESTRICT"
+            case .returning: "RETURNING"
+            case .right: "RIGHT"
+            case .rollback: "ROLLBACK"
+            case .row: "ROW"
+            case .rows: "ROWS"
+            case .savepoint: "SAVEPOINT"
+            case .select: "SELECT"
+            case .set: "SET"
+            case .stored: "STORED"
+            case .table: "TABLE"
+            case .temp: "TEMP"
+            case .temporary: "TEMPORARY"
+            case .then: "THEN"
+            case .ties: "TIES"
+            case .to: "TO"
+            case .transaction: "TRANSACTION"
+            case .trigger: "TRIGGER"
+            case .unbounded: "UNBOUNDED"
+            case .union: "UNION"
+            case .unique: "UNIQUE"
+            case .update: "UPDATE"
+            case .using: "USING"
+            case .vacuum: "VACUUM"
+            case .values: "VALUES"
+            case .view: "VIEW"
+            case .virtual: "VIRTUAL"
+            case .when: "WHEN"
+            case .where: "WHERE"
+            case .window: "WINDOW"
+            case .with: "WITH"
+            case .without: "WITHOUT"
+            case .star: "*"
+            case .dot: "."
+            case .comma: ","
+            case .openParen: "("
+            case .closeParen: ")"
+            case .plus: "+"
+            case .minus: "-"
+            case .divide: "/"
+            case .multiply: "*"
+            case .modulo: "%"
+            case .shiftLeft: "<<"
+            case .shiftRight: ">>"
+            case .bitwiseAnd: "&"
+            case .bitwiseOr: "|"
+            case .bitwiseXor: "^"
+            case .concat: "||"
+            case .tilde: "~"
+            case .doubleEqual: "=="
+            case .notEqual: "!="
+            case .arrow: "->"
+            case .doubleArrow: "->>"
+            case .lt: "<"
+            case .lte: "<="
+            case .gt: ">"
+            case .gte: ">="
+            case .dashDash: "--"
+            case .forwardSlashStar: "/*"
+            case .starForwardSlash: "*/"
+            case .eof: "EOF"
             }
         }
     }

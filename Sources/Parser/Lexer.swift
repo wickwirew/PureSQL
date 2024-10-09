@@ -83,7 +83,7 @@ struct Lexer {
         case ("|", _): return consumeSingle(of: .bitwiseOr)
         case ("^", _): return consumeSingle(of: .bitwiseXor)
         case ("~", _): return consumeSingle(of: .tilde)
-        case ("'", _): return consumeSingle(of: .singleQuote)
+        case ("'", _): return try parseString()
         default:
             throw ParsingError(
                 description: "Unexpected character: '\(current)'",
@@ -103,7 +103,7 @@ struct Lexer {
     private mutating func parseWord() -> Token {
         let start = currentIndex
         
-        while let current, current.isLetter {
+        while let current, (current.isLetter || current.isNumber || current == "_") {
             advance()
         }
         
@@ -120,6 +120,28 @@ struct Lexer {
         
         let range = start..<currentIndex
         return Token(kind: .numeric(Numeric(source[range]) ?? 0), range: range)
+    }
+    
+    private mutating func parseString() throws -> Token {
+        let tokenStart = currentIndex
+        advance()
+        let start = currentIndex
+        
+        while let current, current != "'" {
+            advance()
+        }
+        
+        let stringRange = start..<currentIndex
+        
+        guard current == "'" else {
+            throw ParsingError(
+                description: "Unterminated string",
+                sourceRange: start..<currentIndex
+            )
+        }
+        
+        advance()
+        return Token(kind: .string(source[stringRange]), range: tokenStart..<currentIndex)
     }
     
     private mutating func skipWhitespace() {

@@ -63,6 +63,63 @@ class CreateTableParsingTests: XCTestCase {
         XCTAssertEqual(contraint.kind, .primaryKey(order: .asc, .replace, autoincrement: true))
     }
     
+    func testCreateTableWithTheMostRediculousConstraints() throws {
+        let table = try parse("CREATE TABLE user (id INT PRIMARY KEY ASC ON CONFLICT REPLACE AUTOINCREMENT NOT NULL UNIQUE ON CONFLICT IGNORE DEFAULT 100, name TEXT)")
+        let columns = columns(table)
+        
+        let id = try XCTUnwrap(columns["id"])
+        let contraint = try XCTUnwrap(id.constraints.first)
+        
+        XCTAssertNil(contraint.name)
+        XCTAssertEqual(contraint.kind, .primaryKey(order: .asc, .replace, autoincrement: true))
+    }
+    
+    func testCreateTableWithALotOfConstraints() throws {
+        let table = try parse("""
+        CREATE TABLE user (
+            id INT PRIMARY KEY ASC ON CONFLICT REPLACE AUTOINCREMENT, 
+            name TEXT UNIQUE ON CONFLICT IGNORE DEFAULT 'Joe',
+            age INT NOT NULL,
+            agePlus1 INT GENERATED ALWAYS AS () VIRTUAL,
+            countryId INT REFERENCES country(id) ON DELETE CASCADE
+        )
+        """)
+        let columns = columns(table)
+        
+        let id = try XCTUnwrap(columns["id"])
+        let pk = try XCTUnwrap(id.constraints.first)
+        
+        XCTAssertNil(pk.name)
+        XCTAssertEqual(pk.kind, .primaryKey(order: .asc, .replace, autoincrement: true))
+        
+        let name = try XCTUnwrap(columns["name"])
+        let nameUnique = try XCTUnwrap(name.constraints.first)
+        let nameDefault = try XCTUnwrap(name.constraints.last)
+        
+        XCTAssertNil(nameUnique.name)
+        XCTAssertEqual(nameUnique.kind, .unique(.ignore))
+        XCTAssertEqual(nameDefault.kind, .default(.literal(.string("Joe"))))
+        
+        let age = try XCTUnwrap(columns["age"])
+        let ageNotNull = try XCTUnwrap(age.constraints.first)
+        
+        XCTAssertNil(ageNotNull.name)
+        XCTAssertEqual(ageNotNull.kind, .notNull(nil))
+        
+        let agePlus1 = try XCTUnwrap(columns["agePlus1"])
+        let agePlus1Generated = try XCTUnwrap(agePlus1.constraints.first)
+        
+        // TODO: This will fail once expressions are parsed
+        XCTAssertNil(agePlus1Generated.name)
+        XCTAssertEqual(agePlus1Generated.kind, .generated(Expr(), .virtual))
+        
+        let countryId = try XCTUnwrap(columns["countryId"])
+        let countryIdForeignKey = try XCTUnwrap(countryId.constraints.first)
+        
+        XCTAssertNil(countryIdForeignKey.name)
+        XCTAssertEqual(countryIdForeignKey.kind, .foreignKey(ForeignKeyClause(foreignTable: "country", foreignColumns: ["id"], action: .onDo(.delete, .cascade))))
+    }
+    
     private func parse(_ source: String) throws -> CreateTableStmt {
         let lexer = Lexer(source: source)
         var parser = try Parser(lexer: lexer)

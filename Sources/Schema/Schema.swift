@@ -131,16 +131,23 @@ public struct IndexedColumn: Equatable {
 public struct ForeignKeyClause: Equatable {
     public let foreignTable: Substring
     public let foreignColumns: [Substring]
+    public let action: Action?
     
-    public init(foreignTable: Substring, foreignColumns: [Substring]) {
+    public init(
+        foreignTable: Substring,
+        foreignColumns: [Substring],
+        action: Action?
+    ) {
         self.foreignTable = foreignTable
         self.foreignColumns = foreignColumns
+        self.action = action
     }
     
-    public enum Kind: Equatable {
+    public enum Action: Equatable {
         case onDo(On, Do)
-        indirect case match(Match)
-        case deferrable(not: Bool, Deferrable)
+        indirect case match(Substring, Action)
+        case deferrable(Deferrable)
+        case notDeferrable(Deferrable)
     }
     
     public enum On: Equatable {
@@ -154,11 +161,6 @@ public struct ForeignKeyClause: Equatable {
         case cascade
         case restrict
         case noAction
-    }
-    
-    public struct Match: Equatable {
-        let name: Substring
-        let kind: Kind
     }
     
     public enum Deferrable: Equatable {
@@ -265,11 +267,21 @@ public struct ColumnConstraint: Equatable {
         case notNull(ConfictClause?)
         case unique(ConfictClause?)
         case check(Expr)
-        case `default`(Numeric)
+        case `default`(Default)
         case collate(Substring)
         case foreignKey(ForeignKeyClause)
-        case generated(Expr, stored: Bool)
+        case generated(Expr, Generated?)
     }
+    
+    public enum Generated {
+        case stored
+        case virtual
+    }
+}
+
+public enum Default: Equatable {
+    case literal(Literal)
+    case expr(Expr)
 }
 
 public struct ColumnDef: Equatable {

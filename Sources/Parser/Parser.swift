@@ -74,7 +74,21 @@ struct Parser {
         return num
     }
     
-    // https://www.sqlite.org/lang_createtable.html
+    private mutating func parseLiteral() throws -> Literal {
+        // TODO: String
+        switch current.kind {
+        case .numeric(let value):
+            try consume()
+            return .numeric(value)
+        case .string(let value):
+            try consume()
+            return .string(value)
+        default:
+            throw ParsingError(description: "Invalid Literal", sourceRange: current.range)
+        }
+    }
+    
+    /// https://www.sqlite.org/lang_createtable.html
     private mutating func parseCreateTable() throws -> CreateTableStmt {
         let isTemporary = current.kind == .temporary || current.kind == .temp
         if isTemporary {
@@ -139,7 +153,7 @@ struct Parser {
         return columns
     }
     
-    // https://www.sqlite.org/syntax/column-def.html
+    /// https://www.sqlite.org/syntax/column-def.html
     private mutating func parseColumnDef() throws -> ColumnDef {
         let name = try parseSymbol()
         let type = try parseTy()
@@ -147,7 +161,7 @@ struct Parser {
         return ColumnDef(name: name, type: type, constraints: constraints)
     }
     
-    // https://www.sqlite.org/syntax/type-name.html
+    /// https://www.sqlite.org/syntax/type-name.html
     private mutating func parseTy() throws -> Ty {
         let name = try parseSymbol()
         
@@ -183,16 +197,14 @@ struct Parser {
         }
     }
     
-    // https://www.sqlite.org/syntax/column-constraint.html
+    /// https://www.sqlite.org/syntax/column-constraint.html
     private mutating func parseColumnConstraints() throws -> [ColumnConstraint] {
         var constraints = [ColumnConstraint]()
         
         let name = try consume(if: .constraint) ? try parseSymbol() : nil
         
         while true {
-            switch current.kind {
-            case .primary:
-                try consume()
+            if try consume(if: .primary) {
                 try consume(.key)
                 
                 let order: Order? = if try consume(if: .asc) {
@@ -208,18 +220,79 @@ struct Parser {
                 
                 let constraint = ColumnConstraint(
                     name: name,
-                    kind: .primaryKey(order: order,
-                    conflictClause,
-                    autoincrement: autoincrement)
+                    kind: .primaryKey(order: order, conflictClause, autoincrement: autoincrement)
                 )
                 
                 constraints.append(constraint)
-            default:
+            } else if try consume(if: .not) {
+                try consume(.null)
+                let conflictClause = try parseConflictClause()
+                constraints.append(ColumnConstraint(name: name, kind: .notNull(conflictClause)))
+            } else if try consume(if: .unique) {
+                let conflictClause = try parseConflictClause()
+                constraints.append(ColumnConstraint(name: name, kind: .unique(conflictClause)))
+            } else if try consume(if: .check) {
+                try consume(.openParen)
+                let expr = try parseExpr()
+                try consume(.closeParen)
+                constraints.append(ColumnConstraint(name: name, kind: .check(expr)))
+            } else if try consume(if: .default) {
+                if try consume(if: .openParen) {
+                    let expr = try parseExpr()
+                    try consume(.closeParen)
+                    constraints.append(ColumnConstraint(name: name, kind: .default(.expr(expr))))
+                } else {
+                    let value = try parseLiteral()
+                    constraints.append(ColumnConstraint(name: name, kind: .default(.literal(value))))
+                }
+            } else if try consume(if: .collate) {
+                let name = try parseSymbol()
+                constraints.append(ColumnConstraint(name: name, kind: .collate(name)))
+            } else if try consume(if: .references) {
+                let foreignKey = try parseForeignKeyClause()
+                constraints.append(ColumnConstraint(name: name, kind: .foreignKey(foreignKey)))
+            } else if try consume(if: .generated) {
+                try consume(.always)
+                try consume(.as)
+                try consume(.openParen)
+                let expr = try parseExpr()
+                try consume(.closeParen)
+                
+                let generated: ColumnConstraint.Generated? = if try consume(if: .stored) {
+                    .stored
+                } else if try consume(if: .virtual) {
+                    .virtual
+                } else {
+                    nil
+                }
+                
+                constraints.append(ColumnConstraint(name: name, kind: .generated(expr, generated)))
+            } else if try consume(if: .as) {
+                try consume(.openParen)
+                let expr = try parseExpr()
+                try consume(.closeParen)
+                
+                let generated: ColumnConstraint.Generated? = if try consume(if: .stored) {
+                    .stored
+                } else if try consume(if: .virtual) {
+                    .virtual
+                } else {
+                    nil
+                }
+                
+                constraints.append(ColumnConstraint(name: name, kind: .generated(expr, generated)))
+            } else {
                 return constraints
             }
         }
     }
     
+    /// Parses a conflict clause if one exists.
+    ///
+    /// Example:
+    /// ON CONFLICT IGNORE
+    ///
+    /// https://www.sqlite.org/syntax/conflict-clause.html
     private mutating func parseConflictClause() throws -> ConfictClause? {
         guard current.kind == .on else {
             return nil
@@ -245,11 +318,170 @@ struct Parser {
             try consume()
             return .replace
         default:
-            throw ParsingError(description: "Invalid Conflict Clause", sourceRange: current.range)
+            throw error("Invalid Conflict Clause")
         }
+    }
+    
+    /// Parses out a foreign key clause for column definition.
+    ///
+    /// Example:
+    /// REFERENCES user(id) ON DELETE CASCADE
+    /// REFERENCES user(id) ON DELETE SET NULL
+    ///
+    /// https://www.sqlite.org/syntax/foreign-key-clause.html
+    private mutating func parseForeignKeyClause() throws -> ForeignKeyClause {
+        // Assumes 'REFERENCES' has already been consumed
+        let table = try parseSymbol()
+        
+        var columns: [Substring] = []
+        if try consume(if: .openParen) {
+            repeat {
+                columns.append(try parseSymbol())
+            } while try consume(if: .comma)
+        }
+        try consume(.closeParen)
+        
+        if try consume(if: .on) {
+            let on: ForeignKeyClause.On = if try consume(if: .delete) {
+                .delete
+            } else if try consume(if: .update) {
+                .update
+            } else {
+                throw error("Expected 'DELETE' or 'UPDATE'")
+            }
+            
+            return ForeignKeyClause(
+                foreignTable: table,
+                foreignColumns: columns,
+                action: .onDo(on, try parseForeignKeyClauseDo())
+            )
+        } else if try consume(if: .match) {
+            let name = try parseSymbol()
+            
+            guard let action = try parseForeignKeyClauseAction() else {
+                throw error("Expected clause after '\(Token.Kind.match)'")
+            }
+            
+            return ForeignKeyClause(
+                foreignTable: table,
+                foreignColumns: columns,
+                action: .match(name, action)
+            )
+        } else if try consume(if: .not) {
+            try consume(.deferrable)
+            return ForeignKeyClause(
+                foreignTable: table,
+                foreignColumns: columns,
+                action: .notDeferrable(try parseForeignKeyClauseDeferrable())
+            )
+        } else if try consume(if: .deferrable) {
+            return ForeignKeyClause(
+                foreignTable: table,
+                foreignColumns: columns,
+                action: .deferrable(try parseForeignKeyClauseDeferrable())
+            )
+        } else {
+            return ForeignKeyClause(foreignTable: table, foreignColumns: columns, action: nil)
+        }
+    }
+    
+    /// Parses the action part of the foreign key clause.
+    ///
+    /// Example:
+    /// ON DELETE CASCADE
+    ///
+    /// https://www.sqlite.org/syntax/foreign-key-clause.html
+    private mutating func parseForeignKeyClauseAction() throws -> ForeignKeyClause.Action? {
+        if try consume(if: .on) {
+            let on: ForeignKeyClause.On = if try consume(if: .delete) {
+                .delete
+            } else if try consume(if: .update) {
+                .update
+            } else {
+                throw expected(.delete, .update)
+            }
+            
+            return .onDo(on, try parseForeignKeyClauseDo())
+        } else if try consume(if: .match) {
+            let name = try parseSymbol()
+            guard let action = try parseForeignKeyClauseAction() else {
+                throw error("Expected clause after '\(Token.Kind.match)'")
+            }
+            
+            return .match(name, action)
+        } else if try consume(if: .not) {
+            try consume(.deferrable)
+            return .notDeferrable(try parseForeignKeyClauseDeferrable())
+        } else if try consume(if: .deferrable) {
+            return .deferrable(try parseForeignKeyClauseDeferrable())
+        } else {
+            return nil
+        }
+    }
+    
+    /// INITIALLY DEFERRED
+    /// INITIALLY IMMEDIATE
+    ///
+    /// https://www.sqlite.org/syntax/foreign-key-clause.html
+    private mutating func parseForeignKeyClauseDeferrable() throws -> ForeignKeyClause.Deferrable {
+        try consume(.initially)
+        return if try consume(if: .deferred) {
+            .initiallyDeferred
+        } else if try consume(if: .immediate) {
+            .initiallyImmediate
+        } else {
+            throw expected(.deferred, .immediate)
+        }
+    }
+    
+    /// Parses the final action of what do do on a foreign key 'ON' clause.
+    ///
+    /// Example:
+    /// ON DELETE CASCADE
+    ///
+    /// This would parse out the 'CASCADE' part.
+    ///
+    /// https://www.sqlite.org/syntax/foreign-key-clause.html
+    private mutating func parseForeignKeyClauseDo() throws -> ForeignKeyClause.Do {
+        if try consume(if: .set) {
+            if try consume(if: .null) {
+                return .setNull
+            } else if try consume(if: .default) {
+                return .setDefault
+            } else {
+                throw expected(.null, .default)
+            }
+        } else if try consume(if: .cascade) {
+            return .cascade
+        } else if try consume(if: .restrict) {
+            return .restrict
+        } else if try consume(if: .no) {
+            try consume(.action)
+            return .noAction
+        } else {
+            throw expected(.set, .cascade, .restrict, .no)
+        }
+    }
+    
+    
+}
+
+// MARK: - Expressions
+extension Parser {
+    private mutating func parseExpr() throws -> Expr {
+        Expr()
     }
 }
 
-func unimplemented() -> Never {
-    fatalError("Unimplemented")
+// MARK: - Errors
+extension Parser {
+    /// Returns an error message stating that is expected one of the following tokens
+    private func expected(_ tokenKinds: Token.Kind...) -> ParsingError {
+        error("Expected \(tokenKinds.map(\.description).joined(separator: " or "))")
+    }
+    
+    /// Returns an error with the given message
+    private func error(_ description: String) -> ParsingError {
+        ParsingError(description: description, sourceRange: current.range)
+    }
 }

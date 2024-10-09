@@ -21,8 +21,13 @@ class LexerTests: XCTestCase {
         XCTAssertEqual(tokens, [.symbol("some"), .symbol("words"), .select, .eof])
     }
     
+    func testString() throws {
+        let tokens = try tokens(of: "'some words' 'select'")
+        XCTAssertEqual(tokens, [.string("some words"), .string("select"), .eof])
+    }
+    
     func testOperators() throws {
-        let tokens = try tokens(of: "*/ /* << <= >> >= || -- == != <> -> ->> * . ( ) , + - / % < > & | ^ ~ '")
+        let tokens = try tokens(of: "*/ /* << <= >> >= || -- == != <> -> ->> * . ( ) , + - / % < > & | ^ ~")
         
         XCTAssertEqual(tokens, [
             .starForwardSlash,
@@ -53,7 +58,6 @@ class LexerTests: XCTestCase {
             .bitwiseOr,
             .bitwiseXor,
             .tilde,
-            .singleQuote,
             .eof
         ])
     }
