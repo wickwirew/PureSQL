@@ -34,11 +34,14 @@ struct Parser {
         }
     }
     
+    /// Consumes the token
     private mutating func consume() throws {
         current = peek
         peek = try lexer.next()
     }
     
+    /// Consumes the token and validates that the token matches the input kind.
+    /// If they are different, an error is thrown.
     private mutating func consume(_ kind: Token.Kind) throws {
         guard current.kind == kind else {
             throw ParsingError.unexpectedToken(of: current.kind, at: current.range)
@@ -47,6 +50,7 @@ struct Parser {
         try consume()
     }
     
+    /// Consumes the token if the kind matches the current token.
     private mutating func consume(if kind: Token.Kind) throws -> Bool {
         guard current.kind == kind else {
             return false
@@ -56,6 +60,7 @@ struct Parser {
         return true
     }
     
+    /// Parses out a symbol from the current token.
     private mutating func parseSymbol() throws -> Substring {
         guard case let .symbol(sym) = current.kind else {
             throw ParsingError.expectedSymbol(at: current.range)
@@ -65,6 +70,7 @@ struct Parser {
         return sym
     }
     
+    /// Parses out a numeric value from the current token.
     private mutating func parseNumeric() throws -> Numeric {
         guard case let .numeric(num) = current.kind else {
             throw ParsingError.expectedNumeric(at: current.range)
@@ -74,8 +80,9 @@ struct Parser {
         return num
     }
     
+    /// Parses out a SQLite literal from the current token.
     private mutating func parseLiteral() throws -> Literal {
-        // TODO: String
+        // TODO: Rest of literals
         switch current.kind {
         case .numeric(let value):
             try consume()
@@ -84,7 +91,7 @@ struct Parser {
             try consume()
             return .string(value)
         default:
-            throw ParsingError(description: "Invalid Literal", sourceRange: current.range)
+            throw ParsingError(description: "Invalid Literal '\(current)'", sourceRange: current.range)
         }
     }
     
@@ -153,6 +160,9 @@ struct Parser {
         return columns
     }
     
+    /// Parses a column definition that can be in a create table
+    /// or an alter statement.
+    ///
     /// https://www.sqlite.org/syntax/column-def.html
     private mutating func parseColumnDef() throws -> ColumnDef {
         let name = try parseSymbol()
@@ -161,6 +171,8 @@ struct Parser {
         return ColumnDef(name: name, type: type, constraints: constraints)
     }
     
+    /// Parses out a type, from a SQLite type name.
+    ///
     /// https://www.sqlite.org/syntax/type-name.html
     private mutating func parseTy() throws -> Ty {
         let name = try parseSymbol()
@@ -197,10 +209,19 @@ struct Parser {
         }
     }
     
+    /// Parses any constraints on a column.
+    ///
+    /// Example:
+    /// PRIMARY KEY ASC ON CONFLICT REPLACE AUTOINCREMENT
+    /// NOT NULL ON CONFLICT IGNORE
+    /// UNIQUE ON CONFLICT IGNORE
+    /// CHECK (expr)
+    ///
     /// https://www.sqlite.org/syntax/column-constraint.html
     private mutating func parseColumnConstraints() throws -> [ColumnConstraint] {
         var constraints = [ColumnConstraint]()
         
+        // Get the name of the constraint if any
         let name = try consume(if: .constraint) ? try parseSymbol() : nil
         
         while true {
@@ -347,7 +368,7 @@ struct Parser {
             } else if try consume(if: .update) {
                 .update
             } else {
-                throw error("Expected 'DELETE' or 'UPDATE'")
+                throw expected(.delete, .update)
             }
             
             return ForeignKeyClause(
