@@ -288,10 +288,12 @@ struct Token {
         case right
         case rollback
         case row
+        case rowid
         case rows
         case savepoint
         case select
         case set
+        case strict
         case stored
         case table
         case temp
@@ -320,6 +322,7 @@ struct Token {
         case star
         case dot
         case comma
+        case semiColon
         case openParen
         case closeParen
         case plus
@@ -487,10 +490,12 @@ struct Token {
             case .right: "RIGHT"
             case .rollback: "ROLLBACK"
             case .row: "ROW"
+            case .rowid: "ROWID"
             case .rows: "ROWS"
             case .savepoint: "SAVEPOINT"
             case .select: "SELECT"
             case .set: "SET"
+            case .strict: "STRICT"
             case .stored: "STORED"
             case .table: "TABLE"
             case .temp: "TEMP"
@@ -517,6 +522,7 @@ struct Token {
             case .star: "*"
             case .dot: "."
             case .comma: ","
+            case .semiColon: ";"
             case .openParen: "("
             case .closeParen: ")"
             case .plus: "+"

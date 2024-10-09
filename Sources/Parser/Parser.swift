@@ -114,31 +114,33 @@ struct Parser {
             ifNotExists = false
         }
         
-        let schemaName: Substring?
-        let name: Substring
-        if peek.kind == .dot {
-            schemaName = try parseSymbol()
-            try consume(.dot)
-            name = try parseSymbol()
-        } else {
-            schemaName = nil
-            name = try parseSymbol()
-        }
-        
         if current.kind == .as {
             fatalError("Implement SELECT")
         } else {
             let columns = try parseColumns()
-
+            let name = try parseSchemaAndTableName()
+            let options = try parseTableOption()
+            
             return CreateTableStmt(
-                name: name,
-                schemaName: schemaName ?? "",
+                name: name.table,
+                schemaName: name.schema,
                 isTemporary: isTemporary,
                 onlyIfExists: ifNotExists,
                 kind: .columns(columns),
                 constraints: [],
-                options: []
+                options: options
             )
+        }
+    }
+    
+    /// Will parse the `schema.tableName` or if no dot will just do `tableName`
+    private mutating func parseSchemaAndTableName() throws -> (schema: Substring?, table: Substring) {
+        if peek.kind == .dot {
+            let schemaName = try parseSymbol()
+            try consume(.dot)
+            return (schemaName, try parseSymbol())
+        } else {
+            return (nil, try parseSymbol())
         }
     }
     
@@ -228,13 +230,7 @@ struct Parser {
             if try consume(if: .primary) {
                 try consume(.key)
                 
-                let order: Order? = if try consume(if: .asc) {
-                    .asc
-                } else if try consume(if: .desc) {
-                    .desc
-                } else {
-                    nil
-                }
+                let order = try parseOrder()
                 
                 let conflictClause = try parseConflictClause()
                 let autoincrement = try consume(if: .autoincrement)
@@ -278,33 +274,54 @@ struct Parser {
                 try consume(.openParen)
                 let expr = try parseExpr()
                 try consume(.closeParen)
-                
-                let generated: ColumnConstraint.Generated? = if try consume(if: .stored) {
-                    .stored
-                } else if try consume(if: .virtual) {
-                    .virtual
-                } else {
-                    nil
-                }
-                
+                let generated = try parseGeneratedKind()
                 constraints.append(ColumnConstraint(name: name, kind: .generated(expr, generated)))
             } else if try consume(if: .as) {
                 try consume(.openParen)
                 let expr = try parseExpr()
                 try consume(.closeParen)
-                
-                let generated: ColumnConstraint.Generated? = if try consume(if: .stored) {
-                    .stored
-                } else if try consume(if: .virtual) {
-                    .virtual
-                } else {
-                    nil
-                }
-                
+                let generated = try parseGeneratedKind()
                 constraints.append(ColumnConstraint(name: name, kind: .generated(expr, generated)))
             } else {
                 return constraints
             }
+        }
+    }
+    
+    private mutating func parseGeneratedKind() throws -> ColumnConstraint.GeneratedKind? {
+        if try consume(if: .stored) {
+            return .stored
+        } else if try consume(if: .virtual) {
+            return .virtual
+        } else {
+            return nil
+        }
+    }
+    
+    /// WIll recursively parse the table options.
+    ///
+    /// Example:
+    /// STRICT, WITHOUT ROWID
+    ///
+    /// https://www.sqlite.org/syntax/table-options.html
+    private mutating func parseTableOption(into: consuming TableOptions = []) throws -> TableOptions {
+        if try consume(if: .without) {
+            try consume(.rowid)
+            let new = into.union(.withoutRowId)
+            if try consume(if: .comma) {
+                return try parseTableOption(into: new)
+            } else {
+                return new
+            }
+        } else if try consume(if: .strict) {
+            let new = into.union(.strict)
+            if try consume(if: .comma) {
+                return try parseTableOption(into: new)
+            } else {
+                return new
+            }
+        } else {
+            return into
         }
     }
     
@@ -484,13 +501,43 @@ struct Parser {
         }
     }
     
+    private mutating func parseTableConstraints() throws -> [TableConstraint] {
+        return []
+    }
     
+    /// https://www.sqlite.org/syntax/indexed-column.html
+    private mutating func parseIndexedColumn() throws -> IndexedColumn {
+        let kind: IndexedColumn.Kind = if case let .symbol(symbol) = current.kind {
+            .column(symbol)
+        } else {
+            .expr(try parseExpr())
+        }
+        
+        let collation: Substring? = if try consume(if: .collate) {
+            try parseSymbol()
+        } else {
+            nil
+        }
+        
+        return IndexedColumn(kind: kind, collation: collation, order: try parseOrder())
+    }
+    
+    /// Will parse ASC, DESC if any
+    private mutating func parseOrder() throws -> Order? {
+        if try consume(if: .asc) {
+            return .asc
+        } else if try consume(if: .desc) {
+            return .desc
+        } else {
+            return nil
+        }
+    }
 }
 
 // MARK: - Expressions
 extension Parser {
     private mutating func parseExpr() throws -> Expr {
-        Expr()
+        Expr() // TODO
     }
 }
 

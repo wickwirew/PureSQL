@@ -64,14 +64,30 @@ class CreateTableParsingTests: XCTestCase {
     }
     
     func testCreateTableWithTheMostRediculousConstraints() throws {
-        let table = try parse("CREATE TABLE user (id INT PRIMARY KEY ASC ON CONFLICT REPLACE AUTOINCREMENT NOT NULL UNIQUE ON CONFLICT IGNORE DEFAULT 100, name TEXT)")
+        let table = try parse("CREATE TABLE user (id INTEGER PRIMARY KEY ASC ON CONFLICT REPLACE AUTOINCREMENT NOT NULL UNIQUE ON CONFLICT IGNORE DEFAULT 100, name TEXT)")
         let columns = columns(table)
         
         let id = try XCTUnwrap(columns["id"])
-        let contraint = try XCTUnwrap(id.constraints.first)
         
-        XCTAssertNil(contraint.name)
-        XCTAssertEqual(contraint.kind, .primaryKey(order: .asc, .replace, autoincrement: true))
+        var constraints = id.constraints.makeIterator()
+        
+        let pk = try XCTUnwrap(constraints.next())
+        let notNull = try XCTUnwrap(constraints.next())
+        let unique = try XCTUnwrap(constraints.next())
+        let defaultValue = try XCTUnwrap(constraints.next())
+        XCTAssertNil(constraints.next())
+        
+        XCTAssertNil(pk.name)
+        XCTAssertEqual(pk.kind, .primaryKey(order: .asc, .replace, autoincrement: true))
+        
+        XCTAssertNil(notNull.name)
+        XCTAssertEqual(notNull.kind, .notNull(nil))
+        
+        XCTAssertNil(unique.name)
+        XCTAssertEqual(unique.kind, .unique(.ignore))
+        
+        XCTAssertNil(defaultValue.name)
+        XCTAssertEqual(defaultValue.kind, .default(.literal(.numeric(100))))
     }
     
     func testCreateTableWithALotOfConstraints() throws {
@@ -118,6 +134,18 @@ class CreateTableParsingTests: XCTestCase {
         
         XCTAssertNil(countryIdForeignKey.name)
         XCTAssertEqual(countryIdForeignKey.kind, .foreignKey(ForeignKeyClause(foreignTable: "country", foreignColumns: ["id"], action: .onDo(.delete, .cascade))))
+    }
+    
+    func testCreateTableWithNamedConstraint() throws {
+        let table = try parse("CREATE TABLE user (id INT PRIMARY KEY, name TEXT CONSTRAINT name_unique UNIQUE ON CONFLICT IGNORE)")
+        let columns = columns(table)
+        
+        let name = try XCTUnwrap(columns["name"])
+        
+        let contraint = try XCTUnwrap(name.constraints.first)
+        
+        XCTAssertEqual(contraint.name, "name_unique")
+        XCTAssertEqual(contraint.kind, .unique(.ignore))
     }
     
     private func parse(_ source: String) throws -> CreateTableStmt {

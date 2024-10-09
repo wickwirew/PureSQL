@@ -189,23 +189,9 @@ public struct SelectStmt: Equatable {
     public init() {}
 }
 
-//public struct TypeName: Equatable {
-//    public let name: Substring
-//    public let typeParams: (Numeric?, Numeric?)
-//    
-//    public init(name: Substring, typeParams: (Numeric?, Numeric?)) {
-//        self.name = name
-//        self.typeParams = typeParams
-//    }
-//    
-//    public static func == (lhs: TypeName, rhs: TypeName) -> Bool {
-//        lhs.name == rhs.name && lhs.typeParams == rhs.typeParams
-//    }
-//}
-
 public struct CreateTableStmt: Equatable {
     public let name: Substring
-    public let schemaName: Substring
+    public let schemaName: Substring?
     public let isTemporary: Bool
     public let onlyIfExists: Bool
     public let kind: Kind
@@ -214,7 +200,7 @@ public struct CreateTableStmt: Equatable {
     
     public init(
         name: Substring,
-        schemaName: Substring,
+        schemaName: Substring?,
         isTemporary: Bool,
         onlyIfExists: Bool,
         kind: Kind,
@@ -270,10 +256,10 @@ public struct ColumnConstraint: Equatable {
         case `default`(Default)
         case collate(Substring)
         case foreignKey(ForeignKeyClause)
-        case generated(Expr, Generated?)
+        case generated(Expr, GeneratedKind?)
     }
     
-    public enum Generated {
+    public enum GeneratedKind {
         case stored
         case virtual
     }
