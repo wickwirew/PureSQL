@@ -5,6 +5,8 @@
 //  Created by Wes Wickwire on 10/8/24.
 //
 
+import Schema
+
 struct Lexer {
     let source: String
     var currentIndex: String.Index
@@ -39,6 +41,10 @@ struct Lexer {
         
         if current.isLetter {
             return parseWord()
+        }
+        
+        if current.isNumber {
+            return try parseNumber()
         }
         
         switch (current, peek) {
@@ -80,7 +86,7 @@ struct Lexer {
         case ("'", _): return consumeSingle(of: .singleQuote)
         default:
             throw ParsingError(
-                message: "Unexpected character: '\(current)'",
+                description: "Unexpected character: '\(current)'",
                 sourceRange: currentIndex..<currentIndex
             )
         }
@@ -103,6 +109,17 @@ struct Lexer {
         
         let range = start..<currentIndex
         return Token(kind: Token.Kind(word: source[range]), range: range)
+    }
+    
+    private mutating func parseNumber() throws -> Token {
+        let start = currentIndex
+        
+        while let current, (current.isNumber || (current == "." && peek?.isNumber == true)) {
+            advance()
+        }
+        
+        let range = start..<currentIndex
+        return Token(kind: .numeric(Numeric(source[range]) ?? 0), range: range)
     }
     
     private mutating func skipWhitespace() {

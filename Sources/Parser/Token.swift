@@ -5,6 +5,8 @@
 //  Created by Wes Wickwire on 10/8/24.
 //
 
+import Schema
+
 struct Token {
     let kind: Kind
     let range: Range<String.Index>
@@ -161,6 +163,7 @@ struct Token {
     
     enum Kind: Equatable {
         case symbol(Substring)
+        case numeric(Numeric)
         
         case abort
         case action
