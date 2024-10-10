@@ -37,4 +37,8 @@ extension ParsingError {
             sourceRange: sourceRange
         )
     }
+    
+    static func inCorrectNumberOfArgs(at sourceRange: Range<String.Index>) -> ParsingError {
+        ParsingError(description: "Incorrect number of arguments", sourceRange: sourceRange)
+    }
 }

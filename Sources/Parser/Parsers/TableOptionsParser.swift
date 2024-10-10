@@ -21,6 +21,8 @@ struct TableOptionsParser: Parser {
                 options = options.union(.withoutRowId)
             case .strict:
                 options = options.union(.strict)
+            case .eof:
+                return options
             default:
                 throw ParsingError.expected(.without, .strict, at: token.range)
             }

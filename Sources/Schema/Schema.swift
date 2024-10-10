@@ -33,45 +33,7 @@ public enum Ty: Equatable {
     case text
     case clob
     case blob
-    
-    public init?(
-        name: Substring,
-        with l: Numeric? = nil,
-        and r: Numeric? = nil
-    ) {
-        switch name.uppercased() {
-        case "INT": self = .int
-        case "INTEGER": self = .integer
-        case "TINYINT": self = .tinyint
-        case "SMALLINT": self = .smallint
-        case "MEDIUMINT": self = .mediumint
-        case "BIGINT": self = .bigint
-        case "UNSIGNED BIG INT": self = .unsignedBigInt
-        case "INT2": self = .int2
-        case "INT8": self = .int8
-        case "NUMERIC": self = .numeric
-        case "DECIMAL": self = .decimal(Int(l ?? 0), Int(r ?? 0))
-        case "BOOLEAN": self = .boolean
-        case "DATE": self = .date
-        case "DATETIME": self = .datetime
-        case "REAL": self = .real
-        case "DOUBLE": self = .double
-        case "DOUBLE PRECISION": self = .doublePrecision
-        case "FLOAT": self = .float
-        case "CHARACTER": self = .character(Int(l ?? 0))
-        case "VARCHAR": self = .varchar(Int(l ?? 0))
-        case "VARYING CHARACTER": self = .varyingCharacter(Int(l ?? 0))
-        case "NCHAR": self = .nchar(Int(l ?? 0))
-        case "NATIVE CHARACTER": self = .nativeCharacter(Int(l ?? 0))
-        case "NVARCHAR": self = .nvarchar(Int(l ?? 0))
-        case "TEXT": self = .text
-        case "CLOB": self = .clob
-        case "BLOB": self = .blob
-        default: return nil
-        }
-    }
 }
-
 
 public struct Expr: Equatable {
     // TODO

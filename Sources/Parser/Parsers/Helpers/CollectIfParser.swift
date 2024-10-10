@@ -9,11 +9,12 @@
 /// the results into a final array if the token at the start and end of the execution
 /// of the inner parser is one of the given tokens
 struct CollectIfParser<Inner: Parser>: Parser {
+    let checkFirst: Bool
     let tokens: Set<Token.Kind>
     let inner: Inner
     
     func parse(state: inout ParserState) throws -> [Inner.Output] {
-        guard tokens.contains(state.peek.kind) else { return [] }
+        guard !checkFirst || tokens.contains(state.peek.kind) else { return [] }
         
         var elements: [Inner.Output] = []
         
@@ -26,8 +27,8 @@ struct CollectIfParser<Inner: Parser>: Parser {
 }
 
 extension Parser {
-    func collect(if kinds: Set<Token.Kind>) -> CollectIfParser<Self> {
-        return CollectIfParser(tokens: kinds, inner: self)
+    func collect(if kinds: Set<Token.Kind>, checkFirst: Bool = false) -> CollectIfParser<Self> {
+        return CollectIfParser(checkFirst: checkFirst, tokens: kinds, inner: self)
     }
 }
 

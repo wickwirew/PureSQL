@@ -15,7 +15,9 @@ struct Lexer {
     init(source: String) {
         self.source = source
         self.currentIndex = source.startIndex
-        self.peekIndex = source.index(after: currentIndex)
+        self.peekIndex = currentIndex < source.endIndex
+            ? source.index(after: currentIndex)
+            : currentIndex
     }
     
     private var current: Character? {
