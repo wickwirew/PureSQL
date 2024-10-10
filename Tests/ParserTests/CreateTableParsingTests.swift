@@ -38,7 +38,7 @@ class CreateTableParsingTests: XCTestCase {
         let contraint = try XCTUnwrap(id.constraints.first)
         
         XCTAssertNil(contraint.name)
-        XCTAssertEqual(contraint.kind, .primaryKey(order: nil, nil, autoincrement: false))
+        XCTAssertEqual(contraint.kind, .primaryKey(order: nil, .none, autoincrement: false))
     }
     
     func testCreateTableWithPrimaryKeyAndConflict() throws {
@@ -81,7 +81,7 @@ class CreateTableParsingTests: XCTestCase {
         XCTAssertEqual(pk.kind, .primaryKey(order: .asc, .replace, autoincrement: true))
         
         XCTAssertNil(notNull.name)
-        XCTAssertEqual(notNull.kind, .notNull(nil))
+        XCTAssertEqual(notNull.kind, .notNull(.none))
         
         XCTAssertNil(unique.name)
         XCTAssertEqual(unique.kind, .unique(.ignore))
@@ -120,7 +120,7 @@ class CreateTableParsingTests: XCTestCase {
         let ageNotNull = try XCTUnwrap(age.constraints.first)
         
         XCTAssertNil(ageNotNull.name)
-        XCTAssertEqual(ageNotNull.kind, .notNull(nil))
+        XCTAssertEqual(ageNotNull.kind, .notNull(.none))
         
         let agePlus1 = try XCTUnwrap(columns["agePlus1"])
         let agePlus1Generated = try XCTUnwrap(agePlus1.constraints.first)
@@ -150,14 +150,9 @@ class CreateTableParsingTests: XCTestCase {
     
     private func parse(_ source: String) throws -> CreateTableStmt {
         let lexer = Lexer(source: source)
-        var parser = try OldParser(lexer: lexer)
-        let stmt = try parser.next()
-        
-        guard case let .createTable(createTable) = stmt else {
-            return try XCTUnwrap(nil)
-        }
-        
-        return createTable
+        var state = try ParserState(lexer)
+        return try CreateTableParser()
+            .parse(state: &state)
     }
     
     private func columns(_ table: CreateTableStmt) -> [Substring: ColumnDef] {

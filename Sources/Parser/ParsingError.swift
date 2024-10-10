@@ -26,4 +26,15 @@ extension ParsingError {
     static func unknown(type: Substring, at sourceRange: Range<String.Index>) -> ParsingError {
         ParsingError(description: "Unknown type \(type)", sourceRange: sourceRange)
     }
+    
+    static func expected(_ tokenKinds: Token.Kind..., at sourceRange: Range<String.Index>) -> ParsingError {
+        expected(tokenKinds, at: sourceRange)
+    }
+    
+    static func expected(_ tokenKinds: [Token.Kind], at sourceRange: Range<String.Index>) -> ParsingError {
+        ParsingError(
+            description: "Expected \(tokenKinds.map(\.description).joined(separator: " or "))",
+            sourceRange: sourceRange
+        )
+    }
 }

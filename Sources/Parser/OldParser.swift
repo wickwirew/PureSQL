@@ -331,9 +331,9 @@ struct OldParser {
     /// ON CONFLICT IGNORE
     ///
     /// https://www.sqlite.org/syntax/conflict-clause.html
-    private mutating func parseConflictClause() throws -> ConfictClause? {
+    private mutating func parseConflictClause() throws -> ConfictClause {
         guard current.kind == .on else {
-            return nil
+            return .none
         }
         
         try consume()

@@ -162,7 +162,7 @@ struct Token {
         .without,
     ].reduce(into: [:]) { $0[$1.description] = $1 }
     
-    enum Kind: Equatable {
+    enum Kind: Hashable {
         case symbol(Substring)
         case string(Substring)
         case numeric(Numeric)

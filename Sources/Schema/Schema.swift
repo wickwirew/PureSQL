@@ -88,16 +88,17 @@ public enum ConfictClause: Equatable {
     case fail
     case ignore
     case replace
+    case none
 }
 
 public struct PrimaryKeyConstraint: Equatable {
     public let columns: [Substring]
-    public let confictClause: ConfictClause?
+    public let confictClause: ConfictClause
     public let autoincrement: Bool
     
     public init(
         columns: [Substring],
-        confictClause: ConfictClause?,
+        confictClause: ConfictClause,
         autoincrement: Bool
     ) {
         self.columns = columns
@@ -233,7 +234,7 @@ public struct TableConstraint: Equatable {
     
     public enum Kind: Equatable {
         case primaryKey([IndexedColumn], ConfictClause)
-        case unique(IndexedColumn, ConfictClause?)
+        case unique(IndexedColumn, ConfictClause)
         case check(Expr)
         case foreignKey([Substring], ForeignKeyClause)
     }
@@ -249,9 +250,9 @@ public struct ColumnConstraint: Equatable {
     }
     
     public enum Kind: Equatable {
-        case primaryKey(order: Order?, ConfictClause?, autoincrement: Bool)
-        case notNull(ConfictClause?)
-        case unique(ConfictClause?)
+        case primaryKey(order: Order?, ConfictClause, autoincrement: Bool)
+        case notNull(ConfictClause)
+        case unique(ConfictClause)
         case check(Expr)
         case `default`(Default)
         case collate(Substring)
