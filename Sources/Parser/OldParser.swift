@@ -1,5 +1,5 @@
 //
-//  Parser.swift
+//  OldParser.swift
 //
 //
 //  Created by Wes Wickwire on 10/8/24.
@@ -7,7 +7,7 @@
 
 import Schema
 
-struct Parser {
+struct OldParser {
     var lexer: Lexer
     var current: Token
     var peek: Token
@@ -117,8 +117,8 @@ struct Parser {
         if current.kind == .as {
             fatalError("Implement SELECT")
         } else {
-            let columns = try parseColumns()
             let name = try parseSchemaAndTableName()
+            let columns = try parseColumns()
             let options = try parseTableOption()
             
             return CreateTableStmt(
@@ -535,14 +535,14 @@ struct Parser {
 }
 
 // MARK: - Expressions
-extension Parser {
+extension OldParser {
     private mutating func parseExpr() throws -> Expr {
         Expr() // TODO
     }
 }
 
 // MARK: - Errors
-extension Parser {
+extension OldParser {
     /// Returns an error message stating that is expected one of the following tokens
     private func expected(_ tokenKinds: Token.Kind...) -> ParsingError {
         error("Expected \(tokenKinds.map(\.description).joined(separator: " or "))")

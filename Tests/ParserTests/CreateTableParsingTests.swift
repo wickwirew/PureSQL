@@ -150,7 +150,7 @@ class CreateTableParsingTests: XCTestCase {
     
     private func parse(_ source: String) throws -> CreateTableStmt {
         let lexer = Lexer(source: source)
-        var parser = try Parser(lexer: lexer)
+        var parser = try OldParser(lexer: lexer)
         let stmt = try parser.next()
         
         guard case let .createTable(createTable) = stmt else {
