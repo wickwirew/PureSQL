@@ -16,7 +16,7 @@ struct ColumnDefinitionParser: Parser {
         let name = try SymbolParser().parse(state: &state)
         let type = try TyParser().parse(state: &state)
         let constraints = try ColumnConstraintParser()
-            .collect(until: [.comma, .closeParen])
+            .collect(until: [.comma, .closeParen, .eof])
             .parse(state: &state)
         return ColumnDef(name: name, type: type, constraints: constraints)
     }

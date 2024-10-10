@@ -50,6 +50,10 @@ public enum ConfictClause: Equatable {
     case fail
     case ignore
     case replace
+    // Note: Normally would rather make `ConflictClause` `nil` in this
+    // case but the clause according to sqlites documentation no clause
+    // is still a part of the clause.
+    // https://www.sqlite.org/syntax/conflict-clause.html
     case none
 }
 
@@ -77,9 +81,9 @@ public enum Order: Equatable {
 public struct IndexedColumn: Equatable {
     public let kind: Kind
     public let collation: Substring?
-    public let order: Order?
+    public let order: Order
     
-    public init(kind: Kind, collation: Substring?, order: Order?) {
+    public init(kind: Kind, collation: Substring?, order: Order) {
         self.kind = kind
         self.collation = collation
         self.order = order
@@ -94,23 +98,23 @@ public struct IndexedColumn: Equatable {
 public struct ForeignKeyClause: Equatable {
     public let foreignTable: Substring
     public let foreignColumns: [Substring]
-    public let action: Action?
+    public let actions: [Action]
     
     public init(
         foreignTable: Substring,
         foreignColumns: [Substring],
-        action: Action?
+        actions: [Action]
     ) {
         self.foreignTable = foreignTable
         self.foreignColumns = foreignColumns
-        self.action = action
+        self.actions = actions
     }
     
     public enum Action: Equatable {
         case onDo(On, Do)
-        indirect case match(Substring, Action)
-        case deferrable(Deferrable)
-        case notDeferrable(Deferrable)
+        indirect case match(Substring, [Action])
+        case deferrable(Deferrable?)
+        case notDeferrable(Deferrable?)
     }
     
     public enum On: Equatable {
@@ -161,6 +165,11 @@ public struct CreateTableStmt: Equatable {
     public let constraints: [TableConstraint]
     public let options: TableOptions
     
+    public enum Kind: Equatable {
+        case select(SelectStmt)
+        case columns([Substring: ColumnDef])
+    }
+    
     public init(
         name: Substring,
         schemaName: Substring?,
@@ -177,11 +186,6 @@ public struct CreateTableStmt: Equatable {
         self.kind = kind
         self.constraints = constraints
         self.options = options
-    }
-    
-    public enum Kind: Equatable {
-        case select(SelectStmt)
-        case columns([Substring: ColumnDef])
     }
 }
 
@@ -212,7 +216,7 @@ public struct ColumnConstraint: Equatable {
     }
     
     public enum Kind: Equatable {
-        case primaryKey(order: Order?, ConfictClause, autoincrement: Bool)
+        case primaryKey(order: Order, ConfictClause, autoincrement: Bool)
         case notNull(ConfictClause)
         case unique(ConfictClause)
         case check(Expr)
@@ -264,4 +268,30 @@ public struct TableOptions: OptionSet {
     
     public static let withoutRowId = TableOptions(rawValue: 1 << 0)
     public static let strict = TableOptions(rawValue: 1 << 1)
+}
+
+
+public struct Table {
+    public private(set) var name: String
+    public private(set) var schemaName: String?
+    public private(set) var isTemporary: Bool
+    public private(set) var columns: [String: ColumnDef]
+    public private(set) var constraints: [TableConstraint]
+    public private(set) var options: TableOptions
+    
+    public init(
+        name: String,
+        schemaName: String?,
+        isTemporary: Bool,
+        columns: [String: ColumnDef],
+        constraints: [TableConstraint],
+        options: TableOptions
+    ) {
+        self.name = name
+        self.schemaName = schemaName
+        self.isTemporary = isTemporary
+        self.columns = columns
+        self.constraints = constraints
+        self.options = options
+    }
 }

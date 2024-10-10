@@ -45,6 +45,13 @@ extension ParserTests {
         let result = try execute(parser: TableOptionsParser(), source: "WITHOUT ROWID, STRICT")
         XCTAssertEqual(result, [.strict, .withoutRowId])
     }
+    
+    func testTableOptionsDoesNoConsumeNextToken() throws {
+        var state = try parserState("WITHOUT ROWID SELECT")
+        let result = try TableOptionsParser().parse(state: &state)
+        XCTAssertEqual(result, [.withoutRowId, .withoutRowId])
+        XCTAssertEqual(.select, try state.next().kind)
+    }
 }
 
 // MARK: - Ty
@@ -121,5 +128,316 @@ extension ParserTests {
     
     func testNegativeSign() {
         XCTAssertEqual(-123, try execute(parser: SignedNumberParser(), source: "-123"))
+    }
+}
+
+// MARK: - ConflictClause
+
+extension ParserTests {
+    func testConflictClauses() {
+        XCTAssertEqual(.none, try execute(parser: ConfictClauseParser(), source: ""))
+        XCTAssertEqual(.rollback, try execute(parser: ConfictClauseParser(), source: "ON CONFLICT ROLLBACK"))
+        XCTAssertEqual(.abort, try execute(parser: ConfictClauseParser(), source: "ON CONFLICT ABORT"))
+        XCTAssertEqual(.fail, try execute(parser: ConfictClauseParser(), source: "ON CONFLICT FAIL"))
+        XCTAssertEqual(.ignore, try execute(parser: ConfictClauseParser(), source: "ON CONFLICT IGNORE"))
+        XCTAssertEqual(.replace, try execute(parser: ConfictClauseParser(), source: "ON CONFLICT REPLACE"))
+    }
+    
+    func testConflictClausesRequiresConflictKeyword() {
+        XCTAssertThrowsError(try execute(parser: ConfictClauseParser(), source: "ON ROLLBACK"))
+    }
+    
+    func testConflictClausesThrowsErrorWithNoAction() {
+        XCTAssertThrowsError(try execute(parser: ConfictClauseParser(), source: "ON CONFLICT"))
+    }
+}
+
+// MARK: - ForeignKeyClause
+
+extension ParserTests {
+    func testForeignKeyClauseSimpleReference() {
+        XCTAssertEqual(
+            ForeignKeyClause(foreignTable: "user", foreignColumns: [], actions: []),
+            try execute(parser: ForeignKeyClauseParser(), source: "REFERENCES user")
+        )
+        
+        XCTAssertEqual(
+            ForeignKeyClause(foreignTable: "user", foreignColumns: ["id"], actions: []),
+            try execute(parser: ForeignKeyClauseParser(), source: "REFERENCES user(id)")
+        )
+        
+        XCTAssertEqual(
+            ForeignKeyClause(foreignTable: "user", foreignColumns: ["id", "foo"], actions: []),
+            try execute(parser: ForeignKeyClauseParser(), source: "REFERENCES user(id, foo)")
+        )
+    }
+    
+    func testForeignKeyOnDelete() {
+        XCTAssertEqual(
+            ForeignKeyClause(foreignTable: "user", foreignColumns: ["id"], actions: [.onDo(.delete, .setNull)]),
+            try execute(parser: ForeignKeyClauseParser(), source: "REFERENCES user(id) ON DELETE SET NULL")
+        )
+        
+        XCTAssertEqual(
+            ForeignKeyClause(foreignTable: "user", foreignColumns: ["id"], actions: [.onDo(.delete, .setDefault)]),
+            try execute(parser: ForeignKeyClauseParser(), source: "REFERENCES user(id) ON DELETE SET DEFAULT")
+        )
+        
+        XCTAssertEqual(
+            ForeignKeyClause(foreignTable: "user", foreignColumns: [], actions: [.onDo(.delete, .cascade)]),
+            try execute(parser: ForeignKeyClauseParser(), source: "REFERENCES user ON DELETE CASCADE")
+        )
+        
+        XCTAssertEqual(
+            ForeignKeyClause(foreignTable: "user", foreignColumns: ["id"], actions: [.onDo(.delete, .restrict)]),
+            try execute(parser: ForeignKeyClauseParser(), source: "REFERENCES user(id) ON DELETE RESTRICT")
+        )
+        
+        XCTAssertEqual(
+            ForeignKeyClause(foreignTable: "user", foreignColumns: ["id"], actions: [.onDo(.delete, .noAction)]),
+            try execute(parser: ForeignKeyClauseParser(), source: "REFERENCES user(id) ON DELETE NO ACTION")
+        )
+    }
+    
+    func testForeignKeyOnUpdate() {
+        XCTAssertEqual(
+            ForeignKeyClause(foreignTable: "user", foreignColumns: ["id"], actions: [.onDo(.update, .setNull)]),
+            try execute(parser: ForeignKeyClauseParser(), source: "REFERENCES user(id) ON UPDATE SET NULL")
+        )
+        
+        XCTAssertEqual(
+            ForeignKeyClause(foreignTable: "user", foreignColumns: ["id"], actions: [.onDo(.update, .setDefault)]),
+            try execute(parser: ForeignKeyClauseParser(), source: "REFERENCES user(id) ON UPDATE SET DEFAULT")
+        )
+        
+        XCTAssertEqual(
+            ForeignKeyClause(foreignTable: "user", foreignColumns: [], actions: [.onDo(.update, .cascade)]),
+            try execute(parser: ForeignKeyClauseParser(), source: "REFERENCES user ON UPDATE CASCADE")
+        )
+        
+        XCTAssertEqual(
+            ForeignKeyClause(foreignTable: "user", foreignColumns: ["id"], actions: [.onDo(.update, .restrict)]),
+            try execute(parser: ForeignKeyClauseParser(), source: "REFERENCES user(id) ON UPDATE RESTRICT")
+        )
+        
+        XCTAssertEqual(
+            ForeignKeyClause(foreignTable: "user", foreignColumns: ["id"], actions: [.onDo(.update, .noAction)]),
+            try execute(parser: ForeignKeyClauseParser(), source: "REFERENCES user(id) ON UPDATE NO ACTION")
+        )
+    }
+    
+    func testForeignKeyClauseMatch() {
+        XCTAssertEqual(
+            ForeignKeyClause(
+                foreignTable: "user",
+                foreignColumns: ["id"],
+                actions: [.match(
+                    "SIMPLE",
+                    [.onDo(.delete, .cascade), .onDo(.update, .noAction)]
+                )]
+            ),
+            try execute(
+                parser: ForeignKeyClauseParser(),
+                source: "REFERENCES user(id) MATCH SIMPLE ON DELETE CASCADE ON UPDATE NO ACTION"
+            )
+        )
+    }
+    
+    func testForeignKeyClauseDeferrable() {
+        XCTAssertEqual(
+            ForeignKeyClause(foreignTable: "user", foreignColumns: ["id"], actions: [.notDeferrable(nil)]),
+            try execute(parser: ForeignKeyClauseParser(), source: "REFERENCES user(id) NOT DEFERRABLE")
+        )
+        
+        XCTAssertEqual(
+            ForeignKeyClause(foreignTable: "user", foreignColumns: ["id"], actions: [.notDeferrable(.initiallyDeferred)]),
+            try execute(parser: ForeignKeyClauseParser(), source: "REFERENCES user(id) NOT DEFERRABLE INITIALLY DEFERRED")
+        )
+        
+        XCTAssertEqual(
+            ForeignKeyClause(foreignTable: "user", foreignColumns: ["id"], actions: [.notDeferrable(.initiallyImmediate)]),
+            try execute(parser: ForeignKeyClauseParser(), source: "REFERENCES user(id) NOT DEFERRABLE INITIALLY IMMEDIATE")
+        )
+        
+        XCTAssertEqual(
+            ForeignKeyClause(foreignTable: "user", foreignColumns: ["id"], actions: [.deferrable(nil)]),
+            try execute(parser: ForeignKeyClauseParser(), source: "REFERENCES user(id) DEFERRABLE")
+        )
+        
+        XCTAssertEqual(
+            ForeignKeyClause(foreignTable: "user", foreignColumns: ["id"], actions: [.deferrable(.initiallyDeferred)]),
+            try execute(parser: ForeignKeyClauseParser(), source: "REFERENCES user(id) DEFERRABLE INITIALLY DEFERRED")
+        )
+        
+        XCTAssertEqual(
+            ForeignKeyClause(foreignTable: "user", foreignColumns: ["id"], actions: [.deferrable(.initiallyImmediate)]),
+            try execute(parser: ForeignKeyClauseParser(), source: "REFERENCES user(id) DEFERRABLE INITIALLY IMMEDIATE")
+        )
+    }
+}
+
+// MARK: - Order
+
+extension ParserTests {
+    func testOrder() {
+        XCTAssertEqual(.asc, try execute(parser: OrderParser(), source: "ASC"))
+        XCTAssertEqual(.desc, try execute(parser: OrderParser(), source: "DESC"))
+        XCTAssertEqual(.asc, try execute(parser: OrderParser(), source: ""))
+    }
+    
+    func testOrderDoesNotConsumePastIfNoValue() throws {
+        var state = try parserState("SELECT")
+        XCTAssertEqual(.asc, try OrderParser().parse(state: &state))
+        XCTAssertEqual(.select, try state.next().kind)
+    }
+}
+
+// MARK: - ColumnConstraint
+
+extension ParserTests {
+    func testColumnConstraintPk() {
+        XCTAssertEqual(
+            ColumnConstraint(name: nil, kind: .primaryKey(order: .asc, .none, autoincrement: false)),
+            try execute(parser: ColumnConstraintParser(), source: "PRIMARY KEY")
+        )
+        
+        XCTAssertEqual(
+            ColumnConstraint(name: nil, kind: .primaryKey(order: .desc, .none, autoincrement: true)),
+            try execute(parser: ColumnConstraintParser(), source: "PRIMARY KEY DESC AUTOINCREMENT")
+        )
+        
+        XCTAssertEqual(
+            ColumnConstraint(name: nil, kind: .primaryKey(order: .desc, .fail, autoincrement: true)),
+            try execute(parser: ColumnConstraintParser(), source: "PRIMARY KEY DESC ON CONFLICT FAIL AUTOINCREMENT")
+        )
+    }
+    
+    func testColumnConstraintFk() {
+        XCTAssertEqual(
+            ColumnConstraint(
+                name: "toUser",
+                kind: .foreignKey(
+                    ForeignKeyClause(foreignTable: "user", foreignColumns: ["id"], actions: [.onDo(.delete, .cascade)])
+                )
+            ),
+            try execute(parser: ColumnConstraintParser(), source: "CONSTRAINT toUser REFERENCES user(id) ON DELETE CASCADE")
+        )
+        
+        XCTAssertEqual(
+            ColumnConstraint(
+                name: nil,
+                kind: .foreignKey(
+                    ForeignKeyClause(foreignTable: "user", foreignColumns: ["id"], actions: [.onDo(.delete, .cascade)])
+                )
+            ),
+            try execute(parser: ColumnConstraintParser(), source: "REFERENCES user(id) ON DELETE CASCADE")
+        )
+    }
+    
+    func testColumnConstraintNotNull() {
+        XCTAssertEqual(
+            ColumnConstraint(name: "isNotNull", kind: .notNull(.none)),
+            try execute(parser: ColumnConstraintParser(), source: "CONSTRAINT isNotNull NOT NULL")
+        )
+        
+        XCTAssertEqual(
+            ColumnConstraint(name: nil, kind: .notNull(.fail)),
+            try execute(parser: ColumnConstraintParser(), source: "NOT NULL ON CONFLICT FAIL")
+        )
+        
+        XCTAssertEqual(
+            ColumnConstraint(name: nil, kind: .notNull(.none)),
+            try execute(parser: ColumnConstraintParser(), source: "NOT NULL")
+        )
+    }
+    
+    func testColumnConstraintUnique() {
+        XCTAssertEqual(
+            ColumnConstraint(name: "isUnique", kind: .unique(.none)),
+            try execute(parser: ColumnConstraintParser(), source: "CONSTRAINT isUnique UNIQUE")
+        )
+        
+        XCTAssertEqual(
+            ColumnConstraint(name: nil, kind: .unique(.rollback)),
+            try execute(parser: ColumnConstraintParser(), source: "UNIQUE ON CONFLICT rollback")
+        )
+        
+        XCTAssertEqual(
+            ColumnConstraint(name: nil, kind: .unique(.none)),
+            try execute(parser: ColumnConstraintParser(), source: "UNIQUE")
+        )
+    }
+    
+    func testColumnConstraintCheck() {
+        // TODO: These will fail once expr parsing is implemented
+        
+        XCTAssertEqual(
+            ColumnConstraint(name: "checkSomething", kind: .check(Expr())),
+            try execute(parser: ColumnConstraintParser(), source: "CONSTRAINT checkSomething CHECK()")
+        )
+
+        XCTAssertEqual(
+            ColumnConstraint(name: nil, kind: .check(Expr())),
+            try execute(parser: ColumnConstraintParser(), source: "CHECK()")
+        )
+    }
+    
+    func testColumnConstraintDefault() {
+        // TODO: These will fail once expr parsing is implemented
+        
+        XCTAssertEqual(
+            ColumnConstraint(name: "setDefault", kind: .default(.literal(.numeric(1)))),
+            try execute(parser: ColumnConstraintParser(), source: "CONSTRAINT setDefault DEFAULT 1")
+        )
+        
+        XCTAssertEqual(
+            ColumnConstraint(name: nil, kind: .default(.expr(Expr()))),
+            try execute(parser: ColumnConstraintParser(), source: "DEFAULT ()")
+        )
+    }
+    
+    func testColumnConstraintCollate() {
+        XCTAssertEqual(
+            ColumnConstraint(name: "hasCollate", kind: .collate("SIMPLE")),
+            try execute(parser: ColumnConstraintParser(), source: "CONSTRAINT hasCollate COLLATE SIMPLE")
+        )
+        
+        XCTAssertEqual(
+            ColumnConstraint(name: nil, kind: .collate("SIMPLE")),
+            try execute(parser: ColumnConstraintParser(), source: "COLLATE SIMPLE")
+        )
+    }
+    
+    func testColumnConstraintGenerated() {
+        XCTAssertEqual(
+            ColumnConstraint(name: "generateTheColumn", kind: .generated(Expr(), .virtual)),
+            try execute(parser: ColumnConstraintParser(), source: "CONSTRAINT generateTheColumn GENERATED ALWAYS AS () VIRTUAL")
+        )
+        
+        XCTAssertEqual(
+            ColumnConstraint(name: nil, kind: .generated(Expr(), .stored)),
+            try execute(parser: ColumnConstraintParser(), source: "GENERATED ALWAYS AS () STORED")
+        )
+    }
+}
+
+// MARK: - Column Definition
+
+extension ParserTests {
+    func testColumnDefinition() {
+        XCTAssertEqual(
+            ColumnDef(name: "age", type: .int, constraints: []),
+            try execute(parser: ColumnDefinitionParser(), source: "age INT")
+        )
+        
+        XCTAssertEqual(
+            ColumnDef(name: "age", type: .bigint, constraints: []),
+            try execute(parser: ColumnDefinitionParser(), source: "age BIGINT")
+        )
+        
+        XCTAssertEqual(
+            ColumnDef(name: "age", type: .unsignedBigInt, constraints: [ColumnConstraint(name: nil, kind: .notNull(.none))]),
+            try execute(parser: ColumnDefinitionParser(), source: "age UNSIGNED BIG INT NOT NULL")
+        )
     }
 }

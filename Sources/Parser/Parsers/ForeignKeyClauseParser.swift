@@ -24,42 +24,57 @@ struct ForeignKeyClauseParser: Parser {
         let columns = try SymbolParser()
             .commaSeparated()
             .inParenthesis()
+            .take(if: .openParen)
             .parse(state: &state)
         
-        let action = try parseAction(state: &state)
+        let actions = try parseActions(state: &state)
         
         return ForeignKeyClause(
             foreignTable: table,
-            foreignColumns: columns,
-            action: action
+            foreignColumns: columns ?? [],
+            actions: actions
         )
+    }
+    
+    private func parseActions(
+        state: inout ParserState
+    ) throws -> [ForeignKeyClause.Action] {
+        guard let action = try parseAction(state: &state) else { return [] }
+        
+        switch action {
+        case .onDo, .match:
+            return [action] + (try parseActions(state: &state))
+        case .deferrable, .notDeferrable:
+            // These cannot have a secondary action
+            return [action]
+        }
     }
     
     private func parseAction(
         state: inout ParserState
-    ) throws -> ForeignKeyClause.Action {
-        let token = try state.next()
-        
-        switch token.kind {
+    ) throws -> ForeignKeyClause.Action? {
+        switch state.peek.kind {
         case .on:
+            try state.skip()
             let on: ForeignKeyClause.On = try LookupParser([.delete: .delete, .update: .update])
                 .parse(state: &state)
             
             return .onDo(on, try parseOnDeleteOrUpdateAction(state: &state))
         case .match:
+            try state.skip()
             let name = try SymbolParser()
                 .parse(state: &state)
             
-            let action = try parseAction(state: &state)
-            
-            return .match(name, action)
+            return .match(name, try parseActions(state: &state))
         case .not:
+            try state.skip()
             try state.take(.deferrable)
             return .notDeferrable(try parseDeferrable(state: &state))
         case .deferrable:
-            return .notDeferrable(try parseDeferrable(state: &state))
+            try state.skip()
+            return .deferrable(try parseDeferrable(state: &state))
         default:
-            throw ParsingError.expected(.on, .match, .not, .deferrable, at: token.range)
+            return nil
         }
     }
     
@@ -90,12 +105,18 @@ struct ForeignKeyClauseParser: Parser {
     
     private func parseDeferrable(
         state: inout ParserState
-    ) throws -> ForeignKeyClause.Deferrable {
-        try state.take(.initially)
-        return try LookupParser([
-            .deferred: .initiallyDeferred,
-            .immediate: .initiallyImmediate
-        ])
-        .parse(state: &state)
+    ) throws -> ForeignKeyClause.Deferrable? {
+        switch state.peek.kind {
+        case .initially:
+            try state.skip()
+            let token = try state.next()
+            switch token.kind {
+            case .deferred: return .initiallyDeferred
+            case .immediate: return .initiallyImmediate
+            default: throw ParsingError.expected(.deferred, .immediate, at: token.range)
+            }
+        default:
+            return nil
+        }
     }
 }

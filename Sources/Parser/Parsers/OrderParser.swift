@@ -7,15 +7,15 @@
 
 import Schema
 
-/// Parses ASC, DESC if any
+/// Parses ASC, DESC if any. Will default to ASC if none
 struct OrderParser: Parser {
-    func parse(state: inout ParserState) throws -> Order? {
+    func parse(state: inout ParserState) throws -> Order {
         if try state.next(if: .asc) {
             return .asc
         } else if try state.next(if: .desc) {
             return .desc
         } else {
-            return nil
+            return .asc
         }
     }
 }

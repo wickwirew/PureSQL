@@ -38,7 +38,7 @@ class CreateTableParsingTests: XCTestCase {
         let contraint = try XCTUnwrap(id.constraints.first)
         
         XCTAssertNil(contraint.name)
-        XCTAssertEqual(contraint.kind, .primaryKey(order: nil, .none, autoincrement: false))
+        XCTAssertEqual(contraint.kind, .primaryKey(order: .asc, .none, autoincrement: false))
     }
     
     func testCreateTableWithPrimaryKeyAndConflict() throws {
@@ -49,7 +49,7 @@ class CreateTableParsingTests: XCTestCase {
         let contraint = try XCTUnwrap(id.constraints.first)
         
         XCTAssertNil(contraint.name)
-        XCTAssertEqual(contraint.kind, .primaryKey(order: nil, .replace, autoincrement: false))
+        XCTAssertEqual(contraint.kind, .primaryKey(order: .asc, .replace, autoincrement: false))
     }
     
     func testCreateTableWithPrimaryKeyAndConflictAndAutoincrement() throws {
@@ -64,7 +64,7 @@ class CreateTableParsingTests: XCTestCase {
     }
     
     func testCreateTableWithTheMostRediculousConstraints() throws {
-        let table = try parse("CREATE TABLE user (id INTEGER PRIMARY KEY ASC ON CONFLICT REPLACE AUTOINCREMENT NOT NULL UNIQUE ON CONFLICT IGNORE DEFAULT 100, name TEXT)")
+        let table = try parse("CREATE TABLE user (id INTEGER PRIMARY KEY DESC ON CONFLICT REPLACE AUTOINCREMENT NOT NULL UNIQUE ON CONFLICT IGNORE DEFAULT 100, name TEXT)")
         let columns = columns(table)
         
         let id = try XCTUnwrap(columns["id"])
@@ -78,7 +78,7 @@ class CreateTableParsingTests: XCTestCase {
         XCTAssertNil(constraints.next())
         
         XCTAssertNil(pk.name)
-        XCTAssertEqual(pk.kind, .primaryKey(order: .asc, .replace, autoincrement: true))
+        XCTAssertEqual(pk.kind, .primaryKey(order: .desc, .replace, autoincrement: true))
         
         XCTAssertNil(notNull.name)
         XCTAssertEqual(notNull.kind, .notNull(.none))
@@ -133,7 +133,7 @@ class CreateTableParsingTests: XCTestCase {
         let countryIdForeignKey = try XCTUnwrap(countryId.constraints.first)
         
         XCTAssertNil(countryIdForeignKey.name)
-        XCTAssertEqual(countryIdForeignKey.kind, .foreignKey(ForeignKeyClause(foreignTable: "country", foreignColumns: ["id"], action: .onDo(.delete, .cascade))))
+        XCTAssertEqual(countryIdForeignKey.kind, .foreignKey(ForeignKeyClause(foreignTable: "country", foreignColumns: ["id"], actions: [.onDo(.delete, .cascade)])))
     }
     
     func testCreateTableWithNamedConstraint() throws {
