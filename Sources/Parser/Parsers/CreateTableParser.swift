@@ -30,6 +30,9 @@ struct CreateTableParser: Parser {
                 .parse(state: &state)
                 .reduce(into: [:], { $0[$1.name] = $1 })
             
+            let options = try TableOptionsParser()
+                .parse(state: &state)
+            
             return CreateTableStmt(
                 name: table,
                 schemaName: schema,
@@ -37,7 +40,7 @@ struct CreateTableParser: Parser {
                 onlyIfExists: ifNotExists,
                 kind: .columns(columns),
                 constraints: [],
-                options: []
+                options: options
             )
         }
     }

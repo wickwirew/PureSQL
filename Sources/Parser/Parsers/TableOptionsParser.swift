@@ -1,0 +1,31 @@
+//
+//  TableOptionsParser.swift
+//
+//
+//  Created by Wes Wickwire on 10/9/24.
+//
+
+import Schema
+
+/// https://www.sqlite.org/syntax/table-options.html
+struct TableOptionsParser: Parser {
+    func parse(state: inout ParserState) throws -> TableOptions {
+        var options: TableOptions = []
+        
+        repeat {
+            let token = try state.next()
+            
+            switch token.kind {
+            case .without:
+                try state.take(.rowid)
+                options = options.union(.withoutRowId)
+            case .strict:
+                options = options.union(.strict)
+            default:
+                throw ParsingError.expected(.without, .strict, at: token.range)
+            }
+        } while try state.next(if: .comma)
+        
+        return options
+    }
+}
