@@ -13,10 +13,12 @@ public protocol Parser {
 public struct ParserState {
     private var lexer: Lexer
     private(set) var current: Token
+    private(set) var peek: Token
     
     init(_ lexer: Lexer) throws {
         self.lexer = lexer
         self.current = try self.lexer.next()
+        self.peek = try self.lexer.next()
     }
     
     public init(_ source: String) throws {
@@ -32,14 +34,14 @@ extension ParserState {
     /// Gets the next token in the source stream
     mutating func next() throws -> Token {
         let result = current
-        current = try lexer.next()
+        try skip()
         return result
     }
     
     /// Gets the next token if it is of the input kind
     mutating func next(if kind: Token.Kind) throws -> Bool {
         guard current.kind == kind else { return false }
-        current = try lexer.next()
+        try skip()
         return true
     }
     
@@ -49,11 +51,12 @@ extension ParserState {
             throw ParsingError.unexpectedToken(of: current.kind, at: current.range)
         }
         
-        current = try lexer.next()
+        try skip()
     }
     
     mutating func skip() throws {
-        current = try lexer.next()
+        current = peek
+        peek = try lexer.next()
     }
     
     /// Consumes the next token and validates it is of the input kind
@@ -62,7 +65,7 @@ extension ParserState {
             return false
         }
         
-        current = try lexer.next()
+        try skip()
         return true
     }
     
