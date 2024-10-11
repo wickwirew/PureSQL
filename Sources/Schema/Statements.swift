@@ -8,13 +8,14 @@
 import OrderedCollections
 
 public protocol StatementVisitor {
+    associatedtype Input
     associatedtype Output
-    func visit(statement: CreateTableStatement) throws -> Output
-    func visit(statement: AlterTableStatement) throws -> Output
+    func visit(statement: CreateTableStatement, with input: Input) throws -> Output
+    func visit(statement: AlterTableStatement, with input: Input) throws -> Output
 }
 
 public protocol Statement {
-    func accept<V: StatementVisitor>(visitor: V) throws -> V.Output
+    func accept<V: StatementVisitor>(visitor: V, with input: V.Input) throws -> V.Output
 }
 
 public struct CreateTableStatement: Equatable, Statement {
@@ -49,8 +50,8 @@ public struct CreateTableStatement: Equatable, Statement {
         self.options = options
     }
     
-    public func accept<V>(visitor: V) throws -> V.Output where V : StatementVisitor {
-        try visitor.visit(statement: self)
+    public func accept<V>(visitor: V, with input: V.Input) throws -> V.Output where V : StatementVisitor {
+        try visitor.visit(statement: self, with: input)
     }
 }
 
@@ -76,7 +77,7 @@ public struct AlterTableStatement: Equatable, Statement {
         case dropColumn(Substring)
     }
     
-    public func accept<V>(visitor: V) throws -> V.Output where V : StatementVisitor {
-        try visitor.visit(statement: self)
+    public func accept<V>(visitor: V, with input: V.Input) throws -> V.Output where V : StatementVisitor {
+        try visitor.visit(statement: self, with: input)
     }
 }

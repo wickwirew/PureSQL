@@ -221,9 +221,9 @@ public enum Default: Equatable {
 }
 
 public struct ColumnDef: Equatable {
-    public let name: Substring
-    public let type: Ty
-    public let constraints: [ColumnConstraint]
+    public var name: Substring
+    public var type: Ty
+    public var constraints: [ColumnConstraint]
     
     public init(
         name: Substring,

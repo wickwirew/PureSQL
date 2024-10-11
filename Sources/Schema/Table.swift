@@ -6,20 +6,21 @@
 //
 
 import Foundation
+import OrderedCollections
 
 public struct Table {
-    public private(set) var name: Substring
-    public private(set) var schemaName: Substring?
-    public private(set) var isTemporary: Bool
-    public private(set) var columns: [Substring: ColumnDef]
-    public private(set) var constraints: [TableConstraint]
-    public private(set) var options: TableOptions
+    public var name: Substring
+    public var schemaName: Substring?
+    public var isTemporary: Bool
+    public var columns: OrderedDictionary<Substring, ColumnDef>
+    public var constraints: [TableConstraint]
+    public var options: TableOptions
     
     public init(
         name: Substring,
         schemaName: Substring?,
         isTemporary: Bool,
-        columns: [Substring: ColumnDef],
+        columns: OrderedDictionary<Substring, ColumnDef>,
         constraints: [TableConstraint],
         options: TableOptions
     ) {

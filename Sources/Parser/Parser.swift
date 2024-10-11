@@ -20,10 +20,6 @@ struct ParserState {
         self.current = try self.lexer.next()
         self.peek = try self.lexer.next()
     }
-    
-    init(_ source: String) throws {
-        try self.init(Lexer(source: source))
-    }
 }
 
 extension ParserState {
