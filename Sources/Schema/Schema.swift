@@ -5,6 +5,8 @@
 //  Created by Wes Wickwire on 10/8/24.
 //
 
+import OrderedCollections
+
 public enum Ty: Equatable {
     case int
     case integer
@@ -156,39 +158,6 @@ public struct SelectStmt: Equatable {
     public init() {}
 }
 
-public struct CreateTableStmt: Equatable {
-    public let name: Substring
-    public let schemaName: Substring?
-    public let isTemporary: Bool
-    public let onlyIfExists: Bool
-    public let kind: Kind
-    public let constraints: [TableConstraint]
-    public let options: TableOptions
-    
-    public enum Kind: Equatable {
-        case select(SelectStmt)
-        case columns([Substring: ColumnDef])
-    }
-    
-    public init(
-        name: Substring,
-        schemaName: Substring?,
-        isTemporary: Bool,
-        onlyIfExists: Bool,
-        kind: Kind,
-        constraints: [TableConstraint],
-        options: TableOptions
-    ) {
-        self.name = name
-        self.schemaName = schemaName
-        self.isTemporary = isTemporary
-        self.onlyIfExists = onlyIfExists
-        self.kind = kind
-        self.constraints = constraints
-        self.options = options
-    }
-}
-
 public struct TableConstraint: Equatable {
     public let name: Substring?
     public let kind: Kind
@@ -229,6 +198,20 @@ public struct ColumnConstraint: Equatable {
     public enum GeneratedKind {
         case stored
         case virtual
+    }
+    
+    public var isPkConstraint: Bool {
+        switch kind {
+        case .primaryKey: return true
+        default: return false
+        }
+    }
+    
+    public var isNotNullConstraint: Bool {
+        switch kind {
+        case .notNull: return true
+        default: return false
+        }
     }
 }
 

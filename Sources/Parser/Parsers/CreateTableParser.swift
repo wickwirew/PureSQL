@@ -6,9 +6,11 @@
 //
 
 import Schema
+import OrderedCollections
 
-struct CreateTableParser: Parser {
-    func parse(state: inout ParserState) throws -> CreateTableStmt {
+public struct CreateTableParser: Parser {
+    public init() {}
+    public func parse(state: inout ParserState) throws -> CreateTableStmt {
         try state.take(.create)
         let isTemporary = try state.take(if: .temp, or: .temporary)
         try state.take(.table)
@@ -24,7 +26,7 @@ struct CreateTableParser: Parser {
         } else {
             let (schema, table) = try parseSchemaAndTable(state: &state)
             
-            let columns = try ColumnDefinitionParser()
+            let columns: OrderedDictionary<Substring, ColumnDef> = try ColumnDefinitionParser()
                 .commaSeparated()
                 .inParenthesis()
                 .parse(state: &state)

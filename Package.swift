@@ -20,6 +20,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-syntax.git", from: "509.0.0"),
+        .package(url: "https://github.com/apple/swift-collections", from: "1.1.4"),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -29,14 +30,15 @@ let package = Package(
             name: "SQLMacros",
             dependencies: [
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
-                .product(name: "SwiftCompilerPlugin", package: "swift-syntax")
+                .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+                "Parser",
             ]
         ),
 
         // Library that exposes a macro as part of its API, which is used in client programs.
         .target(name: "SQL", dependencies: ["SQLMacros"]),
         .target(name: "Parser", dependencies: ["Schema"]),
-        .target(name: "Schema", dependencies: []),
+        .target(name: "Schema", dependencies: [.product(name: "OrderedCollections", package: "swift-collections")]),
 
         // A client of the library, which is able to use the macro in its own code.
         .executableTarget(name: "SQLClient", dependencies: ["SQL"]),

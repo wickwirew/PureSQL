@@ -10,13 +10,17 @@ protocol Parser {
     func parse(state: inout ParserState) throws -> Output
 }
 
-struct ParserState {
+public struct ParserState {
     private var lexer: Lexer
     private(set) var peek: Token
     
     init(_ lexer: Lexer) throws {
         self.lexer = lexer
         self.peek = try self.lexer.next()
+    }
+    
+    public init(_ source: String) throws {
+        try self.init(Lexer(source: source))
     }
 }
 

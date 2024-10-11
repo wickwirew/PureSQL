@@ -9,3 +9,6 @@
 /// produces a tuple `(x + y, "x + y")`.
 @freestanding(expression)
 public macro stringify<T>(_ value: T) -> String = #externalMacro(module: "SQLMacros", type: "StringifyMacro")
+
+@freestanding(declaration, names: named(Schema))
+public macro schema(_ source: String) = #externalMacro(module: "SQLMacros", type: "SchemaMacro")

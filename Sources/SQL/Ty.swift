@@ -5,7 +5,7 @@
 //  Created by Wes Wickwire on 10/8/24.
 //
 
-enum Ty {
+public enum Ty {
     case int
     case integer
     case tinyint

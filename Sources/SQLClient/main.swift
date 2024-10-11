@@ -3,6 +3,22 @@ import SQL
 let a = 17
 let b = 25
 
-let result = #stringify("SELECT * FROM table")
+//let result = #stringify("SELECT * FROM table")
 
-print("The value \(result)")
+#schema("""
+CREATE TABLE user (
+    id INT PRIMARY KEY AUTOINCREMENT,
+    firstName TEXT,
+    lastName TEXT,
+    age INT NOT NULL
+)
+""")
+
+let user = Schema.User(
+    id: 1,
+    firstName: "Dennis",
+    lastName: "Reynolds",
+    age: 123
+)
+
+//print("The value \(result)")
