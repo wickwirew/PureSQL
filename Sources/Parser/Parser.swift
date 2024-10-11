@@ -5,7 +5,7 @@
 //  Created by Wes Wickwire on 10/9/24.
 //
 
-protocol Parser {
+public protocol Parser {
     associatedtype Output
     func parse(state: inout ParserState) throws -> Output
 }

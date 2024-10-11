@@ -102,10 +102,11 @@ extension Ty {
         case .unsignedBigInt: "UInt64"
         case .numeric, .decimal: "Double"
         case .boolean: "Boolean"
-        case .date, .datetime: "Boolean"
+        case .date, .datetime: "Date"
         case .real, .float: "Float"
         case .double, .doublePrecision: "Double"
-        case .character, .varchar, .varyingCharacter, .nativeCharacter, .nvarchar, .text, .nchar, .clob: "String"
+        case .character, .varchar, .varyingCharacter, .nativeCharacter, 
+             .nvarchar, .text, .nchar, .clob: "String"
         case .blob: "Data"
         }
     }

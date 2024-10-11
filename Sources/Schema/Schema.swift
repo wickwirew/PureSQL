@@ -255,18 +255,18 @@ public struct TableOptions: OptionSet {
 
 
 public struct Table {
-    public private(set) var name: String
-    public private(set) var schemaName: String?
+    public private(set) var name: Substring
+    public private(set) var schemaName: Substring?
     public private(set) var isTemporary: Bool
-    public private(set) var columns: [String: ColumnDef]
+    public private(set) var columns: [Substring: ColumnDef]
     public private(set) var constraints: [TableConstraint]
     public private(set) var options: TableOptions
     
     public init(
-        name: String,
-        schemaName: String?,
+        name: Substring,
+        schemaName: Substring?,
         isTemporary: Bool,
-        columns: [String: ColumnDef],
+        columns: [Substring: ColumnDef],
         constraints: [TableConstraint],
         options: TableOptions
     ) {

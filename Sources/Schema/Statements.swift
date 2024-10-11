@@ -7,6 +7,10 @@
 
 import OrderedCollections
 
+public enum Statement {
+    case createTable(CreateTableStmt)
+}
+
 public struct CreateTableStmt: Equatable {
     public let name: Substring
     public let schemaName: Substring?
