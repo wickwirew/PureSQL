@@ -10,12 +10,13 @@ import Schema
 public struct StmtParser: Parser {
     public init() {}
     
-    public func parse(state: inout ParserState) throws -> Statement {
-        // This really needs more look ahead and actually
-        // do the necessary logic to start the right parser
-        return try .createTable(
-            CreateTableParser()
+    public func parse(state: inout ParserState) throws -> any Statement {
+        switch (state.current.kind, state.peek.kind) {
+        case (.create, .table):
+            return try CreateTableParser()
                 .parse(state: &state)
-        )
+        default:
+            throw ParsingError.unexpectedToken(of: state.current.kind, at: state.current.range)
+        }
     }
 }

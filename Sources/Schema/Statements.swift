@@ -7,11 +7,16 @@
 
 import OrderedCollections
 
-public enum Statement {
-    case createTable(CreateTableStmt)
+public protocol StatementVisitor {
+    associatedtype Output
+    func visit(statement: CreateTableStatement) throws -> Output
 }
 
-public struct CreateTableStmt: Equatable {
+public protocol Statement {
+    func accept<V: StatementVisitor>(visitor: V) throws -> V.Output
+}
+
+public struct CreateTableStatement: Equatable, Statement {
     public let name: Substring
     public let schemaName: Substring?
     public let isTemporary: Bool
@@ -41,5 +46,9 @@ public struct CreateTableStmt: Equatable {
         self.kind = kind
         self.constraints = constraints
         self.options = options
+    }
+    
+    public func accept<V>(visitor: V) throws -> V.Output where V : StatementVisitor {
+        try visitor.visit(statement: self)
     }
 }

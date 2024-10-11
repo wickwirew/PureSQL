@@ -10,7 +10,7 @@ import OrderedCollections
 
 public struct CreateTableParser: Parser {
     public init() {}
-    public func parse(state: inout ParserState) throws -> CreateTableStmt {
+    public func parse(state: inout ParserState) throws -> CreateTableStatement {
         try state.take(.create)
         let isTemporary = try state.take(if: .temp, or: .temporary)
         try state.take(.table)
@@ -35,7 +35,7 @@ public struct CreateTableParser: Parser {
             let options = try TableOptionsParser()
                 .parse(state: &state)
             
-            return CreateTableStmt(
+            return CreateTableStatement(
                 name: table,
                 schemaName: schema,
                 isTemporary: isTemporary,

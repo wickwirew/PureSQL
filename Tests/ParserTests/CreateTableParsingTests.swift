@@ -149,14 +149,14 @@ class CreateTableParsingTests: XCTestCase {
         XCTAssertEqual(contraint.kind, .unique(.ignore))
     }
     
-    private func parse(_ source: String) throws -> CreateTableStmt {
+    private func parse(_ source: String) throws -> CreateTableStatement {
         let lexer = Lexer(source: source)
         var state = try ParserState(lexer)
         return try CreateTableParser()
             .parse(state: &state)
     }
     
-    private func columns(_ table: CreateTableStmt) -> OrderedDictionary<Substring, ColumnDef> {
+    private func columns(_ table: CreateTableStatement) -> OrderedDictionary<Substring, ColumnDef> {
         guard case let .columns(columns) = table.kind else {
             return [:]
         }
