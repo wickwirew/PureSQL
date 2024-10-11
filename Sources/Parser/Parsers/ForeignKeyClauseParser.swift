@@ -82,11 +82,11 @@ struct ForeignKeyClauseParser: Parser {
     private func parseOnDeleteOrUpdateAction(
         state: inout ParserState
     ) throws -> ForeignKeyClause.Do {
-        let token = try state.next()
+        let token = try state.take()
         
         switch token.kind {
         case .set:
-            let token = try state.next()
+            let token = try state.take()
             switch token.kind {
             case .null: return .setNull
             case .default: return .setDefault
@@ -109,7 +109,7 @@ struct ForeignKeyClauseParser: Parser {
         switch state.current.kind {
         case .initially:
             try state.skip()
-            let token = try state.next()
+            let token = try state.take()
             switch token.kind {
             case .deferred: return .initiallyDeferred
             case .immediate: return .initiallyImmediate

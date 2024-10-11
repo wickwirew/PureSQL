@@ -9,7 +9,7 @@ import Schema
 
 struct NumericLiteralParser: Parser {
     func parse(state: inout ParserState) throws -> Numeric {
-        let token = try state.next()
+        let token = try state.take()
         
         guard case let .numeric(num) = token.kind else {
             throw ParsingError.expectedNumeric(at: token.range)

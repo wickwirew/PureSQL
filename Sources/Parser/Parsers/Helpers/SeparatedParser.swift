@@ -19,7 +19,7 @@ public struct SeparatedParser<Element: Parser>: Parser {
         
         repeat {
             elements.append(try element.parse(state: &state))
-        } while try state.next(if: separator)
+        } while try state.take(if: separator)
         
         return elements
     }

@@ -107,7 +107,7 @@ struct ColumnConstraintParser: Parser {
         let conflictClause = try ConfictClauseParser()
             .parse(state: &state)
         
-        let autoincrement = try state.next(if: .autoincrement)
+        let autoincrement = try state.take(if: .autoincrement)
         
         return ColumnConstraint(
             name: name,

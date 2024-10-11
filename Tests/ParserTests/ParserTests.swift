@@ -50,7 +50,7 @@ extension ParserTests {
         var state = try parserState("WITHOUT ROWID SELECT")
         let result = try TableOptionsParser().parse(state: &state)
         XCTAssertEqual(result, [.withoutRowId, .withoutRowId])
-        XCTAssertEqual(.select, try state.next().kind)
+        XCTAssertEqual(.select, try state.take().kind)
     }
 }
 
@@ -288,7 +288,7 @@ extension ParserTests {
     func testOrderDoesNotConsumePastIfNoValue() throws {
         var state = try parserState("SELECT")
         XCTAssertEqual(.asc, try OrderParser().parse(state: &state))
-        XCTAssertEqual(.select, try state.next().kind)
+        XCTAssertEqual(.select, try state.take().kind)
     }
 }
 

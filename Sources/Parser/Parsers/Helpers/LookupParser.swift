@@ -16,7 +16,7 @@ struct LookupParser<Output>: Parser {
     }
     
     func parse(state: inout ParserState) throws -> Output {
-        let token = try state.next()
+        let token = try state.take()
         
         guard let output = lookup[token.kind] else {
             throw ParsingError.expected(Array(lookup.keys), at: token.range)

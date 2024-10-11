@@ -9,7 +9,7 @@ import Schema
 
 struct LiteralParser: Parser {
     func parse(state: inout ParserState) throws -> Literal {
-        let token = try state.next()
+        let token = try state.take()
         
         // TODO: Rest of literals
         switch token.kind {

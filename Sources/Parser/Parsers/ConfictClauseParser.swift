@@ -20,7 +20,7 @@ struct ConfictClauseParser: Parser {
         try state.take(.on)
         try state.take(.conflict)
         
-        let token = try state.next()
+        let token = try state.take()
         switch token.kind {
         case .rollback: return .rollback
         case .abort: return .abort

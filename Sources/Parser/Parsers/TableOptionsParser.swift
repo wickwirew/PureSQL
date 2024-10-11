@@ -13,7 +13,7 @@ struct TableOptionsParser: Parser {
         var options: TableOptions = []
         
         repeat {
-            let token = try state.next()
+            let token = try state.take()
             
             switch token.kind {
             case .without:
@@ -26,7 +26,7 @@ struct TableOptionsParser: Parser {
             default:
                 throw ParsingError.expected(.without, .strict, at: token.range)
             }
-        } while try state.next(if: .comma)
+        } while try state.take(if: .comma)
         
         return options
     }

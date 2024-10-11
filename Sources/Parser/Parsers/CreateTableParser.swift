@@ -15,7 +15,7 @@ public struct CreateTableParser: Parser {
         let isTemporary = try state.take(if: .temp, or: .temporary)
         try state.take(.table)
         
-        let ifNotExists = try state.next(if: .if)
+        let ifNotExists = try state.take(if: .if)
         if ifNotExists {
             try state.take(.not)
             try state.take(.exists)
@@ -54,7 +54,7 @@ public struct CreateTableParser: Parser {
         
         let first = try symbol.parse(state: &state)
         
-        if try state.next(if: .dot) {
+        if try state.take(if: .dot) {
             return (first, try symbol.parse(state: &state))
         } else {
             return (nil, first)

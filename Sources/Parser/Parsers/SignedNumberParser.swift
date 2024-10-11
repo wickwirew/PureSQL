@@ -10,7 +10,7 @@ import Schema
 /// https://www.sqlite.org/syntax/signed-number.html
 struct SignedNumberParser: Parser {
     func parse(state: inout ParserState) throws -> SignedNumber {
-        let token = try state.next()
+        let token = try state.take()
         
         switch token.kind {
         case .numeric(let value):
