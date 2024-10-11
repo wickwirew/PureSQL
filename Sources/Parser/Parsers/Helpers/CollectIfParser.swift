@@ -14,13 +14,13 @@ struct CollectIfParser<Inner: Parser>: Parser {
     let inner: Inner
     
     func parse(state: inout ParserState) throws -> [Inner.Output] {
-        guard !checkFirst || tokens.contains(state.peek.kind) else { return [] }
+        guard !checkFirst || tokens.contains(state.current.kind) else { return [] }
         
         var elements: [Inner.Output] = []
         
         repeat {
             try elements.append(inner.parse(state: &state))
-        } while tokens.contains(state.peek.kind)
+        } while tokens.contains(state.current.kind)
         
         return elements
     }

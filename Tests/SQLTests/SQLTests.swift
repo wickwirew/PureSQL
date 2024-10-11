@@ -9,40 +9,40 @@ import XCTest
 import SQLMacros
 
 let testMacros: [String: Macro.Type] = [
-    "stringify": StringifyMacro.self,
+    "schema": SchemaMacro.self,
 ]
 #endif
 
 final class SQLTests: XCTestCase {
-    func testMacro() throws {
-        #if canImport(SQLMacros)
-        assertMacroExpansion(
-            """
-            #stringify(a + b)
-            """,
-            expandedSource: """
-            (a + b, "a + b")
-            """,
-            macros: testMacros
-        )
-        #else
-        throw XCTSkip("macros are only supported when running tests for the host platform")
-        #endif
-    }
-
-    func testMacroWithStringLiteral() throws {
-        #if canImport(SQLMacros)
-        assertMacroExpansion(
-            #"""
-            #stringify("Hello, \(name)")
-            """#,
-            expandedSource: #"""
-            ("Hello, \(name)", #""Hello, \(name)""#)
-            """#,
-            macros: testMacros
-        )
-        #else
-        throw XCTSkip("macros are only supported when running tests for the host platform")
-        #endif
-    }
+//    func testMacro() throws {
+//        #if canImport(SQLMacros)
+//        assertMacroExpansion(
+//            """
+//            #stringify(a + b)
+//            """,
+//            expandedSource: """
+//            (a + b, "a + b")
+//            """,
+//            macros: testMacros
+//        )
+//        #else
+//        throw XCTSkip("macros are only supported when running tests for the host platform")
+//        #endif
+//    }
+//
+//    func testMacroWithStringLiteral() throws {
+//        #if canImport(SQLMacros)
+//        assertMacroExpansion(
+//            #"""
+//            #stringify("Hello, \(name)")
+//            """#,
+//            expandedSource: #"""
+//            ("Hello, \(name)", #""Hello, \(name)""#)
+//            """#,
+//            macros: testMacros
+//        )
+//        #else
+//        throw XCTSkip("macros are only supported when running tests for the host platform")
+//        #endif
+//    }
 }

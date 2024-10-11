@@ -17,7 +17,7 @@ struct ColumnConstraintParser: Parser {
     }
     
     func parse(state: inout ParserState) throws -> ColumnConstraint {
-        switch state.peek.kind {
+        switch state.current.kind {
         case .constraint:
             try state.skip()
             
@@ -45,7 +45,7 @@ struct ColumnConstraintParser: Parser {
             return ColumnConstraint(name: name, kind: .check(expr))
         case .default:
             try state.skip()
-            if state.peek.kind == .openParen {
+            if state.current.kind == .openParen {
                 let expr = try ExprParser()
                     .inParenthesis()
                     .parse(state: &state)
@@ -84,7 +84,7 @@ struct ColumnConstraintParser: Parser {
             
             return ColumnConstraint(name: name, kind: .generated(expr, generated))
         default:
-            throw ParsingError.unexpectedToken(of: state.peek.kind, at: state.peek.range)
+            throw ParsingError.unexpectedToken(of: state.current.kind, at: state.current.range)
         }
     }
     

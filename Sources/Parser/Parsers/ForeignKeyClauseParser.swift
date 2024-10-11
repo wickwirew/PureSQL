@@ -53,7 +53,7 @@ struct ForeignKeyClauseParser: Parser {
     private func parseAction(
         state: inout ParserState
     ) throws -> ForeignKeyClause.Action? {
-        switch state.peek.kind {
+        switch state.current.kind {
         case .on:
             try state.skip()
             let on: ForeignKeyClause.On = try LookupParser([.delete: .delete, .update: .update])
@@ -106,7 +106,7 @@ struct ForeignKeyClauseParser: Parser {
     private func parseDeferrable(
         state: inout ParserState
     ) throws -> ForeignKeyClause.Deferrable? {
-        switch state.peek.kind {
+        switch state.current.kind {
         case .initially:
             try state.skip()
             let token = try state.next()

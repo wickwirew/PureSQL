@@ -15,7 +15,7 @@ import Schema
 /// https://www.sqlite.org/syntax/conflict-clause.html
 struct ConfictClauseParser: Parser {
     func parse(state: inout ParserState) throws -> ConfictClause {
-        guard state.peek.kind == .on else { return .none }
+        guard state.current.kind == .on else { return .none }
         
         try state.take(.on)
         try state.take(.conflict)

@@ -14,11 +14,11 @@ CREATE TABLE user (
 )
 """)
 
-let user = Schema.User(
-    id: 1,
-    firstName: "Dennis",
-    lastName: "Reynolds",
-    age: 123
-)
-
-//print("The value \(result)")
+//let user = Schema.User(
+//    id: 1,
+//    firstName: "Dennis",
+//    lastName: "Reynolds",
+//    age: 123
+//)
+//
+//print("The user \(user)")

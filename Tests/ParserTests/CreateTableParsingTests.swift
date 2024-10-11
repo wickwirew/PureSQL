@@ -8,6 +8,7 @@
 import Foundation
 import XCTest
 import Schema
+import OrderedCollections
 
 @testable import Parser
 
@@ -155,7 +156,7 @@ class CreateTableParsingTests: XCTestCase {
             .parse(state: &state)
     }
     
-    private func columns(_ table: CreateTableStmt) -> [Substring: ColumnDef] {
+    private func columns(_ table: CreateTableStmt) -> OrderedDictionary<Substring, ColumnDef> {
         guard case let .columns(columns) = table.kind else {
             return [:]
         }

@@ -18,30 +18,31 @@ public struct SchemaMacro: DeclarationMacro {
             fatalError("Not a string")
         }
 
-        var state = try ParserState(string.segments.description)
-        
-        let table = try CreateTableParser()
-            .parse(state: &state)
-        
-        guard case let .columns(columns) = table.kind else { return [] }
-        
-        let fields: String = columns.map { (_, column) in
-            """
-            let \(column.name): \(column.type.swiftType)\(column.constraints.contains{ $0.isNotNullConstraint || $0.isPkConstraint } ? "" : "?")
-            """
-        }
-            .joined(separator: "\n")
-        
-        let decl: DeclSyntax = """
-        struct \(raw: table.name.toUpperCamelCase()) {
-            \(raw: fields)
-        }
-        """
+//        var state = try ParserState(string.segments.description)
+//        
+//        let table = try CreateTableParser()
+//            .parse(state: &state)
+//        
+//        guard case let .columns(columns) = table.kind else { return [] }
+//        
+//        let fields: String = columns.map { (_, column) in
+//            """
+//            let \(column.name): \(column.type.swiftType)\(column.constraints.contains{ $0.isNotNullConstraint || $0.isPkConstraint } ? "" : "?")
+//            """
+//        }
+//            .joined(separator: "\n")
+//        
+//        let decl: DeclSyntax = """
+//        struct \(raw: table.name.toUpperCamelCase()) {
+//            \(raw: fields)
+//        }
+//        """
+//        \(decl)
         
         return [
             """
             struct Schema {
-                \(decl)
+                
             }
             """,
         ]
@@ -55,31 +56,31 @@ struct SQLPlugin: CompilerPlugin {
     ]
 }
 
-extension StringProtocol {
-    func toUpperCamelCase() -> String {
-        guard let first = self.first?.uppercased() else { return "" }
-        guard count > 1 else { return first }
-        return "\(first)\(self[self.index(after: self.startIndex)..<self.endIndex])"
-    }
-}
-
-extension Ty {
-    var swiftType: String {
-        return switch self {
-        case .int, .integer: "Int"
-        case .tinyint: "Int8"
-        case .smallint, .int2: "Int16"
-        case .mediumint: "Int32"
-        case .bigint, .int8: "Int64"
-        case .unsignedBigInt: "UInt64"
-        case .numeric, .decimal: "Double"
-        case .boolean: "Boolean"
-        case .date, .datetime: "Date"
-        case .real, .float: "Float"
-        case .double, .doublePrecision: "Double"
-        case .character, .varchar, .varyingCharacter, .nativeCharacter, 
-             .nvarchar, .text, .nchar, .clob: "String"
-        case .blob: "Data"
-        }
-    }
-}
+//extension StringProtocol {
+//    func toUpperCamelCase() -> String {
+//        guard let first = self.first?.uppercased() else { return "" }
+//        guard count > 1 else { return first }
+//        return "\(first)\(self[self.index(after: self.startIndex)..<self.endIndex])"
+//    }
+//}
+//
+//extension Ty {
+//    var swiftType: String {
+//        return switch self {
+//        case .int, .integer: "Int"
+//        case .tinyint: "Int8"
+//        case .smallint, .int2: "Int16"
+//        case .mediumint: "Int32"
+//        case .bigint, .int8: "Int64"
+//        case .unsignedBigInt: "UInt64"
+//        case .numeric, .decimal: "Double"
+//        case .boolean: "Boolean"
+//        case .date, .datetime: "Date"
+//        case .real, .float: "Float"
+//        case .double, .doublePrecision: "Double"
+//        case .character, .varchar, .varyingCharacter, .nativeCharacter, 
+//             .nvarchar, .text, .nchar, .clob: "String"
+//        case .blob: "Data"
+//        }
+//    }
+//}

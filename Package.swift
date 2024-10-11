@@ -31,13 +31,14 @@ let package = Package(
             dependencies: [
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+                "Schema",
                 "Parser",
             ]
         ),
 
         // Library that exposes a macro as part of its API, which is used in client programs.
         .target(name: "SQL", dependencies: ["SQLMacros"]),
-        .target(name: "Parser", dependencies: ["Schema"]),
+        .target(name: "Parser", dependencies: ["Schema", .product(name: "OrderedCollections", package: "swift-collections")]),
         .target(name: "Schema", dependencies: [.product(name: "OrderedCollections", package: "swift-collections")]),
 
         // A client of the library, which is able to use the macro in its own code.
