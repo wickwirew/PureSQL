@@ -24,7 +24,8 @@ public struct CreateTableParser: Parser {
         if state.is(of: .as) {
             fatalError("Implement SELECT statement")
         } else {
-            let (schema, table) = try parseSchemaAndTable(state: &state)
+            let (schema, table) = try TableAndSchemaNameParser()
+                .parse(state: &state)
             
             let columns: OrderedDictionary<Substring, ColumnDef> = try ColumnDefinitionParser()
                 .commaSeparated()
@@ -44,20 +45,6 @@ public struct CreateTableParser: Parser {
                 constraints: [],
                 options: options
             )
-        }
-    }
-    
-    func parseSchemaAndTable(
-        state: inout ParserState
-    ) throws -> (schema: Substring?, table: Substring) {
-        let symbol = SymbolParser()
-        
-        let first = try symbol.parse(state: &state)
-        
-        if try state.take(if: .dot) {
-            return (first, try symbol.parse(state: &state))
-        } else {
-            return (nil, first)
         }
     }
 }

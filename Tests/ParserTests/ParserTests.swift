@@ -441,3 +441,50 @@ extension ParserTests {
         )
     }
 }
+
+// MARK: - Alter Table
+
+extension ParserTests {
+    func testAlterTableRename() {
+        XCTAssertEqual(
+            AlterTableStatement(name: "user", schemaName: nil, kind: .rename("coolUser")),
+            try execute(parser: AlterTableParser(), source: "ALTER TABLE user RENAME TO coolUser")
+        )
+    }
+    
+    func testAlterTableRenameColumn() {
+        XCTAssertEqual(
+            AlterTableStatement(name: "user", schemaName: nil, kind: .renameColumn("firstN", "firstName")),
+            try execute(parser: AlterTableParser(), source: "ALTER TABLE user RENAME COLUMN firstN TO firstName")
+        )
+        
+        XCTAssertEqual(
+            AlterTableStatement(name: "user", schemaName: nil, kind: .renameColumn("firstN", "firstName")),
+            try execute(parser: AlterTableParser(), source: "ALTER TABLE user RENAME firstN TO firstName")
+        )
+    }
+    
+    func testAlterTableAddColumn() {
+        XCTAssertEqual(
+            AlterTableStatement(name: "user", schemaName: nil, kind: .addColumn(ColumnDef(name: "lastName", type: .text, constraints: []))),
+            try execute(parser: AlterTableParser(), source: "ALTER TABLE user ADD COLUMN lastName TEXT")
+        )
+        
+        XCTAssertEqual(
+            AlterTableStatement(name: "user", schemaName: nil, kind: .addColumn(ColumnDef(name: "lastName", type: .text, constraints: []))),
+            try execute(parser: AlterTableParser(), source: "ALTER TABLE user ADD lastName TEXT")
+        )
+    }
+    
+    func testAlterTableDropColumn() {
+        XCTAssertEqual(
+            AlterTableStatement(name: "user", schemaName: nil, kind: .dropColumn("age")),
+            try execute(parser: AlterTableParser(), source: "ALTER TABLE user DROP COLUMN age")
+        )
+        
+        XCTAssertEqual(
+            AlterTableStatement(name: "user", schemaName: nil, kind: .dropColumn("age")),
+            try execute(parser: AlterTableParser(), source: "ALTER TABLE user DROP age")
+        )
+    }
+}

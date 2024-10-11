@@ -10,6 +10,7 @@ import OrderedCollections
 public protocol StatementVisitor {
     associatedtype Output
     func visit(statement: CreateTableStatement) throws -> Output
+    func visit(statement: AlterTableStatement) throws -> Output
 }
 
 public protocol Statement {
@@ -46,6 +47,33 @@ public struct CreateTableStatement: Equatable, Statement {
         self.kind = kind
         self.constraints = constraints
         self.options = options
+    }
+    
+    public func accept<V>(visitor: V) throws -> V.Output where V : StatementVisitor {
+        try visitor.visit(statement: self)
+    }
+}
+
+public struct AlterTableStatement: Equatable, Statement {
+    public let name: Substring
+    public let schemaName: Substring?
+    public let kind: Kind
+    
+    public init(
+        name: Substring,
+        schemaName: Substring?,
+        kind: Kind
+    ) {
+        self.name = name
+        self.schemaName = schemaName
+        self.kind = kind
+    }
+    
+    public enum Kind: Equatable {
+        case rename(Substring)
+        case renameColumn(Substring, Substring)
+        case addColumn(ColumnDef)
+        case dropColumn(Substring)
     }
     
     public func accept<V>(visitor: V) throws -> V.Output where V : StatementVisitor {

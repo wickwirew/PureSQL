@@ -15,6 +15,9 @@ public struct StmtParser: Parser {
         case (.create, .table):
             return try CreateTableParser()
                 .parse(state: &state)
+        case (.alter, .table):
+            return try AlterTableParser()
+                .parse(state: &state)
         default:
             throw ParsingError.unexpectedToken(of: state.current.kind, at: state.current.range)
         }
