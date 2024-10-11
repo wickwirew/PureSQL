@@ -5,46 +5,56 @@ import SwiftSyntaxMacros
 import Parser
 import Schema
 
+struct GenError: Error, CustomStringConvertible {
+    let description: String
+    
+    init(_ description: String) {
+        self.description = description
+    }
+}
+
 public struct SchemaMacro: DeclarationMacro {
     public static func expansion(
         of node: some FreestandingMacroExpansionSyntax,
         in context: some MacroExpansionContext
     ) throws -> [DeclSyntax] {
         guard let argument = node.argumentList.first?.expression else {
-            fatalError("compiler bug: the macro does not have any arguments")
+            throw GenError("No arguments")
         }
         
-        guard let string = argument.as(StringLiteralExprSyntax.self) else {
-            fatalError("Not a string")
+        guard let dictionary = argument.as(DictionaryExprSyntax.self), 
+                let migrations = dictionary.content.as(DictionaryElementListSyntax.self) else {
+            throw GenError("Migrations must be a dictionary literal, with both key/value as stirng literals")
         }
-
-//        var state = try ParserState(string.segments.description)
-//        
-//        let table = try CreateTableParser()
-//            .parse(state: &state)
-//        
-//        guard case let .columns(columns) = table.kind else { return [] }
-//        
-//        let fields: String = columns.map { (_, column) in
-//            """
-//            let \(column.name): \(column.type.swiftType)\(column.constraints.contains{ $0.isNotNullConstraint || $0.isPkConstraint } ? "" : "?")
-//            """
-//        }
-//            .joined(separator: "\n")
-//        
-//        let decl: DeclSyntax = """
-//        struct \(raw: table.name.toUpperCamelCase()) {
-//            \(raw: fields)
-//        }
-//        """
-//        \(decl)
+        
+        let values: [(name: String, script: String)] = try migrations
+            .map {
+                guard let name = $0.key.as(StringLiteralExprSyntax.self),
+                      let source = $0.value.as(StringLiteralExprSyntax.self) else {
+                    throw GenError("Key/value must be string literals")
+                }
+                
+                return (name.segments.description, source.segments.description)
+            }
+        
+        let schema = try SchemaBuilder
+            .build(from: values.map(\.script).joined(separator: ";"))
         
         return [
-            """
-            struct Schema {
-                
-            }
-            """,
+            DeclSyntax(StructDeclSyntax(name: "Schema") {
+                for table in schema.tables.values {
+                    StructDeclSyntax(name: "\(raw: table.name.capitalized)") {
+                        for column in table.columns.values {
+                            let isNonOptional = column.constraints
+                                .contains { $0.isPkConstraint || $0.isNotNullConstraint }
+                            
+                            """
+                            let \(raw: column.name): \(raw: column.type.swiftType)\(raw: isNonOptional ? "" : "?")
+                            """
+                        }
+                    }
+                }
+            })
         ]
     }
 }
@@ -56,31 +66,28 @@ struct SQLPlugin: CompilerPlugin {
     ]
 }
 
-//extension StringProtocol {
-//    func toUpperCamelCase() -> String {
-//        guard let first = self.first?.uppercased() else { return "" }
-//        guard count > 1 else { return first }
-//        return "\(first)\(self[self.index(after: self.startIndex)..<self.endIndex])"
-//    }
-//}
-//
-//extension Ty {
-//    var swiftType: String {
-//        return switch self {
-//        case .int, .integer: "Int"
-//        case .tinyint: "Int8"
-//        case .smallint, .int2: "Int16"
-//        case .mediumint: "Int32"
-//        case .bigint, .int8: "Int64"
-//        case .unsignedBigInt: "UInt64"
-//        case .numeric, .decimal: "Double"
-//        case .boolean: "Boolean"
-//        case .date, .datetime: "Date"
-//        case .real, .float: "Float"
-//        case .double, .doublePrecision: "Double"
-//        case .character, .varchar, .varyingCharacter, .nativeCharacter, 
-//             .nvarchar, .text, .nchar, .clob: "String"
-//        case .blob: "Data"
-//        }
-//    }
-//}
+extension Ty {
+    var swiftType: String {
+        return switch self {
+        case .int, .integer: "Int"
+        case .tinyint: "Int8"
+        case .smallint, .int2: "Int16"
+        case .mediumint: "Int32"
+        case .bigint, .int8: "Int64"
+        case .unsignedBigInt: "UInt64"
+        case .numeric, .decimal: "Double"
+        case .boolean: "Boolean"
+        case .date, .datetime: "Date"
+        case .real, .float: "Float"
+        case .double, .doublePrecision: "Double"
+        case .character, .varchar, .varyingCharacter, .nativeCharacter, 
+             .nvarchar, .text, .nchar, .clob: "String"
+        case .blob: "Data"
+        }
+    }
+}
+
+struct LogError: Error, CustomStringConvertible {
+    let description: String
+}
+

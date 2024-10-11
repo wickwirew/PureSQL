@@ -12,6 +12,7 @@ public protocol StatementVisitor {
     associatedtype Output
     func visit(statement: CreateTableStatement, with input: Input) throws -> Output
     func visit(statement: AlterTableStatement, with input: Input) throws -> Output
+    func visit(statement: EmptyStatement, with input: Input) throws -> Output
 }
 
 public protocol Statement {
@@ -76,6 +77,14 @@ public struct AlterTableStatement: Equatable, Statement {
         case addColumn(ColumnDef)
         case dropColumn(Substring)
     }
+    
+    public func accept<V>(visitor: V, with input: V.Input) throws -> V.Output where V : StatementVisitor {
+        try visitor.visit(statement: self, with: input)
+    }
+}
+
+public struct EmptyStatement: Equatable, Statement {
+    public init() {}
     
     public func accept<V>(visitor: V, with input: V.Input) throws -> V.Output where V : StatementVisitor {
         try visitor.visit(statement: self, with: input)

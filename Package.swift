@@ -49,6 +49,8 @@ let package = Package(
             name: "SQLTests",
             dependencies: [
                 "SQLMacros",
+                "Schema",
+                "Parser",
                 .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
             ]
         ),

@@ -5,14 +5,16 @@ let b = 25
 
 //let result = #stringify("SELECT * FROM table")
 
-#schema("""
-CREATE TABLE user (
-    id INT PRIMARY KEY AUTOINCREMENT,
-    firstName TEXT,
-    lastName TEXT,
-    age INT NOT NULL
-)
-""")
+#schema([
+    "createTables": """
+    CREATE TABLE user (
+        id INT PRIMARY KEY AUTOINCREMENT,
+        firstName TEXT,
+        lastName TEXT,
+        age INT NOT NULL
+    )
+    """
+])
 
 //let user = Schema.User(
 //    id: 1,

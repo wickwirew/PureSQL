@@ -16,6 +16,8 @@ struct StmtParser: Parser {
         case (.alter, .table):
             return try AlterTableParser()
                 .parse(state: &state)
+        case (.semiColon, _):
+            return EmptyStatement()
         default:
             throw ParsingError.unexpectedToken(of: state.current.kind, at: state.current.range)
         }

@@ -33,6 +33,10 @@ public struct SchemaBuilder: StatementVisitor {
         return schema
     }
     
+    public func visit(statement: EmptyStatement, with input: DatabaseSchema) throws -> DatabaseSchema {
+        return input
+    }
+    
     public func visit(statement: CreateTableStatement, with input: DatabaseSchema) throws -> DatabaseSchema {
         guard case let .columns(columns) = statement.kind else {
             fatalError("Not implemented")
