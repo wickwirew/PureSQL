@@ -13,18 +13,18 @@ struct TableOptionsParser: Parser {
         var options: TableOptions = []
         
         repeat {
-            let token = try state.take()
-            
-            switch token.kind {
+            switch state.current.kind {
             case .without:
+                try state.skip()
                 try state.take(.rowid)
                 options = options.union(.withoutRowId)
             case .strict:
+                try state.skip()
                 options = options.union(.strict)
-            case .eof:
+            case .eof, .semiColon:
                 return options
             default:
-                throw ParsingError.expected(.without, .strict, at: token.range)
+                throw ParsingError.expected(.without, .strict, at: state.current.range)
             }
         } while try state.take(if: .comma)
         

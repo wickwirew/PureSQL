@@ -488,3 +488,24 @@ extension ParserTests {
         )
     }
 }
+
+extension ParserTests {
+    func testMultipleStatements() throws {
+        let result = try! execute(
+            parser: StmtParser()
+                .semiColonSeparated(),
+            source: """
+            CREATE TABLE user (
+                id INT PRIMARY KEY AUTOINCREMENT,
+                firstName TEXT,
+                lastName TEXT,
+                age INT NOT NULL
+            );
+            
+            ALTER TABLE user ADD COLUMN favoriteColor TEXT;
+            """
+        )
+        
+        print(result)
+    }
+}

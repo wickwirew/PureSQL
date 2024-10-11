@@ -13,6 +13,10 @@ let b = 25
         lastName TEXT,
         age INT NOT NULL
     )
+    """,
+    
+    "addFavoriteColor": """
+    ALTER TABLE user ADD COLUMN favoriteColor TEXT NOT NULL DEFAULT 'green'
     """
 ])
 

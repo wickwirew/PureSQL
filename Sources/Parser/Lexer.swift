@@ -72,6 +72,7 @@ struct Lexer {
             }
         case ("*", _): return consumeSingle(of: .star)
         case (".", _): return consumeSingle(of: .dot)
+        case (";", _): return consumeSingle(of: .semiColon)
         case ("(", _): return consumeSingle(of: .openParen)
         case (")", _): return consumeSingle(of: .closeParen)
         case (",", _): return consumeSingle(of: .comma)
