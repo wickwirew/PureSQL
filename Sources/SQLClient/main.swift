@@ -17,6 +17,13 @@ let b = 25
     
     "addFavoriteColor": """
     ALTER TABLE user ADD COLUMN favoriteColor TEXT NOT NULL DEFAULT 'green'
+    """,
+    
+    "createFart": """
+    CREATE TABLE fart (
+    id INT PRIMARY KEY,
+    smell INT NOT NULL
+    )
     """
 ])
 

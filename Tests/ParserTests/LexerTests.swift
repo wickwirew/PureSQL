@@ -54,9 +54,9 @@ class LexerTests: XCTestCase {
             .modulo,
             .lt,
             .gt,
-            .bitwiseAnd,
-            .bitwiseOr,
-            .bitwiseXor,
+            .ampersand,
+            .pipe,
+            .carrot,
             .tilde,
             .eof
         ])

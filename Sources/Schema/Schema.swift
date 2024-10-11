@@ -37,8 +37,13 @@ public enum Ty: Equatable {
     case blob
 }
 
+//public indirect enum Expr: Equatable {
+//    case literal(Literal)
+//    case bindParameter(Substring)
+//    
+//}
+
 public struct Expr: Equatable {
-    // TODO
     public init() {}
 }
 

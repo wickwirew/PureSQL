@@ -6,9 +6,10 @@
 //
 
 import Schema
+import OrderedCollections
 
 public struct DatabaseSchema {
-    public let tables: [Substring: Table]
+    public let tables: OrderedDictionary<Substring, Table>
 }
 
 public struct SchemaBuilder: StatementVisitor {

@@ -169,6 +169,10 @@ struct Token {
         case string(Substring)
         case numeric(Numeric)
         
+//        case double(Numeric)
+//        case int(Int)
+//        case hex(Int)
+        
         case abort
         case action
         case add
@@ -325,6 +329,9 @@ struct Token {
         case dot
         case comma
         case semiColon
+        case colon
+        case dollarSign
+        case questionMark
         case openParen
         case closeParen
         case plus
@@ -334,9 +341,9 @@ struct Token {
         case modulo
         case shiftLeft
         case shiftRight
-        case bitwiseAnd
-        case bitwiseOr
-        case bitwiseXor
+        case ampersand
+        case pipe
+        case carrot
         case concat
         case tilde
         case doubleEqual
@@ -525,6 +532,9 @@ struct Token {
             case .dot: "."
             case .comma: ","
             case .semiColon: ";"
+            case .colon: ":"
+            case .dollarSign: "$"
+            case .questionMark: "?"
             case .openParen: "("
             case .closeParen: ")"
             case .plus: "+"
@@ -534,9 +544,9 @@ struct Token {
             case .modulo: "%"
             case .shiftLeft: "<<"
             case .shiftRight: ">>"
-            case .bitwiseAnd: "&"
-            case .bitwiseOr: "|"
-            case .bitwiseXor: "^"
+            case .ampersand: "&"
+            case .pipe: "|"
+            case .carrot: "^"
             case .concat: "||"
             case .tilde: "~"
             case .doubleEqual: "=="
