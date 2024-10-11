@@ -6,11 +6,15 @@
 //
 
 import Schema
+import Foundation
 
 struct Lexer {
     let source: String
     var currentIndex: String.Index
     var peekIndex: String.Index
+    
+    static let hexDigits: Set<Character> = ["0","1","2","3","4","5","6","7","8","9","a","b",
+                                            "c","d","e","f","A","B","C","D","E","F"]
     
     init(source: String) {
         self.source = source
@@ -41,11 +45,17 @@ struct Lexer {
             return eof
         }
         
+        let peek = peek
+        
         if current.isLetter {
             return parseWord()
         }
         
-        if current.isNumber {
+        if current == "0", peek == "x" || peek == "X" {
+            return try hexLiteral()
+        }
+        
+        if current.isNumber || (current == "." && peek?.isNumber == true) {
             return try parseNumber()
         }
         
@@ -120,13 +130,110 @@ struct Lexer {
     
     private mutating func parseNumber() throws -> Token {
         let start = currentIndex
+        var hasSeenDecimal = current == "."
         
-        while let current, (current.isNumber || (current == "." && peek?.isNumber == true)) {
+        consumeDigits()
+        
+        if current == "." {
             advance()
+            hasSeenDecimal = true
+        }
+        
+        consumeDigits()
+        
+        // Check if its in scientific notation
+        if let maybeE = current, maybeE == "e" || maybeE == "E" {
+            return try scientificNotation(mantissa: start..<currentIndex)
         }
         
         let range = start..<currentIndex
-        return Token(kind: .numeric(Numeric(source[range]) ?? 0), range: range)
+        let string = source[range]
+        
+        let kind: Token.Kind = if hasSeenDecimal {
+            .double(try double(from: string, at: range))
+        } else {
+            .int(try integer(from: string, at: range))
+        }
+        
+        return Token(kind: kind, range: range)
+    }
+    
+    private mutating func scientificNotation(
+        mantissa mantissaRange: Range<String.Index>
+    ) throws -> Token {
+        advance() // E or e
+        
+        if current?.isNumber == true {
+            let exponentStart = currentIndex
+            consumeDigits()
+            return try scientificNotation(
+                mantissa: mantissaRange,
+                exponent: exponentStart..<currentIndex,
+                isExpoinentPositive: true
+            )
+        } else {
+            let isPositive: Bool
+            if current == "+" {
+                advance()
+                isPositive = true
+            } else if current == "-" {
+                advance()
+                isPositive = false
+            } else {
+                isPositive = true
+            }
+            
+            let exponentStart = currentIndex
+            consumeDigits()
+            
+            return try scientificNotation(
+                mantissa: mantissaRange,
+                exponent: exponentStart..<currentIndex,
+                isExpoinentPositive: isPositive
+            )
+        }
+    }
+    
+    private func scientificNotation(
+        mantissa mantissaRange: Range<String.Index>,
+        exponent exponentRange: Range<String.Index>,
+        isExpoinentPositive: Bool
+    ) throws -> Token {
+        let mantissa = try double(from: source[mantissaRange], at: mantissaRange)
+        let exponentUnsigned = try double(from: source[exponentRange], at: exponentRange)
+        let exponent = isExpoinentPositive ? exponentUnsigned : -exponentUnsigned
+        let value = mantissa * pow(10, exponent)
+        return Token(kind: .double(value), range: mantissaRange.lowerBound..<exponentRange.upperBound)
+    }
+    
+    private mutating func consumeDigits() {
+        while let current, (current.isNumber || current == "_") {
+            advance()
+        }
+    }
+    
+    private mutating func hexLiteral() throws -> Token {
+        let tokenStart = currentIndex
+        
+        advance() // 0
+        advance() // x or X
+        
+        let numberStart = currentIndex
+        
+        while let current, (Lexer.hexDigits.contains(current) || current == "_") {
+            advance()
+        }
+        
+        let numberRange = numberStart..<currentIndex
+        
+        guard let value = Int(source[numberRange], radix: 16) else {
+            throw ParsingError(
+                description: "Invalid hex number",
+                sourceRange: tokenStart..<currentIndex
+            )
+        }
+        
+        return Token(kind: .hex(value), range: tokenStart..<currentIndex)
     }
     
     private mutating func parseString() throws -> Token {
@@ -168,5 +275,33 @@ struct Lexer {
         advance()
         advance()
         return Token(kind: kind, range: start..<currentIndex)
+    }
+    
+    private func integer<S: StringProtocol>(
+        from source: S,
+        at range: Range<String.Index>
+    ) throws -> Int {
+        guard let int = Int(source.replacingOccurrences(of: "_", with: "")) else {
+            throw ParsingError(
+                description: "Invalid integer '\(source)'",
+                sourceRange: range
+            )
+        }
+        
+        return int
+    }
+    
+    private func double<S: StringProtocol>(
+        from source: S,
+        at range: Range<String.Index>
+    ) throws -> Double {
+        guard let double = Double(source.replacingOccurrences(of: "_", with: "")) else {
+            throw ParsingError(
+                description: "Invalid double '\(source)'",
+                sourceRange: range
+            )
+        }
+        
+        return double
     }
 }

@@ -10,13 +10,17 @@ import Schema
 /// https://www.sqlite.org/syntax/numeric-literal.html
 struct NumericLiteralParser: Parser {
     func parse(state: inout ParserState) throws -> Numeric {
-        // TODO
         let token = try state.take()
         
-        guard case let .numeric(num) = token.kind else {
+        switch token.kind {
+        case .double(let value):
+            return value
+        case .int(let value):
+            return Double(value)
+        case .hex(let value):
+            return Double(value)
+        default:
             throw ParsingError.expectedNumeric(at: token.range)
         }
-        
-        return num
     }
 }

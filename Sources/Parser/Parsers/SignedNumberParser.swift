@@ -13,8 +13,12 @@ struct SignedNumberParser: Parser {
         let token = try state.take()
         
         switch token.kind {
-        case .numeric(let value):
+        case .double(let value):
             return value
+        case .int(let value):
+            return SignedNumber(value)
+        case .hex(let value):
+            return SignedNumber(value)
         case .plus:
             return try NumericLiteralParser()
                 .parse(state: &state)

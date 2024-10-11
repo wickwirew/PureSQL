@@ -11,9 +11,10 @@ struct LiteralParser: Parser {
     func parse(state: inout ParserState) throws -> Literal {
         let token = try state.take()
         
-        // TODO: Rest of literals
         switch token.kind {
-        case .numeric(let value): return .numeric(value)
+        case .double(let value): return .numeric(value)
+        case .int(let value): return .numeric(Double(value))
+        case .hex(let value): return .numeric(Double(value))
         case .string(let value): return .string(value)
         default: throw ParsingError(description: "Invalid Literal '\(token)'", sourceRange: token.range)
         }

@@ -167,11 +167,9 @@ struct Token {
     enum Kind: Hashable {
         case symbol(Substring)
         case string(Substring)
-        case numeric(Numeric)
-        
-//        case double(Numeric)
-//        case int(Int)
-//        case hex(Int)
+        case double(Double)
+        case int(Int)
+        case hex(Int)
         
         case abort
         case action
@@ -377,7 +375,9 @@ struct Token {
             switch self {
             case .symbol(let value): String(value)
             case .string(let value): String(value)
-            case .numeric(let value): value.description
+            case .double(let value): value.description
+            case .int(let value): value.description
+            case .hex(let value): value.description
             case .abort: "ABORT"
             case .action: "ACTION"
             case .add: "ADD"
