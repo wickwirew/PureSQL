@@ -8,9 +8,8 @@
 import Schema
 import OrderedCollections
 
-public struct CreateTableParser: Parser {
-    public init() {}
-    public func parse(state: inout ParserState) throws -> CreateTableStatement {
+struct CreateTableParser: Parser {
+    func parse(state: inout ParserState) throws -> CreateTableStatement {
         try state.take(.create)
         let isTemporary = try state.take(if: .temp, or: .temporary)
         try state.take(.table)

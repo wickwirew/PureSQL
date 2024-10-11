@@ -5,7 +5,7 @@
 //  Created by Wes Wickwire on 10/9/24.
 //
 
-public struct SeparatedParser<Element: Parser>: Parser {
+struct SeparatedParser<Element: Parser>: Parser {
     let separator: Token.Kind
     let element: Element
     
@@ -14,7 +14,7 @@ public struct SeparatedParser<Element: Parser>: Parser {
         self.element = element
     }
     
-    public func parse(state: inout ParserState) throws -> [Element.Output] {
+    func parse(state: inout ParserState) throws -> [Element.Output] {
         var elements: [Element.Output] = []
         
         repeat {
@@ -26,11 +26,11 @@ public struct SeparatedParser<Element: Parser>: Parser {
 }
 
 extension Parser {
-    public func commaSeparated() -> SeparatedParser<Self> {
+    func commaSeparated() -> SeparatedParser<Self> {
         return SeparatedParser(separator: .comma, self)
     }
     
-    public func semiColonSeparated() -> SeparatedParser<Self> {
+    func semiColonSeparated() -> SeparatedParser<Self> {
         return SeparatedParser(separator: .semiColon, self)
     }
 }

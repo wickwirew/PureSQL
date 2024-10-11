@@ -5,12 +5,12 @@
 //  Created by Wes Wickwire on 10/9/24.
 //
 
-public protocol Parser {
+protocol Parser {
     associatedtype Output
     func parse(state: inout ParserState) throws -> Output
 }
 
-public struct ParserState {
+struct ParserState {
     private var lexer: Lexer
     private(set) var current: Token
     private(set) var peek: Token
@@ -21,7 +21,7 @@ public struct ParserState {
         self.peek = try self.lexer.next()
     }
     
-    public init(_ source: String) throws {
+    init(_ source: String) throws {
         try self.init(Lexer(source: source))
     }
 }

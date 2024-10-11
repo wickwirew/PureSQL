@@ -7,10 +7,8 @@
 
 import Schema
 
-public struct StmtParser: Parser {
-    public init() {}
-    
-    public func parse(state: inout ParserState) throws -> any Statement {
+struct StmtParser: Parser {
+    func parse(state: inout ParserState) throws -> any Statement {
         switch (state.current.kind, state.peek.kind) {
         case (.create, .table):
             return try CreateTableParser()
