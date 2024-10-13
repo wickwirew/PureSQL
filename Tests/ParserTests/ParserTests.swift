@@ -372,13 +372,13 @@ extension ParserTests {
         // TODO: These will fail once expr parsing is implemented
         
         XCTAssertEqual(
-            ColumnConstraint(name: "checkSomething", kind: .check(Expr())),
-            try execute(parser: ColumnConstraintParser(), source: "CONSTRAINT checkSomething CHECK()")
+            ColumnConstraint(name: "checkSomething", kind: .check(.bindParameter(.unnamed))),
+            try execute(parser: ColumnConstraintParser(), source: "CONSTRAINT checkSomething CHECK(?)")
         )
 
         XCTAssertEqual(
-            ColumnConstraint(name: nil, kind: .check(Expr())),
-            try execute(parser: ColumnConstraintParser(), source: "CHECK()")
+            ColumnConstraint(name: nil, kind: .check(.bindParameter(.unnamed))),
+            try execute(parser: ColumnConstraintParser(), source: "CHECK(?)")
         )
     }
     
@@ -391,8 +391,8 @@ extension ParserTests {
         )
         
         XCTAssertEqual(
-            ColumnConstraint(name: nil, kind: .default(.expr(Expr()))),
-            try execute(parser: ColumnConstraintParser(), source: "DEFAULT ()")
+            ColumnConstraint(name: nil, kind: .default(.expr(.bindParameter(.unnamed)))),
+            try execute(parser: ColumnConstraintParser(), source: "DEFAULT (?)")
         )
     }
     
@@ -410,13 +410,13 @@ extension ParserTests {
     
     func testColumnConstraintGenerated() {
         XCTAssertEqual(
-            ColumnConstraint(name: "generateTheColumn", kind: .generated(Expr(), .virtual)),
-            try execute(parser: ColumnConstraintParser(), source: "CONSTRAINT generateTheColumn GENERATED ALWAYS AS () VIRTUAL")
+            ColumnConstraint(name: "generateTheColumn", kind: .generated(.bindParameter(.unnamed), .virtual)),
+            try execute(parser: ColumnConstraintParser(), source: "CONSTRAINT generateTheColumn GENERATED ALWAYS AS (?) VIRTUAL")
         )
         
         XCTAssertEqual(
-            ColumnConstraint(name: nil, kind: .generated(Expr(), .stored)),
-            try execute(parser: ColumnConstraintParser(), source: "GENERATED ALWAYS AS () STORED")
+            ColumnConstraint(name: nil, kind: .generated(.bindParameter(.unnamed), .stored)),
+            try execute(parser: ColumnConstraintParser(), source: "GENERATED ALWAYS AS (?) STORED")
         )
     }
 }

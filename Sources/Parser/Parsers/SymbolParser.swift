@@ -19,3 +19,7 @@ struct SymbolParser: Parser {
         return symbol
     }
 }
+
+extension Substring: Parsable {
+    static let parser = SymbolParser()
+}

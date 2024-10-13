@@ -335,17 +335,19 @@ struct Token {
         case plus
         case minus
         case divide
-        case multiply
         case modulo
         case shiftLeft
         case shiftRight
         case ampersand
+        case at
         case pipe
         case carrot
         case concat
         case tilde
+        case equal
         case doubleEqual
         case notEqual
+        case notEqual2
         case arrow
         case doubleArrow
         
@@ -540,17 +542,19 @@ struct Token {
             case .plus: "+"
             case .minus: "-"
             case .divide: "/"
-            case .multiply: "*"
             case .modulo: "%"
             case .shiftLeft: "<<"
             case .shiftRight: ">>"
             case .ampersand: "&"
+            case .at: "@"
             case .pipe: "|"
             case .carrot: "^"
             case .concat: "||"
             case .tilde: "~"
+            case .equal: "="
             case .doubleEqual: "=="
             case .notEqual: "!="
+            case .notEqual2: "<>"
             case .arrow: "->"
             case .doubleArrow: "->>"
             case .lt: "<"

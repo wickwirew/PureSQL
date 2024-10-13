@@ -70,7 +70,7 @@ struct Lexer {
         case ("-", "-"): return consumeDouble(of: .dashDash)
         case ("=", "="): return consumeDouble(of: .doubleEqual)
         case ("!", "="): return consumeDouble(of: .notEqual)
-        case ("<", ">"): return consumeDouble(of: .notEqual)
+        case ("<", ">"): return consumeDouble(of: .notEqual2)
         case ("-", ">"):
             advance()
             advance()
@@ -81,6 +81,7 @@ struct Lexer {
                 return Token(kind: .arrow, range: currentIndex..<peekIndex)
             }
         case ("*", _): return consumeSingle(of: .star)
+        case ("=", _): return consumeSingle(of: .equal)
         case (".", _): return consumeSingle(of: .dot)
         case (";", _): return consumeSingle(of: .semiColon)
         case (":", _): return consumeSingle(of: .colon)
@@ -96,7 +97,7 @@ struct Lexer {
         case ("%", _): return consumeSingle(of: .modulo)
         case ("<", _): return consumeSingle(of: .lt)
         case (">", _): return consumeSingle(of: .gt)
-        case ("&", _): return consumeSingle(of: .ampersand)
+        case ("@", _): return consumeSingle(of: .at)
         case ("|", _): return consumeSingle(of: .pipe)
         case ("^", _): return consumeSingle(of: .carrot)
         case ("~", _): return consumeSingle(of: .tilde)

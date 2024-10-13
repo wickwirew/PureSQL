@@ -37,20 +37,6 @@ public enum Ty: Equatable {
     case blob
 }
 
-//public indirect enum Expr: Equatable {
-//    case literal(Literal)
-//    case bindParameter(Substring)
-//    
-//}
-
-public struct Expr: Equatable {
-    public init() {}
-}
-
-public enum Stmt: Equatable {
-    case createTable(CreateTableStatement)
-}
-
 public enum ConfictClause: Equatable {
     case rollback
     case abort
@@ -98,7 +84,7 @@ public struct IndexedColumn: Equatable {
     
     public enum Kind: Equatable {
         case column(Substring)
-        case expr(Expr)
+        case expr(Expression)
     }
 }
 
@@ -175,7 +161,7 @@ public struct TableConstraint: Equatable {
     public enum Kind: Equatable {
         case primaryKey([IndexedColumn], ConfictClause)
         case unique(IndexedColumn, ConfictClause)
-        case check(Expr)
+        case check(Expression)
         case foreignKey([Substring], ForeignKeyClause)
     }
 }
@@ -193,11 +179,11 @@ public struct ColumnConstraint: Equatable {
         case primaryKey(order: Order, ConfictClause, autoincrement: Bool)
         case notNull(ConfictClause)
         case unique(ConfictClause)
-        case check(Expr)
+        case check(Expression)
         case `default`(Default)
         case collate(Substring)
         case foreignKey(ForeignKeyClause)
-        case generated(Expr, GeneratedKind?)
+        case generated(Expression, GeneratedKind?)
     }
     
     public enum GeneratedKind {
@@ -222,7 +208,7 @@ public struct ColumnConstraint: Equatable {
 
 public enum Default: Equatable {
     case literal(Literal)
-    case expr(Expr)
+    case expr(Expression)
 }
 
 public struct ColumnDef: Equatable {
@@ -243,7 +229,7 @@ public struct ColumnDef: Equatable {
     public enum Default: Equatable {
         case literal(Literal)
         case signedNumber(SignedNumber)
-        case expr(Expr)
+        case expr(Expression)
     }
 }
 

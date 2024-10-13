@@ -97,7 +97,7 @@ class CreateTableParsingTests: XCTestCase {
             id INT PRIMARY KEY ASC ON CONFLICT REPLACE AUTOINCREMENT, 
             name TEXT UNIQUE ON CONFLICT IGNORE DEFAULT 'Joe',
             age INT NOT NULL,
-            agePlus1 INT GENERATED ALWAYS AS () VIRTUAL,
+            agePlus1 INT GENERATED ALWAYS AS (?) VIRTUAL,
             countryId INT REFERENCES country(id) ON DELETE CASCADE
         )
         """)
@@ -128,7 +128,7 @@ class CreateTableParsingTests: XCTestCase {
         
         // TODO: This will fail once expressions are parsed
         XCTAssertNil(agePlus1Generated.name)
-        XCTAssertEqual(agePlus1Generated.kind, .generated(Expr(), .virtual))
+        XCTAssertEqual(agePlus1Generated.kind, .generated(.bindParameter(.unnamed), .virtual))
         
         let countryId = try XCTUnwrap(columns["countryId"])
         let countryIdForeignKey = try XCTUnwrap(countryId.constraints.first)

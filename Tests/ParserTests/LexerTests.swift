@@ -45,7 +45,7 @@ class LexerTests: XCTestCase {
             .dashDash,
             .doubleEqual,
             .notEqual,
-            .notEqual,
+            .notEqual2,
             .arrow,
             .doubleArrow,
             .star,
