@@ -15,43 +15,76 @@ struct ExprParser: Parser {
     }
     
     func parse(state: inout ParserState) throws -> Expression {
-        guard let expr = try MaybeExprParser(precedence: precedence).parse(state: &state) else {
-            throw ParsingError(description: "Expected Expression", sourceRange: state.range)
-        }
+        var expr = try PrimaryExprParser(precedence: precedence)
+            .parse(state: &state)
+        
+        var op = Operator.guess(for: state.current.kind, after: state.peek.kind)
+        
+        repeat {
+            if let o = op, o.precedence(usage: .infix) >= precedence {
+                expr = try InfixExprParser(lhs: expr)
+                    .parse(state: &state)
+                
+                op = Operator.guess(for: state.current.kind, after: state.peek.kind)
+            } else {
+                return expr
+            }
+        } while (op?.precedence(usage: .infix) ?? 0) > precedence
         
         return expr
     }
 }
 
+
 /// https://www.sqlite.org/syntax/expr.html
-struct MaybeExprParser: Parser {
+struct PrimaryExprParser: Parser {
     let precedence: Operator.Precedence
     
-    func parse(state: inout ParserState) throws -> Expression? {
-        if let param = try BindParameter.parse(state: &state) {
-            return .bindParameter(param)
-        } else if let column = try QualifiedColumnParser().parse(state: &state) {
+    func parse(state: inout ParserState) throws -> Expression {
+        switch state.current.kind {
+        case .double, .string, .int, .hex:
+            return .literal(try .parse(state: &state))
+        case .symbol:
+            let column = try QualifiedColumnParser()
+                .parse(state: &state)
             return .column(schema: column.schema, table: column.table, column: column.column)
-        } else if let op = try Operator.parse(state: &state) {
-            return try .prefix(op, ExprParser(precedence: precedence).parse(state: &state))
-        } else {
-            return nil
+        case .questionMark, .colon, .dollarSign, .at:
+            return try .bindParameter(.parse(state: &state))
+        case .plus:
+            try state.skip()
+            return try .prefix(.plus, ExprParser(precedence: precedence).parse(state: &state))
+        case .tilde:
+            try state.skip()
+            return try .prefix(.tilde, ExprParser(precedence: precedence).parse(state: &state))
+        case .minus:
+            try state.skip()
+            return try .prefix(.minus, ExprParser(precedence: precedence).parse(state: &state))
+        case .null:
+            try state.skip()
+            return .literal(.null)
+        default:
+            throw ParsingError(description: "Expected Expression", sourceRange: state.range)
         }
     }
 }
 
-//struct InfixExprParser: Parser {
-//    let lhs: Expression
-//    let op: Operator
-//
-//    func parse(state: inout ParserState) throws -> Expression {
-//        var nextOpState = try state.skippingOne()
-//        guard let nextOp = try OperatorParser(context: .infixOrPostfix)
-//            .parse(state: &nextOpState) else { reutrn lhs}
-//
-//        if nextOp?.precedence
-//    }
-//}
+struct InfixExprParser: Parser {
+    let lhs: Expression
+
+    func parse(state: inout ParserState) throws -> Expression {
+        let op = try Operator.parse(state: &state)
+        
+        switch op {
+        case .isnull: return lhs
+        default: break
+        }
+        
+        let rhs = try ExprParser(precedence: op.precedence(usage: .infix) + 1)
+            .parse(state: &state)
+        
+        return .infix(lhs, op, rhs)
+    }
+}
 
 struct PrefixOperatorParser: Parser {
     func parse(state: inout ParserState) throws -> Operator? {
@@ -60,15 +93,19 @@ struct PrefixOperatorParser: Parser {
 }
 
 struct OperatorParser: Parser {
-    func parse(state: inout ParserState) throws -> Operator? {
-        guard let op = Operator
-            .guess(for: state.current.kind, after: state.peek.kind) else { return nil }
+    func parse(state: inout ParserState) throws -> Operator {
+        guard let op = Operator.guess(
+            for: state.current.kind,
+            after: state.peek.kind
+        ) else {
+            throw ParsingError(description: "Invalid operator", sourceRange: state.range)
+        }
         
         try op.skip(state: &state)
         
         switch op {
         case .tilde, .collate, .concat, .arrow, .doubleArrow, .multiply, .divide,
-             .cast, .plus, .minus, .bitwiseAnd, .bitwuseOr, .shl, .shr, .escape,
+             .mod, .plus, .minus, .bitwiseAnd, .bitwuseOr, .shl, .shr, .escape,
              .lt, .gt, .lte, .gte, .eq, .eq2, .neq, .neq2, .match, .like, .regexp,
              .glob, .or, .and, .between, .not, .in, .isnull, .notnull, .notNull, .isDistinctFrom:
             return op
@@ -117,6 +154,15 @@ extension Operator {
         return guess(for: kind, after: after)?.precedence(usage: usage)
     }
     
+    /// Gives a guess as to what the operator is. This seems weird, cause when
+    /// would you ever need to guess. Well when checking the precedence of the
+    /// next operator we need to get the next operator. We don't have infinite look
+    /// ahead but we only need the first 2 to get an operator close enough in the
+    /// same precedence group.
+    ///
+    /// Example:
+    /// `IS NOT DISTINCT FROM` will return `IS NOT`, which is in the same precendence group.
+    /// https://www.sqlite.org/lang_expr.html
     static func guess(
         for kind: Token.Kind,
         after: Token.Kind
@@ -130,7 +176,7 @@ extension Operator {
         case .doubleArrow: return .doubleArrow
         case .star: return .multiply
         case .divide: return .divide
-        case .cast: return .cast
+        case .cast: return .mod
         case .ampersand: return .bitwiseAnd
         case .pipe: return .bitwuseOr
         case .shiftLeft: return .shl
@@ -152,9 +198,7 @@ extension Operator {
         case .glob: return .glob
         case .isnull: return .isnull
         case .is:
-            if after == .null {
-                return .notNull
-            } else if after == .distinct {
+            if after == .distinct {
                 return .isDistinctFrom
             } else if after == .not {
                 return .isNot
@@ -164,7 +208,7 @@ extension Operator {
         case .notnull: return .notnull
         case .or: return .or
         case .between: return .between
-        case .modulo: return .cast
+        case .modulo: return .mod
         case .collate:
             guard case let .symbol(collation) = after else {
                 return nil
@@ -199,10 +243,11 @@ extension Operator: Parsable {
 
 /// https://www.sqlite.org/c3ref/bind_blob.html
 struct BindParameterParser: Parser {
-    func parse(state: inout ParserState) throws -> BindParameter? {
-        switch state.current.kind {
+    func parse(state: inout ParserState) throws -> BindParameter {
+        let token = try state.take()
+        
+        switch token.kind {
         case .questionMark:
-            try state.skip()
             if case let .symbol(param) = state.current.kind {
                 try state.skip()
                 return .named(String(param))
@@ -210,14 +255,10 @@ struct BindParameterParser: Parser {
                 return .unnamed
             }
         case .colon:
-            try state.skip()
             return try .named(String(parseSymbol(state: &state)))
         case .at:
-            try state.skip()
             return try .named(String(parseSymbol(state: &state)))
         case .dollarSign:
-            try state.skip()
-            
             let symbol = try SymbolParser()
                 .separated(by: .colon, and: .colon)
                 .parse(state: &state)
@@ -234,7 +275,7 @@ struct BindParameterParser: Parser {
                 return .named(symbol)
             }
         default:
-            return nil
+            throw ParsingError(description: "Invalid bind parameter", sourceRange: token.range)
         }
     }
     
@@ -253,14 +294,10 @@ struct QualifiedColumnParser: Parser {
         schema: Substring?,
         table: Substring?,
         column: Substring
-    )? {
+    ) {
         let symbol = SymbolParser()
         
-        guard case let .symbol(first) = state.current.kind else {
-            return nil
-        }
-        
-        try state.skip()
+        let first = try symbol.parse(state: &state)
         
         if try state.take(if: .dot) {
             let second = try symbol.parse(state: &state)

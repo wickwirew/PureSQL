@@ -20,3 +20,7 @@ struct LiteralParser: Parser {
         }
     }
 }
+
+extension Literal: Parsable {
+    static var parser = LiteralParser()
+}

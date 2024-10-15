@@ -144,6 +144,49 @@ public enum Literal: Equatable {
     case currentTimestamp
 }
 
+extension Literal: ExpressibleByStringLiteral {
+    public init(stringLiteral value: String) {
+        self = .string(value[...])
+    }
+}
+
+extension Literal: ExpressibleByIntegerLiteral {
+    public init(integerLiteral value: Int) {
+        self = .numeric(Numeric(value))
+    }
+}
+
+extension Literal: ExpressibleByFloatLiteral {
+    public init(floatLiteral value: Double) {
+        self = .numeric(value)
+    }
+}
+
+extension Literal: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .numeric(let numeric):
+            return numeric.description
+        case .string(let substring):
+            return substring.description
+        case .blob(let substring):
+            return substring.description
+        case .null:
+            return "NULL"
+        case .true:
+            return "TRUE"
+        case .false:
+            return "FALSE"
+        case .currentTime:
+            return "CURRENT_TIME"
+        case .currentDate:
+            return "CURRENT_DATE"
+        case .currentTimestamp:
+            return "CURRENT_TIMESTAMP"
+        }
+    }
+}
+
 public struct SelectStmt: Equatable {
     // TODO
     public init() {}

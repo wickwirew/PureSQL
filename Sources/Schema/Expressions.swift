@@ -16,9 +16,41 @@ public indirect enum Expression: Equatable {
     case postfix(Expression, Operator)
 }
 
+extension Expression: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .literal(let literal):
+            return literal.description
+        case .bindParameter(let bindParameter):
+            return bindParameter.description
+        case .column(let schema, let table, let column):
+            return [schema, table, column]
+                .compactMap { $0 }
+                .joined(separator: ".")
+        case .prefix(let `operator`, let expression):
+            return "(\(`operator`) \(expression))"
+        case .infix(let expression, let `operator`, let expression2):
+            return "(\(expression) \(`operator`) \(expression2))"
+        case .postfix(let expression, let `operator`):
+            return "(\(expression) \(`operator`))"
+        }
+    }
+}
+
 public enum BindParameter: Equatable {
     case named(String)
     case unnamed
+}
+
+extension BindParameter: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .named(let name):
+            return name
+        case .unnamed:
+            return "?"
+        }
+    }
 }
 
 public enum Operator: Equatable {
@@ -29,7 +61,7 @@ public enum Operator: Equatable {
     case doubleArrow
     case multiply
     case divide
-    case cast
+    case mod
     case plus
     case minus
     case bitwiseAnd
@@ -45,8 +77,6 @@ public enum Operator: Equatable {
     case eq2
     case neq
     case neq2
-    
-    
     case `is`
     case isNot
     case isDistinctFrom
@@ -85,17 +115,17 @@ public enum Operator: Equatable {
     /// is not valid for the usage then `nil` is returned.
     ///
     /// https://www.sqlite.org/lang_expr.html
-    public func precedence(usage: Usage) -> Precedence? {
+    public func precedence(usage: Usage) -> Precedence {
         switch usage {
         case .prefix:
             return switch self {
             case .tilde, .plus, .minus: 12
-            default: nil
+            default: 0
             }
         case .infix:
             return switch self {
             case .concat, .arrow, .doubleArrow: 10
-            case .multiply, .divide, .cast: 9
+            case .multiply, .divide, .mod: 9
             case .plus, .minus: 8
             case .bitwiseAnd, .bitwuseOr, .shl, .shr: 7
             case .escape: 6
@@ -106,14 +136,59 @@ public enum Operator: Equatable {
             case .not(let op): op?.precedence(usage: usage) ?? 3
             case .and: 2
             case .or: 1
-            default: nil
+            default: 0
             }
         case .postfix:
             return switch self {
             case .collate: 11
-            default: nil
+            default: 0
             }
         }
     }
 }
 
+extension Operator: CustomStringConvertible {
+    public var description: String {
+        return switch self {
+        case .tilde: "~"
+        case .collate(let collation): "COLLATE \(collation)"
+        case .concat: "||"
+        case .arrow: "->"
+        case .doubleArrow: "->>"
+        case .multiply: "*"
+        case .divide: "/"
+        case .mod: "%"
+        case .plus: "+"
+        case .minus: "-"
+        case .bitwiseAnd: "&"
+        case .bitwuseOr: "|"
+        case .shl: "<<"
+        case .shr: ">>"
+        case .escape: "ESCAPE"
+        case .lt: "<"
+        case .gt: ">"
+        case .lte: "<="
+        case .gte: ">="
+        case .eq: "="
+        case .eq2: "=="
+        case .neq: "!="
+        case .neq2: "<>"
+        case .`is`: "IS"
+        case .isNot: "IS NOT"
+        case .isDistinctFrom: "IS DISTINCT FROM"
+        case .isNotDistinctFrom: "IS NOT DISTINCT FROM"
+        case .between: "BETWEEN"
+        case .and: "AND"
+        case .`in`: "IN"
+        case .match: "MATCH"
+        case .like: "LIKE"
+        case .regexp: "REGEXP"
+        case .glob: "GLOB"
+        case .isnull: "ISNULL"
+        case .notNull: "NOT NULL"
+        case .notnull: "NOTNULL"
+        case .not(let op): op.map { "NOT \($0)" } ?? "NOT"
+        case .or: "OR"
+        }
+    }
+}

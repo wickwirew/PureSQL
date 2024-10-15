@@ -49,7 +49,7 @@ extension ExpressionParserTests {
         XCTAssertEqual(.doubleArrow, try execute(parser: OperatorParser(), source: "->>"))
         XCTAssertEqual(.multiply, try execute(parser: OperatorParser(), source: "*"))
         XCTAssertEqual(.divide, try execute(parser: OperatorParser(), source: "/"))
-        XCTAssertEqual(.cast, try execute(parser: OperatorParser(), source: "%"))
+        XCTAssertEqual(.mod, try execute(parser: OperatorParser(), source: "%"))
         XCTAssertEqual(.plus, try execute(parser: OperatorParser(), source: "+"))
         XCTAssertEqual(.minus, try execute(parser: OperatorParser(), source: "-"))
         XCTAssertEqual(.bitwiseAnd, try execute(parser: OperatorParser(), source: "&"))
@@ -106,5 +106,26 @@ extension ExpressionParserTests {
         XCTAssertEqual(result.schema, "foo")
         XCTAssertEqual(result.table, "bar")
         XCTAssertEqual(result.column, "baz")
+    }
+}
+
+// MARK: - QualifiedColumn
+
+extension ExpressionParserTests {
+    func expression(_ source: String) throws -> String {
+        return try execute(parser: ExprParser(), source: source).description
+    }
+    
+    func testArithmeticExpressions() throws {
+        XCTAssertEqual("(1.0 + 2.0)", try expression("1 + 2"))
+        XCTAssertEqual("((1.0 + 2.0) + 3.0)", try expression("1 + 2 + 3"))
+        XCTAssertEqual("((1.0 * 2.0) + 3.0)", try expression("1 * 2 + 3"))
+        XCTAssertEqual("(1.0 + (2.0 * 3.0))", try expression("1 + 2 * 3"))
+        XCTAssertEqual("(1.0 + (2.0 / 3.0))", try expression("1 + 2 / 3"))
+    }
+    
+    func testWordExpressions() throws {
+        XCTAssertEqual("(foo IS NULL)", try expression("foo IS NULL"))
+        XCTAssertEqual("(foo IS DISTINCT FROM NULL)", try expression("foo IS DISTINCT FROM NULL"))
     }
 }
