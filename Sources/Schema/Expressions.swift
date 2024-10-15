@@ -15,6 +15,18 @@ public indirect enum Expression: Equatable {
     case infix(Expression, Operator, Expression)
     case postfix(Expression, Operator)
     case between(Bool, Expression, Expression, Expression)
+    case fn(table: Substring?, name: Substring, args: [Expression])
+    case cast(Expression, Ty)
+    // These are expressions in parentheses.
+    // These can mean multiple things. It can be used to
+    // estabilish precedence in arithmetic operations, or
+    // could even be a collection of values.
+    //
+    // Examples:
+    // (1 + 2)
+    // foo IN (1, 2)
+    case grouped([Expression])
+    case caseWhenThen(CaseWhenThen)
 }
 
 extension Expression: CustomStringConvertible {
@@ -36,6 +48,14 @@ extension Expression: CustomStringConvertible {
             return "(\(expression) \(`operator`))"
         case let .between(not, value, lower, upper):
             return "(\(value)\(not ? " NOT" : "") BETWEEN \(lower) AND \(upper))"
+        case let .fn(table, name, args):
+            return "\(table.map { "\($0)." } ?? "")\(name)(\(args.map(\.description).joined(separator: ", ")))"
+        case .cast(let expression, let ty):
+            return "CAST(\(expression) AS \(ty))"
+        case .grouped(let expressions):
+            return "(\(expressions.map(\.description).joined(separator: ", ")))"
+        case .caseWhenThen(let expr):
+            return expr.description
         }
     }
 }
@@ -191,5 +211,48 @@ extension Operator: CustomStringConvertible {
         case .not(let op): op.map { "NOT \($0)" } ?? "NOT"
         case .or: "OR"
         }
+    }
+}
+
+public struct CaseWhenThen: Equatable {
+    public let `case`: Expression?
+    public let whenThen: [WhenThen]
+    public let `else`: Expression?
+    
+    public init(
+        `case`: Expression?,
+        whenThen: [WhenThen],
+        `else`: Expression?
+    ) {
+        self.`case` = `case`
+        self.whenThen = whenThen
+        self.`else` = `else`
+    }
+    
+    public struct WhenThen: Equatable {
+        let when: Expression
+        let then: Expression
+        
+        public init(when: Expression, then: Expression) {
+            self.when = when
+            self.then = then
+        }
+    }
+}
+
+extension CaseWhenThen: CustomStringConvertible {
+    public var description: String {
+        var str = "CASE"
+        if let `case` = `case` {
+            str += " \(`case`)"
+        }
+        for whenThen in whenThen {
+            str += " WHEN \(whenThen.when) THEN \(whenThen.then)"
+        }
+        if let `else` = `else` {
+            str += " ELSE \(`else`)"
+        }
+        str += " END"
+        return str
     }
 }

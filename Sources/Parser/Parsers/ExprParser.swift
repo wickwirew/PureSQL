@@ -18,12 +18,20 @@ struct ExprParser: Parser {
         var expr = try PrimaryExprParser(precedence: precedence)
             .parse(state: &state)
         
-        guard var op = Operator.guess(for: state.current.kind, after: state.peek.kind) else {
-            return expr
-        }
-        
-        repeat {
-            guard op.precedence(usage: .infix) >= precedence else {
+        while true {
+            // If the lhs was a column refernce with no table/schema and we are
+            // at an open paren treat as a function call.
+            if state.is(of: .openParen), case let .column(.none, table, fn) = expr {
+                let args = try ExprParser()
+                    .commaSeparated()
+                    .inParenthesis()
+                    .parse(state: &state)
+                
+                return .fn(table: table, name: fn, args: args)
+            }
+            
+            guard let op = Operator.guess(for: state.current.kind, after: state.peek.kind),
+                  op.precedence(usage: .infix) >= precedence else {
                 return expr
             }
             
@@ -54,15 +62,7 @@ struct ExprParser: Parser {
                 expr = try InfixExprParser(lhs: expr)
                     .parse(state: &state)
             }
-            
-            // Get the next op if any
-            guard let nextOp = Operator.guess(
-                for: state.current.kind,
-                after: state.peek.kind
-            ) else { return expr }
-            
-            op = nextOp
-        } while op.precedence(usage: .infix) > precedence
+        }
         
         return expr
     }
@@ -95,9 +95,62 @@ struct PrimaryExprParser: Parser {
         case .null:
             try state.skip()
             return .literal(.null)
+        case .openParen:
+            return .grouped(
+                try ExprParser()
+                    .commaSeparated()
+                    .inParenthesis()
+                    .parse(state: &state)
+            )
+        case .cast:
+            try state.skip()
+            try state.take(.openParen)
+            let expr = try ExprParser()
+                .parse(state: &state)
+            try state.take(.as)
+            let type = try TyParser()
+                .parse(state: &state)
+            try state.take(.closeParen)
+            return .cast(expr, type)
+        case .select:
+            fatalError("TODO: Not yet implemented")
+        case .exists:
+            fatalError("TODO: Do when select is done")
+        case .case:
+            try state.skip()
+            let `case` = try ExprParser()
+                .take(ifNot: .when)
+                .parse(state: &state)
+            
+            let whenThen = try WhenThenParser()
+                .collect(if: [.when])
+                .parse(state: &state)
+            
+            let el: Expression? = if try state.take(if: .else) {
+                try ExprParser()
+                    .parse(state: &state)
+            } else {
+                nil
+            }
+            
+            try state.take(.end)
+            
+            return .caseWhenThen(.init(case: `case`, whenThen: whenThen, else: el))
         default:
             throw ParsingError(description: "Expected Expression", sourceRange: state.range)
         }
+    }
+}
+
+struct WhenThenParser: Parser {
+    func parse(state: inout ParserState) throws -> CaseWhenThen.WhenThen {
+        try state.take(.when)
+        let when = try ExprParser()
+            .parse(state: &state)
+        try state.take(.then)
+        let then = try ExprParser()
+            .parse(state: &state)
+        return CaseWhenThen.WhenThen(when: when, then: then)
     }
 }
 
@@ -108,7 +161,7 @@ struct InfixExprParser: Parser {
         let op = try Operator.parse(state: &state)
         
         switch op {
-        case .isnull, .notnull, .notNull:
+        case .isnull, .notnull, .notNull, .collate:
             return .postfix(lhs, op)
         default: break
         }

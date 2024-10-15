@@ -157,12 +157,77 @@ extension ExpressionParserTests {
         XCTAssertEqual("(1.0 + (2.0 * 3.0))", try expression("1 + 2 * 3"))
         XCTAssertEqual("(1.0 + (2.0 / 3.0))", try expression("1 + 2 / 3"))
         XCTAssertEqual("(1.0 + (-2.0))", try expression("1 +-2"))
+        XCTAssertEqual("((1.0 + 2.0))", try expression("(1 + 2)"))
+        XCTAssertEqual("(((1.0 + 2.0)) * 3.0)", try expression("(1 + 2) * 3"))
     }
     
-    func testPostfix() throws {
+    func testFunctionExpressions() throws {
+        XCTAssertEqual("foo(1.0)", try expression("foo(1)"))
+        XCTAssertEqual("foo(1.0, (2.0 + 3.0))", try expression("foo(1, 2 + 3)"))
+        XCTAssertEqual("foo(bar.baz)", try expression("foo(bar.baz)"))
+    }
+    
+    func testCastExpressions() throws {
+        XCTAssertEqual("CAST(foo AS TEXT)", try expression("CAST(foo AS TEXT)"))
+    }
+    
+    func testCollateExpressions() throws {
+        XCTAssertEqual("('foo' COLLATE NOCASE)", try expression("'foo' COLLATE NOCASE"))
+    }
+    
+    func testTextMatchExpressions() throws {
+        XCTAssertEqual("(foo NOT LIKE 'bar')", try expression("foo NOT LIKE 'bar'"))
+        XCTAssertEqual("(foo LIKE 'bar')", try expression("foo LIKE 'bar'"))
+        XCTAssertEqual("(foo LIKE ('bar' ESCAPE '\\'))", try expression("foo LIKE 'bar' ESCAPE '\\'"))
+        XCTAssertEqual("(foo NOT GLOB 'bar')", try expression("foo NOT GLOB 'bar'"))
+        XCTAssertEqual("(foo GLOB 'bar')", try expression("foo GLOB 'bar'"))
+        XCTAssertEqual("(foo NOT REGEXP 'bar')", try expression("foo NOT REGEXP 'bar'"))
+        XCTAssertEqual("(foo REGEXP 'bar')", try expression("foo REGEXP 'bar'"))
+        XCTAssertEqual("(foo NOT MATCH 'bar')", try expression("foo NOT MATCH 'bar'"))
+        XCTAssertEqual("(foo MATCH 'bar')", try expression("foo MATCH 'bar'"))
+    }
+    
+    func testPostfixExpressions() throws {
         XCTAssertEqual("(foo ISNULL)", try expression("foo ISNULL"))
         XCTAssertEqual("(foo NOTNULL)", try expression("foo NOTNULL"))
         XCTAssertEqual("(foo NOT NULL)", try expression("foo NOT NULL"))
+    }
+    
+    func testIsExpressions() throws {
+        XCTAssertEqual("(foo IS DISTINCT FROM 1.0)", try expression("foo IS DISTINCT FROM 1"))
+        XCTAssertEqual("(foo IS NOT DISTINCT FROM 1.0)", try expression("foo IS NOT DISTINCT FROM 1"))
+        XCTAssertEqual("(foo IS NOT 1.0)", try expression("foo IS NOT 1"))
+        XCTAssertEqual("(foo IS 1.0)", try expression("foo IS 1"))
+    }
+    
+    func testBetweenExpressions() throws {
+        XCTAssertEqual("(foo BETWEEN 1.0 AND 2.0)", try expression("foo BETWEEN 1 AND 2"))
+        XCTAssertEqual("(foo BETWEEN (1.0 + 2.0) AND (2.0 * 5.0))", try expression("foo BETWEEN 1 + 2 AND 2 * 5"))
+        XCTAssertEqual("(foo NOT BETWEEN 1.0 AND 2.0)", try expression("foo NOT BETWEEN 1 AND 2"))
+    }
+    
+    func testInExpressions() throws {
+        XCTAssertEqual("(foo IN (1.0, 2.0, 3.0))", try expression("foo IN (1, 2, 3)"))
+        XCTAssertEqual("(foo NOT IN (1.0, 2.0, 3.0))", try expression("foo NOT IN (1, 2, 3)"))
+        XCTAssertEqual("(foo IN foo.baz(1.0))", try expression("foo IN foo.baz(1)"))
+        XCTAssertEqual("(foo IN foo.baz)", try expression("foo IN foo.baz"))
+    }
+    
+    func testCaseWhenThenExpressions() throws {
+        XCTAssertEqual(
+            "CASE foo WHEN 1.0 THEN 'one' WHEN 2.0 THEN 'two' WHEN 3.0 THEN 'three' END",
+            try expression("CASE foo WHEN 1 THEN 'one' WHEN 2 THEN 'two' WHEN 3 THEN 'three' END")
+        )
+        
+        XCTAssertEqual(
+            "CASE WHEN 1.0 THEN 'one' WHEN 2.0 THEN 'two' WHEN 3.0 THEN 'three' END",
+            try expression("CASE WHEN 1 THEN 'one' WHEN 2 THEN 'two' WHEN 3 THEN 'three' END")
+        )
+        
+        XCTAssertEqual(
+            "CASE WHEN 1.0 THEN 'one' WHEN 2.0 THEN 'two' WHEN 3.0 THEN 'three' ELSE 'meh' END",
+            try expression("CASE WHEN 1 THEN 'one' WHEN 2 THEN 'two' WHEN 3 THEN 'three' ELSE 'meh' END")
+        )
     }
     
     func testWordExpressions() throws {
