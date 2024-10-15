@@ -18,18 +18,51 @@ struct ExprParser: Parser {
         var expr = try PrimaryExprParser(precedence: precedence)
             .parse(state: &state)
         
-        var op = Operator.guess(for: state.current.kind, after: state.peek.kind)
+        guard var op = Operator.guess(for: state.current.kind, after: state.peek.kind) else {
+            return expr
+        }
         
         repeat {
-            if let o = op, o.precedence(usage: .infix) >= precedence {
-                expr = try InfixExprParser(lhs: expr)
-                    .parse(state: &state)
-                
-                op = Operator.guess(for: state.current.kind, after: state.peek.kind)
-            } else {
+            guard op.precedence(usage: .infix) >= precedence else {
                 return expr
             }
-        } while (op?.precedence(usage: .infix) ?? 0) > precedence
+            
+            // The between operator is a different one. It doesnt act like a
+            // normal infix expression. There are two rhs expressions for the
+            // lower and upper bounds. Those need to be parsed individually
+            //
+            // TODO: Move this to the Infix Parser
+            if op == .between || op == .not(.between) {
+                let op = try Operator.parse(state: &state)
+                assert(op == .between || op == .not(.between), "Guess cannot be wrong")
+                
+                // We need to dispatch the lower and upper bound expr's with a
+                // precedence above AND so the AND is not included in the expr.
+                // e.g. (a BETWEEN b AND C) not (a BETWEEN (b AND c))
+                let precAboveAnd = Operator.and.precedence(usage: .infix) + 1
+                
+                let lowerBound = try ExprParser(precedence: precAboveAnd)
+                    .parse(state: &state)
+                
+                try state.take(.and)
+                
+                let upperBound = try ExprParser(precedence: precAboveAnd)
+                    .parse(state: &state)
+                
+                expr = .between(op == .not(.between), expr, lowerBound, upperBound)
+            } else {
+                expr = try InfixExprParser(lhs: expr)
+                    .parse(state: &state)
+            }
+            
+            // Get the next op if any
+            guard let nextOp = Operator.guess(
+                for: state.current.kind,
+                after: state.peek.kind
+            ) else { return expr }
+            
+            op = nextOp
+        } while op.precedence(usage: .infix) > precedence
         
         return expr
     }
@@ -42,7 +75,7 @@ struct PrimaryExprParser: Parser {
     
     func parse(state: inout ParserState) throws -> Expression {
         switch state.current.kind {
-        case .double, .string, .int, .hex:
+        case .double, .string, .int, .hex, .currentDate, .currentTime, .currentTimestamp, .true, .false:
             return .literal(try .parse(state: &state))
         case .symbol:
             let column = try QualifiedColumnParser()
@@ -75,7 +108,8 @@ struct InfixExprParser: Parser {
         let op = try Operator.parse(state: &state)
         
         switch op {
-        case .isnull: return lhs
+        case .isnull, .notnull, .notNull:
+            return .postfix(lhs, op)
         default: break
         }
         

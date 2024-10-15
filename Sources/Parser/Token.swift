@@ -1,6 +1,6 @@
 //
 //  Token.swift
-//  
+//
 //
 //  Created by Wes Wickwire on 10/8/24.
 //
@@ -165,6 +165,9 @@ struct Token {
     ].reduce(into: [:]) { $0[$1.description] = $1 }
     
     enum Kind: Hashable {
+        static let `true`: Kind = .symbol("TRUE")
+        static let `false`: Kind = .symbol("FALSE")
+                
         case symbol(Substring)
         case string(Substring)
         case double(Double)

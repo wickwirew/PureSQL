@@ -168,7 +168,7 @@ extension Literal: CustomStringConvertible {
         case .numeric(let numeric):
             return numeric.description
         case .string(let substring):
-            return substring.description
+            return "'\(substring.description)'"
         case .blob(let substring):
             return substring.description
         case .null:

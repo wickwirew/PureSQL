@@ -110,22 +110,66 @@ extension ExpressionParserTests {
 }
 
 // MARK: - QualifiedColumn
+//
+// Note: The tests are ordered to match the flow chart here:
+// https://www.sqlite.org/lang_expr.html
 
 extension ExpressionParserTests {
+    /// Just a little helper that returns the description of the parsed expr. Creating the
+    /// results manually would be insane and hard to read. This is for my sanity.
     func expression(_ source: String) throws -> String {
         return try execute(parser: ExprParser(), source: source).description
     }
     
-    func testArithmeticExpressions() throws {
+    func testLiteralValueExpressions() throws {
+        XCTAssertEqual("1.0", try expression("1"))
+        XCTAssertEqual("255.0", try expression("0xFF"))
+        XCTAssertEqual("1.0", try expression("100e-2"))
+        XCTAssertEqual("'foo'", try expression("'foo'"))
+        XCTAssertEqual("NULL", try expression("NULL"))
+        XCTAssertEqual("TRUE", try expression("TRUE"))
+        XCTAssertEqual("FALSE", try expression("FALSE"))
+        XCTAssertEqual("CURRENT_TIME", try expression("CURRENT_TIME"))
+        XCTAssertEqual("CURRENT_DATE", try expression("CURRENT_DATE"))
+        XCTAssertEqual("CURRENT_TIMESTAMP", try expression("CURRENT_TIMESTAMP"))
+    }
+    
+    func testBindParameterExpressions() throws {
+        XCTAssertEqual(":foo", try expression(":foo"))
+    }
+    
+    func testColumnNameExpressions() throws {
+        XCTAssertEqual("foo", try expression("foo"))
+        XCTAssertEqual("foo.bar", try expression("foo.bar"))
+        XCTAssertEqual("foo.bar.baz", try expression("foo.bar.baz"))
+    }
+    
+    func testPrefixExpressions() throws {
+        XCTAssertEqual("(~1.0)", try expression("~1"))
+        XCTAssertEqual("(+1.0)", try expression("+1"))
+        XCTAssertEqual("(-1.0)", try expression("-1"))
+    }
+    
+    func testBinaryExpressions() throws {
         XCTAssertEqual("(1.0 + 2.0)", try expression("1 + 2"))
         XCTAssertEqual("((1.0 + 2.0) + 3.0)", try expression("1 + 2 + 3"))
         XCTAssertEqual("((1.0 * 2.0) + 3.0)", try expression("1 * 2 + 3"))
         XCTAssertEqual("(1.0 + (2.0 * 3.0))", try expression("1 + 2 * 3"))
         XCTAssertEqual("(1.0 + (2.0 / 3.0))", try expression("1 + 2 / 3"))
+        XCTAssertEqual("(1.0 + (-2.0))", try expression("1 +-2"))
+    }
+    
+    func testPostfix() throws {
+        XCTAssertEqual("(foo ISNULL)", try expression("foo ISNULL"))
+        XCTAssertEqual("(foo NOTNULL)", try expression("foo NOTNULL"))
+        XCTAssertEqual("(foo NOT NULL)", try expression("foo NOT NULL"))
     }
     
     func testWordExpressions() throws {
         XCTAssertEqual("(foo IS NULL)", try expression("foo IS NULL"))
         XCTAssertEqual("(foo IS DISTINCT FROM NULL)", try expression("foo IS DISTINCT FROM NULL"))
+        XCTAssertEqual("(foo BETWEEN 1.0 AND 2.0)", try expression("foo BETWEEN 1 AND 2"))
+        XCTAssertEqual("(foo BETWEEN (1.0 + 2.0) AND (2.0 * 5.0))", try expression("foo BETWEEN 1 + 2 AND 2 * 5"))
+        XCTAssertEqual("(foo NOT BETWEEN 1.0 AND 2.0)", try expression("foo NOT BETWEEN 1 AND 2"))
     }
 }

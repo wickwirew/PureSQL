@@ -16,6 +16,11 @@ struct LiteralParser: Parser {
         case .int(let value): return .numeric(Double(value))
         case .hex(let value): return .numeric(Double(value))
         case .string(let value): return .string(value)
+        case .true: return .true
+        case .false: return .false
+        case .currentDate: return .currentDate
+        case .currentTime: return .currentTime
+        case .currentTimestamp: return .currentTimestamp
         default: throw ParsingError(description: "Invalid Literal '\(token)'", sourceRange: token.range)
         }
     }

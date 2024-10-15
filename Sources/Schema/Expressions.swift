@@ -14,6 +14,7 @@ public indirect enum Expression: Equatable {
     case prefix(Operator, Expression)
     case infix(Expression, Operator, Expression)
     case postfix(Expression, Operator)
+    case between(Bool, Expression, Expression, Expression)
 }
 
 extension Expression: CustomStringConvertible {
@@ -28,11 +29,13 @@ extension Expression: CustomStringConvertible {
                 .compactMap { $0 }
                 .joined(separator: ".")
         case .prefix(let `operator`, let expression):
-            return "(\(`operator`) \(expression))"
+            return "(\(`operator`)\(expression))"
         case .infix(let expression, let `operator`, let expression2):
             return "(\(expression) \(`operator`) \(expression2))"
         case .postfix(let expression, let `operator`):
             return "(\(expression) \(`operator`))"
+        case let .between(not, value, lower, upper):
+            return "(\(value)\(not ? " NOT" : "") BETWEEN \(lower) AND \(upper))"
         }
     }
 }
@@ -44,11 +47,9 @@ public enum BindParameter: Equatable {
 
 extension BindParameter: CustomStringConvertible {
     public var description: String {
-        switch self {
-        case .named(let name):
-            return name
-        case .unnamed:
-            return "?"
+        return switch self {
+        case .named(let name): ":\(name)"
+        case .unnamed: "?"
         }
     }
 }
