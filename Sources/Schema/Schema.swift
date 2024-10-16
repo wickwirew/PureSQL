@@ -269,6 +269,10 @@ public enum SelectCore: Equatable {
     public enum From: Equatable {
         case tableOrSubqueries([TableOrSubquery])
         case join(JoinClause)
+        
+        public init(table: Substring) {
+            self = .join(JoinClause(table: table))
+        }
     }
     
     public struct GroupBy: Equatable {
@@ -293,25 +297,39 @@ public enum SelectCore: Equatable {
 public struct SelectStmt: Equatable {
     public let cte: Indirect<CommonTableExpression>?
     public let cteRecursive: Bool
-    public let sources: [SelectCore]
+    public let selects: Indirect<Selects>
     public let orderBy: [OrderingTerm]
     public let limit: Limit?
     
-    public enum Selects {
+    public enum Selects: Equatable {
         case single(SelectCore)
         indirect case compound(Selects, CompoundOperator, SelectCore)
     }
     
     public init(
-        cte: Indirect<CommonTableExpression>?,
+        cte: CommonTableExpression?,
         cteRecursive: Bool,
-        sources: [SelectCore],
+        selects: Selects,
         orderBy: [OrderingTerm],
         limit: Limit?
     ) {
-        self.cte = cte
+        self.cte = cte.map(Indirect.init)
         self.cteRecursive = cteRecursive
-        self.sources = sources
+        self.selects = Indirect(selects)
+        self.orderBy = orderBy
+        self.limit = limit
+    }
+    
+    public init(
+        cte: CommonTableExpression? = nil,
+        cteRecursive: Bool = false,
+        select: SelectCore.Select,
+        orderBy: [OrderingTerm] = [],
+        limit: Limit? = nil
+    ) {
+        self.cte = cte.map(Indirect.init)
+        self.cteRecursive = cteRecursive
+        self.selects = Indirect(.single(.select(select)))
         self.orderBy = orderBy
         self.limit = limit
     }
@@ -374,6 +392,14 @@ public struct JoinClause: Equatable {
         self.joins = joins
     }
     
+    public init(
+        table: Substring,
+        joins: [Join] = []
+    ) {
+        self.tableOrSubquery = TableOrSubquery(table: table)
+        self.joins = joins
+    }
+    
     public struct Join: Equatable {
         public let op: JoinOperator
         public let tableOrSubquery: TableOrSubquery
@@ -420,6 +446,10 @@ public enum TableOrSubquery: Equatable {
     case subquery(SelectStmt)
     indirect case join(JoinClause)
     case subTableOrSubqueries([TableOrSubquery])
+    
+    public init(table: Substring) {
+        self = .table(TableOrSubquery.Table(schema: nil, name: table, alias: nil, indexedBy: nil))
+    }
     
     public struct Table: Equatable {
         public let schema: Substring?
@@ -576,5 +606,11 @@ public final class Indirect<Wrapped> {
 extension Indirect: Equatable where Wrapped: Equatable {
     public static func == (lhs: Indirect<Wrapped>, rhs: Indirect<Wrapped>) -> Bool {
         lhs.value == rhs.value
+    }
+}
+
+extension Indirect: CustomStringConvertible {
+    public var description: String {
+        return "\(value)"
     }
 }

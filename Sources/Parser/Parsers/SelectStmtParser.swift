@@ -20,7 +20,7 @@ struct SelectStmtParser: Parser {
             cte = nil
         }
         
-        let sources = try SelectCoreParser()
+        let selects = try SelectCoreParser()
             .collect(if: [.select, .values], checkFirst: true)
             .parse(state: &state)
         
@@ -28,9 +28,9 @@ struct SelectStmtParser: Parser {
         let limit = try parseLimit(state: &state)
         
         return SelectStmt(
-            cte: cte.map(Indirect.init),
+            cte: cte,
             cteRecursive: cteRecursive,
-            sources: sources,
+            selects: .single(selects.first!),
             orderBy: orderBy,
             limit: limit
         )
@@ -457,9 +457,3 @@ struct CommonTableExprParser: Parser {
         )
     }
 }
-
-//struct ColumnNameParser: Parser {
-//    func parse(state: inout ParserState) throws -> ColumnNameParser {
-//
-//    }
-//}
