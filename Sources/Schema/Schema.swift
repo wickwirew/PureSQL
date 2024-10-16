@@ -221,9 +221,247 @@ extension Literal: CustomStringConvertible {
     }
 }
 
+/// https://www.sqlite.org/syntax/select-core.html
+public enum SelectCore: Equatable {
+    /// SELECT column FROM foo
+    case select(Select)
+    /// VALUES (foo, bar baz)
+    case values([Expression])
+    
+    public struct Select: Equatable {
+        public let distinct: Bool
+        public let columns: [ResultColumn]
+        public let from: From?
+        public let `where`: Expression?
+        public let groupBy: GroupBy?
+        public let windows: [Window]
+        
+        public init(
+            distinct: Bool,
+            columns: [ResultColumn],
+            from: From?,
+            `where`: Expression?,
+            groupBy: GroupBy?,
+            windows: [Window]
+        ) {
+            self.distinct = distinct
+            self.columns = columns
+            self.from = from
+            self.where = `where`
+            self.groupBy = groupBy
+            self.windows = windows
+        }
+    }
+    
+    public struct Window: Equatable {
+        public let name: Substring
+        public let window: WindowDefinition
+        
+        public init(
+            name: Substring,
+            window: WindowDefinition
+        ) {
+            self.name = name
+            self.window = window
+        }
+    }
+    
+    public enum From: Equatable {
+        case tableOrSubqueries([TableOrSubquery])
+        case join(JoinClause)
+    }
+    
+    public struct GroupBy: Equatable {
+        public let expressions: [Expression]
+        public let having: Expression?
+        
+        public enum Nulls: Equatable {
+            case first
+            case last
+        }
+        
+        public init(
+            expressions: [Expression],
+            having: Expression?
+        ) {
+            self.expressions = expressions
+            self.having = having
+        }
+    }
+}
+
 public struct SelectStmt: Equatable {
-    // TODO
+    public let cte: Indirect<CommonTableExpression>?
+    public let cteRecursive: Bool
+    public let sources: [SelectCore]
+    public let orderBy: [OrderingTerm]
+    public let limit: Limit?
+    
+    public enum Selects {
+        case single(SelectCore)
+        indirect case compound(Selects, CompoundOperator, SelectCore)
+    }
+    
+    public init(
+        cte: Indirect<CommonTableExpression>?,
+        cteRecursive: Bool,
+        sources: [SelectCore],
+        orderBy: [OrderingTerm],
+        limit: Limit?
+    ) {
+        self.cte = cte
+        self.cteRecursive = cteRecursive
+        self.sources = sources
+        self.orderBy = orderBy
+        self.limit = limit
+    }
+    
+    public struct Limit: Equatable {
+        public let expr: Expression
+        public let offset: Expression?
+        
+        public init(expr: Expression, offset: Expression?) {
+            self.expr = expr
+            self.offset = offset
+        }
+    }
+}
+
+public enum ResultColumn: Equatable {
+    /// Note: This will represent even just a single column select
+    case expr(Expression, as: Substring?)
+    /// `*` or `table.*`
+    case all(table: Substring?)
+}
+
+public struct OrderingTerm: Equatable {
+    public let expr: Expression
+    public let order: Order
+    public let nulls: Nulls?
+    
+    public enum Nulls: Equatable {
+        case first
+        case last
+    }
+    
+    public init(
+        expr: Expression,
+        order: Order,
+        nulls: Nulls?
+    ) {
+        self.expr = expr
+        self.order = order
+        self.nulls = nulls
+    }
+}
+
+public enum CompoundOperator: Equatable {
+    case union
+    case unionAll
+    case intersect
+    case except
+}
+
+public struct JoinClause: Equatable {
+    public let tableOrSubquery: TableOrSubquery
+    public let joins: [Join]
+    
+    public init(
+        tableOrSubquery: TableOrSubquery,
+        joins: [Join]
+    ) {
+        self.tableOrSubquery = tableOrSubquery
+        self.joins = joins
+    }
+    
+    public struct Join: Equatable {
+        public let op: JoinOperator
+        public let tableOrSubquery: TableOrSubquery
+        public let constraint: JoinConstraint
+        
+        public init(
+            op: JoinOperator,
+            tableOrSubquery: TableOrSubquery,
+            constraint: JoinConstraint
+        ) {
+            self.op = op
+            self.tableOrSubquery = tableOrSubquery
+            self.constraint = constraint
+        }
+    }
+}
+
+public enum JoinOperator: Equatable {
+    case comma
+    case join
+    case natural
+    case naturalLeft
+    case naturalLeftOuter
+    case naturalRight
+    case naturalFull
+    case naturalInner
+    case left
+    case leftOuter
+    case right
+    case full
+    case inner
+    case cross
+}
+
+public enum JoinConstraint: Equatable {
+    case on(Expression)
+    case using([Substring])
+    case none
+}
+
+public enum TableOrSubquery: Equatable {
+    case table(Table)
+    case tableFunction(schema: Substring?, table: Substring, args: [Expression], alias: Substring?)
+    case subquery(SelectStmt)
+    indirect case join(JoinClause)
+    case subTableOrSubqueries([TableOrSubquery])
+    
+    public struct Table: Equatable {
+        public let schema: Substring?
+        public let name: Substring
+        public let alias: Substring?
+        public let indexedBy: Substring?
+        
+        public init(
+            schema: Substring?,
+            name: Substring,
+            alias: Substring?,
+            indexedBy: Substring?
+        ) {
+            self.schema = schema
+            self.name = name
+            self.alias = alias
+            self.indexedBy = indexedBy
+        }
+    }
+}
+
+public struct WindowDefinition: Equatable {
     public init() {}
+}
+
+public struct CommonTableExpression: Equatable {
+    public let table: Substring?
+    public let columns: [Substring]
+    public let materialized: Bool
+    public let select: SelectStmt
+    
+    public init(
+        table: Substring?,
+        columns: [Substring],
+        materialized: Bool,
+        select: SelectStmt
+    ) {
+        self.table = table
+        self.columns = columns
+        self.materialized = materialized
+        self.select = select
+    }
 }
 
 public struct TableConstraint: Equatable {
@@ -322,3 +560,21 @@ public struct TableOptions: OptionSet {
 }
 
 
+@dynamicMemberLookup
+public final class Indirect<Wrapped> {
+    public var value: Wrapped
+    
+    public init(_ value: Wrapped) {
+        self.value = value
+    }
+    
+    public subscript<T>(dynamicMember keyPath: KeyPath<Wrapped, T>) -> T {
+        return value[keyPath: keyPath]
+    }
+}
+
+extension Indirect: Equatable where Wrapped: Equatable {
+    public static func == (lhs: Indirect<Wrapped>, rhs: Indirect<Wrapped>) -> Bool {
+        lhs.value == rhs.value
+    }
+}

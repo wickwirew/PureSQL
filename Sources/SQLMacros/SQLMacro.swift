@@ -59,10 +59,27 @@ public struct SchemaMacro: DeclarationMacro {
     }
 }
 
+public struct QueryMacro: ExpressionMacro {
+    public static func expansion(
+        of node: some FreestandingMacroExpansionSyntax, in
+        context: some MacroExpansionContext
+    ) throws -> ExprSyntax {
+        let value = """
+        {
+        struct Foo {}
+        return Foo()
+        }()
+        """
+        
+        return "\(raw: value)"
+    }
+}
+
 @main
 struct SQLPlugin: CompilerPlugin {
     let providingMacros: [Macro.Type] = [
         SchemaMacro.self,
+        QueryMacro.self,
     ]
 }
 
