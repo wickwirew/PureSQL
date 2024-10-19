@@ -10,7 +10,12 @@ protocol Parsable {
     static var parser: P { get }
 }
 
-extension Parsable {
+extension Parsable where P.Output == Self {
+    init(sql: String) throws {
+        var state = try ParserState(Lexer(source: sql))
+        self = try Self.parser.parse(state: &state)
+    }
+    
     static func parse(state: inout ParserState) throws -> P.Output {
         try Self.parser.parse(state: &state)
     }

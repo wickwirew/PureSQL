@@ -95,6 +95,10 @@ struct OrderingTermParser: Parser {
     }
 }
 
+extension OrderingTerm: Parsable {
+    static let parser = OrderingTermParser()
+}
+
 struct SelectCoreParser: Parser {
     func parse(state: inout ParserState) throws -> SelectCore {
         // Check if its values and to just get it out of the way
@@ -190,7 +194,7 @@ struct SelectCoreParser: Parser {
 /// a list of tables/subqueries or join clauses. Most likely the later but the the logic
 /// is duplicated in SQLites docs for the parsing so this just centralizes it.
 struct JoinClauseOrTableOrSubqueryParser: Parser {
-    enum Output {
+    enum Output: Equatable {
         case join(JoinClause)
         case tableOrSubqueries([TableOrSubquery])
     }
@@ -201,6 +205,8 @@ struct JoinClauseOrTableOrSubqueryParser: Parser {
             .parse(state: &state)
         
         if state.current.kind == .comma {
+            try state.skip()
+            
             let more = try TableOrSubqueryParser()
                 .commaSeparated()
                 .parse(state: &state)
@@ -230,13 +236,21 @@ struct ResultColumnParser: Parser {
             let expr = try ExprParser()
                 .parse(state: &state)
             
-            let alias = try SymbolParser()
-                .take(if: .as, consume: true)
-                .parse(state: &state)
-            
-            return .expr(expr, as: alias)
+            if try state.take(if: .as) {
+                let alias = try SymbolParser().parse(state: &state)
+                return .expr(expr, as: alias)
+            } else if case let .symbol(alias) = state.current.kind {
+                try state.skip()
+                return .expr(expr, as: alias)
+            } else {
+                return .expr(expr, as: nil)
+            }
         }
     }
+}
+
+extension ResultColumn: Parsable {
+    static let parser = ResultColumnParser()
 }
 
 struct TableOrSubqueryParser: Parser {
@@ -297,7 +311,8 @@ struct TableOrSubqueryParser: Parser {
                 case .join(let joinClause):
                     return .join(joinClause)
                 case .tableOrSubqueries(let table):
-                    return .subTableOrSubqueries(table)
+                    let alias = try parseAlias(state: &state)
+                    return .subTableOrSubqueries(table, alias: alias)
                 }
             }
         default:
@@ -315,6 +330,10 @@ struct TableOrSubqueryParser: Parser {
             return nil
         }
     }
+}
+
+extension TableOrSubquery: Parsable {
+    static let parser = TableOrSubqueryParser()
 }
 
 struct JoinClauseParser: Parser {
@@ -347,6 +366,10 @@ struct JoinClauseParser: Parser {
     }
 }
 
+extension JoinClause: Parsable {
+    static let parser = JoinClauseOrTableOrSubqueryParser()
+}
+
 struct WindowDefinitionParser: Parser {
     func parse(state: inout ParserState) throws -> WindowDefinition {
         fatalError()
@@ -367,41 +390,51 @@ struct JoinOperatorParser: Parser {
             case .left:
                 if try state.take(if: .outer) {
                     try state.take(.join)
-                    return .naturalLeftOuter
+                    return .left(natural: true, outer: true)
                 } else {
                     try state.take(.join)
-                    return .naturalLeft
+                    return .left(natural: true)
                 }
             case .right:
                 try state.take(.join)
-                return .naturalRight
+                return .right(natural: true)
             case .inner:
                 try state.take(.join)
-                return .naturalInner
+                return .inner(natural: true)
+            case .full:
+                try state.take(.join)
+                return .full(natural: true)
             default:
                 throw ParsingError.expected(.left, .right, .inner, .join, at: state.current.range)
             }
         case .left:
             if try state.take(if: .outer) {
                 try state.take(.join)
-                return .leftOuter
+                return .left(outer: true)
             } else {
                 try state.take(.join)
-                return .left
+                return .left(outer: false)
             }
         case .right:
             try state.take(.join)
-            return .right
+            return .right()
         case .inner:
             try state.take(.join)
-            return .inner
+            return .inner()
         case .cross:
             try state.take(.join)
             return .cross
+        case .full:
+            try state.take(.join)
+            return .full()
         default:
             throw ParsingError(description: "Invalid join operator", sourceRange: state.current.range)
         }
     }
+}
+
+extension JoinOperator: Parsable {
+    static let parser = JoinOperatorParser()
 }
 
 struct JoinConstraintParser: Parser {
@@ -415,6 +448,7 @@ struct JoinConstraintParser: Parser {
             return .using(
                 try SymbolParser()
                     .commaSeparated()
+                    .inParenthesis()
                     .parse(state: &state)
             )
         } else {

@@ -10,6 +10,13 @@ protocol Parser {
     func parse(state: inout ParserState) throws -> Output
 }
 
+extension Parser {
+    func parse(_ source: String) throws -> Output {
+        var state = try ParserState(Lexer(source: source))
+        return try parse(state: &state)
+    }
+}
+
 struct ParserState {
     private var lexer: Lexer
     private(set) var current: Token

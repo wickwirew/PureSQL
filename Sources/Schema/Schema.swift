@@ -237,12 +237,12 @@ public enum SelectCore: Equatable {
         public let windows: [Window]
         
         public init(
-            distinct: Bool,
+            distinct: Bool = false,
             columns: [ResultColumn],
             from: From?,
-            `where`: Expression?,
-            groupBy: GroupBy?,
-            windows: [Window]
+            `where`: Expression? = nil,
+            groupBy: GroupBy? = nil,
+            windows: [Window] = []
         ) {
             self.distinct = distinct
             self.columns = columns
@@ -418,19 +418,27 @@ public struct JoinClause: Equatable {
 }
 
 public enum JoinOperator: Equatable {
+    
+//    case natural
+//    case naturalLeft
+//    case naturalLeftOuter
+//    case naturalRight
+//    case naturalFull
+//    case naturalInner
+//    case left
+//    case leftOuter
+//    case right
+//    case full
+//    case inner
+    
+    
     case comma
     case join
     case natural
-    case naturalLeft
-    case naturalLeftOuter
-    case naturalRight
-    case naturalFull
-    case naturalInner
-    case left
-    case leftOuter
-    case right
-    case full
-    case inner
+    case left(natural: Bool = false, outer: Bool = false)
+    case right(natural: Bool = false, outer: Bool = false)
+    case full(natural: Bool = false, outer: Bool = false)
+    case inner(natural: Bool = false)
     case cross
 }
 
@@ -445,10 +453,20 @@ public enum TableOrSubquery: Equatable {
     case tableFunction(schema: Substring?, table: Substring, args: [Expression], alias: Substring?)
     case subquery(SelectStmt)
     indirect case join(JoinClause)
-    case subTableOrSubqueries([TableOrSubquery])
+    case subTableOrSubqueries([TableOrSubquery], alias: Substring?)
     
-    public init(table: Substring) {
-        self = .table(TableOrSubquery.Table(schema: nil, name: table, alias: nil, indexedBy: nil))
+    public init(
+        schema: Substring? = nil,
+        table: Substring, 
+        alias: Substring? = nil,
+        indexedBy: Substring? = nil
+    ) {
+        self = .table(TableOrSubquery.Table(
+            schema: schema,
+            name: table,
+            alias: alias,
+            indexedBy: indexedBy
+        ))
     }
     
     public struct Table: Equatable {
@@ -484,7 +502,7 @@ public struct CommonTableExpression: Equatable {
     public init(
         table: Substring?,
         columns: [Substring],
-        materialized: Bool,
+        materialized: Bool = false,
         select: SelectStmt
     ) {
         self.table = table
