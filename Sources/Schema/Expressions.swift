@@ -7,6 +7,26 @@
 
 import Foundation
 
+public protocol ExprVisitor {
+    associatedtype Output
+    
+    func visit(_ expr: Literal) throws -> Output
+    func visit(_ expr: BindParameter) throws -> Output
+    func visit(_ expr: ColumnExpr) throws -> Output
+    func visit(_ expr: PrefixExpr) throws -> Output
+    func visit(_ expr: InfixExpr) throws -> Output
+    func visit(_ expr: PostfixExpr) throws -> Output
+    func visit(_ expr: BetweenExpr) throws -> Output
+    func visit(_ expr: FunctionExpr) throws -> Output
+    func visit(_ expr: CastExpr) throws -> Output
+    func visit(_ expr: Expression) throws -> Output
+    func visit(_ expr: CaseWhenThen) throws -> Output
+}
+
+public protocol Expr {
+    func accept<V: ExprVisitor>(visitor: V) throws -> V.Output
+}
+
 public indirect enum Expression: Equatable {
     case literal(Literal)
     case bindParameter(BindParameter)
@@ -58,7 +78,7 @@ extension Expression: CustomStringConvertible {
     }
 }
 
-public struct PrefixExpr: Equatable, CustomStringConvertible {
+public struct PrefixExpr: Expr, Equatable, CustomStringConvertible {
     public let `operator`: Operator
     public let rhs: Expression
     
@@ -70,9 +90,13 @@ public struct PrefixExpr: Equatable, CustomStringConvertible {
     public var description: String {
         return "(\(`operator`)\(rhs))"
     }
+    
+    public func accept<V: ExprVisitor>(visitor: V) throws -> V.Output {
+        try visitor.visit(self)
+    }
 }
 
-public struct PostfixExpr: Equatable, CustomStringConvertible {
+public struct PostfixExpr: Expr, Equatable, CustomStringConvertible {
     public let lhs: Expression
     public let `operator`: Operator
     
@@ -84,9 +108,13 @@ public struct PostfixExpr: Equatable, CustomStringConvertible {
     public var description: String {
         return "(\(lhs) \(`operator`))"
     }
+    
+    public func accept<V: ExprVisitor>(visitor: V) throws -> V.Output {
+        try visitor.visit(self)
+    }
 }
 
-public struct InfixExpr: Equatable, CustomStringConvertible {
+public struct InfixExpr: Expr, Equatable, CustomStringConvertible {
     public let lhs: Expression
     public let `operator`: Operator
     public let rhs: Expression
@@ -100,9 +128,13 @@ public struct InfixExpr: Equatable, CustomStringConvertible {
     public var description: String {
         return "(\(lhs) \(`operator`) \(rhs))"
     }
+    
+    public func accept<V: ExprVisitor>(visitor: V) throws -> V.Output {
+        try visitor.visit(self)
+    }
 }
 
-public struct BetweenExpr: Equatable, CustomStringConvertible {
+public struct BetweenExpr: Expr, Equatable, CustomStringConvertible {
     public let not: Bool
     public let value: Expression
     public let lower: Expression
@@ -123,9 +155,13 @@ public struct BetweenExpr: Equatable, CustomStringConvertible {
     public var description: String {
         return "(\(value)\(not ? " NOT" : "") BETWEEN \(lower) AND \(upper))"
     }
+    
+    public func accept<V: ExprVisitor>(visitor: V) throws -> V.Output {
+        try visitor.visit(self)
+    }
 }
 
-public struct FunctionExpr: Equatable, CustomStringConvertible {
+public struct FunctionExpr: Expr, Equatable, CustomStringConvertible {
     public let table: Substring?
     public let name: Substring
     public let args: [Expression]
@@ -143,9 +179,13 @@ public struct FunctionExpr: Equatable, CustomStringConvertible {
     public var description: String {
         return "\(table.map { "\($0)." } ?? "")\(name)(\(args.map(\.description).joined(separator: ", ")))"
     }
+    
+    public func accept<V: ExprVisitor>(visitor: V) throws -> V.Output {
+        try visitor.visit(self)
+    }
 }
 
-public struct CastExpr: Equatable, CustomStringConvertible {
+public struct CastExpr: Expr, Equatable, CustomStringConvertible {
     public let expr: Expression
     public let ty: Ty
     
@@ -157,11 +197,19 @@ public struct CastExpr: Equatable, CustomStringConvertible {
     public var description: String {
         return "CAST(\(expr) AS \(ty))"
     }
+    
+    public func accept<V: ExprVisitor>(visitor: V) throws -> V.Output {
+        try visitor.visit(self)
+    }
 }
 
-public enum BindParameter: Equatable {
+public enum BindParameter: Expr, Equatable {
     case named(String)
     case unnamed
+    
+    public func accept<V: ExprVisitor>(visitor: V) throws -> V.Output {
+        try visitor.visit(self)
+    }
 }
 
 extension BindParameter: CustomStringConvertible {
@@ -313,7 +361,7 @@ extension Operator: CustomStringConvertible {
     }
 }
 
-public struct ColumnExpr: Equatable, CustomStringConvertible {
+public struct ColumnExpr: Expr, Equatable, CustomStringConvertible {
     public let schema: Substring?
     public let table: Substring?
     public let column: Substring
@@ -333,9 +381,13 @@ public struct ColumnExpr: Equatable, CustomStringConvertible {
             .compactMap { $0 }
             .joined(separator: ".")
     }
+    
+    public func accept<V: ExprVisitor>(visitor: V) throws -> V.Output {
+        try visitor.visit(self)
+    }
 }
 
-public struct CaseWhenThen: Equatable {
+public struct CaseWhenThen: Expr, Equatable {
     public let `case`: Expression?
     public let whenThen: [WhenThen]
     public let `else`: Expression?
@@ -358,6 +410,10 @@ public struct CaseWhenThen: Equatable {
             self.when = when
             self.then = then
         }
+    }
+    
+    public func accept<V: ExprVisitor>(visitor: V) throws -> V.Output {
+        try visitor.visit(self)
     }
 }
 
