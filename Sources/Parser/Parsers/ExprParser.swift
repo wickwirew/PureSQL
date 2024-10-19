@@ -108,7 +108,7 @@ struct PrimaryExprParser: Parser {
             let expr = try ExprParser()
                 .parse(state: &state)
             try state.take(.as)
-            let type = try TyParser()
+            let type = try TypeNameParser()
                 .parse(state: &state)
             try state.take(.closeParen)
             return .cast(CastExpr(expr: expr, ty: type))

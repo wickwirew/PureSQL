@@ -7,7 +7,32 @@
 
 import OrderedCollections
 
-public enum Ty: Equatable {
+public struct Tyy: Equatable {
+    public let affinity: Affinity?
+    public let defined: Substring?
+    
+    public init(affinity: Affinity?, defined: Substring?) {
+        self.affinity = affinity
+        self.defined = defined
+    }
+    
+    public static let int = Tyy(affinity: .integer, defined: nil)
+    public static let integer = Tyy(affinity: .integer, defined: nil)
+    public static let real = Tyy(affinity: .real, defined: nil)
+    public static let text = Tyy(affinity: .text, defined: nil)
+    public static let blob = Tyy(affinity: .blob, defined: nil)
+    public static let any = Tyy(affinity: nil, defined: nil)
+    
+    public enum Affinity: Equatable {
+        case text
+        case numeric
+        case integer
+        case real
+        case blob
+    }
+}
+
+public enum TypeName: Equatable {
     case int
     case integer
     case tinyint
@@ -37,7 +62,7 @@ public enum Ty: Equatable {
     case blob
 }
 
-extension Ty: CustomStringConvertible {
+extension TypeName: CustomStringConvertible {
     public var description: String {
         switch self {
         case .int: "INT"
@@ -167,7 +192,7 @@ public typealias Numeric = Double
 public typealias SignedNumber = Double
 
 public enum Literal: Equatable {
-    case numeric(Numeric)
+    case numeric(Numeric, isInt: Bool)
     case string(Substring)
     case blob(Substring)
     case null
@@ -186,20 +211,20 @@ extension Literal: ExpressibleByStringLiteral {
 
 extension Literal: ExpressibleByIntegerLiteral {
     public init(integerLiteral value: Int) {
-        self = .numeric(Numeric(value))
+        self = .numeric(Numeric(value), isInt: true)
     }
 }
 
 extension Literal: ExpressibleByFloatLiteral {
     public init(floatLiteral value: Double) {
-        self = .numeric(value)
+        self = .numeric(value, isInt: false)
     }
 }
 
 extension Literal: CustomStringConvertible {
     public var description: String {
         switch self {
-        case .numeric(let numeric):
+        case .numeric(let numeric, _):
             return numeric.description
         case .string(let substring):
             return "'\(substring.description)'"
@@ -457,7 +482,7 @@ public enum TableOrSubquery: Equatable {
     
     public init(
         schema: Substring? = nil,
-        table: Substring, 
+        table: Substring,
         alias: Substring? = nil,
         indexedBy: Substring? = nil
     ) {
@@ -576,12 +601,12 @@ public enum Default: Equatable {
 
 public struct ColumnDef: Equatable {
     public var name: Substring
-    public var type: Ty
+    public var type: TypeName
     public var constraints: [ColumnConstraint]
     
     public init(
         name: Substring,
-        type: Ty,
+        type: TypeName,
         constraints: [ColumnConstraint]
     ) {
         self.name = name

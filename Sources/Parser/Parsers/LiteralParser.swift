@@ -12,9 +12,9 @@ struct LiteralParser: Parser {
         let token = try state.take()
         
         switch token.kind {
-        case .double(let value): return .numeric(value)
-        case .int(let value): return .numeric(Double(value))
-        case .hex(let value): return .numeric(Double(value))
+        case .double(let value): return .numeric(value, isInt: false)
+        case .int(let value): return .numeric(Double(value), isInt: true)
+        case .hex(let value): return .numeric(Double(value), isInt: true)
         case .string(let value): return .string(value)
         case .true: return .true
         case .false: return .false

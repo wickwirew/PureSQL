@@ -58,48 +58,48 @@ extension ParserTests {
 
 extension ParserTests {
     func testAllTypes() {
-        XCTAssertEqual(.int, try execute(parser: TyParser(), source: "INT"))
-        XCTAssertEqual(.integer, try execute(parser: TyParser(), source: "INTEGER"))
-        XCTAssertEqual(.tinyint, try execute(parser: TyParser(), source: "TINYINT"))
-        XCTAssertEqual(.smallint, try execute(parser: TyParser(), source: "SMALLINT"))
-        XCTAssertEqual(.mediumint, try execute(parser: TyParser(), source: "MEDIUMINT"))
-        XCTAssertEqual(.bigint, try execute(parser: TyParser(), source: "BIGINT"))
-        XCTAssertEqual(.unsignedBigInt, try execute(parser: TyParser(), source: "UNSIGNED BIG INT"))
-        XCTAssertEqual(.int2, try execute(parser: TyParser(), source: "INT2"))
-        XCTAssertEqual(.int8, try execute(parser: TyParser(), source: "INT8"))
-        XCTAssertEqual(.numeric, try execute(parser: TyParser(), source: "NUMERIC"))
-        XCTAssertEqual(.boolean, try execute(parser: TyParser(), source: "BOOLEAN"))
-        XCTAssertEqual(.date, try execute(parser: TyParser(), source: "DATE"))
-        XCTAssertEqual(.datetime, try execute(parser: TyParser(), source: "DATETIME"))
-        XCTAssertEqual(.real, try execute(parser: TyParser(), source: "REAL"))
-        XCTAssertEqual(.double, try execute(parser: TyParser(), source: "DOUBLE"))
-        XCTAssertEqual(.doublePrecision, try execute(parser: TyParser(), source: "DOUBLE PRECISION"))
-        XCTAssertEqual(.float, try execute(parser: TyParser(), source: "FLOAT"))
-        XCTAssertEqual(.text, try execute(parser: TyParser(), source: "TEXT"))
-        XCTAssertEqual(.clob, try execute(parser: TyParser(), source: "CLOB"))
-        XCTAssertEqual(.blob, try execute(parser: TyParser(), source: "BLOB"))
-        XCTAssertEqual(.decimal(1, 2), try execute(parser: TyParser(), source: "DECIMAL(1, 2)"))
-        XCTAssertEqual(.character(1), try execute(parser: TyParser(), source: "CHARACTER(1)"))
-        XCTAssertEqual(.varchar(1), try execute(parser: TyParser(), source: "VARCHAR(1)"))
-        XCTAssertEqual(.varyingCharacter(1), try execute(parser: TyParser(), source: "VARYING CHARACTER(1)"))
-        XCTAssertEqual(.nchar(1), try execute(parser: TyParser(), source: "NCHAR(1)"))
-        XCTAssertEqual(.nvarchar(1), try execute(parser: TyParser(), source: "NVARCHAR(1)"))
-        XCTAssertEqual(.nativeCharacter(1), try execute(parser: TyParser(), source: "NATIVE CHARACTER(1)"))
+        XCTAssertEqual(.int, try execute(parser: TypeNameParser(), source: "INT"))
+        XCTAssertEqual(.integer, try execute(parser: TypeNameParser(), source: "INTEGER"))
+        XCTAssertEqual(.tinyint, try execute(parser: TypeNameParser(), source: "TINYINT"))
+        XCTAssertEqual(.smallint, try execute(parser: TypeNameParser(), source: "SMALLINT"))
+        XCTAssertEqual(.mediumint, try execute(parser: TypeNameParser(), source: "MEDIUMINT"))
+        XCTAssertEqual(.bigint, try execute(parser: TypeNameParser(), source: "BIGINT"))
+        XCTAssertEqual(.unsignedBigInt, try execute(parser: TypeNameParser(), source: "UNSIGNED BIG INT"))
+        XCTAssertEqual(.int2, try execute(parser: TypeNameParser(), source: "INT2"))
+        XCTAssertEqual(.int8, try execute(parser: TypeNameParser(), source: "INT8"))
+        XCTAssertEqual(.numeric, try execute(parser: TypeNameParser(), source: "NUMERIC"))
+        XCTAssertEqual(.boolean, try execute(parser: TypeNameParser(), source: "BOOLEAN"))
+        XCTAssertEqual(.date, try execute(parser: TypeNameParser(), source: "DATE"))
+        XCTAssertEqual(.datetime, try execute(parser: TypeNameParser(), source: "DATETIME"))
+        XCTAssertEqual(.real, try execute(parser: TypeNameParser(), source: "REAL"))
+        XCTAssertEqual(.double, try execute(parser: TypeNameParser(), source: "DOUBLE"))
+        XCTAssertEqual(.doublePrecision, try execute(parser: TypeNameParser(), source: "DOUBLE PRECISION"))
+        XCTAssertEqual(.float, try execute(parser: TypeNameParser(), source: "FLOAT"))
+        XCTAssertEqual(.text, try execute(parser: TypeNameParser(), source: "TEXT"))
+        XCTAssertEqual(.clob, try execute(parser: TypeNameParser(), source: "CLOB"))
+        XCTAssertEqual(.blob, try execute(parser: TypeNameParser(), source: "BLOB"))
+        XCTAssertEqual(.decimal(1, 2), try execute(parser: TypeNameParser(), source: "DECIMAL(1, 2)"))
+        XCTAssertEqual(.character(1), try execute(parser: TypeNameParser(), source: "CHARACTER(1)"))
+        XCTAssertEqual(.varchar(1), try execute(parser: TypeNameParser(), source: "VARCHAR(1)"))
+        XCTAssertEqual(.varyingCharacter(1), try execute(parser: TypeNameParser(), source: "VARYING CHARACTER(1)"))
+        XCTAssertEqual(.nchar(1), try execute(parser: TypeNameParser(), source: "NCHAR(1)"))
+        XCTAssertEqual(.nvarchar(1), try execute(parser: TypeNameParser(), source: "NVARCHAR(1)"))
+        XCTAssertEqual(.nativeCharacter(1), try execute(parser: TypeNameParser(), source: "NATIVE CHARACTER(1)"))
     }
     
     func testErrorIsThrownOn3Args() {
-        XCTAssertThrowsError(try execute(parser: TyParser(), source: "DECIMAL(1, 2, 3)"))
+        XCTAssertThrowsError(try execute(parser: TypeNameParser(), source: "DECIMAL(1, 2, 3)"))
     }
     
     func testErrorIsThrownOnIncorrectArgNumber() {
         // If it needs 1, it gets 2, and if it needs 2 it gets 1 to throw the error
-        XCTAssertThrowsError(try execute(parser: TyParser(), source: "DECIMAL(1)"))
-        XCTAssertThrowsError(try execute(parser: TyParser(), source: "CHARACTER(1, 2)"))
-        XCTAssertThrowsError(try execute(parser: TyParser(), source: "VARCHAR(1, 2)"))
-        XCTAssertThrowsError(try execute(parser: TyParser(), source: "VARYING CHARACTER(1, 2)"))
-        XCTAssertThrowsError(try execute(parser: TyParser(), source: "NCHAR(1, 2)"))
-        XCTAssertThrowsError(try execute(parser: TyParser(), source: "NVARCHAR(1, 2)"))
-        XCTAssertThrowsError(try execute(parser: TyParser(), source: "NATIVE CHARACTER(1, 2)"))
+        XCTAssertThrowsError(try execute(parser: TypeNameParser(), source: "DECIMAL(1)"))
+        XCTAssertThrowsError(try execute(parser: TypeNameParser(), source: "CHARACTER(1, 2)"))
+        XCTAssertThrowsError(try execute(parser: TypeNameParser(), source: "VARCHAR(1, 2)"))
+        XCTAssertThrowsError(try execute(parser: TypeNameParser(), source: "VARYING CHARACTER(1, 2)"))
+        XCTAssertThrowsError(try execute(parser: TypeNameParser(), source: "NCHAR(1, 2)"))
+        XCTAssertThrowsError(try execute(parser: TypeNameParser(), source: "NVARCHAR(1, 2)"))
+        XCTAssertThrowsError(try execute(parser: TypeNameParser(), source: "NATIVE CHARACTER(1, 2)"))
     }
 }
 
@@ -386,7 +386,7 @@ extension ParserTests {
         // TODO: These will fail once expr parsing is implemented
         
         XCTAssertEqual(
-            ColumnConstraint(name: "setDefault", kind: .default(.literal(.numeric(1)))),
+            ColumnConstraint(name: "setDefault", kind: .default(.literal(.numeric(1, isInt: true)))),
             try execute(parser: ColumnConstraintParser(), source: "CONSTRAINT setDefault DEFAULT 1")
         )
         

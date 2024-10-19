@@ -187,9 +187,9 @@ public struct FunctionExpr: Expr, Equatable, CustomStringConvertible {
 
 public struct CastExpr: Expr, Equatable, CustomStringConvertible {
     public let expr: Expression
-    public let ty: Ty
+    public let ty: TypeName
     
-    public init(expr: Expression, ty: Ty) {
+    public init(expr: Expression, ty: TypeName) {
         self.expr = expr
         self.ty = ty
     }

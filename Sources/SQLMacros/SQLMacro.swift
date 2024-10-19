@@ -83,7 +83,7 @@ struct SQLPlugin: CompilerPlugin {
     ]
 }
 
-extension Ty {
+extension TypeName {
     var swiftType: String {
         return switch self {
         case .int, .integer: "Int"

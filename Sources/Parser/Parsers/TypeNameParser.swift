@@ -1,5 +1,5 @@
 //
-//  TyParser.swift
+//  TypeNameParser.swift
 //
 //
 //  Created by Wes Wickwire on 10/9/24.
@@ -11,7 +11,7 @@ import Schema
 /// known type that will be easier to use later in the process.
 ///
 /// https://www.sqlite.org/syntax/type-name.html
-struct TyParser: Parser {
+struct TypeNameParser: Parser {
     static let continuations: Set<Token.Kind> = [
         .symbol("BIG"),
         .symbol("INT"),
@@ -19,10 +19,10 @@ struct TyParser: Parser {
         .symbol("CHARACTER"),
     ]
     
-    func parse(state: inout ParserState) throws -> Ty {
+    func parse(state: inout ParserState) throws -> TypeName {
         let range = state.range
         let name = try SymbolParser()
-            .collect(if: TyParser.continuations)
+            .collect(if: TypeNameParser.continuations)
             .parse(state: &state)
             .joined(separator: " ")
         
@@ -49,7 +49,7 @@ struct TyParser: Parser {
         name: String,
         with first: Numeric? = nil,
         and second: Numeric? = nil
-    ) throws -> Ty {
+    ) throws -> TypeName {
         switch name.uppercased() {
         case "INT": return .int
         case "INTEGER": return .integer

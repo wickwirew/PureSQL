@@ -88,7 +88,7 @@ class CreateTableParsingTests: XCTestCase {
         XCTAssertEqual(unique.kind, .unique(.ignore))
         
         XCTAssertNil(defaultValue.name)
-        XCTAssertEqual(defaultValue.kind, .default(.literal(.numeric(100))))
+        XCTAssertEqual(defaultValue.kind, .default(.literal(.numeric(100, isInt: true))))
     }
     
     func testCreateTableWithALotOfConstraints() throws {
