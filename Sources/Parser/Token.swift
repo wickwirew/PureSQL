@@ -376,6 +376,11 @@ struct Token {
             }
         }
         
+        var isSymbol: Bool {
+            if case .symbol = self { return true }
+            return false
+        }
+        
         var description: String {
             switch self {
             case .symbol(let value): String(value)

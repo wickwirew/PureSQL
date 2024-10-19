@@ -1,6 +1,6 @@
 //
 //  ParserTests.swift
-//  
+//
 //
 //  Created by Wes Wickwire on 10/9/24.
 //
@@ -58,33 +58,33 @@ extension ParserTests {
 
 extension ParserTests {
     func testAllTypes() {
-        XCTAssertEqual(.int, try execute(parser: TypeNameParser(), source: "INT"))
-        XCTAssertEqual(.integer, try execute(parser: TypeNameParser(), source: "INTEGER"))
-        XCTAssertEqual(.tinyint, try execute(parser: TypeNameParser(), source: "TINYINT"))
-        XCTAssertEqual(.smallint, try execute(parser: TypeNameParser(), source: "SMALLINT"))
-        XCTAssertEqual(.mediumint, try execute(parser: TypeNameParser(), source: "MEDIUMINT"))
-        XCTAssertEqual(.bigint, try execute(parser: TypeNameParser(), source: "BIGINT"))
-        XCTAssertEqual(.unsignedBigInt, try execute(parser: TypeNameParser(), source: "UNSIGNED BIG INT"))
-        XCTAssertEqual(.int2, try execute(parser: TypeNameParser(), source: "INT2"))
-        XCTAssertEqual(.int8, try execute(parser: TypeNameParser(), source: "INT8"))
-        XCTAssertEqual(.numeric, try execute(parser: TypeNameParser(), source: "NUMERIC"))
-        XCTAssertEqual(.boolean, try execute(parser: TypeNameParser(), source: "BOOLEAN"))
-        XCTAssertEqual(.date, try execute(parser: TypeNameParser(), source: "DATE"))
-        XCTAssertEqual(.datetime, try execute(parser: TypeNameParser(), source: "DATETIME"))
-        XCTAssertEqual(.real, try execute(parser: TypeNameParser(), source: "REAL"))
-        XCTAssertEqual(.double, try execute(parser: TypeNameParser(), source: "DOUBLE"))
-        XCTAssertEqual(.doublePrecision, try execute(parser: TypeNameParser(), source: "DOUBLE PRECISION"))
-        XCTAssertEqual(.float, try execute(parser: TypeNameParser(), source: "FLOAT"))
-        XCTAssertEqual(.text, try execute(parser: TypeNameParser(), source: "TEXT"))
-        XCTAssertEqual(.clob, try execute(parser: TypeNameParser(), source: "CLOB"))
-        XCTAssertEqual(.blob, try execute(parser: TypeNameParser(), source: "BLOB"))
-        XCTAssertEqual(.decimal(1, 2), try execute(parser: TypeNameParser(), source: "DECIMAL(1, 2)"))
-        XCTAssertEqual(.character(1), try execute(parser: TypeNameParser(), source: "CHARACTER(1)"))
-        XCTAssertEqual(.varchar(1), try execute(parser: TypeNameParser(), source: "VARCHAR(1)"))
-        XCTAssertEqual(.varyingCharacter(1), try execute(parser: TypeNameParser(), source: "VARYING CHARACTER(1)"))
-        XCTAssertEqual(.nchar(1), try execute(parser: TypeNameParser(), source: "NCHAR(1)"))
-        XCTAssertEqual(.nvarchar(1), try execute(parser: TypeNameParser(), source: "NVARCHAR(1)"))
-        XCTAssertEqual(.nativeCharacter(1), try execute(parser: TypeNameParser(), source: "NATIVE CHARACTER(1)"))
+        XCTAssertEqual(TypeName(name: "INT", args: nil), try execute(parser: TypeNameParser(), source: "INT"))
+        XCTAssertEqual(TypeName(name: "INTEGER", args: nil), try execute(parser: TypeNameParser(), source: "INTEGER"))
+        XCTAssertEqual(TypeName(name: "TINYINT", args: nil), try execute(parser: TypeNameParser(), source: "TINYINT"))
+        XCTAssertEqual(TypeName(name: "SMALLINT", args: nil), try execute(parser: TypeNameParser(), source: "SMALLINT"))
+        XCTAssertEqual(TypeName(name: "MEDIUMINT", args: nil), try execute(parser: TypeNameParser(), source: "MEDIUMINT"))
+        XCTAssertEqual(TypeName(name: "BIGINT", args: nil), try execute(parser: TypeNameParser(), source: "BIGINT"))
+        XCTAssertEqual(TypeName(name: "UNSIGNED BIG INT", args: nil), try execute(parser: TypeNameParser(), source: "UNSIGNED BIG INT"))
+        XCTAssertEqual(TypeName(name: "INT2", args: nil), try execute(parser: TypeNameParser(), source: "INT2"))
+        XCTAssertEqual(TypeName(name: "INT8", args: nil), try execute(parser: TypeNameParser(), source: "INT8"))
+        XCTAssertEqual(TypeName(name: "NUMERIC", args: nil), try execute(parser: TypeNameParser(), source: "NUMERIC"))
+        XCTAssertEqual(TypeName(name: "BOOLEAN", args: nil), try execute(parser: TypeNameParser(), source: "BOOLEAN"))
+        XCTAssertEqual(TypeName(name: "DATE", args: nil), try execute(parser: TypeNameParser(), source: "DATE"))
+        XCTAssertEqual(TypeName(name: "DATETIME", args: nil), try execute(parser: TypeNameParser(), source: "DATETIME"))
+        XCTAssertEqual(TypeName(name: "REAL", args: nil), try execute(parser: TypeNameParser(), source: "REAL"))
+        XCTAssertEqual(TypeName(name: "DOUBLE", args: nil), try execute(parser: TypeNameParser(), source: "DOUBLE"))
+        XCTAssertEqual(TypeName(name: "DOUBLE PRECISION", args: nil), try execute(parser: TypeNameParser(), source: "DOUBLE PRECISION"))
+        XCTAssertEqual(TypeName(name: "FLOAT", args: nil), try execute(parser: TypeNameParser(), source: "FLOAT"))
+        XCTAssertEqual(TypeName(name: "TEXT", args: nil), try execute(parser: TypeNameParser(), source: "TEXT"))
+        XCTAssertEqual(TypeName(name: "CLOB", args: nil), try execute(parser: TypeNameParser(), source: "CLOB"))
+        XCTAssertEqual(TypeName(name: "BLOB", args: nil), try execute(parser: TypeNameParser(), source: "BLOB"))
+        XCTAssertEqual(TypeName(name: "DECIMAL", args: .two(1, 2)), try execute(parser: TypeNameParser(), source: "DECIMAL(1, 2)"))
+        XCTAssertEqual(TypeName(name: "CHARACTER", args: .one(1)), try execute(parser: TypeNameParser(), source: "CHARACTER(1)"))
+        XCTAssertEqual(TypeName(name: "VARCHAR", args: .one(1)), try execute(parser: TypeNameParser(), source: "VARCHAR(1)"))
+        XCTAssertEqual(TypeName(name: "VARYING CHARACTER", args: .one(1)), try execute(parser: TypeNameParser(), source: "VARYING CHARACTER(1)"))
+        XCTAssertEqual(TypeName(name: "NCHAR", args: .one(1)), try execute(parser: TypeNameParser(), source: "NCHAR(1)"))
+        XCTAssertEqual(TypeName(name: "NVARCHAR", args: .one(1)), try execute(parser: TypeNameParser(), source: "NVARCHAR(1)"))
+        XCTAssertEqual(TypeName(name: "NATIVE CHARACTER", args: .one(1)), try execute(parser: TypeNameParser(), source: "NATIVE CHARACTER(1)"))
     }
     
     func testErrorIsThrownOn3Args() {
@@ -92,14 +92,7 @@ extension ParserTests {
     }
     
     func testErrorIsThrownOnIncorrectArgNumber() {
-        // If it needs 1, it gets 2, and if it needs 2 it gets 1 to throw the error
-        XCTAssertThrowsError(try execute(parser: TypeNameParser(), source: "DECIMAL(1)"))
-        XCTAssertThrowsError(try execute(parser: TypeNameParser(), source: "CHARACTER(1, 2)"))
-        XCTAssertThrowsError(try execute(parser: TypeNameParser(), source: "VARCHAR(1, 2)"))
-        XCTAssertThrowsError(try execute(parser: TypeNameParser(), source: "VARYING CHARACTER(1, 2)"))
-        XCTAssertThrowsError(try execute(parser: TypeNameParser(), source: "NCHAR(1, 2)"))
-        XCTAssertThrowsError(try execute(parser: TypeNameParser(), source: "NVARCHAR(1, 2)"))
-        XCTAssertThrowsError(try execute(parser: TypeNameParser(), source: "NATIVE CHARACTER(1, 2)"))
+        XCTAssertThrowsError(try execute(parser: TypeNameParser(), source: "DECIMAL(1, 2, 3)"))
     }
 }
 
@@ -426,17 +419,17 @@ extension ParserTests {
 extension ParserTests {
     func testColumnDefinition() {
         XCTAssertEqual(
-            ColumnDef(name: "age", type: .int, constraints: []),
+            ColumnDef(name: "age", type: TypeName(name: "INT", args: nil), constraints: []),
             try execute(parser: ColumnDefinitionParser(), source: "age INT")
         )
         
         XCTAssertEqual(
-            ColumnDef(name: "age", type: .bigint, constraints: []),
+            ColumnDef(name: "age", type: TypeName(name: "BIGINT", args: nil), constraints: []),
             try execute(parser: ColumnDefinitionParser(), source: "age BIGINT")
         )
         
         XCTAssertEqual(
-            ColumnDef(name: "age", type: .unsignedBigInt, constraints: [ColumnConstraint(name: nil, kind: .notNull(.none))]),
+            ColumnDef(name: "age", type: TypeName(name: "UNSIGNED BIG INT", args: nil), constraints: [ColumnConstraint(name: nil, kind: .notNull(.none))]),
             try execute(parser: ColumnDefinitionParser(), source: "age UNSIGNED BIG INT NOT NULL")
         )
     }
@@ -466,12 +459,12 @@ extension ParserTests {
     
     func testAlterTableAddColumn() {
         XCTAssertEqual(
-            AlterTableStatement(name: "user", schemaName: nil, kind: .addColumn(ColumnDef(name: "lastName", type: .text, constraints: []))),
+            AlterTableStatement(name: "user", schemaName: nil, kind: .addColumn(ColumnDef(name: "lastName", type: TypeName(name: "TEXT", args: nil), constraints: []))),
             try execute(parser: AlterTableParser(), source: "ALTER TABLE user ADD COLUMN lastName TEXT")
         )
         
         XCTAssertEqual(
-            AlterTableStatement(name: "user", schemaName: nil, kind: .addColumn(ColumnDef(name: "lastName", type: .text, constraints: []))),
+            AlterTableStatement(name: "user", schemaName: nil, kind: .addColumn(ColumnDef(name: "lastName", type: TypeName(name: "TEXT", args: nil), constraints: []))),
             try execute(parser: AlterTableParser(), source: "ALTER TABLE user ADD lastName TEXT")
         )
     }

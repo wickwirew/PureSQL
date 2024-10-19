@@ -32,66 +32,30 @@ public struct Tyy: Equatable {
     }
 }
 
-public enum TypeName: Equatable {
-    case int
-    case integer
-    case tinyint
-    case smallint
-    case mediumint
-    case bigint
-    case unsignedBigInt
-    case int2
-    case int8
-    case numeric
-    case decimal(Int, Int)
-    case boolean
-    case date
-    case datetime
-    case real
-    case double
-    case doublePrecision
-    case float
-    case character(Int)
-    case varchar(Int)
-    case varyingCharacter(Int)
-    case nchar(Int)
-    case nativeCharacter(Int)
-    case nvarchar(Int)
-    case text
-    case clob
-    case blob
+public struct TypeName: Equatable {
+    public let name: String
+    public let args: Args?
+    
+    public init(name: String, args: Args?) {
+        self.name = name
+        self.args = args
+    }
+    
+    public enum Args: Equatable {
+        case one(SignedNumber)
+        case two(SignedNumber, SignedNumber)
+    }
 }
 
 extension TypeName: CustomStringConvertible {
     public var description: String {
-        switch self {
-        case .int: "INT"
-        case .integer: "INTEGER"
-        case .tinyint: "TINYINT"
-        case .smallint: "SMALLINT"
-        case .mediumint: "MEDIUMINT"
-        case .bigint: "BIGINT"
-        case .unsignedBigInt: "UNSIGNED BIG INT"
-        case .int2: "INT2"
-        case .int8: "INT8"
-        case .numeric: "NUMERIC"
-        case .decimal(let a, let b): "DECIMAL(\(a), \(b))"
-        case .boolean: "BOOLEAN"
-        case .date: "DATE"
-        case .datetime: "DATETIME"
-        case .real: "REAL"
-        case .double: "DOUBLE"
-        case .doublePrecision: "DOUBLE PRECISION"
-        case .float: "FLOAT"
-        case .character(let a): "CHARACTER(\(a))"
-        case .varchar(let a): "VARCHAR(\(a))"
-        case .varyingCharacter(let a): "VARYING CHARACTER(\(a))"
-        case .nchar(let a): "NCHAR(\(a))"
-        case .nativeCharacter(let a): "NATIVE CHARACTER(\(a))"
-        case .nvarchar(let a): "NVARCHAR(\(a))"
-        case .text: "TEXT"
-        case .clob: "CLOB"
-        case .blob: "BLOB"
+        switch self.args {
+        case .none:
+            return name
+        case .one(let arg):
+            return "\(name)(\(arg))"
+        case .two(let arg1, let arg2):
+            return "\(name)(\(arg1), \(arg2))"
         }
     }
 }

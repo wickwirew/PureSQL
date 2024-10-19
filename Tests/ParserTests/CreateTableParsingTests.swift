@@ -24,10 +24,10 @@ class CreateTableParsingTests: XCTestCase {
         let name = try XCTUnwrap(columns["name"])
         
         XCTAssertEqual(id.name, "id")
-        XCTAssertEqual(id.type, .int)
+        XCTAssertEqual(id.type, TypeName(name: "INT", args: nil))
         XCTAssertEqual(id.constraints, [])
         XCTAssertEqual(name.name, "name")
-        XCTAssertEqual(name.type, .text)
+        XCTAssertEqual(name.type, TypeName(name: "TEXT", args: nil))
         XCTAssertEqual(name.constraints, [])
     }
     

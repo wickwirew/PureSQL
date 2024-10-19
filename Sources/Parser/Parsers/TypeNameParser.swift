@@ -7,107 +7,33 @@
 
 import Schema
 
-/// Parses out a type. This will convert the type name to a concrete
-/// known type that will be easier to use later in the process.
-///
 /// https://www.sqlite.org/syntax/type-name.html
 struct TypeNameParser: Parser {
-    static let continuations: Set<Token.Kind> = [
-        .symbol("BIG"),
-        .symbol("INT"),
-        .symbol("PRECISION"),
-        .symbol("CHARACTER"),
-    ]
-    
     func parse(state: inout ParserState) throws -> TypeName {
-        let range = state.range
-        let name = try SymbolParser()
-            .collect(if: TypeNameParser.continuations)
-            .parse(state: &state)
-            .joined(separator: " ")
+        let parser = SymbolParser()
         
-        if state.is(of: .openParen) {
-            let args = try SignedNumberParser()
-                .commaSeparated()
-                .inParenthesis()
-                .parse(state: &state)
+        var name = try String(parser.parse(state: &state))
+        
+        while case let .symbol(s) = state.current.kind {
+            try state.skip()
+            name.append(" \(s)")
+        }
+        
+        if try state.take(if: .openParen) {
+            let parser = SignedNumberParser()
             
-            guard args.count < 3 else {
-                throw ParsingError.inCorrectNumberOfArgs(at: range)
+            let first = try parser.parse(state: &state)
+            
+            if try state.take(if: .comma) {
+                let second = try parser.parse(state: &state)
+                try state.take(.closeParen)
+                return TypeName(name: name, args: .two(first, second))
+            } else {
+                try state.take(.closeParen)
+                return TypeName(name: name, args: .one(first))
             }
-            
-            let first = args.first
-            let second = args.count > 1 ? args[1] : nil
-            return try tyOrThrow(at: range, name: name, with: first, and: second)
         } else {
-            return try tyOrThrow(at: range, name: name)
+            return TypeName(name: name, args: nil)
         }
     }
-    
-    private func tyOrThrow(
-        at range: Range<String.Index>,
-        name: String,
-        with first: Numeric? = nil,
-        and second: Numeric? = nil
-    ) throws -> TypeName {
-        switch name.uppercased() {
-        case "INT": return .int
-        case "INTEGER": return .integer
-        case "TINYINT": return .tinyint
-        case "SMALLINT": return .smallint
-        case "MEDIUMINT": return .mediumint
-        case "BIGINT": return .bigint
-        case "UNSIGNED BIG INT": return .unsignedBigInt
-        case "INT2": return .int2
-        case "INT8": return .int8
-        case "NUMERIC": return .numeric
-        case "DECIMAL":
-            guard let first, let second else {
-                throw ParsingError.inCorrectNumberOfArgs(at: range)
-            }
-            return .decimal(Int(first), Int(second))
-        case "BOOLEAN": return .boolean
-        case "DATE": return .date
-        case "DATETIME": return .datetime
-        case "REAL": return .real
-        case "DOUBLE": return .double
-        case "DOUBLE PRECISION": return .doublePrecision
-        case "FLOAT": return .float
-        case "CHARACTER": 
-            guard let first, second == nil else {
-                throw ParsingError.inCorrectNumberOfArgs(at: range)
-            }
-            return .character(Int(first))
-        case "VARCHAR":
-            guard let first, second == nil else {
-                throw ParsingError.inCorrectNumberOfArgs(at: range)
-            }
-            return .varchar(Int(first))
-        case "VARYING CHARACTER":
-            guard let first, second == nil else {
-                throw ParsingError.inCorrectNumberOfArgs(at: range)
-            }
-            return .varyingCharacter(Int(first))
-        case "NCHAR":
-            guard let first, second == nil else {
-                throw ParsingError.inCorrectNumberOfArgs(at: range)
-            }
-            return .nchar(Int(first))
-        case "NATIVE CHARACTER":
-            guard let first, second == nil else {
-                throw ParsingError.inCorrectNumberOfArgs(at: range)
-            }
-            return .nativeCharacter(Int(first))
-        case "NVARCHAR":
-            guard let first, second == nil else {
-                throw ParsingError.inCorrectNumberOfArgs(at: range)
-            }
-            return .nvarchar(Int(first))
-        case "TEXT": return .text
-        case "CLOB": return .clob
-        case "BLOB": return .blob
-        default: throw ParsingError(description: "Invalid type name '\(name)'", sourceRange: range)
-        }
-    }
-    
 }
