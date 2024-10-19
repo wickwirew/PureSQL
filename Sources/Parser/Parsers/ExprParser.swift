@@ -21,13 +21,13 @@ struct ExprParser: Parser {
         while true {
             // If the lhs was a column refernce with no table/schema and we are
             // at an open paren treat as a function call.
-            if state.is(of: .openParen), case let .column(.none, table, fn) = expr {
+            if state.is(of: .openParen), case let .column(column) = expr, column.schema == nil {
                 let args = try ExprParser()
                     .commaSeparated()
                     .inParenthesis()
                     .parse(state: &state)
                 
-                return .fn(table: table, name: fn, args: args)
+                return .fn(FunctionExpr(table: column.table, name: column.column, args: args))
             }
             
             guard let op = Operator.guess(for: state.current.kind, after: state.peek.kind),
@@ -57,7 +57,7 @@ struct ExprParser: Parser {
                 let upperBound = try ExprParser(precedence: precAboveAnd)
                     .parse(state: &state)
                 
-                expr = .between(op == .not(.between), expr, lowerBound, upperBound)
+                expr = .between(BetweenExpr(not: op == .not(.between), value: expr, lower: lowerBound, upper: upperBound))
             } else {
                 expr = try InfixExprParser(lhs: expr)
                     .parse(state: &state)
@@ -80,18 +80,18 @@ struct PrimaryExprParser: Parser {
         case .symbol:
             let column = try QualifiedColumnParser()
                 .parse(state: &state)
-            return .column(schema: column.schema, table: column.table, column: column.column)
+            return .column(column)
         case .questionMark, .colon, .dollarSign, .at:
             return try .bindParameter(.parse(state: &state))
         case .plus:
             try state.skip()
-            return try .prefix(.plus, ExprParser(precedence: precedence).parse(state: &state))
+            return try .prefix(PrefixExpr(operator: .plus, rhs: ExprParser(precedence: precedence).parse(state: &state)))
         case .tilde:
             try state.skip()
-            return try .prefix(.tilde, ExprParser(precedence: precedence).parse(state: &state))
+            return try .prefix(PrefixExpr(operator: .tilde, rhs: ExprParser(precedence: precedence).parse(state: &state)))
         case .minus:
             try state.skip()
-            return try .prefix(.minus, ExprParser(precedence: precedence).parse(state: &state))
+            return try .prefix(PrefixExpr(operator: .minus, rhs: ExprParser(precedence: precedence).parse(state: &state)))
         case .null:
             try state.skip()
             return .literal(.null)
@@ -111,7 +111,7 @@ struct PrimaryExprParser: Parser {
             let type = try TyParser()
                 .parse(state: &state)
             try state.take(.closeParen)
-            return .cast(expr, type)
+            return .cast(CastExpr(expr: expr, ty: type))
         case .select:
             fatalError("TODO: Not yet implemented")
         case .exists:
@@ -162,14 +162,14 @@ struct InfixExprParser: Parser {
         
         switch op {
         case .isnull, .notnull, .notNull, .collate:
-            return .postfix(lhs, op)
+            return .postfix(PostfixExpr(lhs: lhs, operator: op))
         default: break
         }
         
         let rhs = try ExprParser(precedence: op.precedence(usage: .infix) + 1)
             .parse(state: &state)
         
-        return .infix(lhs, op, rhs)
+        return .infix(InfixExpr(lhs: lhs, operator: op, rhs: rhs))
     }
 }
 
@@ -377,11 +377,7 @@ extension BindParameter: Parsable {
 }
 
 struct QualifiedColumnParser: Parser {
-    func parse(state: inout ParserState) throws -> (
-        schema: Substring?,
-        table: Substring?,
-        column: Substring
-    ) {
+    func parse(state: inout ParserState) throws -> ColumnExpr {
         let symbol = SymbolParser()
         
         let first = try symbol.parse(state: &state)
@@ -390,12 +386,12 @@ struct QualifiedColumnParser: Parser {
             let second = try symbol.parse(state: &state)
             
             if try state.take(if: .dot) {
-                return (first, second, try symbol.parse(state: &state))
+                return ColumnExpr(schema: first, table: second, column: try symbol.parse(state: &state))
             } else {
-                return (nil, first, second)
+                return ColumnExpr(schema: nil, table: first, column: second)
             }
         } else {
-            return (nil, nil, first)
+            return ColumnExpr(schema: nil, table: nil, column: first)
         }
     }
 }

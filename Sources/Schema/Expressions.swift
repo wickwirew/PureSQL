@@ -10,13 +10,13 @@ import Foundation
 public indirect enum Expression: Equatable {
     case literal(Literal)
     case bindParameter(BindParameter)
-    case column(schema: Substring?, table: Substring?, column: Substring)
-    case prefix(Operator, Expression)
-    case infix(Expression, Operator, Expression)
-    case postfix(Expression, Operator)
-    case between(Bool, Expression, Expression, Expression)
-    case fn(table: Substring?, name: Substring, args: [Expression])
-    case cast(Expression, Ty)
+    case column(ColumnExpr)
+    case prefix(PrefixExpr)
+    case infix(InfixExpr)
+    case postfix(PostfixExpr)
+    case between(BetweenExpr)
+    case fn(FunctionExpr)
+    case cast(CastExpr)
     // These are expressions in parentheses.
     // These can mean multiple things. It can be used to
     // estabilish precedence in arithmetic operations, or
@@ -36,27 +36,126 @@ extension Expression: CustomStringConvertible {
             return literal.description
         case .bindParameter(let bindParameter):
             return bindParameter.description
-        case .column(let schema, let table, let column):
-            return [schema, table, column]
-                .compactMap { $0 }
-                .joined(separator: ".")
-        case .prefix(let `operator`, let expression):
-            return "(\(`operator`)\(expression))"
-        case .infix(let expression, let `operator`, let expression2):
-            return "(\(expression) \(`operator`) \(expression2))"
-        case .postfix(let expression, let `operator`):
-            return "(\(expression) \(`operator`))"
-        case let .between(not, value, lower, upper):
-            return "(\(value)\(not ? " NOT" : "") BETWEEN \(lower) AND \(upper))"
-        case let .fn(table, name, args):
-            return "\(table.map { "\($0)." } ?? "")\(name)(\(args.map(\.description).joined(separator: ", ")))"
-        case .cast(let expression, let ty):
-            return "CAST(\(expression) AS \(ty))"
+        case .column(let expr):
+            return expr.description
+        case .prefix(let expr):
+            return expr.description
+        case .infix(let expr):
+            return expr.description
+        case .postfix(let expr):
+            return expr.description
+        case .between(let expr):
+            return expr.description
+        case .fn(let expr):
+            return expr.description
+        case .cast(let expr):
+            return expr.description
         case .grouped(let expressions):
             return "(\(expressions.map(\.description).joined(separator: ", ")))"
         case .caseWhenThen(let expr):
             return expr.description
         }
+    }
+}
+
+public struct PrefixExpr: Equatable, CustomStringConvertible {
+    public let `operator`: Operator
+    public let rhs: Expression
+    
+    public init(`operator`: Operator, rhs: Expression) {
+        self.operator = `operator`
+        self.rhs = rhs
+    }
+    
+    public var description: String {
+        return "(\(`operator`)\(rhs))"
+    }
+}
+
+public struct PostfixExpr: Equatable, CustomStringConvertible {
+    public let lhs: Expression
+    public let `operator`: Operator
+    
+    public init(lhs: Expression, `operator`: Operator) {
+        self.lhs = lhs
+        self.operator = `operator`
+    }
+    
+    public var description: String {
+        return "(\(lhs) \(`operator`))"
+    }
+}
+
+public struct InfixExpr: Equatable, CustomStringConvertible {
+    public let lhs: Expression
+    public let `operator`: Operator
+    public let rhs: Expression
+    
+    public init(lhs: Expression, `operator`: Operator, rhs: Expression) {
+        self.lhs = lhs
+        self.operator = `operator`
+        self.rhs = rhs
+    }
+    
+    public var description: String {
+        return "(\(lhs) \(`operator`) \(rhs))"
+    }
+}
+
+public struct BetweenExpr: Equatable, CustomStringConvertible {
+    public let not: Bool
+    public let value: Expression
+    public let lower: Expression
+    public let upper: Expression
+    
+    public init(
+        not: Bool,
+        value: Expression,
+        lower: Expression,
+        upper: Expression
+    ) {
+        self.not = not
+        self.value = value
+        self.lower = lower
+        self.upper = upper
+    }
+    
+    public var description: String {
+        return "(\(value)\(not ? " NOT" : "") BETWEEN \(lower) AND \(upper))"
+    }
+}
+
+public struct FunctionExpr: Equatable, CustomStringConvertible {
+    public let table: Substring?
+    public let name: Substring
+    public let args: [Expression]
+    
+    public init(
+        table: Substring?,
+        name: Substring,
+        args: [Expression]
+    ) {
+        self.table = table
+        self.name = name
+        self.args = args
+    }
+    
+    public var description: String {
+        return "\(table.map { "\($0)." } ?? "")\(name)(\(args.map(\.description).joined(separator: ", ")))"
+    }
+}
+
+public struct CastExpr: Equatable, CustomStringConvertible {
+    public let expr: Expression
+    public let ty: Ty
+    
+    public init(expr: Expression, ty: Ty) {
+        self.expr = expr
+        self.ty = ty
+    }
+    
+    public var description: String {
+        return "CAST(\(expr) AS \(ty))"
     }
 }
 
@@ -211,6 +310,28 @@ extension Operator: CustomStringConvertible {
         case .not(let op): op.map { "NOT \($0)" } ?? "NOT"
         case .or: "OR"
         }
+    }
+}
+
+public struct ColumnExpr: Equatable, CustomStringConvertible {
+    public let schema: Substring?
+    public let table: Substring?
+    public let column: Substring
+    
+    public init(
+        schema: Substring?,
+        table: Substring?,
+        column: Substring
+    ) {
+        self.schema = schema
+        self.table = table
+        self.column = column
+    }
+    
+    public var description: String {
+        return [schema, table, column]
+            .compactMap { $0 }
+            .joined(separator: ".")
     }
 }
 

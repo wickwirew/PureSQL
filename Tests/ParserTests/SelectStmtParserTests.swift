@@ -117,9 +117,10 @@ extension SelectStmtParserTests {
     }
     
     func testOrderingTermExprWithCollation() {
-        XCTAssertEqual(OrderingTerm(expr: .postfix(.literal(1), .collate("NOCASE")), order: .asc, nulls: nil), try OrderingTerm(sql: "1 COLLATE NOCASE"))
-        XCTAssertEqual(OrderingTerm(expr: .postfix(.literal(1), .collate("NOCASE")), order: .asc, nulls: nil), try OrderingTerm(sql: "1 COLLATE NOCASE ASC"))
-        XCTAssertEqual(OrderingTerm(expr: .postfix(.literal(1), .collate("NOCASE")), order: .desc, nulls: nil), try OrderingTerm(sql: "1 COLLATE NOCASE DESC"))
+        let collate: Expression = .postfix(PostfixExpr(lhs: .literal(1), operator: .collate("NOCASE")))
+        XCTAssertEqual(OrderingTerm(expr: collate, order: .asc, nulls: nil), try OrderingTerm(sql: "1 COLLATE NOCASE"))
+        XCTAssertEqual(OrderingTerm(expr: collate, order: .asc, nulls: nil), try OrderingTerm(sql: "1 COLLATE NOCASE ASC"))
+        XCTAssertEqual(OrderingTerm(expr: collate, order: .desc, nulls: nil), try OrderingTerm(sql: "1 COLLATE NOCASE DESC"))
     }
     
     func testOrderingTermOnlyNulls() {

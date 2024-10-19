@@ -1,6 +1,6 @@
 //
 //  Table.swift
-//  
+//
 //
 //  Created by Wes Wickwire on 10/10/24.
 //
@@ -31,4 +31,11 @@ public struct Table {
         self.constraints = constraints
         self.options = options
     }
+}
+
+public struct Query<Input, Output> {
+    public let input: Input
+    public let sql: String
+    
+    
 }
