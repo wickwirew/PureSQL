@@ -7,32 +7,19 @@
 
 import OrderedCollections
 
-public struct Tyy: Equatable {
-    public let affinity: Affinity?
-    public let defined: Substring?
+public enum Ty: Equatable {
+    case text
+    case numeric
+    case integer
+    case real
+    case blob
+    case any
+    case custom(String)
     
-    public init(affinity: Affinity?, defined: Substring?) {
-        self.affinity = affinity
-        self.defined = defined
-    }
-    
-    public static let int = Tyy(affinity: .integer, defined: nil)
-    public static let integer = Tyy(affinity: .integer, defined: nil)
-    public static let real = Tyy(affinity: .real, defined: nil)
-    public static let text = Tyy(affinity: .text, defined: nil)
-    public static let blob = Tyy(affinity: .blob, defined: nil)
-    public static let any = Tyy(affinity: nil, defined: nil)
-    
-    public enum Affinity: Equatable {
-        case text
-        case numeric
-        case integer
-        case real
-        case blob
-    }
+    static let bool = Ty.integer
 }
 
-public struct TypeName: Equatable {
+public struct TypeName: Equatable, CustomStringConvertible {
     public let name: String
     public let args: Args?
     
@@ -45,9 +32,7 @@ public struct TypeName: Equatable {
         case one(SignedNumber)
         case two(SignedNumber, SignedNumber)
     }
-}
 
-extension TypeName: CustomStringConvertible {
     public var description: String {
         switch self.args {
         case .none:
@@ -619,5 +604,44 @@ extension Indirect: Equatable where Wrapped: Equatable {
 extension Indirect: CustomStringConvertible {
     public var description: String {
         return "\(value)"
+    }
+}
+
+public struct TableName: Hashable, CustomStringConvertible {
+    public let schema: Schema
+    public let name: Substring
+    
+    public static let main: Substring = "main"
+    
+    public enum Schema: Hashable {
+        case main
+        case other(Substring)
+    }
+    
+    public init(schema: Schema, name: Substring) {
+        self.schema = schema
+        self.name = name
+    }
+    
+    public init(schema: Substring?, name: Substring) {
+        if let schema, schema == Self.main {
+            self.schema = .other(schema)
+        } else {
+            self.schema = .main
+        }
+        self.name = name
+    }
+    
+    public var description: String {
+        switch schema {
+        case .main:
+            return name.description
+        case .other(let schema):
+            return "\(schema).\(name)"
+        }
+    }
+    
+    public func with(name: Substring) -> TableName {
+        return TableName(schema: schema, name: name)
     }
 }

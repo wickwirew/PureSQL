@@ -43,7 +43,7 @@ public struct SchemaMacro: DeclarationMacro {
         return [
             DeclSyntax(StructDeclSyntax(name: "Schema") {
                 for table in schema.tables.values {
-                    StructDeclSyntax(name: "\(raw: table.name.capitalized)") {
+                    StructDeclSyntax(name: "\(raw: table.name.name.capitalized)") {
                         for column in table.columns.values {
                             let isNonOptional = column.constraints
                                 .contains { $0.isPkConstraint || $0.isNotNullConstraint }
@@ -72,6 +72,12 @@ public struct QueryMacro: ExpressionMacro {
         """
         
         return "\(raw: value)"
+    }
+}
+
+public struct Schema2Macro: DeclarationMacro {
+    public static func expansion(of node: some SwiftSyntax.FreestandingMacroExpansionSyntax, in context: some SwiftSyntaxMacros.MacroExpansionContext) throws -> [SwiftSyntax.DeclSyntax] {
+        return []
     }
 }
 

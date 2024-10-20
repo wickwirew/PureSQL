@@ -5,102 +5,130 @@
 //  Created by Wes Wickwire on 10/19/24.
 //
 
-struct TyVarSupplier {
-    private var n = 0
-    
-    mutating func next() -> TyVar {
-        defer { n += 1 }
-        return TyVar(n: n)
-    }
-}
+import OrderedCollections
 
-struct TyVar: Hashable, CustomStringConvertible {
-    let n: Int
+
+struct Scope {
+    private(set) var tables: [TableName: TableSchema] = [:]
     
-    init(n: Int) {
-        self.n = n
+    enum ColumnResult: Equatable {
+        case found(ColumnDef)
+        case ambiguous
+        case notFound
     }
     
-    var description: String {
-        return "τ\(n)"
+    mutating func include(table: TableSchema) {
+        tables[table.name] = table
+    }
+    
+    func column(name: Substring) -> ColumnResult {
+        var result: ColumnResult = .notFound
+        
+        for table in tables.values {
+            if let column = table.columns[name] {
+                if result == .notFound {
+                    return .ambiguous
+                }
+                
+                result = .found(column)
+            }
+        }
+        
+        return result
+    }
+    
+    func column(
+        schema: Substring?,
+        table: Substring,
+        name: Substring
+    ) -> ColumnResult {
+        var result: ColumnResult = .notFound
+        
+        for table in tables.values {
+            if let column = table.columns[name] {
+                if result == .notFound {
+                    return .ambiguous
+                }
+                
+                result = .found(column)
+            }
+        }
+        
+        return result
     }
 }
-
-enum SolutionTy {
-    case tyVar(TyVar)
-    case ty(TypeName)
-    case someInteger
-    case someFloat
-    case someText
-}
-
-typealias Substitution = [TyVar: SolutionTy]
 
 struct TypeChecker {
-    private var supply = TyVarSupplier()
+    private let scope: Scope
 }
 
 extension TypeChecker: ExprVisitor {
-    typealias Output = (SolutionTy, Substitution)
+    typealias Output = Ty
     
-    func visit(_ expr: Literal) throws -> (SolutionTy, Substitution) {
-        fatalError()
-//        return switch expr {
-//        case .numeric(_, let isInt): isInt ? (.someInteger, [:]) : (.someFloat, [:])
-//        case .string: (.someText, [:])
-//        case .blob: (.ty(.blob), [:])
-//        case .null:
-//            <#code#>
-//        case .true:
-//            <#code#>
-//        case .false:
-//            <#code#>
-//        case .currentTime:
-//            <#code#>
-//        case .currentDate:
-//            <#code#>
-//        case .currentTimestamp:
-//            <#code#>
-//        }
+    func visit(_ expr: Literal) throws -> Ty {
+        return switch expr {
+        case .numeric(_, let isInt): isInt ? .integer : .real
+        case .string: .text
+        case .blob: .blob
+        case .null: .any
+        case .true, .false: .bool
+        case .currentTime, .currentDate, .currentTimestamp: .text
+        }
     }
     
-    func visit(_ expr: BindParameter) throws -> (SolutionTy, Substitution) {
+    func visit(_ expr: BindParameter) throws -> Ty {
         fatalError()
     }
     
-    func visit(_ expr: ColumnExpr) throws -> (SolutionTy, Substitution) {
+    func visit(_ expr: ColumnExpr) throws -> Ty {
+        let result: Scope.ColumnResult = if let table = expr.table {
+            scope.column(schema: expr.schema, table: table, name: expr.column)
+        } else {
+            scope.column(name: expr.column)
+        }
+        
+        switch result {
+        case .found(let columnDef):
+            return Ty.bool
+        case .ambiguous:
+            <#code#>
+        case .notFound:
+            <#code#>
+        }
+//        guard let table = tables[expr.table]
         fatalError()
     }
     
-    func visit(_ expr: PrefixExpr) throws -> (SolutionTy, Substitution) {
+    func visit(_ expr: PrefixExpr) throws -> Ty {
         fatalError()
     }
     
-    func visit(_ expr: InfixExpr) throws -> (SolutionTy, Substitution) {
+    func visit(_ expr: InfixExpr) throws -> Ty {
         fatalError()
     }
     
-    func visit(_ expr: PostfixExpr) throws -> (SolutionTy, Substitution) {
+    func visit(_ expr: PostfixExpr) throws -> Ty {
+//        return try expr.lhs.accept(visitor: self)
         fatalError()
     }
     
-    func visit(_ expr: BetweenExpr) throws -> (SolutionTy, Substitution) {
+    func visit(_ expr: BetweenExpr) throws -> Ty {
+        return .bool
+    }
+    
+    func visit(_ expr: FunctionExpr) throws -> Ty {
         fatalError()
     }
     
-    func visit(_ expr: FunctionExpr) throws -> (SolutionTy, Substitution) {
+    func visit(_ expr: CastExpr) throws -> Ty {
         fatalError()
     }
     
-    func visit(_ expr: CastExpr) throws -> (SolutionTy, Substitution) {
+    func visit(_ expr: Expression) throws -> Ty {
         fatalError()
     }
     
-    func visit(_ expr: Expression) throws -> (SolutionTy, Substitution) {
-        fatalError()
-    }
-    
-    func visit(_ expr: CaseWhenThen) throws -> (SolutionTy, Substitution) {
+    func visit(_ expr: CaseWhenThen) throws -> Ty {
         fatalError()
     }
 }

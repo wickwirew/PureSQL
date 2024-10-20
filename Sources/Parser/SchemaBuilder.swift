@@ -9,7 +9,7 @@ import Schema
 import OrderedCollections
 
 public struct DatabaseSchema {
-    public let tables: OrderedDictionary<Substring, Table>
+    public let tables: OrderedDictionary<TableName, TableSchema>
 }
 
 public struct SchemaBuilder: StatementVisitor {
@@ -43,9 +43,8 @@ public struct SchemaBuilder: StatementVisitor {
             fatalError("Not implemented")
         }
         
-        let table = Table(
-            name: statement.name,
-            schemaName: statement.schemaName,
+        let table = TableSchema(
+            name: TableName(schema: statement.schemaName, name: statement.name),
             isTemporary: statement.isTemporary,
             columns: columns,
             constraints: statement.constraints,
@@ -58,13 +57,15 @@ public struct SchemaBuilder: StatementVisitor {
     }
     
     public func visit(statement: AlterTableStatement, with input: DatabaseSchema) throws -> DatabaseSchema {
-        guard var table = input.tables[statement.name] else {
+        let tableName = TableName(schema: statement.schemaName, name: statement.name)
+        
+        guard var table = input.tables[tableName] else {
             fatalError()
         }
         
         switch statement.kind {
         case .rename(let newName):
-            table.name = newName
+            table.name = tableName.with(name: newName)
         case .renameColumn(let oldName, let newName):
             guard var column = table.columns[oldName] else {
                 fatalError("Does not exist")
