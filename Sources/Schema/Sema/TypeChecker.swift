@@ -91,16 +91,17 @@ extension TypeChecker: ExprVisitor {
         case .found(let columnDef):
             return Ty.bool
         case .ambiguous:
-            <#code#>
+            // TODO: Add dianostic
+            return .any
         case .notFound:
-            <#code#>
+            // TODO: Add dianostic
+            return .any
         }
-//        guard let table = tables[expr.table]
-        fatalError()
     }
     
     func visit(_ expr: PrefixExpr) throws -> Ty {
         fatalError()
+//        return try expr.rhs.accept(self)
     }
     
     func visit(_ expr: InfixExpr) throws -> Ty {

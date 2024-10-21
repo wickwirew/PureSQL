@@ -7,18 +7,6 @@
 
 import OrderedCollections
 
-public enum Ty: Equatable {
-    case text
-    case numeric
-    case integer
-    case real
-    case blob
-    case any
-    case custom(String)
-    
-    static let bool = Ty.integer
-}
-
 public struct TypeName: Equatable, CustomStringConvertible {
     public let name: String
     public let args: Args?

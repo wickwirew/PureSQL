@@ -30,6 +30,18 @@ public struct TableSchema {
     }
 }
 
+public enum Ty: Equatable {
+    case text
+    case numeric
+    case integer
+    case real
+    case blob
+    case any
+    
+    static let bool = Ty.integer
+}
+
+
 public struct ColumnSchema {
     public var name: Substring
     public var type: Ty
