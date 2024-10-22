@@ -8,7 +8,7 @@
 import Schema
 
 struct LiteralParser: Parser {
-    func parse(state: inout ParserState) throws -> Literal {
+    func parse(state: inout ParserState) throws -> LiteralExpr {
         let token = try state.take()
         
         switch token.kind {
@@ -26,6 +26,6 @@ struct LiteralParser: Parser {
     }
 }
 
-extension Literal: Parsable {
+extension LiteralExpr: Parsable {
     static var parser = LiteralParser()
 }

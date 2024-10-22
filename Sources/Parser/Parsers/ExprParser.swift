@@ -97,10 +97,12 @@ struct PrimaryExprParser: Parser {
             return .literal(.null)
         case .openParen:
             return .grouped(
-                try ExprParser()
-                    .commaSeparated()
-                    .inParenthesis()
-                    .parse(state: &state)
+                GroupedExpr(
+                    exprs: try ExprParser()
+                        .commaSeparated()
+                        .inParenthesis()
+                        .parse(state: &state)
+                )
             )
         case .cast:
             try state.skip()
@@ -143,14 +145,14 @@ struct PrimaryExprParser: Parser {
 }
 
 struct WhenThenParser: Parser {
-    func parse(state: inout ParserState) throws -> CaseWhenThen.WhenThen {
+    func parse(state: inout ParserState) throws -> CaseWhenThenExpr.WhenThen {
         try state.take(.when)
         let when = try ExprParser()
             .parse(state: &state)
         try state.take(.then)
         let then = try ExprParser()
             .parse(state: &state)
-        return CaseWhenThen.WhenThen(when: when, then: then)
+        return CaseWhenThenExpr.WhenThen(when: when, then: then)
     }
 }
 

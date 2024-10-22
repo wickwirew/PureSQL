@@ -30,35 +30,6 @@ public struct TableSchema {
     }
 }
 
-public enum Ty: Equatable {
-    case text
-    case numeric
-    case integer
-    case real
-    case blob
-    case any
-    
-    static let bool = Ty.integer
-}
-
-
-public struct ColumnSchema {
-    public var name: Substring
-    public var type: Ty
-    public var constraints: [Constraints]
-    
-    public struct Constraints: OptionSet, Equatable {
-        public let rawValue: UInt8
-        
-        public static let notNull = Constraints(rawValue: 1 << 0)
-        public static let primaryKey = Constraints(rawValue: 1 << 1)
-        
-        public init(rawValue: UInt8) {
-            self.rawValue = rawValue
-        }
-    }
-}
-
 public struct Query<Input, Output> {
     public let input: Input
     public let sql: String

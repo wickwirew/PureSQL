@@ -10,15 +10,61 @@ import OrderedCollections
 public struct TypeName: Equatable, CustomStringConvertible {
     public let name: String
     public let args: Args?
+    public let resolved: Resolved?
+    
+    public static let text = TypeName(name: "TEXT", args: nil, resolved: .text)
+    public static let int = TypeName(name: "INT", args: nil, resolved: .int)
+    public static let integer = TypeName(name: "INTEGER", args: nil, resolved: .integer)
+    public static let real = TypeName(name: "REAL", args: nil, resolved: .real)
+    public static let blob = TypeName(name: "BLOB", args: nil, resolved: .blob)
+    public static let any = TypeName(name: "ANY", args: nil, resolved: .any)
+    public static let bool = TypeName(name: "BOOL", args: nil, resolved: .int)
     
     public init(name: String, args: Args?) {
         self.name = name
         self.args = args
+        self.resolved = Resolved(name)
+    }
+    
+    init(name: String, args: Args?, resolved: Resolved) {
+        self.name = name
+        self.args = args
+        self.resolved = resolved
     }
     
     public enum Args: Equatable {
         case one(SignedNumber)
         case two(SignedNumber, SignedNumber)
+    }
+    
+    public var isNumber: Bool {
+        return self == .int
+            || self == .integer
+            || self == .real
+    }
+    
+    /// SQLites data types are a bit funny. You can type in pretty much
+    /// anything you want and it be valid SQL. These are just the types
+    /// that SQLite will recognize and to be used for static analysis.
+    public enum Resolved: Equatable {
+        case text
+        case int
+        case integer
+        case real
+        case blob
+        case any
+        
+        init?(_ name: String) {
+            switch name.uppercased() {
+            case "TEXT": self = .text
+            case "INT": self = .int
+            case "INTEGER": self = .integer
+            case "REAL": self = .real
+            case "BLOB": self = .blob
+            case "ANY": self = .any
+            default: return nil
+            }
+        }
     }
 
     public var description: String {
@@ -127,61 +173,6 @@ public struct ForeignKeyClause: Equatable {
 
 public typealias Numeric = Double
 public typealias SignedNumber = Double
-
-public enum Literal: Equatable {
-    case numeric(Numeric, isInt: Bool)
-    case string(Substring)
-    case blob(Substring)
-    case null
-    case `true`
-    case `false`
-    case currentTime
-    case currentDate
-    case currentTimestamp
-}
-
-extension Literal: ExpressibleByStringLiteral {
-    public init(stringLiteral value: String) {
-        self = .string(value[...])
-    }
-}
-
-extension Literal: ExpressibleByIntegerLiteral {
-    public init(integerLiteral value: Int) {
-        self = .numeric(Numeric(value), isInt: true)
-    }
-}
-
-extension Literal: ExpressibleByFloatLiteral {
-    public init(floatLiteral value: Double) {
-        self = .numeric(value, isInt: false)
-    }
-}
-
-extension Literal: CustomStringConvertible {
-    public var description: String {
-        switch self {
-        case .numeric(let numeric, _):
-            return numeric.description
-        case .string(let substring):
-            return "'\(substring.description)'"
-        case .blob(let substring):
-            return substring.description
-        case .null:
-            return "NULL"
-        case .true:
-            return "TRUE"
-        case .false:
-            return "FALSE"
-        case .currentTime:
-            return "CURRENT_TIME"
-        case .currentDate:
-            return "CURRENT_DATE"
-        case .currentTimestamp:
-            return "CURRENT_TIMESTAMP"
-        }
-    }
-}
 
 /// https://www.sqlite.org/syntax/select-core.html
 public enum SelectCore: Equatable {
@@ -532,7 +523,7 @@ public struct ColumnConstraint: Equatable {
 }
 
 public enum Default: Equatable {
-    case literal(Literal)
+    case literal(LiteralExpr)
     case expr(Expression)
 }
 
@@ -552,7 +543,7 @@ public struct ColumnDef: Equatable {
     }
     
     public enum Default: Equatable {
-        case literal(Literal)
+        case literal(LiteralExpr)
         case signedNumber(SignedNumber)
         case expr(Expression)
     }
