@@ -10,9 +10,9 @@ import Schema
 /// Parses a primary key constraint on a column definition
 /// https://www.sqlite.org/syntax/column-constraint.html
 struct ColumnConstraintParser: Parser {
-    let name: Substring?
+    let name: Identifier?
     
-    init(name: Substring? = nil) {
+    init(name: Identifier? = nil) {
         self.name = name
     }
     
@@ -30,7 +30,7 @@ struct ColumnConstraintParser: Parser {
             return try parsePrimaryKey(state: &state)
         case .not:
             try state.skip()
-            try state.take(.null)
+            try state.consume(.null)
             let conflictClause = try ConfictClauseParser().parse(state: &state)
             return ColumnConstraint(name: name, kind: .notNull(conflictClause))
         case .unique:
@@ -65,8 +65,8 @@ struct ColumnConstraintParser: Parser {
             return ColumnConstraint(name: name, kind: .foreignKey(fk))
         case .generated:
             try state.skip()
-            try state.take(.always)
-            try state.take(.as)
+            try state.consume(.always)
+            try state.consume(.as)
             
             let expr = try ExprParser()
                 .inParenthesis()
@@ -98,8 +98,8 @@ struct ColumnConstraintParser: Parser {
     private func parsePrimaryKey(
         state: inout ParserState
     ) throws -> ColumnConstraint {
-        try state.take(.primary)
-        try state.take(.key)
+        try state.consume(.primary)
+        try state.consume(.key)
         
         let order = try OrderParser()
             .parse(state: &state)

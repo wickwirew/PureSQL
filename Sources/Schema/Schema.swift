@@ -8,7 +8,7 @@
 import OrderedCollections
 
 public struct TypeName: Equatable, CustomStringConvertible {
-    public let name: String
+    public let name: Identifier
     public let args: Args?
     public let resolved: Resolved?
     
@@ -20,13 +20,13 @@ public struct TypeName: Equatable, CustomStringConvertible {
     public static let any = TypeName(name: "ANY", args: nil, resolved: .any)
     public static let bool = TypeName(name: "BOOL", args: nil, resolved: .int)
     
-    public init(name: String, args: Args?) {
+    public init(name: Identifier, args: Args?) {
         self.name = name
         self.args = args
-        self.resolved = Resolved(name)
+        self.resolved = Resolved(name.description)
     }
     
-    init(name: String, args: Args?, resolved: Resolved) {
+    init(name: Identifier, args: Args?, resolved: Resolved) {
         self.name = name
         self.args = args
         self.resolved = resolved
@@ -70,7 +70,7 @@ public struct TypeName: Equatable, CustomStringConvertible {
     public var description: String {
         switch self.args {
         case .none:
-            return name
+            return name.description
         case .one(let arg):
             return "\(name)(\(arg))"
         case .two(let arg1, let arg2):
@@ -93,12 +93,12 @@ public enum ConfictClause: Equatable {
 }
 
 public struct PrimaryKeyConstraint: Equatable {
-    public let columns: [Substring]
+    public let columns: [Identifier]
     public let confictClause: ConfictClause
     public let autoincrement: Bool
     
     public init(
-        columns: [Substring],
+        columns: [Identifier],
         confictClause: ConfictClause,
         autoincrement: Bool
     ) {
@@ -115,29 +115,29 @@ public enum Order: Equatable {
 
 public struct IndexedColumn: Equatable {
     public let kind: Kind
-    public let collation: Substring?
+    public let collation: Identifier?
     public let order: Order
     
-    public init(kind: Kind, collation: Substring?, order: Order) {
+    public init(kind: Kind, collation: Identifier?, order: Order) {
         self.kind = kind
         self.collation = collation
         self.order = order
     }
     
     public enum Kind: Equatable {
-        case column(Substring)
+        case column(Identifier)
         case expr(Expression)
     }
 }
 
 public struct ForeignKeyClause: Equatable {
-    public let foreignTable: Substring
-    public let foreignColumns: [Substring]
+    public let foreignTable: Identifier
+    public let foreignColumns: [Identifier]
     public let actions: [Action]
     
     public init(
-        foreignTable: Substring,
-        foreignColumns: [Substring],
+        foreignTable: Identifier,
+        foreignColumns: [Identifier],
         actions: [Action]
     ) {
         self.foreignTable = foreignTable
@@ -147,7 +147,7 @@ public struct ForeignKeyClause: Equatable {
     
     public enum Action: Equatable {
         case onDo(On, Do)
-        indirect case match(Substring, [Action])
+        indirect case match(Identifier, [Action])
         case deferrable(Deferrable?)
         case notDeferrable(Deferrable?)
     }
@@ -207,11 +207,11 @@ public enum SelectCore: Equatable {
     }
     
     public struct Window: Equatable {
-        public let name: Substring
+        public let name: Identifier
         public let window: WindowDefinition
         
         public init(
-            name: Substring,
+            name: Identifier,
             window: WindowDefinition
         ) {
             self.name = name
@@ -223,7 +223,7 @@ public enum SelectCore: Equatable {
         case tableOrSubqueries([TableOrSubquery])
         case join(JoinClause)
         
-        public init(table: Substring) {
+        public init(table: Identifier) {
             self = .join(JoinClause(table: table))
         }
     }
@@ -300,9 +300,9 @@ public struct SelectStmt: Equatable {
 
 public enum ResultColumn: Equatable {
     /// Note: This will represent even just a single column select
-    case expr(Expression, as: Substring?)
+    case expr(Expression, as: Identifier?)
     /// `*` or `table.*`
-    case all(table: Substring?)
+    case all(table: Identifier?)
 }
 
 public struct OrderingTerm: Equatable {
@@ -346,7 +346,7 @@ public struct JoinClause: Equatable {
     }
     
     public init(
-        table: Substring,
+        table: Identifier,
         joins: [Join] = []
     ) {
         self.tableOrSubquery = TableOrSubquery(table: table)
@@ -397,22 +397,22 @@ public enum JoinOperator: Equatable {
 
 public enum JoinConstraint: Equatable {
     case on(Expression)
-    case using([Substring])
+    case using([Identifier])
     case none
 }
 
 public enum TableOrSubquery: Equatable {
     case table(Table)
-    case tableFunction(schema: Substring?, table: Substring, args: [Expression], alias: Substring?)
+    case tableFunction(schema: Identifier?, table: Identifier, args: [Expression], alias: Identifier?)
     case subquery(SelectStmt)
     indirect case join(JoinClause)
-    case subTableOrSubqueries([TableOrSubquery], alias: Substring?)
+    case subTableOrSubqueries([TableOrSubquery], alias: Identifier?)
     
     public init(
-        schema: Substring? = nil,
-        table: Substring,
-        alias: Substring? = nil,
-        indexedBy: Substring? = nil
+        schema: Identifier? = nil,
+        table: Identifier,
+        alias: Identifier? = nil,
+        indexedBy: Identifier? = nil
     ) {
         self = .table(TableOrSubquery.Table(
             schema: schema,
@@ -423,16 +423,16 @@ public enum TableOrSubquery: Equatable {
     }
     
     public struct Table: Equatable {
-        public let schema: Substring?
-        public let name: Substring
-        public let alias: Substring?
-        public let indexedBy: Substring?
+        public let schema: Identifier?
+        public let name: Identifier
+        public let alias: Identifier?
+        public let indexedBy: Identifier?
         
         public init(
-            schema: Substring?,
-            name: Substring,
-            alias: Substring?,
-            indexedBy: Substring?
+            schema: Identifier?,
+            name: Identifier,
+            alias: Identifier?,
+            indexedBy: Identifier?
         ) {
             self.schema = schema
             self.name = name
@@ -447,14 +447,14 @@ public struct WindowDefinition: Equatable {
 }
 
 public struct CommonTableExpression: Equatable {
-    public let table: Substring?
-    public let columns: [Substring]
+    public let table: Identifier?
+    public let columns: [Identifier]
     public let materialized: Bool
     public let select: SelectStmt
     
     public init(
-        table: Substring?,
-        columns: [Substring],
+        table: Identifier?,
+        columns: [Identifier],
         materialized: Bool = false,
         select: SelectStmt
     ) {
@@ -466,10 +466,10 @@ public struct CommonTableExpression: Equatable {
 }
 
 public struct TableConstraint: Equatable {
-    public let name: Substring?
+    public let name: Identifier?
     public let kind: Kind
     
-    public init(name: Substring?, kind: Kind) {
+    public init(name: Identifier?, kind: Kind) {
         self.name = name
         self.kind = kind
     }
@@ -478,15 +478,15 @@ public struct TableConstraint: Equatable {
         case primaryKey([IndexedColumn], ConfictClause)
         case unique(IndexedColumn, ConfictClause)
         case check(Expression)
-        case foreignKey([Substring], ForeignKeyClause)
+        case foreignKey([Identifier], ForeignKeyClause)
     }
 }
 
 public struct ColumnConstraint: Equatable {
-    public let name: Substring?
+    public let name: Identifier?
     public let kind: Kind
     
-    public init(name: Substring?, kind: Kind) {
+    public init(name: Identifier?, kind: Kind) {
         self.name = name
         self.kind = kind
     }
@@ -497,7 +497,7 @@ public struct ColumnConstraint: Equatable {
         case unique(ConfictClause)
         case check(Expression)
         case `default`(Default)
-        case collate(Substring)
+        case collate(Identifier)
         case foreignKey(ForeignKeyClause)
         case generated(Expression, GeneratedKind?)
     }
@@ -528,12 +528,12 @@ public enum Default: Equatable {
 }
 
 public struct ColumnDef: Equatable {
-    public var name: Substring
+    public var name: Identifier
     public var type: TypeName
     public var constraints: [ColumnConstraint]
     
     public init(
-        name: Substring,
+        name: Identifier,
         type: TypeName,
         constraints: [ColumnConstraint]
     ) {
@@ -588,21 +588,21 @@ extension Indirect: CustomStringConvertible {
 
 public struct TableName: Hashable, CustomStringConvertible {
     public let schema: Schema
-    public let name: Substring
+    public let name: Identifier
     
-    public static let main: Substring = "main"
+    public static let main: Identifier = "main"
     
     public enum Schema: Hashable {
         case main
-        case other(Substring)
+        case other(Identifier)
     }
     
-    public init(schema: Schema, name: Substring) {
+    public init(schema: Schema, name: Identifier) {
         self.schema = schema
         self.name = name
     }
     
-    public init(schema: Substring?, name: Substring) {
+    public init(schema: Identifier?, name: Identifier) {
         if let schema, schema == Self.main {
             self.schema = .other(schema)
         } else {
@@ -620,7 +620,7 @@ public struct TableName: Hashable, CustomStringConvertible {
         }
     }
     
-    public func with(name: Substring) -> TableName {
+    public func with(name: Identifier) -> TableName {
         return TableName(schema: schema, name: name)
     }
 }

@@ -6,37 +6,48 @@
 //
 
 public struct Identifier {
-    public let name: Substring
-    public let caseSensitive: Bool
+    private(set) public var name: Substring
+    private(set) public var range: Range<String.Index>
     
-    public init(_ name: Substring, caseSensitive: Bool = true) {
+    public init(name: Substring, range: Range<String.Index>) {
         self.name = name
-        self.caseSensitive = caseSensitive
+        self.range = range
     }
 }
 
 extension Identifier: Equatable {
     public static func ==(lhs: Identifier, rhs: Identifier) -> Bool {
-        if lhs.caseSensitive && rhs.caseSensitive {
-            return lhs.name == rhs.name
-        } else {
-            return lhs.name.compare(rhs.name, options: .caseInsensitive) == .orderedSame
-        }
+        return lhs.name == rhs.name
     }
 }
 
 extension Identifier: Hashable {
     public func hash(into hasher: inout Hasher) {
-        if caseSensitive {
-            hasher.combine(name)
-        } else {
-            hasher.combine(name.uppercased())
-        }
+        hasher.combine(name)
+    }
+}
+
+extension Identifier: CustomStringConvertible {
+    public var description: String {
+        return name.description
     }
 }
 
 extension Identifier: ExpressibleByStringLiteral {
     public init(stringLiteral value: String) {
-        self.init(value[...])
+        self.name = value[...]
+        self.range = value.startIndex..<value.endIndex
+    }
+}
+
+extension Identifier {
+    public mutating func append(_ identifier: Identifier) {
+        name += identifier.name
+        range = range.lowerBound..<identifier.range.upperBound
+    }
+    
+    public mutating func append(_ string: String, upperBound: String.Index) {
+        name += string
+        range = range.lowerBound..<upperBound
     }
 }

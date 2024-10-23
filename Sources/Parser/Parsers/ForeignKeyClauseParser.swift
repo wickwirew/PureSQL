@@ -16,7 +16,7 @@ import Schema
 /// https://www.sqlite.org/syntax/foreign-key-clause.html
 struct ForeignKeyClauseParser: Parser {
     func parse(state: inout ParserState) throws -> ForeignKeyClause {
-        try state.take(.references)
+        try state.consume(.references)
         
         let table = try SymbolParser()
             .parse(state: &state)
@@ -68,7 +68,7 @@ struct ForeignKeyClauseParser: Parser {
             return .match(name, try parseActions(state: &state))
         case .not:
             try state.skip()
-            try state.take(.deferrable)
+            try state.consume(.deferrable)
             return .notDeferrable(try parseDeferrable(state: &state))
         case .deferrable:
             try state.skip()
@@ -97,7 +97,7 @@ struct ForeignKeyClauseParser: Parser {
         case .restrict:
             return .restrict
         case .no:
-            try state.take(.action)
+            try state.consume(.action)
             return .noAction
         default: throw ParsingError.expected(.set, .cascade, .restrict, .no, at: token.range)
         }

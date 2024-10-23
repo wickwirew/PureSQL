@@ -38,7 +38,7 @@ struct SelectStmtParser: Parser {
     
     func parseOrderBy(state: inout ParserState) throws -> [OrderingTerm] {
         guard try state.take(if: .order) else { return [] }
-        try state.take(.by)
+        try state.consume(.by)
         
         return try OrderingTermParser()
             .commaSeparated()
@@ -111,7 +111,7 @@ struct SelectCoreParser: Parser {
             )
         }
         
-        try state.take(.select)
+        try state.consume(.select)
         
         let distinct = if try state.take(if: .distinct) {
             true
@@ -167,7 +167,7 @@ struct SelectCoreParser: Parser {
     
     private func parseGroupBy(state: inout ParserState) throws -> SelectCore.GroupBy? {
         guard try state.take(if: .group) else { return nil }
-        try state.take(.by)
+        try state.consume(.by)
         
         let exprs = try ExprParser()
             .commaSeparated()
@@ -183,7 +183,7 @@ struct SelectCoreParser: Parser {
     private struct WindowParser: Parser {
         func parse(state: inout ParserState) throws -> SelectCore.Window {
             let name = try SymbolParser().parse(state: &state)
-            try state.take(.as)
+            try state.consume(.as)
             let window = try WindowDefinitionParser().parse(state: &state)
             return SelectCore.Window(name: name, window: window)
         }
@@ -229,8 +229,9 @@ struct ResultColumnParser: Parser {
             try state.skip()
             return .all(table: nil)
         case .symbol(let table):
+            let table = Identifier(name: table, range: state.current.range)
             try state.skip()
-            try state.take(.dot)
+            try state.consume(.dot)
             return .all(table: table)
         default:
             let expr = try ExprParser()
@@ -240,6 +241,7 @@ struct ResultColumnParser: Parser {
                 let alias = try SymbolParser().parse(state: &state)
                 return .expr(expr, as: alias)
             } else if case let .symbol(alias) = state.current.kind {
+                let alias = Identifier(name: alias, range: state.current.range)
                 try state.skip()
                 return .expr(expr, as: alias)
             } else {
@@ -272,15 +274,15 @@ struct TableOrSubqueryParser: Parser {
             } else {
                 let alias = try parseAlias(state: &state)
                 
-                let indexedBy: Substring?
+                let indexedBy: Identifier?
                 switch state.current.kind {
                 case .indexed:
                     try state.skip()
-                    try state.take(.by)
+                    try state.consume(.by)
                     indexedBy = try SymbolParser().parse(state: &state)
                 case .not:
                     try state.skip()
-                    try state.take(.indexed)
+                    try state.consume(.indexed)
                     indexedBy = nil
                 default:
                     indexedBy = nil
@@ -320,10 +322,11 @@ struct TableOrSubqueryParser: Parser {
         }
     }
     
-    private func parseAlias(state: inout ParserState) throws -> Substring? {
+    private func parseAlias(state: inout ParserState) throws -> Identifier? {
         if try state.take(if: .as) {
             return try SymbolParser().parse(state: &state)
         } else if case .symbol(let alias) = state.current.kind {
+            let alias = Identifier(name: alias, range: state.current.range)
             try state.skip()
             return alias
         } else {
@@ -389,43 +392,43 @@ struct JoinOperatorParser: Parser {
             case .join: return .natural
             case .left:
                 if try state.take(if: .outer) {
-                    try state.take(.join)
+                    try state.consume(.join)
                     return .left(natural: true, outer: true)
                 } else {
-                    try state.take(.join)
+                    try state.consume(.join)
                     return .left(natural: true)
                 }
             case .right:
-                try state.take(.join)
+                try state.consume(.join)
                 return .right(natural: true)
             case .inner:
-                try state.take(.join)
+                try state.consume(.join)
                 return .inner(natural: true)
             case .full:
-                try state.take(.join)
+                try state.consume(.join)
                 return .full(natural: true)
             default:
                 throw ParsingError.expected(.left, .right, .inner, .join, at: state.current.range)
             }
         case .left:
             if try state.take(if: .outer) {
-                try state.take(.join)
+                try state.consume(.join)
                 return .left(outer: true)
             } else {
-                try state.take(.join)
+                try state.consume(.join)
                 return .left(outer: false)
             }
         case .right:
-            try state.take(.join)
+            try state.consume(.join)
             return .right()
         case .inner:
-            try state.take(.join)
+            try state.consume(.join)
             return .inner()
         case .cross:
-            try state.take(.join)
+            try state.consume(.join)
             return .cross
         case .full:
-            try state.take(.join)
+            try state.consume(.join)
             return .full()
         default:
             throw ParsingError(description: "Invalid join operator", sourceRange: state.current.range)
@@ -467,11 +470,11 @@ struct CommonTableExprParser: Parser {
             .take(if: .openParen)
             .parse(state: &state)
         
-        try state.take(.as)
+        try state.consume(.as)
         
         let materialized: Bool
         if try state.take(if: .not) {
-            try state.take(.materialized)
+            try state.consume(.materialized)
             materialized = false
         } else if try state.take(if: .materialized) {
             materialized = true

@@ -17,8 +17,8 @@ struct ConfictClauseParser: Parser {
     func parse(state: inout ParserState) throws -> ConfictClause {
         guard state.current.kind == .on else { return .none }
         
-        try state.take(.on)
-        try state.take(.conflict)
+        try state.consume(.on)
+        try state.consume(.conflict)
         
         let token = try state.take()
         switch token.kind {

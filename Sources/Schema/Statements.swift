@@ -20,8 +20,8 @@ public protocol Statement {
 }
 
 public struct CreateTableStatement: Equatable, Statement {
-    public let name: Substring
-    public let schemaName: Substring?
+    public let name: Identifier
+    public let schemaName: Identifier?
     public let isTemporary: Bool
     public let onlyIfExists: Bool
     public let kind: Kind
@@ -30,12 +30,12 @@ public struct CreateTableStatement: Equatable, Statement {
     
     public enum Kind: Equatable {
         case select(SelectStmt)
-        case columns(OrderedDictionary<Substring, ColumnDef>)
+        case columns(OrderedDictionary<Identifier, ColumnDef>)
     }
     
     public init(
-        name: Substring,
-        schemaName: Substring?,
+        name: Identifier,
+        schemaName: Identifier?,
         isTemporary: Bool,
         onlyIfExists: Bool,
         kind: Kind,
@@ -57,13 +57,13 @@ public struct CreateTableStatement: Equatable, Statement {
 }
 
 public struct AlterTableStatement: Equatable, Statement {
-    public let name: Substring
-    public let schemaName: Substring?
+    public let name: Identifier
+    public let schemaName: Identifier?
     public let kind: Kind
     
     public init(
-        name: Substring,
-        schemaName: Substring?,
+        name: Identifier,
+        schemaName: Identifier?,
         kind: Kind
     ) {
         self.name = name
@@ -72,10 +72,10 @@ public struct AlterTableStatement: Equatable, Statement {
     }
     
     public enum Kind: Equatable {
-        case rename(Substring)
-        case renameColumn(Substring, Substring)
+        case rename(Identifier)
+        case renameColumn(Identifier, Identifier)
         case addColumn(ColumnDef)
-        case dropColumn(Substring)
+        case dropColumn(Identifier)
     }
     
     public func accept<V>(visitor: V, with input: V.Input) throws -> V.Output where V : StatementVisitor {

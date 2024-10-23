@@ -8,7 +8,7 @@
 import Schema
 
 struct TableAndSchemaNameParser: Parser {
-    func parse(state: inout ParserState) throws -> (schema: Substring?, table: Substring) {
+    func parse(state: inout ParserState) throws -> (schema: Identifier?, table: Identifier) {
         let symbol = SymbolParser()
         
         let first = try symbol.parse(state: &state)

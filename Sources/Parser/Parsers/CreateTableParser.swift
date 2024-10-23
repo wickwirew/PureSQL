@@ -10,14 +10,14 @@ import OrderedCollections
 
 struct CreateTableParser: Parser {
     func parse(state: inout ParserState) throws -> CreateTableStatement {
-        try state.take(.create)
+        try state.consume(.create)
         let isTemporary = try state.take(if: .temp, or: .temporary)
-        try state.take(.table)
+        try state.consume(.table)
         
         let ifNotExists = try state.take(if: .if)
         if ifNotExists {
-            try state.take(.not)
-            try state.take(.exists)
+            try state.consume(.not)
+            try state.consume(.exists)
         }
         
         if state.is(of: .as) {
@@ -26,7 +26,7 @@ struct CreateTableParser: Parser {
             let (schema, table) = try TableAndSchemaNameParser()
                 .parse(state: &state)
             
-            let columns: OrderedDictionary<Substring, ColumnDef> = try ColumnDefinitionParser()
+            let columns: OrderedDictionary<Identifier, ColumnDef> = try ColumnDefinitionParser()
                 .commaSeparated()
                 .inParenthesis()
                 .parse(state: &state)

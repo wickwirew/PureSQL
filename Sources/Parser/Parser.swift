@@ -36,6 +36,10 @@ extension ParserState {
         return current.range
     }
     
+    func range(from range: Range<String.Index>) -> Range<String.Index> {
+        return range.lowerBound..<current.range.upperBound
+    }
+    
     func skippingOne() throws -> ParserState {
         var copy = self
         try copy.skip()
@@ -78,12 +82,21 @@ extension ParserState {
     }
     
     /// Consumes the next token and validates it is of the input kind
-    mutating func take(_ kind: Token.Kind) throws {
+    mutating func consume(_ kind: Token.Kind) throws {
         guard current.kind == kind else {
             throw ParsingError.unexpectedToken(of: current.kind, at: current.range)
         }
         
         try skip()
+    }
+    
+    /// Consumes the next token and validates it is of the input kind
+    mutating func take(_ kind: Token.Kind) throws -> Token {
+        guard current.kind == kind else {
+            throw ParsingError.unexpectedToken(of: current.kind, at: current.range)
+        }
+        
+        return try take()
     }
     
     mutating func skip() throws {

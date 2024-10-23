@@ -15,9 +15,9 @@ struct ParenthesisParser<Inner: Parser>: Parser {
     }
     
     func parse(state: inout ParserState) throws -> Inner.Output {
-        try state.take(.openParen)
+        try state.consume(.openParen)
         let output = try inner.parse(state: &state)
-        try state.take(.closeParen)
+        try state.consume(.closeParen)
         return output
     }
 }

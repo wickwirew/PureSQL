@@ -9,8 +9,8 @@ import Schema
 
 struct AlterTableParser: Parser {
     func parse(state: inout ParserState) throws -> AlterTableStatement {
-        try state.take(.alter)
-        try state.take(.table)
+        try state.consume(.alter)
+        try state.consume(.table)
         
         let (schema, table) = try TableAndSchemaNameParser()
             .parse(state: &state)
@@ -38,7 +38,7 @@ struct AlterTableParser: Parser {
                 
                 let symbol = SymbolParser()
                 let oldName = try symbol.parse(state: &state)
-                try state.take(.to)
+                try state.consume(.to)
                 let newName = try symbol.parse(state: &state)
                 return .renameColumn(oldName, newName)
             }

@@ -27,7 +27,7 @@ struct ExprParser: Parser {
                     .inParenthesis()
                     .parse(state: &state)
                 
-                return .fn(FunctionExpr(table: column.table, name: column.column, args: args))
+                return .fn(FunctionExpr(table: column.table, name: column.column, args: args, range: state.range(from: expr.range)))
             }
             
             guard let op = Operator.guess(for: state.current.kind, after: state.peek.kind),
@@ -41,8 +41,8 @@ struct ExprParser: Parser {
             //
             // TODO: Move this to the Infix Parser
             if op == .between || op == .not(.between) {
-                let op = try Operator.parse(state: &state)
-                assert(op == .between || op == .not(.between), "Guess cannot be wrong")
+                let op = try OperatorParser().parse(state: &state)
+                assert(op.operator == .between || op.operator == .not(.between), "Guess cannot be wrong")
                 
                 // We need to dispatch the lower and upper bound expr's with a
                 // precedence above AND so the AND is not included in the expr.
@@ -52,12 +52,12 @@ struct ExprParser: Parser {
                 let lowerBound = try ExprParser(precedence: precAboveAnd)
                     .parse(state: &state)
                 
-                try state.take(.and)
+                try state.consume(.and)
                 
                 let upperBound = try ExprParser(precedence: precAboveAnd)
                     .parse(state: &state)
                 
-                expr = .between(BetweenExpr(not: op == .not(.between), value: expr, lower: lowerBound, upper: upperBound))
+                expr = .between(BetweenExpr(not: op.operator == .not(.between), value: expr, lower: lowerBound, upper: upperBound))
             } else {
                 expr = try InfixExprParser(lhs: expr)
                     .parse(state: &state)
@@ -84,42 +84,43 @@ struct PrimaryExprParser: Parser {
         case .questionMark, .colon, .dollarSign, .at:
             return try .bindParameter(.parse(state: &state))
         case .plus:
-            try state.skip()
-            return try .prefix(PrefixExpr(operator: .plus, rhs: ExprParser(precedence: precedence).parse(state: &state)))
+            let token = try state.take()
+            let op = OperatorSyntax(operator: .plus, range: token.range)
+            return try .prefix(PrefixExpr(operator: op, rhs: ExprParser(precedence: precedence).parse(state: &state)))
         case .tilde:
-            try state.skip()
-            return try .prefix(PrefixExpr(operator: .tilde, rhs: ExprParser(precedence: precedence).parse(state: &state)))
+            let token = try state.take()
+            let op = OperatorSyntax(operator: .tilde, range: token.range)
+            return try .prefix(PrefixExpr(operator: op, rhs: ExprParser(precedence: precedence).parse(state: &state)))
         case .minus:
-            try state.skip()
-            return try .prefix(PrefixExpr(operator: .minus, rhs: ExprParser(precedence: precedence).parse(state: &state)))
+            let token = try state.take()
+            let op = OperatorSyntax(operator: .minus, range: token.range)
+            return try .prefix(PrefixExpr(operator: op, rhs: ExprParser(precedence: precedence).parse(state: &state)))
         case .null:
-            try state.skip()
-            return .literal(.null)
+            let token = try state.take()
+            return .literal(LiteralExpr(kind: .null, range: token.range))
         case .openParen:
-            return .grouped(
-                GroupedExpr(
-                    exprs: try ExprParser()
-                        .commaSeparated()
-                        .inParenthesis()
-                        .parse(state: &state)
-                )
-            )
+            let start = state.current.range
+            let expr = try ExprParser()
+                .commaSeparated()
+                .inParenthesis()
+                .parse(state: &state)
+            return .grouped(GroupedExpr(exprs: expr, range: state.range(from: start)))
         case .cast:
-            try state.skip()
-            try state.take(.openParen)
+            let start = try state.take()
+            try state.consume(.openParen)
             let expr = try ExprParser()
                 .parse(state: &state)
-            try state.take(.as)
+            try state.consume(.as)
             let type = try TypeNameParser()
                 .parse(state: &state)
-            try state.take(.closeParen)
-            return .cast(CastExpr(expr: expr, ty: type))
+            try state.consume(.closeParen)
+            return .cast(CastExpr(expr: expr, ty: type, range: state.range(from: start.range)))
         case .select:
             fatalError("TODO: Not yet implemented")
         case .exists:
             fatalError("TODO: Do when select is done")
         case .case:
-            try state.skip()
+            let start = try state.take()
             let `case` = try ExprParser()
                 .take(ifNot: .when)
                 .parse(state: &state)
@@ -135,9 +136,9 @@ struct PrimaryExprParser: Parser {
                 nil
             }
             
-            try state.take(.end)
+            try state.consume(.end)
             
-            return .caseWhenThen(.init(case: `case`, whenThen: whenThen, else: el))
+            return .caseWhenThen(.init(case: `case`, whenThen: whenThen, else: el, range: state.range(from: start.range)))
         default:
             throw ParsingError(description: "Expected Expression", sourceRange: state.range)
         }
@@ -146,10 +147,10 @@ struct PrimaryExprParser: Parser {
 
 struct WhenThenParser: Parser {
     func parse(state: inout ParserState) throws -> CaseWhenThenExpr.WhenThen {
-        try state.take(.when)
+        try state.consume(.when)
         let when = try ExprParser()
             .parse(state: &state)
-        try state.take(.then)
+        try state.consume(.then)
         let then = try ExprParser()
             .parse(state: &state)
         return CaseWhenThenExpr.WhenThen(when: when, then: then)
@@ -160,15 +161,15 @@ struct InfixExprParser: Parser {
     let lhs: Expression
 
     func parse(state: inout ParserState) throws -> Expression {
-        let op = try Operator.parse(state: &state)
+        let op = try OperatorParser().parse(state: &state)
         
-        switch op {
+        switch op.operator {
         case .isnull, .notnull, .notNull, .collate:
             return .postfix(PostfixExpr(lhs: lhs, operator: op))
         default: break
         }
         
-        let rhs = try ExprParser(precedence: op.precedence(usage: .infix) + 1)
+        let rhs = try ExprParser(precedence: op.operator.precedence(usage: .infix) + 1)
             .parse(state: &state)
         
         return .infix(InfixExpr(lhs: lhs, operator: op, rhs: rhs))
@@ -182,7 +183,7 @@ struct PrefixOperatorParser: Parser {
 }
 
 struct OperatorParser: Parser {
-    func parse(state: inout ParserState) throws -> Operator {
+    func parse(state: inout ParserState) throws -> OperatorSyntax {
         guard let op = Operator.guess(
             for: state.current.kind,
             after: state.peek.kind
@@ -190,6 +191,7 @@ struct OperatorParser: Parser {
             throw ParsingError(description: "Invalid operator", sourceRange: state.range)
         }
         
+        let start = state.current.range
         try op.skip(state: &state)
         
         switch op {
@@ -197,20 +199,20 @@ struct OperatorParser: Parser {
              .mod, .plus, .minus, .bitwiseAnd, .bitwuseOr, .shl, .shr, .escape,
              .lt, .gt, .lte, .gte, .eq, .eq2, .neq, .neq2, .match, .like, .regexp,
              .glob, .or, .and, .between, .not, .in, .isnull, .notnull, .notNull, .isDistinctFrom:
-            return op
+            return OperatorSyntax(operator: op, range: start)
         case .`is`:
             if try state.take(if: .distinct) {
-                try state.take(.from)
-                return .isDistinctFrom
+                let from = try state.take(.from)
+                return OperatorSyntax(operator: .isDistinctFrom, range: start.lowerBound..<from.range.upperBound)
             } else {
-                return op
+                return OperatorSyntax(operator: .is, range: start)
             }
         case .isNot:
             if try state.take(if: .distinct) {
-                try state.take(.from)
-                return .isNotDistinctFrom
+                let from = try state.take(.from)
+                return OperatorSyntax(operator: .isNotDistinctFrom, range: start.lowerBound..<from.range.upperBound)
             } else {
-                return op
+                return OperatorSyntax(operator: .isNot, range: start.lowerBound..<state.current.range.upperBound)
             }
         case .isNotDistinctFrom:
             fatalError("guess will not return these since the look ahead is only 2")
@@ -338,20 +340,26 @@ struct BindParameterParser: Parser {
         switch token.kind {
         case .questionMark:
             if case let .symbol(param) = state.current.kind {
-                try state.skip()
-                return .named(String(param))
+                let paramRange = try state.take()
+                return BindParameter(kind: .named(Identifier(name: param, range: paramRange.range)), range: token.range)
             } else {
-                return .unnamed
+                return BindParameter(kind: .unnamed, range: token.range)
             }
         case .colon:
-            return try .named(String(parseSymbol(state: &state)))
+            let symbol = try parseSymbol(state: &state)
+            return BindParameter(kind: .named(symbol), range: token.range.lowerBound..<symbol.range.upperBound)
         case .at:
-            return try .named(String(parseSymbol(state: &state)))
+            let symbol = try parseSymbol(state: &state)
+            return BindParameter(kind: .named(symbol), range: token.range.lowerBound..<symbol.range.upperBound)
         case .dollarSign:
-            let symbol = try SymbolParser()
+            let segments = try SymbolParser()
                 .separated(by: .colon, and: .colon)
                 .parse(state: &state)
-                .joined(separator: "::")
+            
+            let nameRange = token.range.lowerBound..<(segments.last?.range.upperBound ?? state.current.range.upperBound)
+            
+            let fullName = segments.map(\.name)
+                .joined(separator: "::")[...]
             
             let suffix = try SymbolParser()
                 .inParenthesis()
@@ -359,16 +367,19 @@ struct BindParameterParser: Parser {
                 .parse(state: &state)
             
             if let suffix {
-                return .named("\(symbol)(\(suffix))")
+                let range = token.range.lowerBound..<suffix.range.upperBound
+                let ident = Identifier(name: "\(fullName)(\(suffix))", range: range)
+                return BindParameter(kind: .named(ident), range: range)
             } else {
-                return .named(symbol)
+                let ident = Identifier(name: fullName, range: nameRange)
+                return BindParameter(kind: .named(ident), range: nameRange)
             }
         default:
             throw ParsingError(description: "Invalid bind parameter", sourceRange: token.range)
         }
     }
     
-    private func parseSymbol(state: inout ParserState) throws -> Substring {
+    private func parseSymbol(state: inout ParserState) throws -> Identifier {
         return try SymbolParser()
             .parse(state: &state)
     }

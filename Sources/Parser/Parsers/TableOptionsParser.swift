@@ -16,7 +16,7 @@ struct TableOptionsParser: Parser {
             switch state.current.kind {
             case .without:
                 try state.skip()
-                try state.take(.rowid)
+                try state.consume(.rowid)
                 options = options.union(.withoutRowId)
             case .strict:
                 try state.skip()

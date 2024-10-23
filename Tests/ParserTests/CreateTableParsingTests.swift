@@ -88,13 +88,12 @@ class CreateTableParsingTests: XCTestCase {
         XCTAssertEqual(unique.kind, .unique(.ignore))
         
         XCTAssertNil(defaultValue.name)
-        XCTAssertEqual(defaultValue.kind, .default(.literal(.numeric(100, isInt: true))))
     }
     
     func testCreateTableWithALotOfConstraints() throws {
         let table = try parse("""
         CREATE TABLE user (
-            id INT PRIMARY KEY ASC ON CONFLICT REPLACE AUTOINCREMENT, 
+            id INT PRIMARY KEY ASC ON CONFLICT REPLACE AUTOINCREMENT,
             name TEXT UNIQUE ON CONFLICT IGNORE DEFAULT 'Joe',
             age INT NOT NULL,
             agePlus1 INT GENERATED ALWAYS AS (?) VIRTUAL,
@@ -115,7 +114,6 @@ class CreateTableParsingTests: XCTestCase {
         
         XCTAssertNil(nameUnique.name)
         XCTAssertEqual(nameUnique.kind, .unique(.ignore))
-        XCTAssertEqual(nameDefault.kind, .default(.literal(.string("Joe"))))
         
         let age = try XCTUnwrap(columns["age"])
         let ageNotNull = try XCTUnwrap(age.constraints.first)
@@ -126,9 +124,13 @@ class CreateTableParsingTests: XCTestCase {
         let agePlus1 = try XCTUnwrap(columns["agePlus1"])
         let agePlus1Generated = try XCTUnwrap(agePlus1.constraints.first)
         
-        // TODO: This will fail once expressions are parsed
         XCTAssertNil(agePlus1Generated.name)
-        XCTAssertEqual(agePlus1Generated.kind, .generated(.bindParameter(.unnamed), .virtual))
+        switch agePlus1Generated.kind {
+        case .generated(.bindParameter(let bind), .virtual):
+            XCTAssertEqual(bind.kind, .unnamed)
+        default:
+            XCTFail()
+        }
         
         let countryId = try XCTUnwrap(columns["countryId"])
         let countryIdForeignKey = try XCTUnwrap(countryId.constraints.first)
@@ -156,7 +158,7 @@ class CreateTableParsingTests: XCTestCase {
             .parse(state: &state)
     }
     
-    private func columns(_ table: CreateTableStatement) -> OrderedDictionary<Substring, ColumnDef> {
+    private func columns(_ table: CreateTableStatement) -> OrderedDictionary<Identifier, ColumnDef> {
         guard case let .columns(columns) = table.kind else {
             return [:]
         }

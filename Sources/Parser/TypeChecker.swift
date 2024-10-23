@@ -21,7 +21,7 @@ public struct Scope {
         tables[table.name] = table
     }
     
-    func column(name: Substring) -> ColumnResult {
+    func column(name: Identifier) -> ColumnResult {
         var result: ColumnResult = .notFound
         
         for table in tables.values {
@@ -38,9 +38,9 @@ public struct Scope {
     }
     
     func column(
-        schema: Substring?,
-        table: Substring,
-        name: Substring
+        schema: Identifier?,
+        table: Identifier,
+        name: Identifier
     ) -> ColumnResult {
         guard let table = tables[TableName(schema: schema, name: table)],
               let column = table.columns[name] else { return .notFound }
@@ -63,7 +63,7 @@ extension TypeChecker: ExprVisitor {
     public typealias Output = TypeName
     
     public mutating func visit(_ expr: LiteralExpr) throws -> TypeName {
-        return switch expr {
+        return switch expr.kind {
         case .numeric(_, let isInt): isInt ? .integer : .real
         case .string: .text
         case .blob: .blob
@@ -104,7 +104,7 @@ extension TypeChecker: ExprVisitor {
         let lhs = try expr.lhs.accept(visitor: &self)
         let rhs = try expr.rhs.accept(visitor: &self)
         
-        switch expr.operator {
+        switch expr.operator.operator {
         // Arithmetic Operators
         case .plus, .minus, .multiply, .divide, .bitwuseOr,
                 .bitwiseAnd, .shl, .shr, .mod:

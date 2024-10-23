@@ -28,7 +28,7 @@ public struct Diagnostic: Error {
     ) {
         self.message = "Incorrect type, expected '\(expected.name)' got '\(actual.name)'"
         self.range = range
-        self.suggestion = expected.name
+        self.suggestion = expected.name.description
     }
 }
 

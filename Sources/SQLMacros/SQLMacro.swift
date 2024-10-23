@@ -43,7 +43,7 @@ public struct SchemaMacro: DeclarationMacro {
         return [
             DeclSyntax(StructDeclSyntax(name: "Schema") {
                 for table in schema.tables.values {
-                    StructDeclSyntax(name: "\(raw: table.name.name.capitalized)") {
+                    StructDeclSyntax(name: "\(raw: table.name.name.name.capitalized)") {
                         for column in table.columns.values {
                             let isNonOptional = column.constraints
                                 .contains { $0.isPkConstraint || $0.isNotNullConstraint }
