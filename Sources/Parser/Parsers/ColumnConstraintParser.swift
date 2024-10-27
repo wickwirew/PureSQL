@@ -49,7 +49,7 @@ struct ColumnConstraintParser: Parser {
                 let expr = try ExprParser()
                     .inParenthesis()
                     .parse(state: &state)
-                return ColumnConstraint(name: name, kind: .default(.expr(expr)))
+                return ColumnConstraint(name: name, kind: .default(expr))
             } else {
                 let literal = try LiteralParser()
                     .parse(state: &state)

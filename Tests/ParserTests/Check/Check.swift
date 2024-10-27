@@ -14,9 +14,8 @@ func check<P: Parser>(
     parser: P,
     prefix: String = "CHECK",
     file: StaticString = #filePath,
-    line: UInt = #line,
-    verification: ([P.Output]) -> String
-) throws {
+    line: UInt = #line
+) throws where P.Output: Verifiable {
     guard let url = Bundle.module.url(forResource: sqlFile, withExtension: "sql") else {
         XCTFail("Could not find SQL file named \(sqlFile)", file: file, line: line)
         return
@@ -31,7 +30,15 @@ func check<P: Parser>(
         try output.append(parser.parse(state: &state))
     }
     
-    try check(contents: contents, equalTo: verification(output), prefix: prefix, file: file, line: line)
+    try check(
+        contents: contents,
+        equalTo: output
+            .map(\.verification.description)
+            .joined(separator: "\n"),
+        prefix: prefix,
+        file: file,
+        line: line
+    )
 }
 
 func check(
@@ -55,6 +62,7 @@ func assertChecks(
     var checks = checks.makeIterator()
     // The hop to String then split again is to allow multiline inputs
     var input = input.split(separator: "\n").map{ $0.trimmingCharacters(in: .whitespaces) }.makeIterator()
+    var index: Int = 0
     
     while true {
         let check = checks.next()
@@ -65,16 +73,17 @@ func assertChecks(
         }
         
         guard let check else {
-            XCTFail("'\(input ?? "")' does not exist in input", file: file, line: line)
+            XCTFail("'\(input ?? "")' does not exist in checks", file: file, line: line)
             return
         }
         
         guard let input else {
-            XCTFail("'\(check)' does not exist in checks", file: file, line: line)
+            XCTFail("'\(check)' does not exist in input", file: file, line: line)
             return
         }
         
-        XCTAssertEqual(check, input, file: file, line: line)
+        XCTAssertEqual(check, input, "Check #\(index + 1)", file: file, line: line)
+        index += 1
     }
 }
 

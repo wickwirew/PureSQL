@@ -162,6 +162,11 @@ public indirect enum Expression: Expr, Equatable {
         }
     }
     
+    public var literal: LiteralExpr? {
+        if case .literal(let l) = self { return l }
+        return nil
+    }
+    
     public func accept<V>(visitor: inout V) throws -> V.Output where V : ExprVisitor {
         return try visitor.visit(self)
     }

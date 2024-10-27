@@ -113,25 +113,71 @@ extension SelectStmtParserTests {
 
 // MARK: - Ordering Term
 
-//extension SelectStmtParserTests {
-//    func testOrderingTermOnlyExpr() {
-//        XCTAssertEqual(OrderingTerm(expr: .literal(1), order: .asc, nulls: nil), try OrderingTerm(sql: "1"))
-//        XCTAssertEqual(OrderingTerm(expr: .literal(1), order: .asc, nulls: nil), try OrderingTerm(sql: "1 ASC"))
-//        XCTAssertEqual(OrderingTerm(expr: .literal(1), order: .desc, nulls: nil), try OrderingTerm(sql: "1 DESC"))
-//    }
-//    
-//    func testOrderingTermExprWithCollation() {
-//        let collate: Expression = .postfix(PostfixExpr(lhs: .literal(1), operator: .collate("NOCASE")))
-//        XCTAssertEqual(OrderingTerm(expr: collate, order: .asc, nulls: nil), try OrderingTerm(sql: "1 COLLATE NOCASE"))
-//        XCTAssertEqual(OrderingTerm(expr: collate, order: .asc, nulls: nil), try OrderingTerm(sql: "1 COLLATE NOCASE ASC"))
-//        XCTAssertEqual(OrderingTerm(expr: collate, order: .desc, nulls: nil), try OrderingTerm(sql: "1 COLLATE NOCASE DESC"))
-//    }
-//    
-//    func testOrderingTermOnlyNulls() {
-//        XCTAssertEqual(OrderingTerm(expr: .literal(1), order: .asc, nulls: .first), try OrderingTerm(sql: "1 NULLS FIRST"))
-//        XCTAssertEqual(OrderingTerm(expr: .literal(1), order: .asc, nulls: .last), try OrderingTerm(sql: "1 NULLS LAST"))
-//    }
-//}
+extension SelectStmtParserTests {
+    func testOrderingTermOnlyExpr() throws {
+        let result = try OrderingTerm(sql: "1")
+        
+        XCTAssertEqual(.numeric(1, isInt: true), result.expr.literal?.kind)
+        XCTAssertNil(result.nulls)
+        XCTAssertEqual(.asc, result.order)
+    }
+    
+    func testOrderingTermOnlyExprAsc() throws {
+        let result = try OrderingTerm(sql: "1 ASC")
+        
+        XCTAssertEqual(.numeric(1, isInt: true), result.expr.literal?.kind)
+        XCTAssertNil(result.nulls)
+        XCTAssertEqual(.asc, result.order)
+    }
+    
+    func testOrderingTermOnlyExprDesc() throws {
+        let result = try OrderingTerm(sql: "1 DESC")
+        
+        XCTAssertEqual(.numeric(1, isInt: true), result.expr.literal?.kind)
+        XCTAssertNil(result.nulls)
+        XCTAssertEqual(.desc, result.order)
+    }
+    
+    func testOrderingTermExprWithCollation() throws {
+        let result = try OrderingTerm(sql: "1 COLLATE NOCASE")
+        
+        XCTAssertEqual("(1.0 COLLATE NOCASE)", result.expr.description)
+        XCTAssertNil(result.nulls)
+        XCTAssertEqual(.asc, result.order)
+    }
+    
+    func testOrderingTermExprWithCollationAsc() throws {
+        let result = try OrderingTerm(sql: "1 COLLATE NOCASE ASC")
+        
+        XCTAssertEqual("(1.0 COLLATE NOCASE)", result.expr.description)
+        XCTAssertNil(result.nulls)
+        XCTAssertEqual(.asc, result.order)
+    }
+    
+    func testOrderingTermExprWithCollationDesc() throws {
+        let result = try OrderingTerm(sql: "1 COLLATE NOCASE DESC")
+        
+        XCTAssertEqual("(1.0 COLLATE NOCASE)", result.expr.description)
+        XCTAssertNil(result.nulls)
+        XCTAssertEqual(.desc, result.order)
+    }
+    
+    func testOrderingTermOnlyNullsFirst() throws {
+        let result = try OrderingTerm(sql: "1 NULLS FIRST")
+        
+        XCTAssertEqual("1.0", result.expr.description)
+        XCTAssertEqual(.first, result.nulls)
+        XCTAssertEqual(.asc, result.order)
+    }
+    
+    func testOrderingTermOnlyNullsLast() throws {
+        let result = try OrderingTerm(sql: "1 NULLS LAST")
+        
+        XCTAssertEqual("1.0", result.expr.description)
+        XCTAssertEqual(.last, result.nulls)
+        XCTAssertEqual(.asc, result.order)
+    }
+}
 
 // MARK: - ResultColumn
 
@@ -261,14 +307,19 @@ extension SelectStmtParserTests {
         )
     }
     
-//    func testJoinClauseWithConstraints() {
-//        XCTAssertEqual(
-//            .join(JoinClause(table: "foo", joins: [
-//                JoinClause.Join(op: .inner(natural: false), tableOrSubquery: .init(table: "bar"), constraint: .on(.literal(1))),
-//            ])),
-//            try JoinClauseOrTableOrSubqueryParser().parse("foo INNER JOIN bar ON 1")
-//        )
-//    }
+    func testJoinClauseWithConstraints() throws {
+        guard case let .join(result) = try JoinClauseOrTableOrSubqueryParser().parse("foo INNER JOIN bar ON 1") else {
+            return XCTFail("Not a join")
+        }
+        
+        let join = try XCTUnwrap(result.joins.first)
+        let on = try XCTUnwrap(join.constraint.on)
+        
+        XCTAssertEqual(TableOrSubquery(table: "foo"), result.tableOrSubquery)
+        XCTAssertEqual(.inner(natural: false), join.op)
+        XCTAssertEqual(TableOrSubquery(table: "bar"), join.tableOrSubquery)
+        XCTAssertEqual("1.0", on.description)
+    }
     
     func testJoinClauseManyTables() {
         XCTAssertEqual(

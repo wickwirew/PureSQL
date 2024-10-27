@@ -399,6 +399,11 @@ public enum JoinConstraint: Equatable {
     case on(Expression)
     case using([Identifier])
     case none
+    
+    public var on: Expression? {
+        if case let .on(e) = self { return e }
+        return nil
+    }
 }
 
 public enum TableOrSubquery: Equatable {
@@ -496,7 +501,7 @@ public struct ColumnConstraint: Equatable {
         case notNull(ConfictClause)
         case unique(ConfictClause)
         case check(Expression)
-        case `default`(Default)
+        case `default`(Expression)
         case collate(Identifier)
         case foreignKey(ForeignKeyClause)
         case generated(Expression, GeneratedKind?)
@@ -520,11 +525,6 @@ public struct ColumnConstraint: Equatable {
         default: return false
         }
     }
-}
-
-public enum Default: Equatable {
-    case literal(LiteralExpr)
-    case expr(Expression)
 }
 
 public struct ColumnDef: Equatable {

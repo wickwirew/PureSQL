@@ -361,32 +361,50 @@ extension ParserTests {
         )
     }
     
-//    func testColumnConstraintCheck() {
-//        // TODO: These will fail once expr parsing is implemented
-//        XCTAssertEqual(
-//            ColumnConstraint(name: "checkSomething", kind: .check(.bindParameter(.unnamed))),
-//            try execute(parser: ColumnConstraintParser(), source: "CONSTRAINT checkSomething CHECK(?)")
-//        )
-//
-//        XCTAssertEqual(
-//            ColumnConstraint(name: nil, kind: .check(.bindParameter(.unnamed))),
-//            try execute(parser: ColumnConstraintParser(), source: "CHECK(?)")
-//        )
-//    }
+    func testColumnConstraintCheckNamed() throws {
+        let result = try execute(parser: ColumnConstraintParser(), source: "CONSTRAINT checkSomething CHECK(1)")
+        
+        guard case let .check(expr) = result.kind else {
+            return XCTFail("Not a CHECK")
+        }
+        
+        XCTAssertEqual("checkSomething", result.name)
+        XCTAssertEqual(.numeric(1, isInt: true), expr.literal?.kind)
+    }
     
-//    func testColumnConstraintDefault() {
-//        // TODO: These will fail once expr parsing is implemented
-//
-//        XCTAssertEqual(
-//            ColumnConstraint(name: "setDefault", kind: .default(.literal(.numeric(1, isInt: true)))),
-//            try execute(parser: ColumnConstraintParser(), source: "CONSTRAINT setDefault DEFAULT 1")
-//        )
-//
-//        XCTAssertEqual(
-//            ColumnConstraint(name: nil, kind: .default(.expr(.bindParameter(.unnamed)))),
-//            try execute(parser: ColumnConstraintParser(), source: "DEFAULT (?)")
-//        )
-//    }
+    func testColumnConstraintCheckUnnamed() throws {
+        let result = try execute(parser: ColumnConstraintParser(), source: "CHECK(1)")
+        
+        guard case let .check(expr) = result.kind else {
+            return XCTFail("Not a CHECK")
+        }
+        
+        XCTAssertNil(result.name)
+        XCTAssertEqual(.numeric(1, isInt: true), expr.literal?.kind)
+    }
+    
+    func testColumnConstraintDefaultNamed() throws {
+        let result = try execute(parser: ColumnConstraintParser(), source: "CONSTRAINT setDefault DEFAULT 1")
+        
+        guard case let .default(expr) = result.kind else {
+            return XCTFail("Not a CHECK")
+        }
+        
+        XCTAssertEqual("setDefault", result.name)
+        XCTAssertEqual(.numeric(1, isInt: true), expr.literal?.kind)
+    }
+    
+    func testColumnConstraintDefaultUnnamed() throws {
+        let result = try execute(parser: ColumnConstraintParser(), source: "DEFAULT (1 + 2)")
+        
+        guard case let .default(expr) = result.kind else {
+            return XCTFail("Not a CHECK")
+        }
+        
+        
+        XCTAssertNil(result.name)
+        XCTAssertEqual("(1.0 + 2.0)", expr.description)
+    }
     
     func testColumnConstraintCollate() {
         XCTAssertEqual(
@@ -400,17 +418,21 @@ extension ParserTests {
         )
     }
     
-//    func testColumnConstraintGenerated() {
-//        XCTAssertEqual(
-//            ColumnConstraint(name: "generateTheColumn", kind: .generated(.bindParameter(.unnamed), .virtual)),
-//            try execute(parser: ColumnConstraintParser(), source: "CONSTRAINT generateTheColumn GENERATED ALWAYS AS (?) VIRTUAL")
-//        )
-//
-//        XCTAssertEqual(
-//            ColumnConstraint(name: nil, kind: .generated(.bindParameter(.unnamed), .stored)),
-//            try execute(parser: ColumnConstraintParser(), source: "GENERATED ALWAYS AS (?) STORED")
-//        )
-//    }
+    func testColumnConstraintGenerated() throws {
+        let result = try execute(
+            parser: ColumnConstraintParser(),
+            source: "CONSTRAINT generateTheColumn GENERATED ALWAYS AS (1) VIRTUAL"
+        )
+        
+        XCTAssertEqual("generateTheColumn", result.name)
+        
+        guard case let .generated(expr, kind) = result.kind else {
+            return XCTFail("Not a Generated")
+        }
+        
+        XCTAssertEqual(.numeric(1, isInt: true), expr.literal?.kind)
+        XCTAssertEqual(.virtual, kind)
+    }
 }
 
 // MARK: - Column Definition
@@ -483,19 +505,7 @@ extension ParserTests {
 
 extension ParserTests {
     func testFilecheck() throws {
-        try check(sqlFile: "Expression", parser: ExprParser(), verification: \.description)
-    }
-    
-    func testFilecheck2() throws {
-        try check(sqlFile: "Expression", parser: ExprParser()) { exprs in
-            let result = exprs.map { expr in
-                var verifier = ExprVerifier2()
-                try! expr.accept(visitor: &verifier)
-                return verifier.builder.result
-            }.joined(separator: "\n")
-            print(result)
-            return result
-        }
+        try check(sqlFile: "Expression", parser: ExprParser())
     }
 }
 
