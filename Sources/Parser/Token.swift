@@ -361,7 +361,6 @@ struct Token {
         case gte
         
         // Comments
-        case dashDash
         case forwardSlashStar
         case starForwardSlash
         
@@ -569,7 +568,6 @@ struct Token {
             case .lte: "<="
             case .gt: ">"
             case .gte: ">="
-            case .dashDash: "--"
             case .forwardSlashStar: "/*"
             case .starForwardSlash: "*/"
             case .eof: "EOF"

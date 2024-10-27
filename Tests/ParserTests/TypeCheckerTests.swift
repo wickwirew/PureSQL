@@ -44,7 +44,7 @@ class TypeCheckerTests: XCTestCase {
         return try expr.accept(visitor: &typeChecker)
     }
     
-    private func parse(_ source: String) throws -> Expression {
+    private func parse(_ source: String) throws -> Schema.Expression {
         return try ExprParser().parse(source)
     }
 }

@@ -363,7 +363,6 @@ extension ParserTests {
     
 //    func testColumnConstraintCheck() {
 //        // TODO: These will fail once expr parsing is implemented
-//        
 //        XCTAssertEqual(
 //            ColumnConstraint(name: "checkSomething", kind: .check(.bindParameter(.unnamed))),
 //            try execute(parser: ColumnConstraintParser(), source: "CONSTRAINT checkSomething CHECK(?)")
@@ -374,15 +373,15 @@ extension ParserTests {
 //            try execute(parser: ColumnConstraintParser(), source: "CHECK(?)")
 //        )
 //    }
-//    
+    
 //    func testColumnConstraintDefault() {
 //        // TODO: These will fail once expr parsing is implemented
-//        
+//
 //        XCTAssertEqual(
 //            ColumnConstraint(name: "setDefault", kind: .default(.literal(.numeric(1, isInt: true)))),
 //            try execute(parser: ColumnConstraintParser(), source: "CONSTRAINT setDefault DEFAULT 1")
 //        )
-//        
+//
 //        XCTAssertEqual(
 //            ColumnConstraint(name: nil, kind: .default(.expr(.bindParameter(.unnamed)))),
 //            try execute(parser: ColumnConstraintParser(), source: "DEFAULT (?)")
@@ -406,7 +405,7 @@ extension ParserTests {
 //            ColumnConstraint(name: "generateTheColumn", kind: .generated(.bindParameter(.unnamed), .virtual)),
 //            try execute(parser: ColumnConstraintParser(), source: "CONSTRAINT generateTheColumn GENERATED ALWAYS AS (?) VIRTUAL")
 //        )
-//        
+//
 //        XCTAssertEqual(
 //            ColumnConstraint(name: nil, kind: .generated(.bindParameter(.unnamed), .stored)),
 //            try execute(parser: ColumnConstraintParser(), source: "GENERATED ALWAYS AS (?) STORED")
@@ -479,6 +478,24 @@ extension ParserTests {
             AlterTableStatement(name: "user", schemaName: nil, kind: .dropColumn("age")),
             try execute(parser: AlterTableParser(), source: "ALTER TABLE user DROP age")
         )
+    }
+}
+
+extension ParserTests {
+    func testFilecheck() throws {
+        try check(sqlFile: "Expression", parser: ExprParser(), verification: \.description)
+    }
+    
+    func testFilecheck2() throws {
+        try check(sqlFile: "Expression", parser: ExprParser()) { exprs in
+            let result = exprs.map { expr in
+                var verifier = ExprVerifier2()
+                try! expr.accept(visitor: &verifier)
+                return verifier.builder.result
+            }.joined(separator: "\n")
+            print(result)
+            return result
+        }
     }
 }
 

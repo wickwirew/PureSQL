@@ -55,6 +55,10 @@ let package = Package(
             ]
         ),
         
-        .testTarget(name: "ParserTests", dependencies: ["Parser"]),
+        .testTarget(
+            name: "ParserTests",
+            dependencies: ["Parser"],
+            resources: [.process("SQL")]
+        ),
     ]
 )

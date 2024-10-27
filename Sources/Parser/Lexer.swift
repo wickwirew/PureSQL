@@ -67,7 +67,9 @@ struct Lexer {
         case (">", ">"): return consumeDouble(of: .shiftRight)
         case (">", "="): return consumeDouble(of: .gte)
         case ("|", "|"): return consumeDouble(of: .concat)
-        case ("-", "-"): return consumeDouble(of: .dashDash)
+        case ("-", "-"):
+            skipSingleLineComment()
+            return try next()
         case ("=", "="): return consumeDouble(of: .doubleEqual)
         case ("!", "="): return consumeDouble(of: .notEqual)
         case ("<", ">"): return consumeDouble(of: .notEqual2)
@@ -304,5 +306,14 @@ struct Lexer {
         }
         
         return double
+    }
+    
+    private mutating func skipSingleLineComment() {
+        advance()
+        advance()
+        
+        while let current, !current.isNewline {
+            advance()
+        }
     }
 }

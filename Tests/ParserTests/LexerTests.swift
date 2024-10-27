@@ -32,7 +32,7 @@ class LexerTests: XCTestCase {
     }
     
     func testOperators() throws {
-        let tokens = try tokens(of: "*/ /* << <= >> >= || -- == != <> -> ->> * . ( ) , + - / % < > & | ^ ~")
+        let tokens = try tokens(of: "*/ /* << <= >> >= || == != <> -> ->> * . ( ) , + - / % < > & | ^ ~")
         
         XCTAssertEqual(tokens, [
             .starForwardSlash,
@@ -42,7 +42,6 @@ class LexerTests: XCTestCase {
             .shiftRight,
             .gte,
             .concat,
-            .dashDash,
             .doubleEqual,
             .notEqual,
             .notEqual2,
