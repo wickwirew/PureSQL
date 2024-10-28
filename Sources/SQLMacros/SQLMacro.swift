@@ -40,22 +40,18 @@ public struct SchemaMacro: DeclarationMacro {
         let schema = try SchemaBuilder
             .build(from: values.map(\.script).joined(separator: ";"))
         
-        return [
-            DeclSyntax(StructDeclSyntax(name: "Schema") {
-                for table in schema.tables.values {
-                    StructDeclSyntax(name: "\(raw: table.name.name.name.capitalized)") {
-                        for column in table.columns.values {
-                            let isNonOptional = column.constraints
-                                .contains { $0.isPkConstraint || $0.isNotNullConstraint }
-                            
-                            """
-                            let \(raw: column.name): \(raw: column.type.swiftType)\(raw: isNonOptional ? "" : "?")
-                            """
-                        }
-                    }
+        return schema.tables.values.map { table in
+            DeclSyntax(StructDeclSyntax(name: "\(raw: table.name.name.name.capitalized)") {
+                for column in table.columns.values {
+                    let isNonOptional = column.constraints
+                        .contains { $0.isPkConstraint || $0.isNotNullConstraint }
+                    
+                    """
+                    let \(raw: column.name): \(raw: column.type.swiftType)\(raw: isNonOptional ? "" : "?")
+                    """
                 }
             })
-        ]
+        }
     }
 }
 

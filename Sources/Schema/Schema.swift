@@ -371,20 +371,6 @@ public struct JoinClause: Equatable {
 }
 
 public enum JoinOperator: Equatable {
-    
-//    case natural
-//    case naturalLeft
-//    case naturalLeftOuter
-//    case naturalRight
-//    case naturalFull
-//    case naturalInner
-//    case left
-//    case leftOuter
-//    case right
-//    case full
-//    case inner
-    
-    
     case comma
     case join
     case natural

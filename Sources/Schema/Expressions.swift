@@ -365,7 +365,7 @@ public struct CastExpr: Expr, Equatable, CustomStringConvertible {
     }
 }
 
-public struct BindParameter: Expr, Equatable {
+public struct BindParameter: Expr, Hashable {
     public let kind: Kind
     public let range: Range<String.Index>
     
@@ -374,7 +374,7 @@ public struct BindParameter: Expr, Equatable {
         self.range = range
     }
     
-    public enum Kind: Equatable {
+    public enum Kind: Hashable {
         case named(Identifier)
         case unnamed
     }

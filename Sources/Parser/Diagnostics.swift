@@ -6,6 +6,7 @@
 //
 
 import Schema
+
 public struct Diagnostic: Error {
     public let message: String
     public let range: Range<String.Index>
@@ -29,6 +30,35 @@ public struct Diagnostic: Error {
         self.message = "Incorrect type, expected '\(expected.name)' got '\(actual.name)'"
         self.range = range
         self.suggestion = expected.name.description
+    }
+    
+    static func placeholder(name: String) -> String {
+        // So Xcode doesnt make this a placeholder
+        return "<\("#name#>")"
+    }
+}
+
+extension Diagnostic {
+    static func incorrectType(
+        _ actual: TypeName,
+        expected: TypeName,
+        at range: Range<String.Index>
+    ) -> Diagnostic {
+        Diagnostic(
+            "Incorrect type, expected '\(expected.name)' got '\(actual.name)'",
+            at: range,
+            suggestion: expected.name.description
+        )
+    }
+    
+    static func expectedNumber(
+        _ actual: TypeName,
+        at range: Range<String.Index>
+    ) -> Diagnostic {
+        Diagnostic(
+            "Incorrect type, expected number got '\(actual.name)'",
+            at: range
+        )
     }
 }
 

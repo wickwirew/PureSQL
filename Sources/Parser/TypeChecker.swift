@@ -11,14 +11,19 @@ import Schema
 public struct Scope {
     private(set) var tables: [TableName: TableSchema] = [:]
     
+    private let schema: DatabaseSchema
+    
     enum ColumnResult: Equatable {
         case found(ColumnDef)
         case ambiguous
         case notFound
     }
     
-    mutating func include(table: TableSchema) {
-        tables[table.name] = table
+    mutating func include(schema: Identifier?, table: Identifier) -> Bool {
+        let name = TableName(schema: schema, name: table)
+        guard let table = self.schema.tables[name] else { return false }
+        tables[name] = table
+        return true
     }
     
     func column(name: Identifier) -> ColumnResult {
@@ -49,6 +54,23 @@ public struct Scope {
     }
 }
 
+public struct CompiledQuery {
+    public let input: [Field<BindParameter>]
+    public let output: [Field<Substring>]
+    
+    public struct Field<Name> {
+        public let name: Name
+        public let type: TypeName
+        public let nullable: Bool
+        
+        public init(name: Name, type: TypeName, nullable: Bool) {
+            self.name = name
+            self.type = type
+            self.nullable = nullable
+        }
+    }
+}
+
 public struct TypeChecker {
     private let scope: Scope
     private var diagnostics: Diagnostics
@@ -59,8 +81,44 @@ public struct TypeChecker {
     }
 }
 
+public struct TypeVariable: Hashable, CustomStringConvertible {
+    public let n: Int
+    
+    init(_ n: Int) {
+        self.n = n
+    }
+    
+    public var description: String {
+        return "τ\(n)"
+    }
+}
+
+public enum Constraint {
+    case equal(Ty, Ty)
+    case numeric(Ty)
+}
+
+public typealias Substitution = [TypeVariable: TypeName]
+public typealias Names = [BindParameter: Substring]
+
+public enum Ty: CustomStringConvertible {
+    case nominal(TypeName)
+    case `var`(TypeVariable)
+    case error
+    
+    public var description: String {
+        return switch self {
+        case .nominal(let typeName): typeName.description
+        case .var(let typeVariable): typeVariable.description
+        case .error: "<<error>>"
+        }
+    }
+}
+
 extension TypeChecker: ExprVisitor {
     public typealias Output = TypeName
+    
+    public typealias Output2 = ([Constraint], Ty)
     
     public mutating func visit(_ expr: LiteralExpr) throws -> TypeName {
         return switch expr.kind {
@@ -88,10 +146,17 @@ extension TypeChecker: ExprVisitor {
         case .found(let column):
             return column.type
         case .ambiguous:
-            // TODO: Add dianostic
+            diagnostics.add(.init(
+                "Column '\(expr)' is ambiguous in the current context",
+                at: expr.range,
+                suggestion: "\(Diagnostic.placeholder(name: "tableName")).\(expr)"
+            ))
             return .any
         case .notFound:
-            // TODO: Add dianostic
+            diagnostics.add(.init(
+                "No such column '\(expr)' available in current context",
+                at: expr.range
+            ))
             return .any
         }
     }
@@ -136,15 +201,15 @@ extension TypeChecker: ExprVisitor {
         let value = try expr.value.accept(visitor: &self)
         
         if value != .bool {
-//            diagnostics.add(Diagnostic(expected: .bool, got: value, at: expr.range))
+            diagnostics.add(.incorrectType(value, expected: .bool, at: expr.range))
         }
         
         if try !expr.lower.accept(visitor: &self).isNumber {
-            fatalError()
+            diagnostics.add(.expectedNumber(value, at: expr.range))
         }
         
         if try !expr.upper.accept(visitor: &self).isNumber {
-            fatalError()
+            diagnostics.add(.expectedNumber(value, at: expr.range))
         }
         
         return .bool
