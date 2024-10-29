@@ -343,7 +343,7 @@ struct BindParameterParser: Parser {
                 let paramRange = try state.take()
                 return BindParameter(kind: .named(Identifier(name: param, range: paramRange.range)), range: token.range)
             } else {
-                return BindParameter(kind: .unnamed, range: token.range)
+                return BindParameter(kind: .unnamed(state.nextParameterIndex()), range: token.range)
             }
         case .colon:
             let symbol = try parseSymbol(state: &state)

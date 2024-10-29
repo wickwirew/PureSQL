@@ -127,7 +127,7 @@ class CreateTableParsingTests: XCTestCase {
         XCTAssertNil(agePlus1Generated.name)
         switch agePlus1Generated.kind {
         case .generated(.bindParameter(let bind), .virtual):
-            XCTAssertEqual(bind.kind, .unnamed)
+            XCTAssertEqual(bind.kind, .unnamed(0))
         default:
             XCTFail()
         }

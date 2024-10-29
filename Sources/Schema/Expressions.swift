@@ -376,7 +376,7 @@ public struct BindParameter: Expr, Hashable {
     
     public enum Kind: Hashable {
         case named(Identifier)
-        case unnamed
+        case unnamed(Int)
     }
     
     public func accept<V: ExprVisitor>(visitor: inout V) throws -> V.Output {

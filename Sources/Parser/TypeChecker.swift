@@ -161,14 +161,15 @@ public enum Ty: Equatable, CustomStringConvertible {
         }
     }
     
+    /// Unifies the two types together. Will produce a substitution if one
+    /// is a type variable. If there are two nominal types they and
+    /// they can be coerced en empty substitution will be return with
+    /// the coerced type.
     func unify(with ty : Ty) -> (Substitution, Ty) {
+        // If they are the same, no need to unify
         guard self != ty else { return ([:], self) }
         
         switch (self, ty) {
-//        case let (.arrow(l, r), .arrow(l2, r2)):
-//          let subst1 = try self.unify(l, with: l2)
-//          let subst2 = try self.unify(r.apply(subst1), with: r2.apply(subst1))
-//          return subst1.merging(subst2, uniquingKeysWith: {$1})
         case let (.var(tv), ty):
             return ([tv: ty], ty)
         case let (ty, .var(tv)):
@@ -185,8 +186,13 @@ public enum Ty: Equatable, CustomStringConvertible {
             case (_, .text): return ([:], .text)
             default: return ([:], .any)
             }
+        case let (.error, ty):
+            return ([:], ty)
+        case let (ty, .error):
+            return ([:], ty)
         default:
-            fatalError("Failed to unify")
+            // Unification failed, return an error type
+            return ([:], .error)
         }
       }
 }
@@ -246,13 +252,13 @@ extension TypeChecker: ExprVisitor {
         case .plus, .minus, .multiply, .divide, .bitwuseOr,
                 .bitwiseAnd, .shl, .shr, .mod:
             let (sub, ty) = lTy.unify(with: rTy)
-            return (ty, lSub.merging(rSub, uniquingKeysWith: { $1 }).merging(sub, uniquingKeysWith: { $1 }))
+            return (ty, lSub.merging(rSub, uniquingKeysWith: {$1}).merging(sub, uniquingKeysWith: {$1}))
         // Comparisons
         case .eq, .eq2, .neq, .neq2, .lt, .gt, .lte, .gte, .is,
                 .notNull, .notnull, .in, .like, .isNot, .isDistinctFrom,
                 .isNotDistinctFrom, .between, .and, .or, .isnull:
             let (sub, _) = lTy.unify(with: rTy)
-            return (.bool, lSub.merging(rSub, uniquingKeysWith: { $1 }).merging(sub, uniquingKeysWith: { $1 }))
+            return (.bool, lSub.merging(rSub, uniquingKeysWith: {$1}).merging(sub, uniquingKeysWith: {$1}))
 
 //        case .tilde: return .any
 //        case .collate: return lhs
@@ -310,23 +316,5 @@ extension TypeChecker: ExprVisitor {
     
     public mutating func visit(_ expr: GroupedExpr) throws -> (Ty, Substitution) {
         fatalError()
-    }
-}
-
-extension TypeName {
-    func unify(with typeName: TypeName) -> TypeName {
-        guard self.resolved != typeName.resolved else { return  self }
-        
-        switch (resolved, typeName.resolved) {
-        case (.integer, .int): return .integer
-        case (.int, .integer): return .integer
-        case (.integer, .real): return .real
-        case (.real, .integer): return .real
-        case (.int, .real): return .real
-        case (.real, .int): return .real
-        case (.text, _): return .text
-        case (_, .text): return .text
-        default: return .any
-        }
     }
 }

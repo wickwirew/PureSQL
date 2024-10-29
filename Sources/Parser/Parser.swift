@@ -22,6 +22,7 @@ struct ParserState {
     private(set) var current: Token
     private(set) var peek: Token
     private(set) var peek2: Token
+    private(set) var parameterIndex: Int = 0
     
     init(_ lexer: Lexer) throws {
         self.lexer = lexer
@@ -107,5 +108,10 @@ extension ParserState {
     
     func `is`(of kind: Token.Kind) -> Bool {
         return current.kind == kind
+    }
+    
+    mutating func nextParameterIndex() -> Int {
+        defer { parameterIndex += 1 }
+        return parameterIndex
     }
 }

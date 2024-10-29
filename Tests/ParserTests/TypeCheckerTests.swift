@@ -39,7 +39,7 @@ class TypeCheckerTests: XCTestCase {
     }
     
     func testTypeCheckBind() {
-        XCTAssertEqual(.integer, try check(":fart = 1 + :foo > :bar"))
+        XCTAssertEqual(.bool, try check(":fart = 1.0 + :foo > :bar + ?"))
     }
     
     private func check(_ source: String, in scope: Scope = Scope()) throws -> TypeName {
@@ -49,8 +49,9 @@ class TypeCheckerTests: XCTestCase {
         
         print(result)
         print(sub[typeChecker.tyVarLookup[.named("foo")]!])
-        print(sub[typeChecker.tyVarLookup[.named("bar")]!])
+        print(Ty.var(typeChecker.tyVarLookup[.named("bar")]!).apply(sub))
         print(sub[typeChecker.tyVarLookup[.named("fart")]!])
+        print(sub[typeChecker.tyVarLookup[.unnamed(0)]!])
         
         guard case let .nominal(ty) = result else {
             fatalError()

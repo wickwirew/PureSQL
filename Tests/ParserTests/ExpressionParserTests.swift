@@ -24,7 +24,7 @@ class ExpressionParserTests: XCTestCase {
 
 extension ExpressionParserTests {
     func testBindParameters() {
-        XCTAssertEqual(.unnamed, try execute(parser: BindParameterParser(), source: "?").kind)
+        XCTAssertEqual(.unnamed(0), try execute(parser: BindParameterParser(), source: "?").kind)
         XCTAssertEqual(.named("variable"), try execute(parser: BindParameterParser(), source: ":variable").kind)
         XCTAssertEqual(.named("variable"), try execute(parser: BindParameterParser(), source: "@variable").kind)
         XCTAssertEqual(.named("variable"), try execute(parser: BindParameterParser(), source: "$variable").kind)
