@@ -57,6 +57,28 @@ class TypeCheckerTests: XCTestCase {
         XCTAssertEqual("bar", solution.name(for: 0))
     }
     
+    func testUnnamedBindParamNameNotRightNextToColumn() throws {
+        let scope = try scope(table: "foo", schema: """
+        CREATE TABLE foo(bar INTEGER);
+        """)
+        
+        let solution = try solution(for: "bar + 1 = ?", in: scope)
+        XCTAssertEqual(.bool, solution.type)
+        XCTAssertEqual(.integer, solution.type(for: .unnamed(0)))
+        XCTAssertEqual("bar", solution.name(for: 0))
+    }
+    
+    func testUnnamedBindParamNameNotRightNextToColumn2() throws {
+        let scope = try scope(table: "foo", schema: """
+        CREATE TABLE foo(bar INTEGER);
+        """)
+        
+        let solution = try solution(for: "1 + bar = ?", in: scope)
+        XCTAssertEqual(.bool, solution.type)
+        XCTAssertEqual(.integer, solution.type(for: .unnamed(0)))
+        XCTAssertEqual("bar", solution.name(for: 0))
+    }
+    
     func scope(table: String, schema: String) throws -> Scope {
         let schema = try SchemaBuilder.build(from: schema)
         guard let table = schema.tables[TableName(schema: .main, name: Identifier(stringLiteral: table))] else { fatalError() }

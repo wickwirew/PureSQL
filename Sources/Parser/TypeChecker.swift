@@ -234,6 +234,10 @@ struct Names {
             var map = map
             map[index] = name
             return Names(last: .none, map: map)
+        case (.none, _):
+            return other
+        case (_, .none):
+            return self
         default:
             return self
         }
@@ -357,10 +361,11 @@ extension TypeChecker: ExprVisitor {
     }
     
     mutating func visit(_ expr: BetweenExpr) throws -> (Ty, Substitution, Names) {
-        fatalError()
-//        let (vTy, vSub) = try expr.value.accept(visitor: &self)
+//        let (vTy, vSub, vNames) = try expr.value.accept(visitor: &self)
+//        let (lTy, lSub, lNames) = try expr.value.accept(visitor: &self)
+//        let (rTy, rSub, rNames) = try expr.value.accept(visitor: &self)
 //        let sub = vTy.unify(with: .bool)
-        
+        fatalError()
 //        if value != .bool {
 //            diagnostics.add(.incorrectType(value, expected: .bool, at: expr.range))
 //        }
