@@ -26,7 +26,7 @@ public struct TypeName: Equatable, CustomStringConvertible {
         self.resolved = Resolved(name.description)
     }
     
-    init(name: Identifier, args: Args?, resolved: Resolved) {
+    public init(name: Identifier, args: Args?, resolved: Resolved) {
         self.name = name
         self.args = args
         self.resolved = resolved

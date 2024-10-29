@@ -38,10 +38,25 @@ class TypeCheckerTests: XCTestCase {
         XCTAssertEqual(.bool, try check("1 == 1"))
     }
     
-    private func check(_ source: String, in scope: Scope = Scope(tables: [:])) throws -> TypeName {
+    func testTypeCheckBind() {
+        XCTAssertEqual(.integer, try check(":fart = 1 + :foo > :bar"))
+    }
+    
+    private func check(_ source: String, in scope: Scope = Scope()) throws -> TypeName {
         let expr = try parse(source)
         var typeChecker = TypeChecker(scope: scope)
-        return try expr.accept(visitor: &typeChecker)
+        let (result, sub) = try expr.accept(visitor: &typeChecker)
+        
+        print(result)
+        print(sub[typeChecker.tyVarLookup[.named("foo")]!])
+        print(sub[typeChecker.tyVarLookup[.named("bar")]!])
+        print(sub[typeChecker.tyVarLookup[.named("fart")]!])
+        
+        guard case let .nominal(ty) = result else {
+            fatalError()
+        }
+        
+        return ty
     }
     
     private func parse(_ source: String) throws -> Schema.Expression {
