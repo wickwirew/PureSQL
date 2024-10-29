@@ -8,7 +8,7 @@
 import OrderedCollections
 import Schema
 
-public struct Scope {
+struct Scope {
     private(set) var tables: [TableName: TableSchema] = [:]
     private let schema: DatabaseSchema
     
@@ -58,16 +58,16 @@ public struct Scope {
     }
 }
 
-public struct CompiledQuery {
-    public let input: [Field<BindParameter>]
-    public let output: [Field<Substring>]
+struct CompiledQuery {
+    let input: [Field<BindParameter>]
+    let output: [Field<Substring>]
     
-    public struct Field<Name> {
-        public let name: Name
-        public let type: TypeName
-        public let nullable: Bool
+    struct Field<Name> {
+        let name: Name
+        let type: TypeName
+        let nullable: Bool
         
-        public init(name: Name, type: TypeName, nullable: Bool) {
+        init(name: Name, type: TypeName, nullable: Bool) {
             self.name = name
             self.type = type
             self.nullable = nullable
@@ -92,13 +92,13 @@ struct Solution {
     }
 }
 
-public struct TypeChecker {
+struct TypeChecker {
     private let scope: Scope
     private var diagnostics: Diagnostics
     private var tyVars = 0
     var tyVarLookup: [BindParameter.Kind: TypeVariable] = [:]
     
-    public init(scope: Scope, diagnostics: Diagnostics = Diagnostics()) {
+    init(scope: Scope, diagnostics: Diagnostics = Diagnostics()) {
         self.scope = scope
         self.diagnostics = diagnostics
     }
@@ -116,40 +116,40 @@ public struct TypeChecker {
     }
 }
 
-public struct TypeVariable: Hashable, CustomStringConvertible {
-    public let n: Int
+struct TypeVariable: Hashable, CustomStringConvertible {
+    let n: Int
     
     init(_ n: Int) {
         self.n = n
     }
     
-    public var description: String {
+    var description: String {
         return "τ\(n)"
     }
 }
 
-public enum Constraint {
+enum Constraint {
     case equal(Ty, Ty)
     case numeric(Ty)
 }
 
-public typealias Substitution = [TypeVariable: Ty]
-public typealias Names = [Int: Substring]
+typealias Substitution = [TypeVariable: Ty]
+typealias Names = [Int: Substring]
 
-public enum Ty: Equatable, CustomStringConvertible {
+enum Ty: Equatable, CustomStringConvertible {
     case nominal(TypeName)
     case `var`(TypeVariable)
     case error
     
-    public static let text: Ty = .nominal(TypeName(name: "TEXT", args: nil, resolved: .text))
-    public static let int: Ty = .nominal(TypeName(name: "INT", args: nil, resolved: .int))
-    public static let integer: Ty = .nominal(TypeName(name: "INTEGER", args: nil, resolved: .integer))
-    public static let real: Ty = .nominal(TypeName(name: "REAL", args: nil, resolved: .real))
-    public static let blob: Ty = .nominal(TypeName(name: "BLOB", args: nil, resolved: .blob))
-    public static let any: Ty = .nominal(TypeName(name: "ANY", args: nil, resolved: .any))
-    public static let bool: Ty = .nominal(TypeName(name: "BOOL", args: nil, resolved: .int))
+    static let text: Ty = .nominal(TypeName(name: "TEXT", args: nil, resolved: .text))
+    static let int: Ty = .nominal(TypeName(name: "INT", args: nil, resolved: .int))
+    static let integer: Ty = .nominal(TypeName(name: "INTEGER", args: nil, resolved: .integer))
+    static let real: Ty = .nominal(TypeName(name: "REAL", args: nil, resolved: .real))
+    static let blob: Ty = .nominal(TypeName(name: "BLOB", args: nil, resolved: .blob))
+    static let any: Ty = .nominal(TypeName(name: "ANY", args: nil, resolved: .any))
+    static let bool: Ty = .nominal(TypeName(name: "BOOL", args: nil, resolved: .int))
     
-    public var description: String {
+    var description: String {
         return switch self {
         case .nominal(let typeName): typeName.description
         case .var(let typeVariable): typeVariable.description
@@ -218,7 +218,7 @@ public enum Ty: Equatable, CustomStringConvertible {
 }
 
 extension TypeChecker: ExprVisitor {
-    public mutating func visit(_ expr: LiteralExpr) throws -> (Ty, Substitution) {
+    mutating func visit(_ expr: LiteralExpr) throws -> (Ty, Substitution) {
         return switch expr.kind {
         case .numeric(_, let isInt): (isInt ? .integer : .real, [:])
         case .string: (.text, [:])
@@ -229,11 +229,11 @@ extension TypeChecker: ExprVisitor {
         }
     }
     
-    public mutating func visit(_ expr: BindParameter) throws -> (Ty, Substitution) {
+    mutating func visit(_ expr: BindParameter) throws -> (Ty, Substitution) {
         return (.var(freshTyVar(for: expr)), [:])
     }
     
-    public mutating func visit(_ expr: ColumnExpr) throws -> (Ty, Substitution) {
+    mutating func visit(_ expr: ColumnExpr) throws -> (Ty, Substitution) {
         let result: Scope.ColumnResult = if let table = expr.table {
             scope.column(schema: expr.schema, table: table, name: expr.column)
         } else {
@@ -259,11 +259,11 @@ extension TypeChecker: ExprVisitor {
         }
     }
     
-    public mutating func visit(_ expr: PrefixExpr) throws -> (Ty, Substitution) {
+    mutating func visit(_ expr: PrefixExpr) throws -> (Ty, Substitution) {
         return try expr.rhs.accept(visitor: &self)
     }
     
-    public mutating func visit(_ expr: InfixExpr) throws -> (Ty, Substitution) {
+    mutating func visit(_ expr: InfixExpr) throws -> (Ty, Substitution) {
         let (lTy, lSub) = try expr.lhs.accept(visitor: &self)
         let (rTy, rSub) = try expr.rhs.accept(visitor: &self)
         
@@ -295,11 +295,11 @@ extension TypeChecker: ExprVisitor {
         }
     }
     
-    public mutating func visit(_ expr: PostfixExpr) throws -> (Ty, Substitution) {
+    mutating func visit(_ expr: PostfixExpr) throws -> (Ty, Substitution) {
         return try expr.lhs.accept(visitor: &self)
     }
     
-    public mutating func visit(_ expr: BetweenExpr) throws -> (Ty, Substitution) {
+    mutating func visit(_ expr: BetweenExpr) throws -> (Ty, Substitution) {
         fatalError()
 //        let value = try expr.value.accept(visitor: &self)
 //        
@@ -318,23 +318,23 @@ extension TypeChecker: ExprVisitor {
 //        return .bool
     }
     
-    public mutating func visit(_ expr: FunctionExpr) throws -> (Ty, Substitution) {
+    mutating func visit(_ expr: FunctionExpr) throws -> (Ty, Substitution) {
         fatalError()
     }
     
-    public mutating func visit(_ expr: CastExpr) throws -> (Ty, Substitution) {
+    mutating func visit(_ expr: CastExpr) throws -> (Ty, Substitution) {
         fatalError()
     }
     
-    public mutating func visit(_ expr: Expression) throws -> (Ty, Substitution) {
+    mutating func visit(_ expr: Expression) throws -> (Ty, Substitution) {
         fatalError()
     }
     
-    public mutating func visit(_ expr: CaseWhenThenExpr) throws -> (Ty, Substitution) {
+    mutating func visit(_ expr: CaseWhenThenExpr) throws -> (Ty, Substitution) {
         fatalError()
     }
     
-    public mutating func visit(_ expr: GroupedExpr) throws -> (Ty, Substitution) {
+    mutating func visit(_ expr: GroupedExpr) throws -> (Ty, Substitution) {
         fatalError()
     }
 }
