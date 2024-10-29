@@ -35,7 +35,7 @@ struct Scope {
         
         for table in tables.values {
             if let column = table.columns[name] {
-                if result == .notFound {
+                if result != .notFound {
                     return .ambiguous
                 }
                 
@@ -77,8 +77,21 @@ struct CompiledQuery {
 
 struct Solution {
     let type: Ty
-    let substitution: Substitution
-    let tyVarLookup: [BindParameter.Kind: TypeVariable]
+    private let names: Names
+    private let substitution: Substitution
+    private let tyVarLookup: [BindParameter.Kind: TypeVariable]
+    
+    init(
+        type: Ty,
+        names: Names,
+        substitution: Substitution,
+        tyVarLookup: [BindParameter.Kind : TypeVariable]
+    ) {
+        self.type = type
+        self.names = names
+        self.substitution = substitution
+        self.tyVarLookup = tyVarLookup
+    }
     
     func type(for param: BindParameter.Kind) -> TypeName {
         guard let tv = tyVarLookup[param] else { fatalError("TODO: Throw real error") }
@@ -90,29 +103,9 @@ struct Solution {
         case .error: return .any
         }
     }
-}
-
-struct TypeChecker {
-    private let scope: Scope
-    private var diagnostics: Diagnostics
-    private var tyVars = 0
-    var tyVarLookup: [BindParameter.Kind: TypeVariable] = [:]
     
-    init(scope: Scope, diagnostics: Diagnostics = Diagnostics()) {
-        self.scope = scope
-        self.diagnostics = diagnostics
-    }
-    
-    private mutating func freshTyVar(for param: BindParameter) -> TypeVariable {
-        defer { tyVars += 1 }
-        let ty = TypeVariable(tyVars)
-        tyVarLookup[param.kind] = ty
-        return ty
-    }
-    
-    mutating func check<E: Expr>(_ expr: E) throws -> Solution {
-        let (ty, sub) = try expr.accept(visitor: &self)
-        return Solution(type: ty, substitution: sub, tyVarLookup: tyVarLookup)
+    func name(for index: Int) -> Substring {
+        return names.map[index] ?? "value"
     }
 }
 
@@ -128,13 +121,7 @@ struct TypeVariable: Hashable, CustomStringConvertible {
     }
 }
 
-enum Constraint {
-    case equal(Ty, Ty)
-    case numeric(Ty)
-}
-
 typealias Substitution = [TypeVariable: Ty]
-typealias Names = [Int: Substring]
 
 enum Ty: Equatable, CustomStringConvertible {
     case nominal(TypeName)
@@ -217,23 +204,88 @@ enum Ty: Equatable, CustomStringConvertible {
       }
 }
 
+struct Names {
+    let last: Name
+    let map: [Int: Substring]
+    
+    enum Name {
+        case needed(index: Int)
+        case some(Substring)
+        case none
+    }
+    
+    static let none = Names(last: .none, map: [:])
+    
+    static func some(_ value: Substring) -> Names {
+        return Names(last: .some(value), map: [:])
+    }
+    
+    static func needed(index: Int) -> Names {
+        return Names(last: .needed(index: index), map: [:])
+    }
+    
+    func merging(with other: Names) -> Names {
+        switch (last, other.last) {
+        case let (.needed(index), .some(name)):
+            var map = map
+            map[index] = name
+            return Names(last: .none, map: map)
+        case let (.some(name), .needed(index)):
+            var map = map
+            map[index] = name
+            return Names(last: .none, map: map)
+        default:
+            return self
+        }
+    }
+}
+
+struct TypeChecker {
+    private let scope: Scope
+    private var diagnostics: Diagnostics
+    private var tyVars = 0
+    private var tyVarLookup: [BindParameter.Kind: TypeVariable] = [:]
+    private var names: [Int: Substring] = [:]
+    
+    init(scope: Scope, diagnostics: Diagnostics = Diagnostics()) {
+        self.scope = scope
+        self.diagnostics = diagnostics
+    }
+    
+    private mutating func freshTyVar(for param: BindParameter) -> TypeVariable {
+        defer { tyVars += 1 }
+        let ty = TypeVariable(tyVars)
+        tyVarLookup[param.kind] = ty
+        return ty
+    }
+    
+    mutating func check<E: Expr>(_ expr: E) throws -> Solution {
+        let (ty, sub, names) = try expr.accept(visitor: &self)
+        return Solution(type: ty, names: names, substitution: sub, tyVarLookup: tyVarLookup)
+    }
+}
+
 extension TypeChecker: ExprVisitor {
-    mutating func visit(_ expr: LiteralExpr) throws -> (Ty, Substitution) {
+    mutating func visit(_ expr: LiteralExpr) throws -> (Ty, Substitution, Names) {
         return switch expr.kind {
-        case .numeric(_, let isInt): (isInt ? .integer : .real, [:])
-        case .string: (.text, [:])
-        case .blob: (.blob, [:])
-        case .null: (.any, [:])
-        case .true, .false: (.bool, [:])
-        case .currentTime, .currentDate, .currentTimestamp: (.text, [:])
+        case .numeric(_, let isInt): (isInt ? .integer : .real, [:], .none)
+        case .string: (.text, [:], .none)
+        case .blob: (.blob, [:], .none)
+        case .null: (.any, [:], .none)
+        case .true, .false: (.bool, [:], .none)
+        case .currentTime, .currentDate, .currentTimestamp: (.text, [:], .none)
         }
     }
     
-    mutating func visit(_ expr: BindParameter) throws -> (Ty, Substitution) {
-        return (.var(freshTyVar(for: expr)), [:])
+    mutating func visit(_ expr: BindParameter) throws -> (Ty, Substitution, Names) {
+        let names: Names = switch expr.kind {
+        case .named: .none
+        case .unnamed(let index): .needed(index: index)
+        }
+        return (.var(freshTyVar(for: expr)), [:], names)
     }
     
-    mutating func visit(_ expr: ColumnExpr) throws -> (Ty, Substitution) {
+    mutating func visit(_ expr: ColumnExpr) throws -> (Ty, Substitution, Names) {
         let result: Scope.ColumnResult = if let table = expr.table {
             scope.column(schema: expr.schema, table: table, name: expr.column)
         } else {
@@ -242,43 +294,48 @@ extension TypeChecker: ExprVisitor {
         
         switch result {
         case .found(let column):
-            return (.nominal(column.type), [:])
+            return (.nominal(column.type), [:], .some(expr.column.name))
         case .ambiguous:
             diagnostics.add(.init(
                 "Column '\(expr)' is ambiguous in the current context",
                 at: expr.range,
                 suggestion: "\(Diagnostic.placeholder(name: "tableName")).\(expr)"
             ))
-            return (.error, [:])
+            return (.error, [:], .some(expr.column.name))
         case .notFound:
             diagnostics.add(.init(
                 "No such column '\(expr)' available in current context",
                 at: expr.range
             ))
-            return (.error, [:])
+            return (.error, [:], .some(expr.column.name))
         }
     }
     
-    mutating func visit(_ expr: PrefixExpr) throws -> (Ty, Substitution) {
+    mutating func visit(_ expr: PrefixExpr) throws -> (Ty, Substitution, Names) {
+        if !expr.operator.operator.canBePrefix {
+            diagnostics.add(.init("'\(expr.operator.operator)' is not a valid prefix operator", at: expr.operator.range))
+        }
+        
         return try expr.rhs.accept(visitor: &self)
     }
     
-    mutating func visit(_ expr: InfixExpr) throws -> (Ty, Substitution) {
-        let (lTy, lSub) = try expr.lhs.accept(visitor: &self)
-        let (rTy, rSub) = try expr.rhs.accept(visitor: &self)
+    mutating func visit(_ expr: InfixExpr) throws -> (Ty, Substitution, Names) {
+        let (lTy, lSub, lNames) = try expr.lhs.accept(visitor: &self)
+        let (rTy, rSub, rNames) = try expr.rhs.accept(visitor: &self)
+        let names = lNames.merging(with: rNames)
         
         switch expr.operator.operator {
         // Arithmetic Operators
         case .plus, .minus, .multiply, .divide, .bitwuseOr,
                 .bitwiseAnd, .shl, .shr, .mod:
             let (sub, ty) = lTy.unify(with: rTy)
-            return (ty, lSub.merging(rSub, uniquingKeysWith: {$1}).merging(sub, uniquingKeysWith: {$1}))
+            return (ty, lSub.merging(rSub, uniquingKeysWith: {$1}).merging(sub, uniquingKeysWith: {$1}), names)
         // Comparisons
         case .eq, .eq2, .neq, .neq2, .lt, .gt, .lte, .gte, .is,
                 .notNull, .notnull, .in, .like, .isNot, .isDistinctFrom,
                 .isNotDistinctFrom, .between, .and, .or, .isnull:
             let (sub, _) = lTy.unify(with: rTy)
-            return (.bool, lSub.merging(rSub, uniquingKeysWith: {$1}).merging(sub, uniquingKeysWith: {$1}))
+            return (.bool, lSub.merging(rSub, uniquingKeysWith: {$1}).merging(sub, uniquingKeysWith: {$1}), names)
 
 //        case .tilde: return .any
 //        case .collate: return lhs
@@ -295,14 +352,15 @@ extension TypeChecker: ExprVisitor {
         }
     }
     
-    mutating func visit(_ expr: PostfixExpr) throws -> (Ty, Substitution) {
+    mutating func visit(_ expr: PostfixExpr) throws -> (Ty, Substitution, Names) {
         return try expr.lhs.accept(visitor: &self)
     }
     
-    mutating func visit(_ expr: BetweenExpr) throws -> (Ty, Substitution) {
+    mutating func visit(_ expr: BetweenExpr) throws -> (Ty, Substitution, Names) {
         fatalError()
-//        let value = try expr.value.accept(visitor: &self)
-//        
+//        let (vTy, vSub) = try expr.value.accept(visitor: &self)
+//        let sub = vTy.unify(with: .bool)
+        
 //        if value != .bool {
 //            diagnostics.add(.incorrectType(value, expected: .bool, at: expr.range))
 //        }
@@ -318,23 +376,23 @@ extension TypeChecker: ExprVisitor {
 //        return .bool
     }
     
-    mutating func visit(_ expr: FunctionExpr) throws -> (Ty, Substitution) {
+    mutating func visit(_ expr: FunctionExpr) throws -> (Ty, Substitution, Names) {
         fatalError()
     }
     
-    mutating func visit(_ expr: CastExpr) throws -> (Ty, Substitution) {
+    mutating func visit(_ expr: CastExpr) throws -> (Ty, Substitution, Names) {
         fatalError()
     }
     
-    mutating func visit(_ expr: Expression) throws -> (Ty, Substitution) {
+    mutating func visit(_ expr: Expression) throws -> (Ty, Substitution, Names) {
         fatalError()
     }
     
-    mutating func visit(_ expr: CaseWhenThenExpr) throws -> (Ty, Substitution) {
+    mutating func visit(_ expr: CaseWhenThenExpr) throws -> (Ty, Substitution, Names) {
         fatalError()
     }
     
-    mutating func visit(_ expr: GroupedExpr) throws -> (Ty, Substitution) {
+    mutating func visit(_ expr: GroupedExpr) throws -> (Ty, Substitution, Names) {
         fatalError()
     }
 }

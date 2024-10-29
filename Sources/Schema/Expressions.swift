@@ -442,7 +442,14 @@ public enum Operator: Equatable {
         case postfix
     }
     
-    var canHaveNotPrefix: Bool {
+    public var canBePrefix: Bool {
+        return switch self {
+        case .plus, .tilde, .minus: true
+        default: false
+        }
+    }
+    
+    public var canHaveNotPrefix: Bool {
         return self == .between
             || self == .in
             || self == .match

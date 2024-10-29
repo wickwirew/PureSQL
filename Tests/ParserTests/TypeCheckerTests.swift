@@ -46,6 +46,23 @@ class TypeCheckerTests: XCTestCase {
         XCTAssertEqual(.bool, solution.type(for: .named("baz")))
     }
     
+    func testNames() throws {
+        let scope = try scope(table: "foo", schema: """
+        CREATE TABLE foo(bar INTEGER);
+        """)
+        
+        let solution = try solution(for: "bar = ?", in: scope)
+        XCTAssertEqual(.bool, solution.type)
+        XCTAssertEqual(.integer, solution.type(for: .unnamed(0)))
+        XCTAssertEqual("bar", solution.name(for: 0))
+    }
+    
+    func scope(table: String, schema: String) throws -> Scope {
+        let schema = try SchemaBuilder.build(from: schema)
+        guard let table = schema.tables[TableName(schema: .main, name: Identifier(stringLiteral: table))] else { fatalError() }
+        return Scope(tables: [table.name: table], schema: schema)
+    }
+    
     private func solution(for source: String, in scope: Scope = Scope()) throws -> Solution {
         let expr = try parse(source)
         var typeChecker = TypeChecker(scope: scope)
