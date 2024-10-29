@@ -75,6 +75,23 @@ public struct CompiledQuery {
     }
 }
 
+struct Solution {
+    let type: Ty
+    let substitution: Substitution
+    let tyVarLookup: [BindParameter.Kind: TypeVariable]
+    
+    func type(for param: BindParameter.Kind) -> TypeName {
+        guard let tv = tyVarLookup[param] else { fatalError("TODO: Throw real error") }
+        
+        // TODO: More errors and diag
+        switch Ty.var(tv).apply(substitution) {
+        case .nominal(let t): return t
+        case .var: return .any
+        case .error: return .any
+        }
+    }
+}
+
 public struct TypeChecker {
     private let scope: Scope
     private var diagnostics: Diagnostics
@@ -91,6 +108,11 @@ public struct TypeChecker {
         let ty = TypeVariable(tyVars)
         tyVarLookup[param.kind] = ty
         return ty
+    }
+    
+    mutating func check<E: Expr>(_ expr: E) throws -> Solution {
+        let (ty, sub) = try expr.accept(visitor: &self)
+        return Solution(type: ty, substitution: sub, tyVarLookup: tyVarLookup)
     }
 }
 
@@ -112,12 +134,7 @@ public enum Constraint {
 }
 
 public typealias Substitution = [TypeVariable: Ty]
-public typealias Names = [BindParameter: Substring]
-public struct Environment {
-    let inner: [TypeVariable: Ty]
-    
-    
-}
+public typealias Names = [Int: Substring]
 
 public enum Ty: Equatable, CustomStringConvertible {
     case nominal(TypeName)
@@ -175,6 +192,9 @@ public enum Ty: Equatable, CustomStringConvertible {
         case let (ty, .var(tv)):
             return ([tv: ty], ty)
         case let (.nominal(t1), .nominal(t2)):
+            // No substitution can be made for two nominal types.
+            // But we can return a coerced type if able.
+            // This is how we can promote an INTEGER to a REAL
             switch (t1, t2) {
             case (.integer, .int): return ([:], .integer)
             case (.int, .integer): return ([:], .integer)

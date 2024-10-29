@@ -38,26 +38,29 @@ class TypeCheckerTests: XCTestCase {
         XCTAssertEqual(.bool, try check("1 == 1"))
     }
     
-    func testTypeCheckBind() {
-        XCTAssertEqual(.bool, try check(":fart = 1.0 + :foo > :bar + ?"))
+    func testTypeCheckBind() throws {
+        let solution = try solution(for: ":foo + 1 > :bar + 2.0 AND :baz")
+        XCTAssertEqual(.bool, solution.type)
+        XCTAssertEqual(.integer, solution.type(for: .named("foo")))
+        XCTAssertEqual(.real, solution.type(for: .named("bar")))
+        XCTAssertEqual(.bool, solution.type(for: .named("baz")))
+    }
+    
+    private func solution(for source: String, in scope: Scope = Scope()) throws -> Solution {
+        let expr = try parse(source)
+        var typeChecker = TypeChecker(scope: scope)
+        return try typeChecker.check(expr)
     }
     
     private func check(_ source: String, in scope: Scope = Scope()) throws -> TypeName {
-        let expr = try parse(source)
-        var typeChecker = TypeChecker(scope: scope)
-        let (result, sub) = try expr.accept(visitor: &typeChecker)
+        let solution = try solution(for: source, in: scope)
         
-        print(result)
-        print(sub[typeChecker.tyVarLookup[.named("foo")]!])
-        print(Ty.var(typeChecker.tyVarLookup[.named("bar")]!).apply(sub))
-        print(sub[typeChecker.tyVarLookup[.named("fart")]!])
-        print(sub[typeChecker.tyVarLookup[.unnamed(0)]!])
-        
-        guard case let .nominal(ty) = result else {
-            fatalError()
+        switch solution.type {
+        case .nominal(let t):
+            return t
+        case .error, .var:
+            return .any
         }
-        
-        return ty
     }
     
     private func parse(_ source: String) throws -> Schema.Expression {
