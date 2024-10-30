@@ -99,6 +99,7 @@ struct Solution {
         // TODO: More errors and diag
         switch Ty.var(tv).apply(substitution) {
         case .nominal(let t): return t
+        case .fn: return .any // TODO: Error
         case .var: return .any
         case .error: return .any
         }
@@ -111,21 +112,64 @@ struct Solution {
 
 struct TypeVariable: Hashable, CustomStringConvertible {
     let n: Int
+    let constraints: Constraints
     
-    init(_ n: Int) {
+    /// Any type constraints that may exist on the type variable.
+    /// SQL is not a full language and users cannot create their
+    /// own interfaces so a simple option set will do since it is
+    /// a finite number.
+    struct Constraints: OptionSet, Hashable {
+        let rawValue: UInt8
+        static let numeric = Constraints(rawValue: 1 << 0)
+    }
+    
+    init(_ n: Int, constraints: Constraints = []) {
         self.n = n
+        self.constraints = constraints
     }
     
     var description: String {
         return "τ\(n)"
+    }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(n)
+    }
+    
+    func with(constraints: Constraints) -> TypeVariable {
+        return TypeVariable(n, constraints: self.constraints.union(constraints))
+    }
+}
+
+struct TypeScheme: CustomStringConvertible {
+    let typeVariables: [TypeVariable]
+    let type: Ty
+    
+    var description : String {
+        return "∀\(typeVariables.map(\.description).joined(separator: ", ")).\(self.type)"
     }
 }
 
 typealias Substitution = [TypeVariable: Ty]
 
 enum Ty: Equatable, CustomStringConvertible {
+    /// A builtin nominal type from the db (INTEGER, REAL...)
     case nominal(TypeName)
+    /// A type variable
     case `var`(TypeVariable)
+    /// A function.
+    /// If `variadic` is `true`, it assumes it is over the last type in the arguments.
+    indirect case fn(args: [Ty], variadic: Bool, ret: Ty)
+    /// There was an error somewhere in the analysis. We can just return
+    /// an `error` type and continue the analysis. So if the user makes up
+    /// 3 columns, they can get all 3 errors at once.
+    ///
+    /// We could just return `ANY` but an explicit `error` type lets the
+    /// type unification be more precise since we know the `error` type
+    /// is incorrect the type its being unified with can be prioritized.
+    /// Example:
+    /// `ANY + INTEGER = ANY` - Bad
+    /// `error + INTEGER = INTEGER` - Good
     case error
     
     static let text: Ty = .nominal(TypeName(name: "TEXT", args: nil, resolved: .text))
@@ -140,6 +184,7 @@ enum Ty: Equatable, CustomStringConvertible {
         return switch self {
         case .nominal(let typeName): typeName.description
         case .var(let typeVariable): typeVariable.description
+        case let .fn(args, variadic, ret): "(\(args.map(\.description).joined(separator: ","))\(variadic ? "..." : "")) -> \(ret)"
         case .error: "<<error>>"
         }
     }
@@ -159,6 +204,12 @@ enum Ty: Equatable, CustomStringConvertible {
                 return t.apply(s)
             }
             return self
+        case let .fn(args, variadic, ret):
+            return .fn(
+                args: args.map{ $0.apply(s) },
+                variadic: variadic,
+                ret: ret.apply(s)
+            )
         case .nominal, .error:
             // Literals can't be substituted for.
             return self
@@ -174,6 +225,8 @@ enum Ty: Equatable, CustomStringConvertible {
         guard self != ty else { return ([:], self) }
         
         switch (self, ty) {
+        case let (.var(t1), .var(t2)):
+            return ([t2: .var(t1.with(constraints: t2.constraints))], ty)
         case let (.var(tv), ty):
             return ([tv: ty], ty)
         case let (ty, .var(tv)):
