@@ -169,6 +169,7 @@ typealias Substitution = [TypeVariable: Ty]
 
 extension Substitution {
     func merging(_ other: Substitution) -> Substitution {
+        guard !other.isEmpty else { return self }
         return merging(other, uniquingKeysWith: {$1})
     }
     
@@ -308,7 +309,7 @@ enum Ty: Equatable, CustomStringConvertible {
             // Unification failed, return an error type
             return ([:], .error)
         }
-      }
+    }
 }
 
 struct Names {
@@ -447,7 +448,8 @@ extension TypeChecker: ExprVisitor {
         case .plus, .minus, .multiply, .divide, .bitwuseOr,
                 .bitwiseAnd, .shl, .shr, .mod:
             let (sub, ty) = lTy.unify(with: rTy)
-            return (ty, lSub.merging(rSub, and: sub), names)
+            let (sub2, ty2) = ty.unify(with: .integer)
+            return (ty2, lSub.merging(rSub, and: sub, and: sub2), names)
         // Comparisons
         case .eq, .eq2, .neq, .neq2, .lt, .gt, .lte, .gte, .is,
                 .notNull, .notnull, .in, .like, .isNot, .isDistinctFrom,
@@ -478,44 +480,26 @@ extension TypeChecker: ExprVisitor {
         let (vTy, vSub, vNames) = try expr.value.accept(visitor: &self)
         let (lTy, lSub, lNames) = try expr.lower.accept(visitor: &self)
         let (rTy, rSub, rNames) = try expr.upper.accept(visitor: &self)
-//        
-//        let (s, t1) = vTy.unify(with: lTy)
-//        let (s2, t2) = lTy.unify(with: t1)
-//        let (s3, _) = rTy.unify(with: t2)
-//        
-//        let subs = vSub
-//            .merging(s, uniquingKeysWith: {$1})
-//            .merging(s2, uniquingKeysWith: {$1})
-//            .merging(s3, uniquingKeysWith: {$1})
-//            .merging(lSub, uniquingKeysWith: {$1})
-//            .merging(rSub, uniquingKeysWith: {$1})
-//        
-//        let names = vNames.merging(with: lNames).merging(with: rNames)
-//        
-//        return (.bool, subs, names)
-        
-        let inputTy: Ty = .var(freshTyVar())
-        
-        let (ty, sub) = try infer(
-            args: [vTy, lTy, rTy],
-            params: [inputTy, inputTy, inputTy],
-            variadic: false,
-            ret: .bool,
-            at: expr.range
+        let (s, t1) = vTy.unify(with: lTy)
+        let (s2, t2) = lTy.unify(with: t1)
+        let (s3, _) = rTy.unify(with: t2)
+        return (
+            .bool,
+            vSub.merging(lSub, and: rSub, and: s).merging(s, and: s2, and: s3),
+            vNames.merging(with: lNames).merging(with: rNames)
         )
-        
-        return (ty, vSub.merging(lSub, and: rSub, and: sub), vNames.merging(with: lNames).merging(with: rNames))
     }
     
     mutating func visit(_ expr: FunctionExpr) throws -> (Ty, Substitution, Names) {
         let args = try expr.args.map { try $0.accept(visitor: &self) }
         
-        
         guard let scheme = scope.function(name: expr.name) else {
+            diagnostics.add(.init("No such function '\(expr.name)' exits", at: expr.range))
             return (.any, [:], .none)
         }
         
         guard case let .fn(params, variadic, ret) = instantiate(scheme) else {
+            diagnostics.add(.init("'\(expr.name)' is not a function", at: expr.range))
             return (.any, [:], .none)
         }
         
@@ -585,6 +569,9 @@ extension TypeChecker: ExprVisitor {
                 // For the final parameter we first want to unify all of the arguments
                 // for the final param to handle the generics before unifying it
                 // with the actual parameter type.
+                //
+                // This feels very wrong but I'm not sure of a better way atm.
+                // TODO: Revisit this.
                 while let arg = args.next() {
                     let (s, newTy) = argTy.unify(with: arg)
                     argTy = newTy
