@@ -79,6 +79,42 @@ class TypeCheckerTests: XCTestCase {
         XCTAssertEqual("bar", solution.name(for: 0))
     }
     
+    func testTypeCheckBetween() throws {
+        let solution = try solution(for: "1 BETWEEN 1 AND ?")
+        XCTAssertEqual(.bool, solution.type)
+        XCTAssertEqual(.integer, solution.type(for: .unnamed(0)))
+    }
+    
+    func testTypeFunction() throws {
+        XCTAssertEqual(.integer, try solution(for: "MAX(1)").type)
+        XCTAssertEqual(.real, try solution(for: "MAX(1.0, 1)").type)
+        XCTAssertEqual(.real, try solution(for: "MAX(1, 1.0)").type)
+        XCTAssertEqual(.real, try solution(for: "MAX(1, 1, 1.0)").type)
+        XCTAssertEqual(.real, try solution(for: "MAX(1, 1, 1.0, 1)").type)
+        XCTAssertEqual(.real, try solution(for: "MAX(1, 1, 1, 1.0)").type)
+    }
+    
+    func testTypeFunctionComplex() throws {
+        let scope = try scope(table: "foo", schema: """
+        CREATE TABLE foo(bar REAL);
+        """)
+        
+        let solution = try solution(for: "MAX(1, 1, bar + 1, 1)", in: scope)
+        XCTAssertEqual(.real, solution.type)
+//        XCTAssertEqual(.integer, solution.type(for: .unnamed(0)))
+//        XCTAssertEqual("bar", solution.name(for: 0))
+    }
+    
+    func testTypeFunctionInputGetBound() throws {
+        let scope = try scope(table: "foo", schema: """
+        CREATE TABLE foo(bar REAL);
+        """)
+        
+        let solution = try solution(for: "MAX(1, 1, bar + ?, 1)", in: scope)
+        XCTAssertEqual(.real, solution.type)
+        XCTAssertEqual(.real, solution.type(for: .unnamed(0)))
+    }
+    
     func scope(table: String, schema: String) throws -> Scope {
         let schema = try SchemaBuilder.build(from: schema)
         guard let table = schema.tables[TableName(schema: .main, name: Identifier(stringLiteral: table))] else { fatalError() }
@@ -97,7 +133,7 @@ class TypeCheckerTests: XCTestCase {
         switch solution.type {
         case .nominal(let t):
             return t
-        case .error, .var:
+        case .error, .var, .fn:
             return .any
         }
     }
