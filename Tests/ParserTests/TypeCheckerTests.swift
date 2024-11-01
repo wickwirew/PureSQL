@@ -115,6 +115,11 @@ class TypeCheckerTests: XCTestCase {
         XCTAssertEqual(.real, solution.type(for: .unnamed(0)))
     }
     
+    func testErrors() throws {
+        let solution = try solution(for: "'a' + 'b'")
+        XCTAssertEqual(.integer, solution.type)
+    }
+    
     func scope(table: String, schema: String) throws -> Scope {
         let schema = try SchemaBuilder.build(from: schema)
         guard let table = schema.tables[TableName(schema: .main, name: Identifier(stringLiteral: table))] else { fatalError() }
@@ -124,7 +129,9 @@ class TypeCheckerTests: XCTestCase {
     private func solution(for source: String, in scope: Scope = Scope()) throws -> Solution {
         let expr = try parse(source)
         var typeChecker = TypeChecker(scope: scope)
-        return try typeChecker.check(expr)
+        let solution = try typeChecker.check(expr)
+        typeChecker.dumpDiagnostics(in: source)
+        return solution
     }
     
     private func check(_ source: String, in scope: Scope = Scope()) throws -> TypeName {

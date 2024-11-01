@@ -120,39 +120,32 @@ struct Solution {
     }
 }
 
+/// Any type constraints that may exist on the type variable.
+/// SQL is not a full language and users cannot create their
+/// own interfaces so a simple option set will do since it is
+/// a finite number.
+struct TypeConstraints: OptionSet, Hashable {
+    let rawValue: UInt8
+    
+    static let numeric = TypeConstraints(rawValue: 1 << 0)
+}
+
+
+
 struct TypeVariable: Hashable, CustomStringConvertible, ExpressibleByIntegerLiteral {
     let n: Int
-    let constraints: Constraints
     
-    /// Any type constraints that may exist on the type variable.
-    /// SQL is not a full language and users cannot create their
-    /// own interfaces so a simple option set will do since it is
-    /// a finite number.
-    struct Constraints: OptionSet, Hashable {
-        let rawValue: UInt8
-        static let numeric = Constraints(rawValue: 1 << 0)
-    }
     
-    init(_ n: Int, constraints: Constraints = []) {
+    init(_ n: Int) {
         self.n = n
-        self.constraints = constraints
     }
     
     init(integerLiteral value: Int) {
         self.n = value
-        self.constraints = []
     }
     
     var description: String {
         return "τ\(n)"
-    }
-    
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(n)
-    }
-    
-    func with(constraints: Constraints) -> TypeVariable {
-        return TypeVariable(n, constraints: self.constraints.union(constraints))
     }
 }
 
@@ -260,56 +253,6 @@ enum Ty: Equatable, CustomStringConvertible {
             return self
         }
     }
-    
-    func constrain(to constraints: TypeVariable.Constraints) -> Substitution {
-        switch self {
-        case .var(let tv):
-            return [tv: .var(tv.with(constraints: constraints))]
-        default:
-            // Check it
-            return [:]
-        }
-    }
-    
-    /// Unifies the two types together. Will produce a substitution if one
-    /// is a type variable. If there are two nominal types they and
-    /// they can be coerced en empty substitution will be return with
-    /// the coerced type.
-    func unify(with ty: Ty) -> (Substitution, Ty) {
-        // If they are the same, no need to unify
-        guard self != ty else { return ([:], self) }
-        
-        switch (self, ty) {
-        case let (.var(t1), .var(t2)):
-            return ([t2: .var(t1.with(constraints: t2.constraints))], ty)
-        case let (.var(tv), ty):
-            return ([tv: ty], ty)
-        case let (ty, .var(tv)):
-            return ([tv: ty], ty)
-        case let (.nominal(t1), .nominal(t2)):
-            // No substitution can be made for two nominal types.
-            // But we can return a coerced type if able.
-            // This is how we can promote an INTEGER to a REAL
-            switch (t1, t2) {
-            case (.integer, .int): return ([:], .integer)
-            case (.int, .integer): return ([:], .integer)
-            case (.integer, .real): return ([:], .real)
-            case (.real, .integer): return ([:], .real)
-            case (.int, .real): return ([:], .real)
-            case (.real, .int): return ([:], .real)
-            case (.text, _): return ([:], .text)
-            case (_, .text): return ([:], .text)
-            default: return ([:], .any)
-            }
-        case let (.error, ty):
-            return ([:], ty)
-        case let (ty, .error):
-            return ([:], ty)
-        default:
-            // Unification failed, return an error type
-            return ([:], .error)
-        }
-    }
 }
 
 struct Names {
@@ -320,6 +263,11 @@ struct Names {
         case needed(index: Int)
         case some(Substring)
         case none
+    }
+    
+    enum Context {
+        case lower
+        case upper
     }
     
     static let none = Names(last: .none, map: [:])
@@ -364,6 +312,12 @@ struct TypeChecker {
         self.diagnostics = diagnostics
     }
     
+    func dumpDiagnostics(in source: String) {
+        for diagnostic in diagnostics.diagnostics {
+            print(diagnostic.message, "   Expression:", source[diagnostic.range])
+        }
+    }
+    
     private mutating func freshTyVar(for param: BindParameter? = nil) -> TypeVariable {
         defer { tyVars += 1 }
         let ty = TypeVariable(tyVars)
@@ -381,6 +335,50 @@ struct TypeChecker {
     mutating func check<E: Expr>(_ expr: E) throws -> Solution {
         let (ty, sub, names) = try expr.accept(visitor: &self)
         return Solution(type: ty, names: names, substitution: sub, tyVarLookup: tyVarLookup)
+    }
+    
+    /// Unifies the two types together. Will produce a substitution if one
+    /// is a type variable. If there are two nominal types they and
+    /// they can be coerced en empty substitution will be return with
+    /// the coerced type.
+    private mutating func unify(_ ty: Ty, with other: Ty, at range: Range<String.Index>) -> (Substitution, Ty) {
+        // If they are the same, no need to unify
+        guard ty != other else { return ([:], ty) }
+        
+        switch (ty, other) {
+        case let (.var(t1), .var(t2)):
+            return ([t2: .var(t1)], ty)
+        case let (.var(tv), ty):
+            return ([tv: ty], ty)
+        case let (ty, .var(tv)):
+            return ([tv: ty], ty)
+        case let (.nominal(t1), .nominal(t2)):
+            // No substitution can be made for two nominal types.
+            // But we can return a coerced type if able.
+            // This is how we can promote an INTEGER to a REAL
+            switch (t1, t2) {
+            case (.integer, .int): return ([:], .integer)
+            case (.int, .integer): return ([:], .integer)
+            case (.integer, .real): return ([:], .real)
+            case (.real, .integer): return ([:], .real)
+            case (.int, .real): return ([:], .real)
+            case (.real, .int): return ([:], .real)
+            // Due to ANY's ambiguity we cannot really check it
+            // so just assume the caller expects an ANY as well.
+            case (.any, _): return ([:], .any)
+            case (_, .any): return ([:], .any)
+            default:
+                diagnostics.add(.init("Unable to unify types '\(ty)' and '\(other)'", at: range))
+                return ([:], .any)
+            }
+        case let (.error, ty):
+            return ([:], ty)
+        case let (ty, .error):
+            return ([:], ty)
+        default:
+            diagnostics.add(.init("Unable to unify types '\(ty)' and '\(other)'", at: range))
+            return ([:], .error)
+        }
     }
 }
 
@@ -432,7 +430,10 @@ extension TypeChecker: ExprVisitor {
     
     mutating func visit(_ expr: PrefixExpr) throws -> (Ty, Substitution, Names) {
         if !expr.operator.operator.canBePrefix {
-            diagnostics.add(.init("'\(expr.operator.operator)' is not a valid prefix operator", at: expr.operator.range))
+            diagnostics.add(.init(
+                "'\(expr.operator.operator)' is not a valid prefix operator",
+                at: expr.operator.range
+            ))
         }
         
         return try expr.rhs.accept(visitor: &self)
@@ -447,14 +448,14 @@ extension TypeChecker: ExprVisitor {
         // Arithmetic Operators
         case .plus, .minus, .multiply, .divide, .bitwuseOr,
                 .bitwiseAnd, .shl, .shr, .mod:
-            let (sub, ty) = lTy.unify(with: rTy)
-            let (sub2, ty2) = ty.unify(with: .integer)
+            let (sub, ty) = unify(lTy, with: rTy, at: expr.range)
+            let (sub2, ty2) = unify(ty, with: .integer, at: expr.range)
             return (ty2, lSub.merging(rSub, and: sub, and: sub2), names)
         // Comparisons
         case .eq, .eq2, .neq, .neq2, .lt, .gt, .lte, .gte, .is,
                 .notNull, .notnull, .in, .like, .isNot, .isDistinctFrom,
                 .isNotDistinctFrom, .between, .and, .or, .isnull:
-            let (sub, _) = lTy.unify(with: rTy)
+            let (sub, _) = unify(lTy, with: rTy, at: expr.range)
             return (.bool, lSub.merging(rSub, and: sub), names)
 
 //        case .tilde: return .any
@@ -480,9 +481,9 @@ extension TypeChecker: ExprVisitor {
         let (vTy, vSub, vNames) = try expr.value.accept(visitor: &self)
         let (lTy, lSub, lNames) = try expr.lower.accept(visitor: &self)
         let (rTy, rSub, rNames) = try expr.upper.accept(visitor: &self)
-        let (s, t1) = vTy.unify(with: lTy)
-        let (s2, t2) = lTy.unify(with: t1)
-        let (s3, _) = rTy.unify(with: t2)
+        let (s, t1) = unify(vTy, with: lTy, at: expr.range)
+        let (s2, t2) = unify(lTy, with: t1, at: expr.range)
+        let (s3, _) = unify(rTy, with: t2, at: expr.range)
         return (
             .bool,
             vSub.merging(lSub, and: rSub, and: s).merging(s, and: s2, and: s3),
@@ -567,22 +568,22 @@ extension TypeChecker: ExprVisitor {
                 var argSub: Substitution = [:]
                 
                 // For the final parameter we first want to unify all of the arguments
-                // for the final param to handle the generics before unifying it
+                // for the final param to handle the variadics before unifying it
                 // with the actual parameter type.
                 //
                 // This feels very wrong but I'm not sure of a better way atm.
                 // TODO: Revisit this.
                 while let arg = args.next() {
-                    let (s, newTy) = argTy.unify(with: arg)
+                    let (s, newTy) = unify(argTy, with: arg, at: range)
                     argTy = newTy
                     argSub.merge(s, uniquingKeysWith: {$1})
                 }
                 
-                let (finalSub, _) = argTy.unify(with: param)
+                let (finalSub, _) = unify(argTy, with: param, at: range)
                 sub.merge(argSub, uniquingKeysWith: {$1})
                 sub.merge(finalSub, uniquingKeysWith: {$1})
             } else if let next = args.next() {
-                let (s, _) = param.unify(with: arg)
+                let (s, _) = unify(param, with: arg, at: range)
                 sub.merge(s, uniquingKeysWith: {$1})
                 arg = next
             } else {
@@ -591,5 +592,64 @@ extension TypeChecker: ExprVisitor {
         }
         
         return (ret.apply(sub), sub)
+    }
+}
+
+
+enum Constraint {
+    case equal(Ty, Ty)
+    case conforms(Ty, TypeConstraints)
+}
+
+extension TypeChecker {
+    mutating func solve(constraints: [Constraint]) {
+        var solution: Substitution = [:]
+        var conformances: [(Ty, TypeConstraints)] = []
+        
+        for constraint in constraints {
+            switch constraint {
+            case .equal(let ty, let ty2):
+                let (s, t) = unify(ty, with: ty2, at: "".startIndex..<"".endIndex)
+                solution.merge(s, uniquingKeysWith: {$1})
+            case .conforms(let ty, let typeConstraints):
+                conformances.append((ty, typeConstraints))
+            }
+        }
+        
+        for (ty, constraint) in conformances {
+            let ty = ty.apply(solution)
+            
+            switch ty {
+            case .nominal(let typeName):
+                if constraint.contains(.numeric), (ty != .integer || ty != .real) {
+                    fatalError("TODO: Throw real error")
+                }
+            case .var(let typeVariable):
+                // TODO: Actually default
+                solution[typeVariable] = .integer
+            case .fn:
+                fatalError("TODO: Throw real error")
+            case .error:
+                fatalError("TODO: Throw real error")
+            }
+        }
+    }
+}
+
+struct Solution2 {
+    var type: Ty
+    var names: Names
+    var substitution: Substitution
+    var constraints: [(TypeVariable, TypeConstraints)]
+    private var tyVarLookup: [BindParameter.Kind: TypeVariable]
+    
+    func merging(with other: Solution2) -> Solution2 {
+        return Solution2(
+            type: other.type,
+            names: names.merging(with: other.names),
+            substitution: substitution.merging(other.substitution),
+            constraints: constraints + other.constraints,
+            tyVarLookup: tyVarLookup.merging(other.tyVarLookup, uniquingKeysWith: {$1})
+        )
     }
 }
