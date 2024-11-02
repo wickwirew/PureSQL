@@ -13,6 +13,9 @@ struct Scope {
     private let schema: DatabaseSchema
     
     static let max = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], variadic: true, ret: .var(0)))
+    static let between = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0), .var(0)], variadic: false, ret: .bool))
+    static let arithmetic = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0)], variadic: false, ret: .var(0)))
+    static let comparison = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0)], variadic: false, ret: .bool))
     
     static let functions: [Substring: TypeScheme] = [
         "MAX": max
@@ -63,8 +66,25 @@ struct Scope {
         return .found(column)
     }
     
-    func function(name: Identifier) -> TypeScheme? {
-        return Self.functions[name.name]
+    func function(name: Identifier, argCount: Int) -> TypeScheme? {
+        guard let scheme = Self.functions[name.name],
+                case let .fn(params, variadic, ret) = scheme.type else { return nil }
+        
+        // This is how variadics are handled. If a variadic function is called
+        // we extend the signature to match the input count. It is always
+        // assumed the last parameter is the variadic.
+        let numberOfArgsToAdd = argCount - params.count
+        
+        guard variadic, argCount > 0, let last = params.last else { return scheme }
+        
+        return TypeScheme(
+            typeVariables: scheme.typeVariables,
+            type: .fn(
+                params: params + (0..<numberOfArgsToAdd).map { _ in last },
+                variadic: false,
+                ret: ret
+            )
+        )
     }
 }
 
@@ -85,38 +105,61 @@ struct CompiledQuery {
     }
 }
 
-struct Solution {
-    let type: Ty
+struct Solution: CustomStringConvertible {
+    private let resultType: Ty
     private let names: Names
     private let substitution: Substitution
+    private let contraints: [TypeVariable: TypeConstraints]
     private let tyVarLookup: [BindParameter.Kind: TypeVariable]
+    private var valueNameCount = 0
     
     init(
-        type: Ty,
+        resultType: Ty,
         names: Names,
         substitution: Substitution,
+        constraints: [TypeVariable: TypeConstraints],
         tyVarLookup: [BindParameter.Kind : TypeVariable]
     ) {
-        self.type = type
+        self.resultType = resultType
         self.names = names
         self.substitution = substitution
         self.tyVarLookup = tyVarLookup
+        self.contraints = constraints
+    }
+    
+    var type: TypeName {
+        return typeName(for: resultType)
+    }
+    
+    var description: String {
+        return "\(substitution.map { "\($0) ~> \($1)" }.joined(separator: "\n"))"
     }
     
     func type(for param: BindParameter.Kind) -> TypeName {
         guard let tv = tyVarLookup[param] else { fatalError("TODO: Throw real error") }
-        
-        // TODO: More errors and diag
-        switch Ty.var(tv).apply(substitution) {
-        case .nominal(let t): return t
-        case .fn: return .any // TODO: Error
-        case .var: return .any
-        case .error: return .any
-        }
+        return typeName(for: .var(tv))
     }
     
-    func name(for index: Int) -> Substring {
-        return names.map[index] ?? "value"
+    mutating func name(for index: Int) -> Substring {
+        if let name = names.map[index] { return name }
+        defer { valueNameCount += 1 }
+        return "value\(valueNameCount == 0 ? "" : "\(valueNameCount)")"
+    }
+    
+    private func typeName(for ty: Ty) -> TypeName {
+        switch ty.apply(substitution) {
+        case .nominal(let t): return t
+        case .fn: return .any // TODO: Error
+        case .var(let tv):
+            // The type variable was never bound to a concrete type.
+            // Check if the constraints gives any clues about a default type
+            // if none just assume `ANY`
+            if let constraints = self.contraints[tv], constraints.contains(.numeric) {
+                return .integer
+            }
+            return .any
+        case .error: return .any
+        }
     }
 }
 
@@ -159,6 +202,13 @@ struct TypeScheme: CustomStringConvertible {
 }
 
 typealias Substitution = [TypeVariable: Ty]
+typealias Constraints = [TypeVariable: TypeConstraints]
+
+extension Constraints {
+    func merging(_ other: Constraints) -> Constraints {
+        return merging(other, uniquingKeysWith: { $0.union($1) })
+    }
+}
 
 extension Substitution {
     func merging(_ other: Substitution) -> Substitution {
@@ -170,22 +220,6 @@ extension Substitution {
         var output = self
         for (k, v) in other { output[k] = v }
         for (k, v) in another { output[k] = v }
-        return output
-    }
-    
-    func merging(_ other: Substitution, and another: Substitution, and oneMore: Substitution) -> Substitution {
-        var output = self
-        for (k, v) in other { output[k] = v }
-        for (k, v) in another { output[k] = v }
-        for (k, v) in oneMore { output[k] = v }
-        return output
-    }
-    
-    func merging(all subs: [Substitution]) -> Substitution {
-        var output = self
-        for sub in subs {
-            for (k, v) in sub { output[k] = v }
-        }
         return output
     }
 }
@@ -333,76 +367,128 @@ struct TypeChecker {
     }
     
     mutating func check<E: Expr>(_ expr: E) throws -> Solution {
-        let (ty, sub, names) = try expr.accept(visitor: &self)
-        return Solution(type: ty, names: names, substitution: sub, tyVarLookup: tyVarLookup)
+        let (ty, sub, con, names) = try expr.accept(visitor: &self)
+        
+        let result = ty.apply(sub)
+        let resultCon = finalize(constraints: con, with: sub)
+        
+        return Solution(
+            resultType: result,
+            names: names,
+            substitution: sub,
+            constraints: resultCon,
+            tyVarLookup: tyVarLookup
+        )
+    }
+    
+    private mutating func finalize(
+        constraints: Constraints,
+        with substitution: Substitution
+    ) -> Constraints {
+        var result: [TypeVariable: TypeConstraints] = [:]
+        
+        for (tv, constraints) in constraints {
+            let ty = Ty.var(tv).apply(substitution)
+            
+            if case let .var(tv) = ty {
+                result[tv] = constraints
+            } else {
+                // TODO: If it is a non type variable we need to validate
+                // the type meets the constraints requirements.
+            }
+        }
+        
+        return result
     }
     
     /// Unifies the two types together. Will produce a substitution if one
     /// is a type variable. If there are two nominal types they and
     /// they can be coerced en empty substitution will be return with
     /// the coerced type.
-    private mutating func unify(_ ty: Ty, with other: Ty, at range: Range<String.Index>) -> (Substitution, Ty) {
+    private mutating func unify(
+        _ ty: Ty,
+        with other: Ty,
+        at range: Range<String.Index>
+    ) -> Substitution {
         // If they are the same, no need to unify
-        guard ty != other else { return ([:], ty) }
+        guard ty != other else { return [:] }
         
         switch (ty, other) {
-        case let (.var(t1), .var(t2)):
-            return ([t2: .var(t1)], ty)
         case let (.var(tv), ty):
-            return ([tv: ty], ty)
+            return [tv: ty]
         case let (ty, .var(tv)):
-            return ([tv: ty], ty)
+            return [tv: ty]
         case let (.nominal(t1), .nominal(t2)):
-            // No substitution can be made for two nominal types.
-            // But we can return a coerced type if able.
-            // This is how we can promote an INTEGER to a REAL
+            guard t1 != t2 else { return [:] }
+            
             switch (t1, t2) {
-            case (.integer, .int): return ([:], .integer)
-            case (.int, .integer): return ([:], .integer)
-            case (.integer, .real): return ([:], .real)
-            case (.real, .integer): return ([:], .real)
-            case (.int, .real): return ([:], .real)
-            case (.real, .int): return ([:], .real)
-            // Due to ANY's ambiguity we cannot really check it
-            // so just assume the caller expects an ANY as well.
-            case (.any, _): return ([:], .any)
-            case (_, .any): return ([:], .any)
+            case (.integer, .real):
+                return [:]
+            case (.real, .integer):
+                return [:]
             default:
                 diagnostics.add(.init("Unable to unify types '\(ty)' and '\(other)'", at: range))
-                return ([:], .any)
             }
-        case let (.error, ty):
-            return ([:], ty)
-        case let (ty, .error):
-            return ([:], ty)
+            return [:]
+        case let (.fn(args1, _, ret1), .fn(args2, _, ret2)):
+            let args = unify(args1, with: args2, at: range)
+            let ret = unify(ret1.apply(args), with: ret2.apply(args), at: range)
+            return ret.merging(args)
+        case (.error, _), (_, .error):
+            // Already had an upstream error so no need to emit any more diagnostics
+            return [:]
         default:
             diagnostics.add(.init("Unable to unify types '\(ty)' and '\(other)'", at: range))
-            return ([:], .error)
+            return [:]
         }
+    }
+    
+    private mutating func unify(
+        _ tys: [Ty],
+        with others: [Ty],
+        at range: Range<String.Index>
+    ) -> Substitution {
+        assert(tys.count == others.count)
+        
+        var sub: Substitution = [:]
+        var tys = tys.makeIterator()
+        var others = others.makeIterator()
+        
+        while let ty1 = tys.next(), let ty2 = others.next() {
+            sub.merge(unify(ty1.apply(sub), with: ty2.apply(sub), at: range), uniquingKeysWith: {$1})
+        }
+        
+        return sub
     }
 }
 
 extension TypeChecker: ExprVisitor {
-    mutating func visit(_ expr: LiteralExpr) throws -> (Ty, Substitution, Names) {
-        return switch expr.kind {
-        case .numeric(_, let isInt): (isInt ? .integer : .real, [:], .none)
-        case .string: (.text, [:], .none)
-        case .blob: (.blob, [:], .none)
-        case .null: (.any, [:], .none)
-        case .true, .false: (.bool, [:], .none)
-        case .currentTime, .currentDate, .currentTimestamp: (.text, [:], .none)
+    mutating func visit(_ expr: LiteralExpr) throws -> (Ty, Substitution, Constraints, Names) {
+        switch expr.kind {
+        case .numeric(_, let isInt):
+            if isInt {
+                let tv = freshTyVar()
+                return (.var(tv), [:], [tv: .numeric], .none)
+            } else {
+                return (.real, [:], [:], .none)
+            }
+        case .string: return (.text, [:], [:], .none)
+        case .blob: return (.blob, [:], [:], .none)
+        case .null: return (.any, [:], [:], .none)
+        case .true, .false: return (.bool, [:], [:], .none)
+        case .currentTime, .currentDate, .currentTimestamp: return (.text, [:], [:], .none)
         }
     }
     
-    mutating func visit(_ expr: BindParameter) throws -> (Ty, Substitution, Names) {
+    mutating func visit(_ expr: BindParameter) throws -> (Ty, Substitution, Constraints, Names) {
         let names: Names = switch expr.kind {
         case .named: .none
         case .unnamed(let index): .needed(index: index)
         }
-        return (.var(freshTyVar(for: expr)), [:], names)
+        return (.var(freshTyVar(for: expr)), [:], [:], names)
     }
     
-    mutating func visit(_ expr: ColumnExpr) throws -> (Ty, Substitution, Names) {
+    mutating func visit(_ expr: ColumnExpr) throws -> (Ty, Substitution, Constraints, Names) {
         let result: Scope.ColumnResult = if let table = expr.table {
             scope.column(schema: expr.schema, table: table, name: expr.column)
         } else {
@@ -411,24 +497,24 @@ extension TypeChecker: ExprVisitor {
         
         switch result {
         case .found(let column):
-            return (.nominal(column.type), [:], .some(expr.column.name))
+            return (.nominal(column.type), [:], [:], .some(expr.column.name))
         case .ambiguous:
             diagnostics.add(.init(
                 "Column '\(expr)' is ambiguous in the current context",
                 at: expr.range,
                 suggestion: "\(Diagnostic.placeholder(name: "tableName")).\(expr)"
             ))
-            return (.error, [:], .some(expr.column.name))
+            return (.error, [:], [:], .some(expr.column.name))
         case .notFound:
             diagnostics.add(.init(
                 "No such column '\(expr)' available in current context",
                 at: expr.range
             ))
-            return (.error, [:], .some(expr.column.name))
+            return (.error, [:], [:], .some(expr.column.name))
         }
     }
     
-    mutating func visit(_ expr: PrefixExpr) throws -> (Ty, Substitution, Names) {
+    mutating func visit(_ expr: PrefixExpr) throws -> (Ty, Substitution, Constraints, Names) {
         if !expr.operator.operator.canBePrefix {
             diagnostics.add(.init(
                 "'\(expr.operator.operator)' is not a valid prefix operator",
@@ -439,24 +525,26 @@ extension TypeChecker: ExprVisitor {
         return try expr.rhs.accept(visitor: &self)
     }
     
-    mutating func visit(_ expr: InfixExpr) throws -> (Ty, Substitution, Names) {
-        let (lTy, lSub, lNames) = try expr.lhs.accept(visitor: &self)
-        let (rTy, rSub, rNames) = try expr.rhs.accept(visitor: &self)
+    mutating func visit(_ expr: InfixExpr) throws -> (Ty, Substitution, Constraints, Names) {
+        let (lTy, lSub, lCon, lNames) = try expr.lhs.accept(visitor: &self)
+        let (rTy, rSub, rCon, rNames) = try expr.rhs.accept(visitor: &self)
         let names = lNames.merging(with: rNames)
         
         switch expr.operator.operator {
         // Arithmetic Operators
         case .plus, .minus, .multiply, .divide, .bitwuseOr,
                 .bitwiseAnd, .shl, .shr, .mod:
-            let (sub, ty) = unify(lTy, with: rTy, at: expr.range)
-            let (sub2, ty2) = unify(ty, with: .integer, at: expr.range)
-            return (ty2, lSub.merging(rSub, and: sub, and: sub2), names)
+            let tv: Ty = .var(freshTyVar())
+            let fnType = instantiate(Scope.arithmetic)
+            let sub = unify(fnType, with: .fn(params: [lTy.apply(rSub), rTy], variadic: false, ret: tv), at: expr.range)
+            return (tv.apply(sub), sub.merging(rSub, and: lSub), lCon.merging(rCon), names)
         // Comparisons
         case .eq, .eq2, .neq, .neq2, .lt, .gt, .lte, .gte, .is,
                 .notNull, .notnull, .in, .like, .isNot, .isDistinctFrom,
                 .isNotDistinctFrom, .between, .and, .or, .isnull:
-            let (sub, _) = unify(lTy, with: rTy, at: expr.range)
-            return (.bool, lSub.merging(rSub, and: sub), names)
+            let fnType = instantiate(Scope.comparison)
+            let sub = unify(fnType, with: .fn(params: [lTy.apply(rSub), rTy], variadic: false, ret: .bool), at: expr.range)
+            return (.bool, sub.merging(rSub, and: lSub), lCon.merging(rCon), names)
 
 //        case .tilde: return .any
 //        case .collate: return lhs
@@ -466,190 +554,65 @@ extension TypeChecker: ExprVisitor {
 //        case .match: return .any
 //        case .regexp: return .any
 //        case .glob: return .any
-//        
 //        case .not: return .any
         default:
             fatalError()
         }
     }
     
-    mutating func visit(_ expr: PostfixExpr) throws -> (Ty, Substitution, Names) {
+    mutating func visit(_ expr: PostfixExpr) throws -> (Ty, Substitution, Constraints, Names) {
         return try expr.lhs.accept(visitor: &self)
     }
     
-    mutating func visit(_ expr: BetweenExpr) throws -> (Ty, Substitution, Names) {
-        let (vTy, vSub, vNames) = try expr.value.accept(visitor: &self)
-        let (lTy, lSub, lNames) = try expr.lower.accept(visitor: &self)
-        let (rTy, rSub, rNames) = try expr.upper.accept(visitor: &self)
-        let (s, t1) = unify(vTy, with: lTy, at: expr.range)
-        let (s2, t2) = unify(lTy, with: t1, at: expr.range)
-        let (s3, _) = unify(rTy, with: t2, at: expr.range)
-        return (
-            .bool,
-            vSub.merging(lSub, and: rSub, and: s).merging(s, and: s2, and: s3),
-            vNames.merging(with: lNames).merging(with: rNames)
-        )
+    mutating func visit(_ expr: BetweenExpr) throws -> (Ty, Substitution, Constraints, Names) {
+        let (tys, sub, con, names) = try visit(many: [expr.value, expr.lower, expr.upper])
+        let betSub = unify(instantiate(Scope.between), with: .fn(params: tys, variadic: false, ret: .bool), at: expr.range)
+        return (.bool, betSub.merging(sub), con, names)
     }
     
-    mutating func visit(_ expr: FunctionExpr) throws -> (Ty, Substitution, Names) {
-        let args = try expr.args.map { try $0.accept(visitor: &self) }
+    mutating func visit(_ expr: FunctionExpr) throws -> (Ty, Substitution, Constraints, Names) {
+        let (argTys, argSub, argConstraints, argNames) = try visit(many: expr.args)
         
-        guard let scheme = scope.function(name: expr.name) else {
+        guard let scheme = scope.function(name: expr.name, argCount: argTys.count) else {
             diagnostics.add(.init("No such function '\(expr.name)' exits", at: expr.range))
-            return (.any, [:], .none)
+            return (.error, argSub, argConstraints, argNames)
         }
         
-        guard case let .fn(params, variadic, ret) = instantiate(scheme) else {
-            diagnostics.add(.init("'\(expr.name)' is not a function", at: expr.range))
-            return (.any, [:], .none)
-        }
-        
-        let (ty, sub) = try infer(
-            args: args.map(\.0),
-            params: params,
-            variadic: variadic,
-            ret: ret,
-            at: expr.range
-        )
-        
-        return (ty, args.reduce(into: [:], { $0.merge($1.1, uniquingKeysWith: {$1}) }).merging(sub), .none)
+        let tv: Ty = .var(freshTyVar())
+        let sub = unify(instantiate(scheme), with: .fn(params: argTys, variadic: false, ret: tv), at: expr.range)
+        return (tv, sub.merging(argSub), argConstraints, argNames)
     }
     
-    mutating func visit(_ expr: CastExpr) throws -> (Ty, Substitution, Names) {
+    mutating func visit(_ expr: CastExpr) throws -> (Ty, Substitution, Constraints, Names) {
         fatalError()
     }
     
-    mutating func visit(_ expr: Expression) throws -> (Ty, Substitution, Names) {
+    mutating func visit(_ expr: Expression) throws -> (Ty, Substitution, Constraints, Names) {
         fatalError()
     }
     
-    mutating func visit(_ expr: CaseWhenThenExpr) throws -> (Ty, Substitution, Names) {
+    mutating func visit(_ expr: CaseWhenThenExpr) throws -> (Ty, Substitution, Constraints, Names) {
         fatalError()
     }
     
-    mutating func visit(_ expr: GroupedExpr) throws -> (Ty, Substitution, Names) {
+    mutating func visit(_ expr: GroupedExpr) throws -> (Ty, Substitution, Constraints, Names) {
         fatalError()
     }
     
-    private mutating func infer(
-        args: [Ty],
-        params: [Ty],
-        variadic: Bool,
-        ret: Ty,
-        at range: Range<String.Index>
-    ) throws -> (Ty, Substitution) {
-        if !variadic, args.count != params.count {
-            diagnostics.add(.init(
-                "Incorrect number of arguments, got '\(args.count)' expected '\(params.count)'",
-                at: range
-            ))
-        }
-        
-        if variadic, args.count < params.count {
-            diagnostics.add(.init(
-                "Incorrect number of arguments, got '\(args.count)' expected '\(params.count)' or more",
-                at: range
-            ))
-        }
-        
-        var args = args.makeIterator()
-        guard var arg = args.next() else {
-            // A previous diagnostic will have displayed an error, so no need to repeat
-            return (ret, [:])
-        }
-        
+    mutating func visit(many exprs: [Expression]) throws -> ([Ty], Substitution, Constraints, Names) {
+        var tys: [Ty] = []
         var sub: Substitution = [:]
+        var constraints: [TypeVariable: TypeConstraints] = [:]
+        var names: Names = .none
         
-        for (index, param) in params.enumerated() {
-            let isLast = params.count - 1 == index
-            
-            if isLast {
-                var argTy = arg
-                var argSub: Substitution = [:]
-                
-                // For the final parameter we first want to unify all of the arguments
-                // for the final param to handle the variadics before unifying it
-                // with the actual parameter type.
-                //
-                // This feels very wrong but I'm not sure of a better way atm.
-                // TODO: Revisit this.
-                while let arg = args.next() {
-                    let (s, newTy) = unify(argTy, with: arg, at: range)
-                    argTy = newTy
-                    argSub.merge(s, uniquingKeysWith: {$1})
-                }
-                
-                let (finalSub, _) = unify(argTy, with: param, at: range)
-                sub.merge(argSub, uniquingKeysWith: {$1})
-                sub.merge(finalSub, uniquingKeysWith: {$1})
-            } else if let next = args.next() {
-                let (s, _) = unify(param, with: arg, at: range)
-                sub.merge(s, uniquingKeysWith: {$1})
-                arg = next
-            } else {
-                return (ret, sub)
-            }
+        for expr in exprs {
+            let (t, s, c, n) = try expr.accept(visitor: &self)
+            tys.append(t.apply(sub))
+            sub.merge(s, uniquingKeysWith: {$1})
+            constraints.merge(c, uniquingKeysWith: { $0.union($1) })
+            names = names.merging(with: n)
         }
         
-        return (ret.apply(sub), sub)
-    }
-}
-
-
-enum Constraint {
-    case equal(Ty, Ty)
-    case conforms(Ty, TypeConstraints)
-}
-
-extension TypeChecker {
-    mutating func solve(constraints: [Constraint]) {
-        var solution: Substitution = [:]
-        var conformances: [(Ty, TypeConstraints)] = []
-        
-        for constraint in constraints {
-            switch constraint {
-            case .equal(let ty, let ty2):
-                let (s, t) = unify(ty, with: ty2, at: "".startIndex..<"".endIndex)
-                solution.merge(s, uniquingKeysWith: {$1})
-            case .conforms(let ty, let typeConstraints):
-                conformances.append((ty, typeConstraints))
-            }
-        }
-        
-        for (ty, constraint) in conformances {
-            let ty = ty.apply(solution)
-            
-            switch ty {
-            case .nominal(let typeName):
-                if constraint.contains(.numeric), (ty != .integer || ty != .real) {
-                    fatalError("TODO: Throw real error")
-                }
-            case .var(let typeVariable):
-                // TODO: Actually default
-                solution[typeVariable] = .integer
-            case .fn:
-                fatalError("TODO: Throw real error")
-            case .error:
-                fatalError("TODO: Throw real error")
-            }
-        }
-    }
-}
-
-struct Solution2 {
-    var type: Ty
-    var names: Names
-    var substitution: Substitution
-    var constraints: [(TypeVariable, TypeConstraints)]
-    private var tyVarLookup: [BindParameter.Kind: TypeVariable]
-    
-    func merging(with other: Solution2) -> Solution2 {
-        return Solution2(
-            type: other.type,
-            names: names.merging(with: other.names),
-            substitution: substitution.merging(other.substitution),
-            constraints: constraints + other.constraints,
-            tyVarLookup: tyVarLookup.merging(other.tyVarLookup, uniquingKeysWith: {$1})
-        )
+        return (tys, sub, constraints, names)
     }
 }

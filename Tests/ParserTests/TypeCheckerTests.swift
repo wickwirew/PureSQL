@@ -41,9 +41,15 @@ class TypeCheckerTests: XCTestCase {
     func testTypeCheckBind() throws {
         let solution = try solution(for: ":foo + 1 > :bar + 2.0 AND :baz")
         XCTAssertEqual(.bool, solution.type)
-        XCTAssertEqual(.integer, solution.type(for: .named("foo")))
+        XCTAssertEqual(.real, solution.type(for: .named("foo")))
         XCTAssertEqual(.real, solution.type(for: .named("bar")))
         XCTAssertEqual(.bool, solution.type(for: .named("baz")))
+    }
+    
+    func testTypeCheckBind2() throws {
+        let solution = try solution(for: "1.0 + 2 * 3 * 4 * ?")
+        XCTAssertEqual(.real, solution.type)
+        XCTAssertEqual(.real, solution.type(for: .unnamed(0)))
     }
     
     func testNames() throws {
@@ -51,7 +57,7 @@ class TypeCheckerTests: XCTestCase {
         CREATE TABLE foo(bar INTEGER);
         """)
         
-        let solution = try solution(for: "bar = ?", in: scope)
+        var solution = try solution(for: "bar = ?", in: scope)
         XCTAssertEqual(.bool, solution.type)
         XCTAssertEqual(.integer, solution.type(for: .unnamed(0)))
         XCTAssertEqual("bar", solution.name(for: 0))
@@ -62,7 +68,7 @@ class TypeCheckerTests: XCTestCase {
         CREATE TABLE foo(bar INTEGER);
         """)
         
-        let solution = try solution(for: "bar + 1 = ?", in: scope)
+        var solution = try solution(for: "bar + 1 = ?", in: scope)
         XCTAssertEqual(.bool, solution.type)
         XCTAssertEqual(.integer, solution.type(for: .unnamed(0)))
         XCTAssertEqual("bar", solution.name(for: 0))
@@ -73,7 +79,7 @@ class TypeCheckerTests: XCTestCase {
         CREATE TABLE foo(bar INTEGER);
         """)
         
-        let solution = try solution(for: "1 + bar = ?", in: scope)
+        var solution = try solution(for: "1 + bar = ?", in: scope)
         XCTAssertEqual(.bool, solution.type)
         XCTAssertEqual(.integer, solution.type(for: .unnamed(0)))
         XCTAssertEqual("bar", solution.name(for: 0))
@@ -101,8 +107,6 @@ class TypeCheckerTests: XCTestCase {
         
         let solution = try solution(for: "MAX(1, 1, bar + 1, 1)", in: scope)
         XCTAssertEqual(.real, solution.type)
-//        XCTAssertEqual(.integer, solution.type(for: .unnamed(0)))
-//        XCTAssertEqual("bar", solution.name(for: 0))
     }
     
     func testTypeFunctionInputGetBound() throws {
@@ -117,12 +121,12 @@ class TypeCheckerTests: XCTestCase {
     
     func testErrors() throws {
         let solution = try solution(for: "'a' + 'b'")
-        XCTAssertEqual(.integer, solution.type)
+        XCTAssertEqual(.text, solution.type)
     }
     
     func scope(table: String, schema: String) throws -> Scope {
         let schema = try SchemaBuilder.build(from: schema)
-        guard let table = schema.tables[TableName(schema: .main, name: Identifier(stringLiteral: table))] else { fatalError() }
+        guard let table = schema.tables[TableName(schema: .main, name: Identifier(stringLiteral: table))] else { fatalError("'table' provided not in 'schema'") }
         return Scope(tables: [table.name: table], schema: schema)
     }
     
@@ -135,14 +139,7 @@ class TypeCheckerTests: XCTestCase {
     }
     
     private func check(_ source: String, in scope: Scope = Scope()) throws -> TypeName {
-        let solution = try solution(for: source, in: scope)
-        
-        switch solution.type {
-        case .nominal(let t):
-            return t
-        case .error, .var, .fn:
-            return .any
-        }
+        return try solution(for: source, in: scope).type
     }
     
     private func parse(_ source: String) throws -> Schema.Expression {
