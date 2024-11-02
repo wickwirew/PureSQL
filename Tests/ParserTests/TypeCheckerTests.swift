@@ -141,6 +141,17 @@ class TypeCheckerTests: XCTestCase {
         XCTAssertEqual(.real, solution.type(for: .unnamed(0)))
     }
     
+    func testRow() throws {
+        let solution = try solution(for: "(1, 'Foo', 2.0)")
+        XCTAssertEqual(.row([.integer, .text, .real]), solution.type)
+    }
+    
+    func testInRow() throws {
+        let solution = try solution(for: ":bar IN (1, 'Foo', 2.0)")
+        XCTAssertEqual(.bool, solution.type)
+        XCTAssertEqual(.row([.integer, .text, .real]), solution.type(for: .named("bar")))
+    }
+    
     func scope(table: String, schema: String) throws -> Environment {
         let schema = try SchemaBuilder.build(from: schema)
         guard let table = schema.tables[TableName(schema: .main, name: Identifier(stringLiteral: table))] else { fatalError("'table' provided not in 'schema'") }
@@ -155,7 +166,7 @@ class TypeCheckerTests: XCTestCase {
         return solution
     }
     
-    private func check(_ source: String, in scope: Environment = Environment()) throws -> TypeName {
+    private func check(_ source: String, in scope: Environment = Environment()) throws -> Ty {
         return try solution(for: source, in: scope).type
     }
     

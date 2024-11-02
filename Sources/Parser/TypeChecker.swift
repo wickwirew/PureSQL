@@ -187,7 +187,7 @@ struct Solution: CustomStringConvertible {
         self.contraints = constraints
     }
     
-    var type: TypeName {
+    var type: Ty {
         return typeName(for: resultType)
     }
     
@@ -195,7 +195,7 @@ struct Solution: CustomStringConvertible {
         return "\(substitution.map { "\($0) ~> \($1)" }.joined(separator: "\n"))"
     }
     
-    func type(for param: BindParameter.Kind) -> TypeName {
+    func type(for param: BindParameter.Kind) -> Ty {
         guard let tv = tyVarLookup[param] else { fatalError("TODO: Throw real error") }
         return typeName(for: .var(tv))
     }
@@ -206,10 +206,10 @@ struct Solution: CustomStringConvertible {
         return "value\(valueNameCount == 0 ? "" : "\(valueNameCount)")"
     }
     
-    private func typeName(for ty: Ty) -> TypeName {
+    private func typeName(for ty: Ty) -> Ty {
+        let ty = ty.apply(substitution)
+        
         switch ty.apply(substitution) {
-        case .nominal(let t): return t
-        case .fn: return .any // TODO: Error
         case .var(let tv):
             // The type variable was never bound to a concrete type.
             // Check if the constraints gives any clues about a default type
@@ -218,7 +218,10 @@ struct Solution: CustomStringConvertible {
                 return .integer
             }
             return .any
-        case .error: return .any
+        case .row(let tys):
+            return .row(tys.map { typeName(for: $0) })
+        default:
+            return ty
         }
     }
 }
@@ -319,6 +322,9 @@ enum Ty: Equatable, CustomStringConvertible {
     /// A function.
     /// If `variadic` is `true`, it assumes it is over the last type in the arguments.
     indirect case fn(params: [Ty], ret: Ty)
+    /// A row. This can be a list of values in parenthesis
+    /// or even a single value.
+    indirect case row([Ty])
     /// There was an error somewhere in the analysis. We can just return
     /// an `error` type and continue the analysis. So if the user makes up
     /// 3 columns, they can get all 3 errors at once.
@@ -344,6 +350,7 @@ enum Ty: Equatable, CustomStringConvertible {
         case .nominal(let typeName): typeName.description
         case .var(let typeVariable): typeVariable.description
         case let .fn(args, ret): "(\(args.map(\.description).joined(separator: ","))) -> \(ret)"
+        case let .row(tys): "(\(tys.map(\.description).joined(separator: ",")))"
         case .error: "<<error>>"
         }
     }
@@ -368,6 +375,8 @@ enum Ty: Equatable, CustomStringConvertible {
                 params: params.map{ $0.apply(s) },
                 ret: ret.apply(s)
             )
+        case let .row(tys):
+            return .row(tys.map { $0.apply(s) })
         case .nominal, .error:
             // Literals can't be substituted for.
             return self
@@ -520,6 +529,20 @@ struct TypeChecker {
             let args = unify(args1, with: args2, at: range)
             let ret = unify(ret1.apply(args), with: ret2.apply(args), at: range)
             return ret.merging(args)
+        case let (.row(row), t):
+            if row.count == 1, let first = row.first {
+                return unify(first, with: t, at: range)
+            } else {
+                diagnostics.add(.init("Unable to unify types '\(ty)' and '\(other)'", at: range))
+                return [:]
+            }
+        case let (t, .row(row)):
+            if row.count == 1, let first = row.first {
+                return unify(first, with: t, at: range)
+            } else {
+                diagnostics.add(.init("Unable to unify types '\(ty)' and '\(other)'", at: range))
+                return [:]
+            }
         case (.error, _), (_, .error):
             // Already had an upstream error so no need to emit any more diagnostics
             return [:]
@@ -725,7 +748,8 @@ extension TypeChecker: ExprVisitor {
     }
     
     mutating func visit(_ expr: GroupedExpr) throws -> (Ty, Substitution, Constraints, Names) {
-        fatalError()
+        let (t, s, c, n) = try visit(many: expr.exprs)
+        return (.row(t), s, c, n)
     }
     
     private mutating func visit(many exprs: [Expression]) throws -> ([Ty], Substitution, Constraints, Names) {
