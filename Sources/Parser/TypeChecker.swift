@@ -12,13 +12,23 @@ struct Environment {
     private(set) var tables: [TableName: TableSchema] = [:]
     private let schema: DatabaseSchema
     
-    static let max = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)), variadic: true)
+    static let negate = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)), variadic: false)
+    static let bitwiseNot = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)), variadic: false)
+    static let pos = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)), variadic: false)
     static let between = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0), .var(0)], ret: .bool), variadic: false)
     static let arithmetic = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0)], ret: .var(0)), variadic: false)
     static let comparison = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0)], ret: .bool), variadic: false)
+    static let concat = TypeScheme(typeVariables: [0, 1], type: .fn(params: [.var(0), .var(1)], ret: .text), variadic: false)
+    static let extract = TypeScheme(typeVariables: [0, 1], type: .fn(params: [.var(0)], ret: .var(1)), variadic: false)
+    static let extractJson = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .any), variadic: false)
+    static let collate = TypeScheme(typeVariables: [], type: .fn(params: [.text], ret: .text), variadic: false)
+    static let escape = TypeScheme(typeVariables: [], type: .fn(params: [.text], ret: .text), variadic: false)
+    static let match = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .text], ret: .bool), variadic: false)
+    static let regexp = TypeScheme(typeVariables: [], type: .fn(params: [.text, .text], ret: .bool), variadic: false)
+    static let glob = TypeScheme(typeVariables: [], type: .fn(params: [.text, .text], ret: .bool), variadic: false)
     
     static let functions: [Substring: TypeScheme] = [
-        "MAX": max
+        "MAX": TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)), variadic: true)
     ]
     
     enum ColumnResult: Equatable {
@@ -85,6 +95,56 @@ struct Environment {
             ),
             variadic: true
         )
+    }
+    
+    func prefixFunction(for op: Operator) -> TypeScheme? {
+        switch op {
+        case .plus:
+            return Environment.pos
+        case .minus:
+            return Environment.negate
+        case .tilde:
+            return Environment.bitwiseNot
+        default:
+            return nil
+        }
+    }
+    
+    func infixFunction(for op: Operator) -> TypeScheme? {
+        switch op {
+        case .plus, .minus, .multiply, .divide, .bitwuseOr,
+                .bitwiseAnd, .shl, .shr, .mod:
+            return Environment.arithmetic
+        case .eq, .eq2, .neq, .neq2, .lt, .gt, .lte, .gte, .is,
+                .notNull, .notnull, .in, .like, .isNot, .isDistinctFrom,
+                .isNotDistinctFrom, .between, .and, .or, .isnull, .not:
+            return Environment.comparison
+        case .concat:
+            return Environment.concat
+        case .doubleArrow:
+            return Environment.extract
+        case .match:
+            return Environment.match
+        case .regexp:
+            return Environment.regexp
+        case .arrow:
+            return Environment.extractJson
+        case .glob:
+            return Environment.glob
+        default:
+            return nil
+        }
+    }
+    
+    func postfixFunction(for op: Operator) -> TypeScheme? {
+        switch op {
+        case .collate:
+            return Environment.concat
+        case .escape:
+            return Environment.escape
+        default:
+            return nil
+        }
     }
 }
 
@@ -177,7 +237,6 @@ struct TypeConstraints: OptionSet, Hashable {
 
 struct TypeVariable: Hashable, CustomStringConvertible, ExpressibleByIntegerLiteral {
     let n: Int
-    
     
     init(_ n: Int) {
         self.n = n
@@ -559,14 +618,17 @@ extension TypeChecker: ExprVisitor {
     }
     
     mutating func visit(_ expr: PrefixExpr) throws -> (Ty, Substitution, Constraints, Names) {
-        if !expr.operator.operator.canBePrefix {
-            diagnostics.add(.init(
-                "'\(expr.operator.operator)' is not a valid prefix operator",
-                at: expr.operator.range
-            ))
+        let (t, s, c, n) = try expr.rhs.accept(visitor: &self)
+        
+        guard let scheme = scope.prefixFunction(for: expr.operator.operator) else {
+            diagnostics.add(.init("'\(expr.operator.operator)' is not a valid prefix operator", at: expr.operator.range))
+            return (.error, s, c, n)
         }
         
-        return try expr.rhs.accept(visitor: &self)
+        let tv: Ty = .var(freshTyVar())
+        let fnType = instantiate(scheme)
+        let sub = unify(fnType, with: .fn(params: [t], ret: tv), at: expr.range)
+        return (tv.apply(sub), sub.merging(s), c, n)
     }
     
     mutating func visit(_ expr: InfixExpr) throws -> (Ty, Substitution, Constraints, Names) {
@@ -574,38 +636,29 @@ extension TypeChecker: ExprVisitor {
         let (rTy, rSub, rCon, rNames) = try expr.rhs.accept(visitor: &self)
         let names = lNames.merging(rNames)
         
-        switch expr.operator.operator {
-        // Arithmetic Operators
-        case .plus, .minus, .multiply, .divide, .bitwuseOr,
-                .bitwiseAnd, .shl, .shr, .mod:
-            let tv: Ty = .var(freshTyVar())
-            let fnType = instantiate(Environment.arithmetic)
-            let sub = unify(fnType, with: .fn(params: [lTy.apply(rSub), rTy], ret: tv), at: expr.range)
-            return (tv.apply(sub), sub.merging(rSub, lSub), lCon.merging(rCon), names)
-        // Comparisons
-        case .eq, .eq2, .neq, .neq2, .lt, .gt, .lte, .gte, .is,
-                .notNull, .notnull, .in, .like, .isNot, .isDistinctFrom,
-                .isNotDistinctFrom, .between, .and, .or, .isnull:
-            let fnType = instantiate(Environment.comparison)
-            let sub = unify(fnType, with: .fn(params: [lTy.apply(rSub), rTy], ret: .bool), at: expr.range)
-            return (.bool, sub.merging(rSub, lSub), lCon.merging(rCon), names)
-
-//        case .tilde: return .any
-//        case .collate: return lhs
-//        case .concat: return .text
-//        case .arrow, .doubleArrow: return .any
-//        case .escape: return lhs
-//        case .match: return .any
-//        case .regexp: return .any
-//        case .glob: return .any
-//        case .not: return .any
-        default:
-            fatalError()
+        guard let scheme = scope.infixFunction(for: expr.operator.operator) else {
+            diagnostics.add(.init("'\(expr.operator.operator)' is not a valid infix operator", at: expr.operator.range))
+            return (.error, rSub.merging(lSub), lCon.merging(rCon), names)
         }
+        
+        let tv: Ty = .var(freshTyVar())
+        let fnType = instantiate(scheme)
+        let sub = unify(fnType, with: .fn(params: [lTy.apply(rSub), rTy], ret: tv), at: expr.range)
+        return (tv.apply(sub), sub.merging(rSub, lSub), lCon.merging(rCon), names)
     }
     
     mutating func visit(_ expr: PostfixExpr) throws -> (Ty, Substitution, Constraints, Names) {
-        return try expr.lhs.accept(visitor: &self)
+        let (t, s, c, n) = try expr.lhs.accept(visitor: &self)
+        
+        guard let scheme = scope.postfixFunction(for: expr.operator.operator) else {
+            diagnostics.add(.init("'\(expr.operator.operator)' is not a valid postfix operator", at: expr.operator.range))
+            return (.error, s, c, n)
+        }
+        
+        let tv: Ty = .var(freshTyVar())
+        let fnType = instantiate(scheme)
+        let sub = unify(fnType, with: .fn(params: [t], ret: tv), at: expr.range)
+        return (tv.apply(sub), sub.merging(s), c, n)
     }
     
     mutating func visit(_ expr: BetweenExpr) throws -> (Ty, Substitution, Constraints, Names) {
