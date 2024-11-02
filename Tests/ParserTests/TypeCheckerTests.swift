@@ -152,6 +152,12 @@ class TypeCheckerTests: XCTestCase {
         XCTAssertEqual(.row([.integer, .text, .real]), solution.type(for: .named("bar")))
     }
     
+    func testInRowInferInputAsRow() throws {
+        let solution = try solution(for: "1 IN :bar")
+        XCTAssertEqual(.bool, solution.type)
+        XCTAssertEqual(.row([.integer]), solution.type(for: .named("bar")))
+    }
+    
     func scope(table: String, schema: String) throws -> Environment {
         let schema = try SchemaBuilder.build(from: schema)
         guard let table = schema.tables[TableName(schema: .main, name: Identifier(stringLiteral: table))] else { fatalError("'table' provided not in 'schema'") }

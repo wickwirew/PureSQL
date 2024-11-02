@@ -18,6 +18,7 @@ struct Environment {
     static let between = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0), .var(0)], ret: .bool), variadic: false)
     static let arithmetic = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0)], ret: .var(0)), variadic: false)
     static let comparison = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0)], ret: .bool), variadic: false)
+    static let `in` = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .row([.var(0)])], ret: .bool), variadic: false)
     static let concat = TypeScheme(typeVariables: [0, 1], type: .fn(params: [.var(0), .var(1)], ret: .text), variadic: false)
     static let extract = TypeScheme(typeVariables: [0, 1], type: .fn(params: [.var(0)], ret: .var(1)), variadic: false)
     static let extractJson = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .any), variadic: false)
@@ -116,9 +117,11 @@ struct Environment {
                 .bitwiseAnd, .shl, .shr, .mod:
             return Environment.arithmetic
         case .eq, .eq2, .neq, .neq2, .lt, .gt, .lte, .gte, .is,
-                .notNull, .notnull, .in, .like, .isNot, .isDistinctFrom,
+                .notNull, .notnull, .like, .isNot, .isDistinctFrom,
                 .isNotDistinctFrom, .between, .and, .or, .isnull, .not:
             return Environment.comparison
+        case .in:
+            return Environment.in
         case .concat:
             return Environment.concat
         case .doubleArrow:
@@ -144,23 +147,6 @@ struct Environment {
             return Environment.escape
         default:
             return nil
-        }
-    }
-}
-
-struct CompiledQuery {
-    let input: [Field<BindParameter>]
-    let output: [Field<Substring>]
-    
-    struct Field<Name> {
-        let name: Name
-        let type: TypeName
-        let nullable: Bool
-        
-        init(name: Name, type: TypeName, nullable: Bool) {
-            self.name = name
-            self.type = type
-            self.nullable = nullable
         }
     }
 }
