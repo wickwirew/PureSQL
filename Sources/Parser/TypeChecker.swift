@@ -12,10 +12,10 @@ struct Scope {
     private(set) var tables: [TableName: TableSchema] = [:]
     private let schema: DatabaseSchema
     
-    static let max = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], variadic: true, ret: .var(0)))
-    static let between = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0), .var(0)], variadic: false, ret: .bool))
-    static let arithmetic = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0)], variadic: false, ret: .var(0)))
-    static let comparison = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0)], variadic: false, ret: .bool))
+    static let max = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)), variadic: true)
+    static let between = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0), .var(0)], ret: .bool), variadic: false)
+    static let arithmetic = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0)], ret: .var(0)), variadic: false)
+    static let comparison = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0)], ret: .bool), variadic: false)
     
     static let functions: [Substring: TypeScheme] = [
         "MAX": max
@@ -68,22 +68,22 @@ struct Scope {
     
     func function(name: Identifier, argCount: Int) -> TypeScheme? {
         guard let scheme = Self.functions[name.name],
-                case let .fn(params, variadic, ret) = scheme.type else { return nil }
+                case let .fn(params, ret) = scheme.type else { return nil }
         
         // This is how variadics are handled. If a variadic function is called
         // we extend the signature to match the input count. It is always
         // assumed the last parameter is the variadic.
         let numberOfArgsToAdd = argCount - params.count
         
-        guard variadic, argCount > 0, let last = params.last else { return scheme }
+        guard scheme.variadic, argCount > 0, let last = params.last else { return scheme }
         
         return TypeScheme(
             typeVariables: scheme.typeVariables,
             type: .fn(
                 params: params + (0..<numberOfArgsToAdd).map { _ in last },
-                variadic: false,
                 ret: ret
-            )
+            ),
+            variadic: true
         )
     }
 }
@@ -195,6 +195,7 @@ struct TypeVariable: Hashable, CustomStringConvertible, ExpressibleByIntegerLite
 struct TypeScheme: CustomStringConvertible {
     let typeVariables: [TypeVariable]
     let type: Ty
+    let variadic: Bool
     
     var description : String {
         return "∀\(typeVariables.map(\.description).joined(separator: ", ")).\(self.type)"
@@ -231,7 +232,7 @@ enum Ty: Equatable, CustomStringConvertible {
     case `var`(TypeVariable)
     /// A function.
     /// If `variadic` is `true`, it assumes it is over the last type in the arguments.
-    indirect case fn(params: [Ty], variadic: Bool, ret: Ty)
+    indirect case fn(params: [Ty], ret: Ty)
     /// There was an error somewhere in the analysis. We can just return
     /// an `error` type and continue the analysis. So if the user makes up
     /// 3 columns, they can get all 3 errors at once.
@@ -256,7 +257,7 @@ enum Ty: Equatable, CustomStringConvertible {
         return switch self {
         case .nominal(let typeName): typeName.description
         case .var(let typeVariable): typeVariable.description
-        case let .fn(args, variadic, ret): "(\(args.map(\.description).joined(separator: ","))\(variadic ? "..." : "")) -> \(ret)"
+        case let .fn(args, ret): "(\(args.map(\.description).joined(separator: ","))) -> \(ret)"
         case .error: "<<error>>"
         }
     }
@@ -276,10 +277,9 @@ enum Ty: Equatable, CustomStringConvertible {
                 return t.apply(s)
             }
             return self
-        case let .fn(params, variadic, ret):
+        case let .fn(params, ret):
             return .fn(
                 params: params.map{ $0.apply(s) },
-                variadic: variadic,
                 ret: ret.apply(s)
             )
         case .nominal, .error:
@@ -430,7 +430,7 @@ struct TypeChecker {
                 diagnostics.add(.init("Unable to unify types '\(ty)' and '\(other)'", at: range))
             }
             return [:]
-        case let (.fn(args1, _, ret1), .fn(args2, _, ret2)):
+        case let (.fn(args1, ret1), .fn(args2, ret2)):
             let args = unify(args1, with: args2, at: range)
             let ret = unify(ret1.apply(args), with: ret2.apply(args), at: range)
             return ret.merging(args)
@@ -536,14 +536,14 @@ extension TypeChecker: ExprVisitor {
                 .bitwiseAnd, .shl, .shr, .mod:
             let tv: Ty = .var(freshTyVar())
             let fnType = instantiate(Scope.arithmetic)
-            let sub = unify(fnType, with: .fn(params: [lTy.apply(rSub), rTy], variadic: false, ret: tv), at: expr.range)
+            let sub = unify(fnType, with: .fn(params: [lTy.apply(rSub), rTy], ret: tv), at: expr.range)
             return (tv.apply(sub), sub.merging(rSub, and: lSub), lCon.merging(rCon), names)
         // Comparisons
         case .eq, .eq2, .neq, .neq2, .lt, .gt, .lte, .gte, .is,
                 .notNull, .notnull, .in, .like, .isNot, .isDistinctFrom,
                 .isNotDistinctFrom, .between, .and, .or, .isnull:
             let fnType = instantiate(Scope.comparison)
-            let sub = unify(fnType, with: .fn(params: [lTy.apply(rSub), rTy], variadic: false, ret: .bool), at: expr.range)
+            let sub = unify(fnType, with: .fn(params: [lTy.apply(rSub), rTy], ret: .bool), at: expr.range)
             return (.bool, sub.merging(rSub, and: lSub), lCon.merging(rCon), names)
 
 //        case .tilde: return .any
@@ -566,7 +566,7 @@ extension TypeChecker: ExprVisitor {
     
     mutating func visit(_ expr: BetweenExpr) throws -> (Ty, Substitution, Constraints, Names) {
         let (tys, sub, con, names) = try visit(many: [expr.value, expr.lower, expr.upper])
-        let betSub = unify(instantiate(Scope.between), with: .fn(params: tys, variadic: false, ret: .bool), at: expr.range)
+        let betSub = unify(instantiate(Scope.between), with: .fn(params: tys, ret: .bool), at: expr.range)
         return (.bool, betSub.merging(sub), con, names)
     }
     
@@ -579,7 +579,7 @@ extension TypeChecker: ExprVisitor {
         }
         
         let tv: Ty = .var(freshTyVar())
-        let sub = unify(instantiate(scheme), with: .fn(params: argTys, variadic: false, ret: tv), at: expr.range)
+        let sub = unify(instantiate(scheme), with: .fn(params: argTys, ret: tv), at: expr.range)
         return (tv, sub.merging(argSub), argConstraints, argNames)
     }
     
