@@ -124,13 +124,30 @@ class TypeCheckerTests: XCTestCase {
         XCTAssertEqual(.text, solution.type)
     }
     
-    func scope(table: String, schema: String) throws -> Scope {
-        let schema = try SchemaBuilder.build(from: schema)
-        guard let table = schema.tables[TableName(schema: .main, name: Identifier(stringLiteral: table))] else { fatalError("'table' provided not in 'schema'") }
-        return Scope(tables: [table.name: table], schema: schema)
+    func testCast() throws {
+        let solution = try solution(for: "CAST(1 AS TEXT)")
+        XCTAssertEqual(.text, solution.type)
     }
     
-    private func solution(for source: String, in scope: Scope = Scope()) throws -> Solution {
+    func testCaseWhenThenWithCaseExpr() throws {
+        let solution = try solution(for: "CASE 1 WHEN ? THEN '' WHEN 3 THEN '' ELSE '' END")
+        XCTAssertEqual(.text, solution.type)
+        XCTAssertEqual(.integer, solution.type(for: .unnamed(0)))
+    }
+    
+    func testCaseWhenThenWithNoCaseExpr() throws {
+        let solution = try solution(for: "CASE WHEN ? + 1 THEN '' WHEN 3.0 THEN '' ELSE '' END")
+        XCTAssertEqual(.text, solution.type)
+        XCTAssertEqual(.real, solution.type(for: .unnamed(0)))
+    }
+    
+    func scope(table: String, schema: String) throws -> Environment {
+        let schema = try SchemaBuilder.build(from: schema)
+        guard let table = schema.tables[TableName(schema: .main, name: Identifier(stringLiteral: table))] else { fatalError("'table' provided not in 'schema'") }
+        return Environment(tables: [table.name: table], schema: schema)
+    }
+    
+    private func solution(for source: String, in scope: Environment = Environment()) throws -> Solution {
         let expr = try parse(source)
         var typeChecker = TypeChecker(scope: scope)
         let solution = try typeChecker.check(expr)
@@ -138,7 +155,7 @@ class TypeCheckerTests: XCTestCase {
         return solution
     }
     
-    private func check(_ source: String, in scope: Scope = Scope()) throws -> TypeName {
+    private func check(_ source: String, in scope: Environment = Environment()) throws -> TypeName {
         return try solution(for: source, in: scope).type
     }
     
