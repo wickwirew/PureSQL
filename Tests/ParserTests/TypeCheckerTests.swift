@@ -152,6 +152,20 @@ class TypeCheckerTests: XCTestCase {
         XCTAssertEqual(.row([.integer, .text, .real]), solution.type(for: .named("bar")))
     }
     
+    func testPerformance() throws {
+        measure {
+            for _ in 0..<1000 {
+                do {
+                    let expr = try parse(":foo + 1 > :bar + 2.0 AND :baz AND 1 * 2 + 3 - 3 > 100")
+                    var typeChecker = TypeChecker(scope: .init())
+                    _ = try typeChecker.check(expr)
+                } catch {
+                    XCTFail(error.localizedDescription)
+                }
+            }
+        }
+    }
+    
     func scope(table: String, schema: String) throws -> Environment {
         let schema = try SchemaBuilder.build(from: schema)
         guard let table = schema.tables[TableName(schema: .main, name: Identifier(stringLiteral: table))] else { fatalError("'table' provided not in 'schema'") }
@@ -162,7 +176,6 @@ class TypeCheckerTests: XCTestCase {
         let expr = try parse(source)
         var typeChecker = TypeChecker(scope: scope)
         let solution = try typeChecker.check(expr)
-        typeChecker.dumpDiagnostics(in: source)
         return solution
     }
     
