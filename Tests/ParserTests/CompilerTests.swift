@@ -17,8 +17,8 @@ class CompilerTests: XCTestCase {
             CREATE TABLE baz(qux INTEGER, meow TEXT);
             """,
             source: """
-            SELECT *, bar + 1 * :meow FROM foo
-            INNER JOIN baz;
+            SELECT *, bar + 1 * :meow, qux + qux AS fart FROM foo
+            JOIN baz;
             """
         )
         
@@ -29,12 +29,14 @@ class CompilerTests: XCTestCase {
         let parser = SelectStmtParser()
         let stmt = try parser.parse(source)
         
-        var compiler = QueryCompiler(
+        let compiler = QueryCompiler(
             environment: .init(),
             diagnositics: .init(),
             schema: try SchemaBuilder.build(from: schema)
         )
         
-        return try compiler.compile(stmt)
+        let query = try compiler.compile(stmt)
+        print(query.inputs)
+        return query
     }
 }

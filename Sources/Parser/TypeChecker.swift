@@ -9,7 +9,7 @@ import OrderedCollections
 import Schema
 
 struct Environment {
-    private(set) var sources: [TableName: QuerySource] = [:]
+    private(set) var sources: [Substring: QuerySource] = [:]
     
     static let negate = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)))
     static let bitwiseNot = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)))
@@ -37,7 +37,7 @@ struct Environment {
         case notFound
     }
     
-    init(sources: [TableName: QuerySource] = [:]) {
+    init(sources: [Substring: QuerySource] = [:]) {
         self.sources = sources
     }
 //    
@@ -48,7 +48,7 @@ struct Environment {
 //        return true
 //    }
     
-    mutating func include(name: TableName, source: QuerySource) {
+    mutating func include(name: Substring, source: QuerySource) {
         sources[name] = source
     }
     
@@ -69,11 +69,10 @@ struct Environment {
     }
     
     func column(
-        schema: Identifier?,
         table: Identifier,
         name: Identifier
     ) -> ColumnResult {
-        guard let table = sources[TableName(schema: schema, name: table)],
+        guard let table = sources[table.name],
               let column = table.fields[name.name] else { return .notFound }
         
         return .found(column)
@@ -336,6 +335,7 @@ enum Ty: Equatable, CustomStringConvertible {
     /// A row. This can be a list of values in parenthesis
     /// or even a single value.
     indirect case row([Ty])
+    indirect case optional(Ty)
     /// There was an error somewhere in the analysis. We can just return
     /// an `error` type and continue the analysis. So if the user makes up
     /// 3 columns, they can get all 3 errors at once.
@@ -362,6 +362,7 @@ enum Ty: Equatable, CustomStringConvertible {
         case .var(let typeVariable): typeVariable.description
         case let .fn(args, ret): "(\(args.map(\.description).joined(separator: ","))) -> \(ret)"
         case let .row(tys): "(\(tys.map(\.description).joined(separator: ",")))"
+        case let .optional(ty): "\(ty)?"
         case .error: "<<error>>"
         }
     }
@@ -388,6 +389,8 @@ enum Ty: Equatable, CustomStringConvertible {
             )
         case let .row(tys):
             return .row(tys.map { $0.apply(s) })
+        case let .optional(ty):
+            return .optional(ty)
         case .nominal, .error:
             // Literals can't be substituted for.
             return self
@@ -541,6 +544,10 @@ struct TypeChecker {
                 diagnostics.add(.init("Unable to unify types '\(ty)' and '\(other)'", at: range))
             }
             return [:]
+        case let (.optional(t1), t2):
+            return unify(t1, with: t2, at: range)
+        case let (t1, .optional(t2)):
+            return unify(t1, with: t2, at: range)
         case let (.fn(args1, ret1), .fn(args2, ret2)):
             let args = unify(args1, with: args2, at: range)
             let ret = unify(ret1.apply(args), with: ret2.apply(args), at: range)
@@ -632,7 +639,7 @@ extension TypeChecker: ExprVisitor {
     
     mutating func visit(_ expr: ColumnExpr) throws -> (Ty, Substitution, Constraints, Names) {
         let result: Environment.ColumnResult = if let table = expr.table {
-            scope.column(schema: expr.schema, table: table, name: expr.column)
+            scope.column(table: table, name: expr.column)
         } else {
             scope.column(name: expr.column)
         }

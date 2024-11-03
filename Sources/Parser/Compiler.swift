@@ -11,21 +11,23 @@ struct QuerySource {
     var name: Substring
     var tableName: Substring
     var fields: [Substring: QueryField]
-    var joinOp: JoinOperator?
     var isError = false
     
     static let error = QuerySource(
         name: "<<error>>",
         tableName: "<<error>>",
         fields: [:],
-        joinOp: nil,
         isError: true
     )
 }
 
-struct QueryField: Equatable {
+struct QueryField: Equatable, CustomStringConvertible {
     var name: Substring
     var type: Ty
+    
+    var description: String {
+        return "\(name): \(type)"
+    }
 }
 
 struct CompiledQuery {
@@ -38,7 +40,20 @@ struct QueryCompiler {
     var diagnositics: Diagnostics
     var schema: DatabaseSchema
     
-    mutating func compile(_ select: SelectStmt) throws -> CompiledQuery {
+    private var inputs: [QueryField] = []
+    private var outputs: [QueryField] = []
+    
+    init(
+        environment: Environment,
+        diagnositics: Diagnostics,
+        schema: DatabaseSchema
+    ) {
+        self.environment = environment
+        self.diagnositics = diagnositics
+        self.schema = schema
+    }
+    
+    consuming func compile(_ select: SelectStmt) throws -> CompiledQuery {
         switch select.selects.value {
         case .single(let select):
             return try compile(select)
@@ -54,7 +69,6 @@ struct QueryCompiler {
         case .values(let values):
             fatalError()
         }
-        
     }
     
     private mutating func compile(_ select: SelectCore.Select) throws -> CompiledQuery {
@@ -70,8 +84,6 @@ struct QueryCompiler {
         }
         
         var typeChecker = TypeChecker(scope: environment)
-        var inputs: [QueryField] = []
-        var outputs: [QueryField] = []
         
         for column in select.columns {
             switch column {
@@ -81,7 +93,7 @@ struct QueryCompiler {
                 inputs.append(contentsOf: solution.allNames.map { QueryField(name: $0.0, type: $0.1) })
             case .all(let tableName):
                 if let tableName {
-                    if let table = environment.sources[.init(schema: .main, name: tableName)] {
+                    if let table = environment.sources[tableName.name] {
                         outputs.append(contentsOf: table.fields.values)
                     } else {
                         diagnositics.add(.init("Table '\(tableName)' does not exist", at: tableName.range))
@@ -127,8 +139,13 @@ struct QueryCompiler {
             let tableName = TableName(schema: table.schema, name: table.name)
             
             guard let tableShema = schema.tables[tableName] else {
-                environment.include(name: tableName, source: .error)
+                environment.include(name: table.name.name, source: .error)
                 return
+            }
+            
+            let isOptional = switch joinOp {
+            case nil, .inner: false
+            default: true
             }
             
             let source = QuerySource(
@@ -136,11 +153,16 @@ struct QueryCompiler {
                 tableName: table.name.name,
                 fields: tableShema.columns
                     .filter { columns.isEmpty || columns.contains($0.key) }
-                    .reduce(into: [:]) { $0[$1.key.name] = .init(name: $1.value.name.name, type: .nominal($1.value.type)) },
-                joinOp: joinOp
+                    .reduce(into: [:]) { acc, column in
+                        let ty: Ty = .nominal(column.value.type)
+                        return acc[column.key.name] = .init(
+                            name: column.value.name.name,
+                            type: isOptional ? .optional(ty) : ty
+                        )
+                    }
             )
             
-            environment.include(name: tableName, source: source)
+            environment.include(name: table.alias?.name ?? table.name.name, source: source)
         case let .tableFunction(schema, table, args, alias):
             fatalError()
         case let .subquery(selectStmt):
@@ -152,6 +174,3 @@ struct QueryCompiler {
         }
     }
 }
-
-
-

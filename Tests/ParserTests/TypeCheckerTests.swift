@@ -169,7 +169,7 @@ class TypeCheckerTests: XCTestCase {
                 .reduce(into: [:]) { $0[$1.name.name] = QueryField(name: $1.name.name, type: .nominal($1.type)) }
         )
         
-        return Environment(sources: [table.name: source])
+        return Environment(sources: [table.name.name.name: source])
     }
     
     private func solution(for source: String, in scope: Environment = Environment()) throws -> Solution {
