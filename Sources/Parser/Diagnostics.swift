@@ -77,6 +77,10 @@ public struct Diagnostics {
         diagnostics.append(diagnostic)
     }
     
+    public mutating func add(contentsOf diagnostics: Diagnostics) {
+        self.diagnostics.append(contentsOf: diagnostics.diagnostics)
+    }
+    
     public mutating func throwing(_ diagnostic: Diagnostic) throws {
         diagnostics.append(diagnostic)
         throw diagnostic

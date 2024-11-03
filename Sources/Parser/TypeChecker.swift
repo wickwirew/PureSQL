@@ -9,7 +9,7 @@ import OrderedCollections
 import Schema
 
 struct Environment {
-    private(set) var sources: [Substring: QuerySource] = [:]
+    private(set) var sources: OrderedDictionary<Substring, QuerySource> = [:]
     
     static let negate = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)))
     static let bitwiseNot = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)))
@@ -37,17 +37,10 @@ struct Environment {
         case notFound
     }
     
-    init(sources: [Substring: QuerySource] = [:]) {
+    init(sources: OrderedDictionary<Substring, QuerySource> = [:]) {
         self.sources = sources
     }
-//    
-//    mutating func include(schema: Identifier?, table: Identifier, op: JoinOperator) -> Bool {
-//        let name = TableName(schema: schema, name: table)
-//        guard let table = self.schema.tables[name] else { return false }
-//        tables[name] = (table, op)
-//        return true
-//    }
-    
+
     mutating func include(name: Substring, source: QuerySource) {
         sources[name] = source
     }
@@ -68,10 +61,7 @@ struct Environment {
         return result
     }
     
-    func column(
-        table: Identifier,
-        name: Identifier
-    ) -> ColumnResult {
+    func column(table: Identifier, name: Identifier) -> ColumnResult {
         guard let table = sources[table.name],
               let column = table.fields[name.name] else { return .notFound }
         
@@ -153,6 +143,7 @@ struct Environment {
 }
 
 struct Solution: CustomStringConvertible {
+    let diagnostics: Diagnostics
     private let resultType: Ty
     private let names: Names
     private let substitution: Substitution
@@ -161,12 +152,14 @@ struct Solution: CustomStringConvertible {
     private var valueNameCount = 0
     
     init(
+        diagnostics: Diagnostics,
         resultType: Ty,
         names: Names,
         substitution: Substitution,
         constraints: [TypeVariable: TypeConstraints],
         tyVarLookup: [BindParameter.Kind : TypeVariable]
     ) {
+        self.diagnostics = diagnostics
         self.resultType = resultType
         self.names = names
         self.substitution = substitution
@@ -487,6 +480,7 @@ struct TypeChecker {
         let resultCon = finalize(constraints: con, with: sub)
         
         return Solution(
+            diagnostics: diagnostics,
             resultType: result,
             names: names,
             substitution: sub,

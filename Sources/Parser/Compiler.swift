@@ -62,6 +62,13 @@ struct QueryCompiler {
         }
     }
     
+    private mutating func check(_ expression: Expression) throws -> Ty {
+        var typeChecker = TypeChecker(scope: environment)
+        let solution = try typeChecker.check(expression)
+        diagnositics.add(contentsOf: solution.diagnostics)
+        return solution.type
+    }
+    
     private mutating func compile(_ select: SelectCore) throws -> CompiledQuery {
         switch select {
         case .select(let select):
@@ -83,30 +90,60 @@ struct QueryCompiler {
             break
         }
         
-        var typeChecker = TypeChecker(scope: environment)
-        
         for column in select.columns {
-            switch column {
-            case .expr(let expr, let `as`):
-                var solution = try typeChecker.check(expr)
-                outputs.append(.init(name: `as`?.name ?? solution.lastName ?? "TODO", type: solution.type))
-                inputs.append(contentsOf: solution.allNames.map { QueryField(name: $0.0, type: $0.1) })
-            case .all(let tableName):
-                if let tableName {
-                    if let table = environment.sources[tableName.name] {
-                        outputs.append(contentsOf: table.fields.values)
-                    } else {
-                        diagnositics.add(.init("Table '\(tableName)' does not exist", at: tableName.range))
-                    }
-                } else {
-                    for table in environment.sources.values {
-                        outputs.append(contentsOf: table.fields.values)
-                    }
+            try compile(column)
+        }
+        
+        if let whereExpr = select.where {
+            let type = try check(whereExpr)
+            
+            if type != .bool && type != .integer {
+                diagnositics.add(.init(
+                    "WHERE clause should return a 'BOOL' or 'INTEGER', got '\(type)'",
+                    at: whereExpr.range
+                ))
+            }
+        }
+        
+        if let groupBy = select.groupBy {
+            for expression in groupBy.expressions {
+                _ = try check(expression)
+            }
+            
+            if let having = groupBy.having {
+                let type = try check(having)
+                
+                if type != .bool && type != .integer {
+                    diagnositics.add(.init(
+                        "HAVING clause should return a 'BOOL' or 'INTEGER', got '\(type)'",
+                        at: having.range
+                    ))
                 }
             }
         }
         
         return CompiledQuery(inputs: inputs, outputs: outputs)
+    }
+    private mutating func compile(_ resultColumn: ResultColumn) throws {
+        switch resultColumn {
+        case .expr(let expr, let `as`):
+            var typeChecker = TypeChecker(scope: environment)
+            var solution = try typeChecker.check(expr)
+            outputs.append(.init(name: `as`?.name ?? solution.lastName ?? "TODO", type: solution.type))
+            inputs.append(contentsOf: solution.allNames.map { QueryField(name: $0.0, type: $0.1) })
+        case .all(let tableName):
+            if let tableName {
+                if let table = environment.sources[tableName.name] {
+                    outputs.append(contentsOf: table.fields.values)
+                } else {
+                    diagnositics.add(.init("Table '\(tableName)' does not exist", at: tableName.range))
+                }
+            } else {
+                for table in environment.sources.values {
+                    outputs.append(contentsOf: table.fields.values)
+                }
+            }
+        }
     }
     
     private mutating func compile(_ joinClause: JoinClause) throws {
@@ -120,8 +157,16 @@ struct QueryCompiler {
     private mutating func compile(_ join: JoinClause.Join) throws {
         switch join.constraint {
         case .on(let expression):
-            // TODO: Check Expression
             try compile(join.tableOrSubquery, joinOp: join.op)
+            
+            let type = try check(expression)
+            
+            if type != .bool && type != .integer {
+                diagnositics.add(.init(
+                    "JOIN clause should return a 'BOOL' or 'INTEGER', got '\(type)'",
+                    at: expression.range
+                ))
+            }
         case .using(let columns):
             try compile(join.tableOrSubquery, joinOp: join.op, columns: Set(columns))
         case .none:

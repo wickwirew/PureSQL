@@ -17,8 +17,9 @@ class CompilerTests: XCTestCase {
             CREATE TABLE baz(qux INTEGER, meow TEXT);
             """,
             source: """
-            SELECT *, bar + 1 * :meow, qux + qux AS fart FROM foo
-            JOIN baz;
+            SELECT * FROM foo
+            JOIN baz
+            WHERE qux == 100;
             """
         )
         
@@ -35,8 +36,6 @@ class CompilerTests: XCTestCase {
             schema: try SchemaBuilder.build(from: schema)
         )
         
-        let query = try compiler.compile(stmt)
-        print(query.inputs)
-        return query
+        return try compiler.compile(stmt)
     }
 }

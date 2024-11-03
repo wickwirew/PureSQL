@@ -129,7 +129,6 @@ struct CheckParser {
         var result: String = ""
         
         while let current, !predicate(current) {
-            print(current)
             result.append(current)
             advance()
         }
