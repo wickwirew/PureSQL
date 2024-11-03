@@ -40,8 +40,8 @@ struct QueryCompiler {
     var diagnositics: Diagnostics
     var schema: DatabaseSchema
     
-    private var inputs: [QueryField] = []
-    private var outputs: [QueryField] = []
+    private(set) var inputs: [QueryField] = []
+    private(set) var outputs: [QueryField] = []
     
     init(
         environment: Environment,
@@ -124,6 +124,7 @@ struct QueryCompiler {
         
         return CompiledQuery(inputs: inputs, outputs: outputs)
     }
+    
     private mutating func compile(_ resultColumn: ResultColumn) throws {
         switch resultColumn {
         case .expr(let expr, let `as`):
@@ -211,7 +212,7 @@ struct QueryCompiler {
         case let .tableFunction(schema, table, args, alias):
             fatalError()
         case let .subquery(selectStmt, alias):
-            var compiler = QueryCompiler(
+            let compiler = QueryCompiler(
                 environment: Environment(),
                 diagnositics: Diagnostics(),
                 schema: schema
@@ -226,6 +227,7 @@ struct QueryCompiler {
             )
             
             environment.include(subquery: source)
+            inputs.append(contentsOf: result.inputs)
         case let .join(joinClause):
             try compile(joinClause)
         case let .subTableOrSubqueries(array, alias):

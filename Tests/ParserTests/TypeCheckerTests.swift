@@ -171,7 +171,7 @@ class TypeCheckerTests: XCTestCase {
         )
         
         var env = Environment()
-        env.include(name: table.name.name.name[...], source: source)
+        env.include(table: table.name.name.name[...], source: source)
         return env
     }
     

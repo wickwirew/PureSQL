@@ -17,10 +17,7 @@ class CompilerTests: XCTestCase {
             CREATE TABLE baz(qux INTEGER, meow TEXT);
             """,
             source: """
-            SELECT * FROM foo
-            JOIN baz
-            WHERE qux == 100
-            GROUP BY '';
+            SELECT * FROM foo WHERE bar = ?
             """
         )
         
