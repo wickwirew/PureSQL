@@ -12,21 +12,21 @@ struct Environment {
     private(set) var tables: [TableName: TableSchema] = [:]
     private let schema: DatabaseSchema
     
-    static let negate = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)), variadic: false)
-    static let bitwiseNot = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)), variadic: false)
-    static let pos = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)), variadic: false)
-    static let between = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0), .var(0)], ret: .bool), variadic: false)
-    static let arithmetic = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0)], ret: .var(0)), variadic: false)
-    static let comparison = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0)], ret: .bool), variadic: false)
-    static let `in` = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .row([.var(0)])], ret: .bool), variadic: false)
-    static let concat = TypeScheme(typeVariables: [0, 1], type: .fn(params: [.var(0), .var(1)], ret: .text), variadic: false)
-    static let extract = TypeScheme(typeVariables: [0, 1], type: .fn(params: [.var(0)], ret: .var(1)), variadic: false)
-    static let extractJson = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .any), variadic: false)
-    static let collate = TypeScheme(typeVariables: [], type: .fn(params: [.text], ret: .text), variadic: false)
-    static let escape = TypeScheme(typeVariables: [], type: .fn(params: [.text], ret: .text), variadic: false)
-    static let match = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .text], ret: .bool), variadic: false)
-    static let regexp = TypeScheme(typeVariables: [], type: .fn(params: [.text, .text], ret: .bool), variadic: false)
-    static let glob = TypeScheme(typeVariables: [], type: .fn(params: [.text, .text], ret: .bool), variadic: false)
+    static let negate = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)))
+    static let bitwiseNot = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)))
+    static let pos = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)))
+    static let between = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0), .var(0)], ret: .bool))
+    static let arithmetic = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0)], ret: .var(0)))
+    static let comparison = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0)], ret: .bool))
+    static let `in` = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .row([.var(0)])], ret: .bool))
+    static let concat = TypeScheme(typeVariables: [0, 1], type: .fn(params: [.var(0), .var(1)], ret: .text))
+    static let extract = TypeScheme(typeVariables: [0, 1], type: .fn(params: [.var(0)], ret: .var(1)))
+    static let extractJson = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .any))
+    static let collate = TypeScheme(typeVariables: [], type: .fn(params: [.text], ret: .text))
+    static let escape = TypeScheme(typeVariables: [], type: .fn(params: [.text], ret: .text))
+    static let match = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .text], ret: .bool))
+    static let regexp = TypeScheme(typeVariables: [], type: .fn(params: [.text, .text], ret: .bool))
+    static let glob = TypeScheme(typeVariables: [], type: .fn(params: [.text, .text], ret: .bool))
     
     static let functions: [Substring: TypeScheme] = [
         "MAX": TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)), variadic: true)
@@ -174,7 +174,7 @@ struct Solution: CustomStringConvertible {
     }
     
     var type: Ty {
-        return typeName(for: resultType)
+        return type(for: resultType)
     }
     
     var description: String {
@@ -183,7 +183,7 @@ struct Solution: CustomStringConvertible {
     
     func type(for param: BindParameter.Kind) -> Ty {
         guard let tv = tyVarLookup[param] else { fatalError("TODO: Throw real error") }
-        return typeName(for: .var(tv))
+        return type(for: .var(tv))
     }
     
     mutating func name(for index: Int) -> Substring {
@@ -192,7 +192,7 @@ struct Solution: CustomStringConvertible {
         return "value\(valueNameCount == 0 ? "" : "\(valueNameCount)")"
     }
     
-    private func typeName(for ty: Ty) -> Ty {
+    private func type(for ty: Ty) -> Ty {
         let ty = ty.apply(substitution)
         
         switch ty.apply(substitution) {
@@ -205,7 +205,7 @@ struct Solution: CustomStringConvertible {
             }
             return .any
         case .row(let tys):
-            return .row(tys.map { typeName(for: $0) })
+            return .row(tys.map { type(for: $0) })
         default:
             return ty
         }
@@ -244,6 +244,12 @@ struct TypeScheme: CustomStringConvertible {
     let typeVariables: [TypeVariable]
     let type: Ty
     let variadic: Bool
+    
+    init(typeVariables: [TypeVariable], type: Ty, variadic: Bool = false) {
+        self.typeVariables = typeVariables
+        self.type = type
+        self.variadic = variadic
+    }
     
     var description : String {
         return "∀\(typeVariables.map(\.description).joined(separator: ", ")).\(self.type)"
