@@ -5,7 +5,7 @@
 //  Created by Wes Wickwire on 10/19/24.
 //
 
-public struct Identifier {
+public struct Identifier: Sendable {
     private(set) public var name: Substring
     private(set) public var range: Range<String.Index>
     

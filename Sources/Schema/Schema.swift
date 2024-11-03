@@ -7,7 +7,7 @@
 
 import OrderedCollections
 
-public struct TypeName: Equatable, CustomStringConvertible {
+public struct TypeName: Equatable, CustomStringConvertible, Sendable {
     public let name: Identifier
     public let args: Args?
     public let resolved: Resolved?
@@ -32,7 +32,7 @@ public struct TypeName: Equatable, CustomStringConvertible {
         self.resolved = resolved
     }
     
-    public enum Args: Equatable {
+    public enum Args: Equatable, Sendable {
         case one(SignedNumber)
         case two(SignedNumber, SignedNumber)
     }
@@ -46,7 +46,7 @@ public struct TypeName: Equatable, CustomStringConvertible {
     /// SQLites data types are a bit funny. You can type in pretty much
     /// anything you want and it be valid SQL. These are just the types
     /// that SQLite will recognize and to be used for static analysis.
-    public enum Resolved: Equatable {
+    public enum Resolved: Equatable, Sendable {
         case text
         case int
         case integer
@@ -535,7 +535,7 @@ public struct ColumnDef: Equatable {
     }
 }
 
-public struct TableOptions: OptionSet {
+public struct TableOptions: OptionSet, Sendable {
     public let rawValue: UInt8
     
     public init(rawValue: UInt8) {

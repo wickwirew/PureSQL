@@ -258,7 +258,7 @@ struct TypeVariable: Hashable, CustomStringConvertible, ExpressibleByIntegerLite
     }
 }
 
-struct TypeScheme: CustomStringConvertible {
+struct TypeScheme: CustomStringConvertible, Sendable {
     let typeVariables: [TypeVariable]
     let type: Ty
     let variadic: Bool
@@ -324,7 +324,7 @@ extension Substitution {
     }
 }
 
-enum Ty: Equatable, CustomStringConvertible {
+enum Ty: Equatable, CustomStringConvertible, Sendable {
     /// A builtin nominal type from the db (INTEGER, REAL...)
     case nominal(TypeName)
     /// A type variable

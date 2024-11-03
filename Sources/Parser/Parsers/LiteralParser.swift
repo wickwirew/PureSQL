@@ -29,5 +29,5 @@ struct LiteralParser: Parser {
 }
 
 extension LiteralExpr: Parsable {
-    static var parser = LiteralParser()
+    static let parser = LiteralParser()
 }

@@ -7,7 +7,7 @@
 
 import Schema
 
-struct QuerySource {
+struct QuerySource: Sendable {
     var name: Substring
     var tableName: Substring
     var fields: [Substring: QueryField]
@@ -21,7 +21,7 @@ struct QuerySource {
     )
 }
 
-struct QueryField: Equatable, CustomStringConvertible {
+struct QueryField: Equatable, CustomStringConvertible, Sendable {
     var name: Substring
     var type: Ty
     
