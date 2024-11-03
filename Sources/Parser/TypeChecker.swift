@@ -9,7 +9,8 @@ import OrderedCollections
 import Schema
 
 struct Environment {
-    private(set) var sources: OrderedDictionary<Substring, QuerySource> = [:]
+    private(set) var sources: OrderedDictionary<SourceKey, QuerySource> = [:]
+    private var subquerySourcesCount = 0
     
     static let negate = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)))
     static let bitwiseNot = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)))
@@ -37,12 +38,20 @@ struct Environment {
         case notFound
     }
     
-    init(sources: OrderedDictionary<Substring, QuerySource> = [:]) {
-        self.sources = sources
+    enum SourceKey: Hashable {
+        case named(Substring)
+        case subquery(Int)
     }
+    
+    init() {}
 
-    mutating func include(name: Substring, source: QuerySource) {
-        sources[name] = source
+    mutating func include(table: Substring, source: QuerySource) {
+        sources[.named(table)] = source
+    }
+    
+    mutating func include(subquery: QuerySource) {
+        defer { subquerySourcesCount += 1 }
+        sources[.subquery(subquerySourcesCount)] = subquery
     }
     
     func column(name: Identifier) -> ColumnResult {
@@ -62,7 +71,7 @@ struct Environment {
     }
     
     func column(table: Identifier, name: Identifier) -> ColumnResult {
-        guard let table = sources[table.name],
+        guard let table = sources[.named(table.name)],
               let column = table.fields[name.name] else { return .notFound }
         
         return .found(column)

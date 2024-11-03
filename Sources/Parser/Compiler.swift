@@ -8,8 +8,8 @@
 import Schema
 
 struct QuerySource: Sendable {
-    var name: Substring
-    var tableName: Substring
+    var name: Substring?
+    var tableName: Substring?
     var fields: [Substring: QueryField]
     var isError = false
     
@@ -133,7 +133,7 @@ struct QueryCompiler {
             inputs.append(contentsOf: solution.allNames.map { QueryField(name: $0.0, type: $0.1) })
         case .all(let tableName):
             if let tableName {
-                if let table = environment.sources[tableName.name] {
+                if let table = environment.sources[.named(tableName.name)] {
                     outputs.append(contentsOf: table.fields.values)
                 } else {
                     diagnositics.add(.init("Table '\(tableName)' does not exist", at: tableName.range))
@@ -184,7 +184,7 @@ struct QueryCompiler {
             let tableName = TableName(schema: table.schema, name: table.name)
             
             guard let tableShema = schema.tables[tableName] else {
-                environment.include(name: table.name.name, source: .error)
+                environment.include(table: table.name.name, source: .error)
                 return
             }
             
@@ -207,7 +207,7 @@ struct QueryCompiler {
                     }
             )
             
-            environment.include(name: table.alias?.name ?? table.name.name, source: source)
+            environment.include(table: table.alias?.name ?? table.name.name, source: source)
         case let .tableFunction(schema, table, args, alias):
             fatalError()
         case let .subquery(selectStmt, alias):
@@ -220,12 +220,12 @@ struct QueryCompiler {
             let result = try compiler.compile(selectStmt)
             
             let source = QuerySource(
-                name: "",
-                tableName: "",
+                name: nil,
+                tableName: nil,
                 fields: result.outputs.reduce(into: [:], { $0[$1.name] = $1 })
             )
             
-            environment.include(name: "", source: source)
+            environment.include(subquery: source)
         case let .join(joinClause):
             try compile(joinClause)
         case let .subTableOrSubqueries(array, alias):
