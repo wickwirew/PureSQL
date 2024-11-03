@@ -9,8 +9,7 @@ import OrderedCollections
 import Schema
 
 struct Environment {
-    private(set) var tables: [TableName: TableSchema] = [:]
-    private let schema: DatabaseSchema
+    private(set) var sources: [TableName: QuerySource] = [:]
     
     static let negate = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)))
     static let bitwiseNot = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)))
@@ -33,28 +32,31 @@ struct Environment {
     ]
     
     enum ColumnResult: Equatable {
-        case found(ColumnDef)
+        case found(QueryField)
         case ambiguous
         case notFound
     }
     
-    init(tables: [TableName: TableSchema] = [:], schema: DatabaseSchema = DatabaseSchema(tables: [:])) {
-        self.tables = tables
-        self.schema = schema
+    init(sources: [TableName: QuerySource] = [:]) {
+        self.sources = sources
     }
+//    
+//    mutating func include(schema: Identifier?, table: Identifier, op: JoinOperator) -> Bool {
+//        let name = TableName(schema: schema, name: table)
+//        guard let table = self.schema.tables[name] else { return false }
+//        tables[name] = (table, op)
+//        return true
+//    }
     
-    mutating func include(schema: Identifier?, table: Identifier) -> Bool {
-        let name = TableName(schema: schema, name: table)
-        guard let table = self.schema.tables[name] else { return false }
-        tables[name] = table
-        return true
+    mutating func include(name: TableName, source: QuerySource) {
+        sources[name] = source
     }
     
     func column(name: Identifier) -> ColumnResult {
         var result: ColumnResult = .notFound
         
-        for table in tables.values {
-            if let column = table.columns[name] {
+        for (_, table) in sources {
+            if let column = table.fields[name.name] {
                 if result != .notFound {
                     return .ambiguous
                 }
@@ -71,8 +73,8 @@ struct Environment {
         table: Identifier,
         name: Identifier
     ) -> ColumnResult {
-        guard let table = tables[TableName(schema: schema, name: table)],
-              let column = table.columns[name] else { return .notFound }
+        guard let table = sources[TableName(schema: schema, name: table)],
+              let column = table.fields[name.name] else { return .notFound }
         
         return .found(column)
     }
@@ -177,8 +179,25 @@ struct Solution: CustomStringConvertible {
         return type(for: resultType)
     }
     
+    var lastName: Substring? {
+        return names.lastName
+    }
+    
     var description: String {
         return "\(substitution.map { "\($0) ~> \($1)" }.joined(separator: "\n"))"
+    }
+    
+    var allNames: [(Substring, Ty)] {
+        mutating get {
+            tyVarLookup.map { kind, tv in
+                switch kind {
+                case .named(let name):
+                    return (name.name, type(for: .var(tv)))
+                case .unnamed(let index):
+                    return (name(for: index), type(for: .var(tv)))
+                }
+            }
+        }
     }
     
     func type(for param: BindParameter.Kind) -> Ty {
@@ -401,6 +420,11 @@ struct Names {
         return Names(last: .needed(index: index), map: [:])
     }
     
+    var lastName: Substring? {
+        if case let .some(s) = last { return s }
+        return nil
+    }
+    
     func merging(_ other: Names) -> Names {
         switch (last, other.last) {
         case let (.needed(index), .some(name)):
@@ -615,7 +639,7 @@ extension TypeChecker: ExprVisitor {
         
         switch result {
         case .found(let column):
-            return (.nominal(column.type), [:], [:], .some(expr.column.name))
+            return (column.type, [:], [:], .some(expr.column.name))
         case .ambiguous:
             diagnostics.add(.init(
                 "Column '\(expr)' is ambiguous in the current context",

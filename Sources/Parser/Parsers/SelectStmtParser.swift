@@ -228,7 +228,7 @@ struct ResultColumnParser: Parser {
         case .star:
             try state.skip()
             return .all(table: nil)
-        case .symbol(let table):
+        case .symbol(let table) where state.peek.kind == .dot && state.peek2.kind == .star:
             let table = Identifier(name: table, range: state.current.range)
             try state.skip()
             try state.consume(.dot)

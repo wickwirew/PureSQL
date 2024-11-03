@@ -543,7 +543,7 @@ extension Operator: CustomStringConvertible {
 public struct ColumnExpr: Expr, Equatable, CustomStringConvertible {
     public let schema: Identifier?
     public let table: Identifier?
-    public let column: Identifier
+    public let column: Identifier // TODO: Support *
     
     public init(
         schema: Identifier?,
