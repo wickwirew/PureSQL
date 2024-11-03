@@ -210,8 +210,22 @@ struct QueryCompiler {
             environment.include(name: table.alias?.name ?? table.name.name, source: source)
         case let .tableFunction(schema, table, args, alias):
             fatalError()
-        case let .subquery(selectStmt):
-            fatalError()
+        case let .subquery(selectStmt, alias):
+            var compiler = QueryCompiler(
+                environment: Environment(),
+                diagnositics: Diagnostics(),
+                schema: schema
+            )
+            
+            let result = try compiler.compile(selectStmt)
+            
+            let source = QuerySource(
+                name: "",
+                tableName: "",
+                fields: result.outputs.reduce(into: [:], { $0[$1.name] = $1 })
+            )
+            
+            environment.include(name: "", source: source)
         case let .join(joinClause):
             try compile(joinClause)
         case let .subTableOrSubqueries(array, alias):

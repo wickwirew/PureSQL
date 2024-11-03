@@ -19,7 +19,8 @@ class CompilerTests: XCTestCase {
             source: """
             SELECT * FROM foo
             JOIN baz
-            WHERE qux == 100;
+            WHERE qux == 100
+            GROUP BY '';
             """
         )
         

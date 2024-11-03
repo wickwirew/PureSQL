@@ -303,7 +303,8 @@ struct TableOrSubqueryParser: Parser {
                     .inParenthesis()
                     .parse(state: &state)
                 
-                return .subquery(subquery)
+                let alias = try parseAlias(state: &state)
+                return .subquery(subquery, alias: alias)
             } else {
                 let result = try JoinClauseOrTableOrSubqueryParser()
                     .inParenthesis()

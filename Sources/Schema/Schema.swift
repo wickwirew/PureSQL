@@ -395,7 +395,7 @@ public enum JoinConstraint: Equatable {
 public enum TableOrSubquery: Equatable {
     case table(Table)
     case tableFunction(schema: Identifier?, table: Identifier, args: [Expression], alias: Identifier?)
-    case subquery(SelectStmt)
+    case subquery(SelectStmt, alias: Identifier?)
     indirect case join(JoinClause)
     case subTableOrSubqueries([TableOrSubquery], alias: Identifier?)
     
