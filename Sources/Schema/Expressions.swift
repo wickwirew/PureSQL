@@ -21,6 +21,7 @@ public protocol ExprVisitor {
     mutating func visit(_ expr: CastExpr) throws -> Output
     mutating func visit(_ expr: CaseWhenThenExpr) throws -> Output
     mutating func visit(_ expr: GroupedExpr) throws -> Output
+    mutating func visit(_ expr: SelectExpr) throws -> Output
 }
 
 extension ExprVisitor {
@@ -47,6 +48,8 @@ extension ExprVisitor {
         case .grouped(let expr):
             return try expr.accept(visitor: &self)
         case .caseWhenThen(let expr):
+            return try expr.accept(visitor: &self)
+        case .select(let expr):
             return try expr.accept(visitor: &self)
         }
     }
@@ -145,6 +148,7 @@ public indirect enum Expression: Expr, Equatable {
     // foo IN (1, 2)
     case grouped(GroupedExpr)
     case caseWhenThen(CaseWhenThenExpr)
+    case select(SelectExpr)
     
     public var range: Range<String.Index> {
         return switch self {
@@ -159,6 +163,7 @@ public indirect enum Expression: Expr, Equatable {
         case .cast(let expr): expr.range
         case .grouped(let expr): expr.range
         case .caseWhenThen(let expr): expr.range
+        case .select(let expr): expr.range
         }
     }
     
@@ -197,6 +202,8 @@ extension Expression: CustomStringConvertible {
             return expr.description
         case .caseWhenThen(let expr):
             return expr.description
+        case .select(let expr):
+            return "\(expr)"
         }
     }
 }
@@ -618,5 +625,19 @@ extension CaseWhenThenExpr: CustomStringConvertible {
         }
         str += " END"
         return str
+    }
+}
+
+public struct SelectExpr: Expr, Equatable {
+    public let select: SelectStmt
+    public let range: Range<String.Index>
+    
+    public init(select: SelectStmt, range: Range<String.Index>) {
+        self.select = select
+        self.range = range
+    }
+    
+    public func accept<V>(visitor: inout V) throws -> V.Output where V : ExprVisitor {
+        return try visitor.visit(self)
     }
 }

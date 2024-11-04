@@ -778,6 +778,10 @@ extension TypeChecker: ExprVisitor {
         return (.row(t), s, c, n)
     }
     
+    mutating func visit(_ expr: SelectExpr) throws -> (Ty, Substitution, Constraints, Names) {
+        fatalError()
+    }
+    
     private mutating func visit(many exprs: [Expression]) throws -> ([Ty], Substitution, Constraints, Names) {
         var tys: [Ty] = []
         var sub: Substitution = [:]
