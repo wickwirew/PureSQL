@@ -49,7 +49,7 @@ extension LiteralExpr: Verifiable {
 extension BindParameter: Verifiable {
     var verification: Verification  {
         let kind = switch kind {
-        case .named(let ident): "named(\(ident.name))"
+        case .named(let ident): "named(\(ident.value))"
         case .unnamed: "unnamed"
         }
         
@@ -159,7 +159,7 @@ extension ForeignKeyClause: Verifiable {
     var verification: Verification {
         return Verification("foreign-key-clause") { properties in
             properties.append(.string("table", value: foreignTable))
-            properties.append(.string("columns", value: foreignColumns.map(\.name).joined(separator: ",")))
+            properties.append(.string("columns", value: foreignColumns.map(\.value).joined(separator: ",")))
         }
     }
 }

@@ -11,14 +11,14 @@ import OrderedCollections
 public struct TableSchema {
     public var name: TableName
     public var isTemporary: Bool
-    public var columns: OrderedDictionary<Identifier, ColumnDef>
+    public var columns: OrderedDictionary<IdentifierSyntax, ColumnDef>
     public var constraints: [TableConstraint]
     public var options: TableOptions
     
     public init(
         name: TableName,
         isTemporary: Bool,
-        columns: OrderedDictionary<Identifier, ColumnDef>,
+        columns: OrderedDictionary<IdentifierSyntax, ColumnDef>,
         constraints: [TableConstraint],
         options: TableOptions
     ) {

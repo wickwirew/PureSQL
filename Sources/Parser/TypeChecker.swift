@@ -50,7 +50,7 @@ struct Solution: CustomStringConvertible {
             tyVarLookup.map { kind, tv in
                 switch kind {
                 case .named(let name):
-                    return (name.name, type(for: .var(tv)))
+                    return (name.value, type(for: .var(tv)))
                 case .unnamed(let index):
                     return (name(for: index), type(for: .var(tv)))
                 }
@@ -565,11 +565,11 @@ extension TypeChecker: ExprVisitor {
                     "Table named '\(expr)' does not exist",
                     at: expr.range
                 ))
-                return (.error, [:], [:], .some(expr.column.name))
+                return (.error, [:], [:], .some(expr.column.value))
             }
             
             if scheme.isAmbiguous {
-                diagnostics.add(.ambiguous(tableName.name, at: tableName.range))
+                diagnostics.add(.ambiguous(tableName.value, at: tableName.range))
             }
             
             let tableTy = instantiate(scheme)
@@ -579,34 +579,34 @@ extension TypeChecker: ExprVisitor {
                     "'\(tableName)' is not a row",
                     at: expr.range
                 ))
-                return (.error, [:], [:], .some(expr.column.name))
+                return (.error, [:], [:], .some(expr.column.value))
             }
 
-            guard let type = columns[expr.column.name] else {
+            guard let type = columns[expr.column.value] else {
                 diagnostics.add(.init(
                     "Table '\(tableName)' has no column '\(expr.column)'",
                     at: expr.range
                 ))
-                return (.error, [:], [:], .some(expr.column.name))
+                return (.error, [:], [:], .some(expr.column.value))
             }
             
-            return (type, [:], [:], .some(expr.column.name))
+            return (type, [:], [:], .some(expr.column.value))
         } else {
             guard let scheme = env[expr.column] else {
                 diagnostics.add(.init(
                     "Column '\(expr.column)' does not exist",
                     at: expr.range
                 ))
-                return (.error, [:], [:], .some(expr.column.name))
+                return (.error, [:], [:], .some(expr.column.value))
             }
             
             if scheme.isAmbiguous {
-                diagnostics.add(.ambiguous(expr.column.name, at: expr.column.range))
+                diagnostics.add(.ambiguous(expr.column.value, at: expr.column.range))
             }
             
             let type = instantiate(scheme)
             
-            return (type, [:], [:], .some(expr.column.name))
+            return (type, [:], [:], .some(expr.column.value))
         }
     }
     
@@ -663,7 +663,7 @@ extension TypeChecker: ExprVisitor {
     mutating func visit(_ expr: FunctionExpr) throws -> (Ty, Substitution, Constraints, Names) {
         let (argTys, argSub, argConstraints, argNames) = try visit(many: expr.args)
         
-        guard let scheme = env[function: expr.name.name, argCount: argTys.count] else {
+        guard let scheme = env[function: expr.name.value, argCount: argTys.count] else {
             diagnostics.add(.init("No such function '\(expr.name)' exits", at: expr.range))
             return (.error, argSub, argConstraints, argNames)
         }
@@ -680,7 +680,7 @@ extension TypeChecker: ExprVisitor {
             diagnostics.add(.init("Type '\(expr.ty)' is not a valid type", at: expr.range))
         }
         
-        return (.nominal(expr.ty.name.name), s, c, n)
+        return (.nominal(expr.ty.name.value), s, c, n)
     }
     
     mutating func visit(_ expr: Expression) throws -> (Ty, Substitution, Constraints, Names) {

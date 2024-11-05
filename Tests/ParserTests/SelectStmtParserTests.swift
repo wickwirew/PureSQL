@@ -207,7 +207,7 @@ extension SelectStmtParserTests {
         }
         
         XCTAssertEqual(expr.kind, LiteralExpr.Kind.numeric(1, isInt: true))
-        XCTAssertEqual(alias?.name, "one")
+        XCTAssertEqual(alias?.value, "one")
     }
     
     func testResultColumnExprWithAliasMissingAs() throws {
@@ -217,7 +217,7 @@ extension SelectStmtParserTests {
         }
         
         XCTAssertEqual(expr.kind, LiteralExpr.Kind.numeric(1, isInt: true))
-        XCTAssertEqual(alias?.name, "one")
+        XCTAssertEqual(alias?.value, "one")
     }
 }
 

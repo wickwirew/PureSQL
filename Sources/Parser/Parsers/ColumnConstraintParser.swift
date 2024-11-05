@@ -10,9 +10,9 @@ import Schema
 /// Parses a primary key constraint on a column definition
 /// https://www.sqlite.org/syntax/column-constraint.html
 struct ColumnConstraintParser: Parser {
-    let name: Identifier?
+    let name: IdentifierSyntax?
     
-    init(name: Identifier? = nil) {
+    init(name: IdentifierSyntax? = nil) {
         self.name = name
     }
     

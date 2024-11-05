@@ -229,7 +229,7 @@ struct ResultColumnParser: Parser {
             try state.skip()
             return .all(table: nil)
         case .symbol(let table) where state.peek.kind == .dot && state.peek2.kind == .star:
-            let table = Identifier(name: table, range: state.current.range)
+            let table = IdentifierSyntax(value: table, range: state.current.range)
             try state.skip()
             try state.consume(.dot)
             return .all(table: table)
@@ -241,7 +241,7 @@ struct ResultColumnParser: Parser {
                 let alias = try SymbolParser().parse(state: &state)
                 return .expr(expr, as: alias)
             } else if case let .symbol(alias) = state.current.kind {
-                let alias = Identifier(name: alias, range: state.current.range)
+                let alias = IdentifierSyntax(value: alias, range: state.current.range)
                 try state.skip()
                 return .expr(expr, as: alias)
             } else {
@@ -274,7 +274,7 @@ struct TableOrSubqueryParser: Parser {
             } else {
                 let alias = try parseAlias(state: &state)
                 
-                let indexedBy: Identifier?
+                let indexedBy: IdentifierSyntax?
                 switch state.current.kind {
                 case .indexed:
                     try state.skip()
@@ -323,11 +323,11 @@ struct TableOrSubqueryParser: Parser {
         }
     }
     
-    private func parseAlias(state: inout ParserState) throws -> Identifier? {
+    private func parseAlias(state: inout ParserState) throws -> IdentifierSyntax? {
         if try state.take(if: .as) {
             return try SymbolParser().parse(state: &state)
         } else if case .symbol(let alias) = state.current.kind {
-            let alias = Identifier(name: alias, range: state.current.range)
+            let alias = IdentifierSyntax(value: alias, range: state.current.range)
             try state.skip()
             return alias
         } else {

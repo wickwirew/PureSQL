@@ -158,7 +158,7 @@ class CreateTableParsingTests: XCTestCase {
             .parse(state: &state)
     }
     
-    private func columns(_ table: CreateTableStatement) -> OrderedDictionary<Identifier, ColumnDef> {
+    private func columns(_ table: CreateTableStatement) -> OrderedDictionary<IdentifierSyntax, ColumnDef> {
         guard case let .columns(columns) = table.kind else {
             return [:]
         }

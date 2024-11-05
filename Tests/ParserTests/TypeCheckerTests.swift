@@ -160,18 +160,18 @@ class TypeCheckerTests: XCTestCase {
     
     func scope(table: String, schema: String) throws -> Environment {
         let schema = try SchemaBuilder.build(from: schema)
-        guard let table = schema.tables[TableName(schema: .main, name: Identifier(stringLiteral: table))] else { fatalError("'table' provided not in 'schema'") }
+        guard let table = schema.tables[TableName(schema: .main, name: IdentifierSyntax(stringLiteral: table))] else { fatalError("'table' provided not in 'schema'") }
         
         // TODO: Change variable names so its not name.name.name lol
         let source = QuerySource(
-            name: table.name.name.name,
-            tableName: table.name.name.name,
+            name: table.name.name.value,
+            tableName: table.name.name.value,
             fields: table.columns.values
-                .reduce(into: [:]) { $0[$1.name.name] = QueryField(name: $1.name.name, type: .nominal($1.type.name.name)) }
+                .reduce(into: [:]) { $0[$1.name.value] = QueryField(name: $1.name.value, type: .nominal($1.type.name.value)) }
         )
         
         var env = Environment()
-        env.include(table: table.name.name.name[...], source: source)
+        env.include(table: table.name.name.value[...], source: source)
         return env
     }
     

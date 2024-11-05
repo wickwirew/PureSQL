@@ -135,7 +135,7 @@ struct QueryCompiler {
             inputs.append(contentsOf: solution.allNames.map { QueryField(name: $0.0, type: $0.1) })
         case .all(let tableName):
             if let tableName {
-                if let table = environment[tableName.name] {
+                if let table = environment[tableName.value] {
 //                    outputs.append(contentsOf: table.fields.values)
                 } else {
                     diagnositics.add(.init("Table '\(tableName)' does not exist", at: tableName.range))
@@ -179,14 +179,14 @@ struct QueryCompiler {
     private mutating func compile(
         _ tableOrSubquery: TableOrSubquery,
         joinOp: JoinOperator? = nil,
-        columns: Set<Identifier> = []
+        columns: Set<IdentifierSyntax> = []
     ) throws {
         switch tableOrSubquery {
         case let .table(table):
             let tableName = TableName(schema: table.schema, name: table.name)
             
             guard let tableShema = schema.tables[tableName] else {
-                environment.include(table: table.name.name, source: .error)
+                environment.include(table: table.name.value, source: .error)
                 return
             }
             
@@ -196,20 +196,20 @@ struct QueryCompiler {
             }
             
             let source = QuerySource(
-                name: table.name.name,
-                tableName: table.name.name,
+                name: table.name.value,
+                tableName: table.name.value,
                 fields: tableShema.columns
                     .filter { columns.isEmpty || columns.contains($0.key) }
                     .reduce(into: [:]) { acc, column in
-                        let ty: Ty = .nominal(column.value.type.name.name)
-                        return acc[column.key.name] = .init(
-                            name: column.value.name.name,
+                        let ty: Ty = .nominal(column.value.type.name.value)
+                        return acc[column.key.value] = .init(
+                            name: column.value.name.value,
                             type: isOptional ? .optional(ty) : ty
                         )
                     }
             )
             
-            environment.include(table: table.alias?.name ?? table.name.name, source: source)
+            environment.include(table: table.alias?.value ?? table.name.value, source: source)
         case let .tableFunction(schema, table, args, alias):
             fatalError()
         case let .subquery(selectStmt, alias):

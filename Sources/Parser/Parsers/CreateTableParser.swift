@@ -26,7 +26,7 @@ struct CreateTableParser: Parser {
             let (schema, table) = try TableAndSchemaNameParser()
                 .parse(state: &state)
             
-            let columns: OrderedDictionary<Identifier, ColumnDef> = try ColumnDefinitionParser()
+            let columns: OrderedDictionary<IdentifierSyntax, ColumnDef> = try ColumnDefinitionParser()
                 .commaSeparated()
                 .inParenthesis()
                 .parse(state: &state)

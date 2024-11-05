@@ -35,8 +35,8 @@ struct Environment {
         return env[key]
     }
     
-    subscript(_ key: Identifier) -> TypeScheme? {
-        return env[key.name]
+    subscript(_ key: IdentifierSyntax) -> TypeScheme? {
+        return env[key.value]
     }
     
     subscript(function name: Substring, argCount argCount: Int) -> TypeScheme? {

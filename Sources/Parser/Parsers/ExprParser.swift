@@ -341,7 +341,7 @@ struct BindParameterParser: Parser {
         case .questionMark:
             if case let .symbol(param) = state.current.kind {
                 let paramRange = try state.take()
-                return BindParameter(kind: .named(Identifier(name: param, range: paramRange.range)), range: token.range)
+                return BindParameter(kind: .named(IdentifierSyntax(value: param, range: paramRange.range)), range: token.range)
             } else {
                 return BindParameter(kind: .unnamed(state.nextParameterIndex()), range: token.range)
             }
@@ -358,7 +358,7 @@ struct BindParameterParser: Parser {
             
             let nameRange = token.range.lowerBound..<(segments.last?.range.upperBound ?? state.current.range.upperBound)
             
-            let fullName = segments.map(\.name)
+            let fullName = segments.map(\.value)
                 .joined(separator: "::")[...]
             
             let suffix = try SymbolParser()
@@ -368,10 +368,10 @@ struct BindParameterParser: Parser {
             
             if let suffix {
                 let range = token.range.lowerBound..<suffix.range.upperBound
-                let ident = Identifier(name: "\(fullName)(\(suffix))", range: range)
+                let ident = IdentifierSyntax(value: "\(fullName)(\(suffix))", range: range)
                 return BindParameter(kind: .named(ident), range: range)
             } else {
-                let ident = Identifier(name: fullName, range: nameRange)
+                let ident = IdentifierSyntax(value: fullName, range: nameRange)
                 return BindParameter(kind: .named(ident), range: nameRange)
             }
         default:
@@ -379,7 +379,7 @@ struct BindParameterParser: Parser {
         }
     }
     
-    private func parseSymbol(state: inout ParserState) throws -> Identifier {
+    private func parseSymbol(state: inout ParserState) throws -> IdentifierSyntax {
         return try SymbolParser()
             .parse(state: &state)
     }

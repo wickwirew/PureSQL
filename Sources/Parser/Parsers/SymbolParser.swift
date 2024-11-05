@@ -9,14 +9,14 @@ import Schema
 
 /// Parses a symbol, this can be a column name or any sort of non keyword
 struct SymbolParser: Parser {
-    func parse(state: inout ParserState) throws -> Identifier {
+    func parse(state: inout ParserState) throws -> IdentifierSyntax {
         let token = try state.take()
         
         guard case let .symbol(symbol) = token.kind else {
             throw ParsingError.expectedSymbol(at: token.range)
         }
         
-        return Identifier(name: symbol, range: token.range)
+        return IdentifierSyntax(value: symbol, range: token.range)
     }
 }
 
