@@ -522,7 +522,7 @@ extension TypeChecker: ExprVisitor {
     
     mutating func visit(_ expr: borrowing ColumnExpr) -> (Ty, Substitution, Constraints, Names) {
         if let tableName = expr.table {
-            guard let scheme = env[tableName] else {
+            guard let scheme = env[tableName.value] else {
                 diagnostics.add(.init(
                     "Table named '\(expr)' does not exist",
                     at: expr.range
@@ -530,6 +530,7 @@ extension TypeChecker: ExprVisitor {
                 return (.error, [:], [:], .some(expr.column.value))
             }
             
+            // TODO: Maybe put this in the scheme instantiation?
             if scheme.isAmbiguous {
                 diagnostics.add(.ambiguous(tableName.value, at: tableName.range))
             }
@@ -554,7 +555,7 @@ extension TypeChecker: ExprVisitor {
             
             return (type, [:], [:], .some(expr.column.value))
         } else {
-            guard let scheme = env[expr.column] else {
+            guard let scheme = env[expr.column.value] else {
                 diagnostics.add(.init(
                     "Column '\(expr.column)' does not exist",
                     at: expr.range
@@ -562,6 +563,7 @@ extension TypeChecker: ExprVisitor {
                 return (.error, [:], [:], .some(expr.column.value))
             }
             
+            // TODO: Maybe put this in the scheme instantiation?
             if scheme.isAmbiguous {
                 diagnostics.add(.ambiguous(expr.column.value, at: expr.column.range))
             }

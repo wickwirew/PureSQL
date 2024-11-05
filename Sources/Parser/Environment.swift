@@ -35,10 +35,6 @@ struct Environment {
         return env[key]
     }
     
-    subscript(_ key: IdentifierSyntax) -> TypeScheme? {
-        return env[key.value]
-    }
-    
     subscript(function name: Substring, argCount argCount: Int) -> TypeScheme? {
         guard let scheme = self[name],
                 case let .fn(params, ret) = scheme.type else { return nil }
