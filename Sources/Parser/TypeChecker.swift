@@ -10,6 +10,8 @@ import Schema
 
 struct Environment {
     private(set) var sources: OrderedDictionary<SourceKey, QuerySource> = [:]
+    
+    private(set) var env: OrderedDictionary<Substring, Ty> = [:]
     private var subquerySourcesCount = 0
     
     static let negate = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)))
@@ -225,7 +227,8 @@ struct Solution: CustomStringConvertible {
             }
             return .any
         case .row(let tys):
-            return .row(tys.map { type(for: $0) })
+            // TODO: Clean this up
+            return .row(.unnamed(tys.types.map { type(for: $0) }))
         default:
             return ty
         }
@@ -336,7 +339,7 @@ enum Ty: Equatable, CustomStringConvertible, Sendable {
     indirect case fn(params: [Ty], ret: Ty)
     /// A row. This can be a list of values in parenthesis
     /// or even a single value.
-    indirect case row([Ty])
+    case row(RowTy)
     indirect case optional(Ty)
     /// There was an error somewhere in the analysis. We can just return
     /// an `error` type and continue the analysis. So if the user makes up
@@ -349,6 +352,43 @@ enum Ty: Equatable, CustomStringConvertible, Sendable {
     /// `ANY + INTEGER = ANY` - Bad
     /// `error + INTEGER = INTEGER` - Good
     case error
+    
+    enum RowTy: Equatable, Sendable, ExpressibleByArrayLiteral {
+        case named(OrderedDictionary<Substring, Ty>)
+        case unnamed([Ty])
+        
+        init(arrayLiteral elements: Ty...) {
+            self = .unnamed(elements)
+        }
+        
+        var first: Ty? {
+            return switch self {
+            case .named(let v): v.values.first
+            case .unnamed(let v): v.first
+            }
+        }
+        
+        var count: Int {
+            return switch self {
+            case .named(let v): v.count
+            case .unnamed(let v): v.count
+            }
+        }
+        
+        var types: [Ty] {
+            return switch self {
+            case .named(let v): Array(v.values)
+            case .unnamed(let v): v
+            }
+        }
+        
+        func apply(_ s: Substitution) -> RowTy {
+            return switch self {
+            case .named(let v): .named(v.mapValues { $0.apply(s) })
+            case .unnamed(let v): .unnamed(v.map { $0.apply(s) })
+            }
+        }
+    }
     
     static let text: Ty = .nominal(TypeName(name: "TEXT", args: nil, resolved: .text))
     static let int: Ty = .nominal(TypeName(name: "INT", args: nil, resolved: .int))
@@ -363,7 +403,10 @@ enum Ty: Equatable, CustomStringConvertible, Sendable {
         case .nominal(let typeName): typeName.description
         case .var(let typeVariable): typeVariable.description
         case let .fn(args, ret): "(\(args.map(\.description).joined(separator: ","))) -> \(ret)"
-        case let .row(tys): "(\(tys.map(\.description).joined(separator: ",")))"
+        case let .row(row): switch row {
+        case .named(let values): "(\(values.map{ "\($0):\($1)" }.joined(separator: ",")))"
+        case .unnamed(let values): "(\(values.map(\.description).joined(separator: ",")))"
+        }
         case let .optional(ty): "\(ty)?"
         case .error: "<<error>>"
         }
@@ -390,7 +433,7 @@ enum Ty: Equatable, CustomStringConvertible, Sendable {
                 ret: ret.apply(s)
             )
         case let .row(tys):
-            return .row(tys.map { $0.apply(s) })
+            return .row(tys.apply(s))
         case let .optional(ty):
             return .optional(ty)
         case .nominal, .error:
@@ -775,7 +818,7 @@ extension TypeChecker: ExprVisitor {
     
     mutating func visit(_ expr: GroupedExpr) throws -> (Ty, Substitution, Constraints, Names) {
         let (t, s, c, n) = try visit(many: expr.exprs)
-        return (.row(t), s, c, n)
+        return (.row(.unnamed(t)), s, c, n)
     }
     
     mutating func visit(_ expr: SelectExpr) throws -> (Ty, Substitution, Constraints, Names) {

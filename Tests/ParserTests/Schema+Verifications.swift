@@ -21,6 +21,7 @@ extension Expression: Verifiable {
         case .cast(let e): e.verification
         case .grouped(let e): e.verification
         case .caseWhenThen(let e): e.verification
+        case .select(let e): e.verification
         }
     }
 }
@@ -159,6 +160,13 @@ extension ForeignKeyClause: Verifiable {
         return Verification("foreign-key-clause") { properties in
             properties.append(.string("table", value: foreignTable))
             properties.append(.string("columns", value: foreignColumns.map(\.name).joined(separator: ",")))
+        }
+    }
+}
+
+extension SelectExpr: Verifiable {
+    var verification: Verification {
+        return Verification("select") { properties in
         }
     }
 }
