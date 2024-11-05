@@ -60,6 +60,16 @@ extension Diagnostic {
             at: range
         )
     }
+    
+    static func ambiguous(
+        _ identifier: Substring,
+        at range: Range<String.Index>
+    ) -> Diagnostic {
+        Diagnostic(
+            "'\(identifier)' is ambigious in the current context",
+            at: range
+        )
+    }
 }
 
 public struct Diagnostics {

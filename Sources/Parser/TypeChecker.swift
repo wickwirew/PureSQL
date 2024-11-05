@@ -9,10 +9,8 @@ import OrderedCollections
 import Schema
 
 struct Environment {
-    private(set) var sources: OrderedDictionary<SourceKey, QuerySource> = [:]
-    
-    private(set) var env: OrderedDictionary<Substring, Ty> = [:]
-    private var subquerySourcesCount = 0
+    private var env: OrderedDictionary<Key, TypeScheme> = [:]
+    private var unnamedElementCount = 0
     
     static let negate = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)))
     static let bitwiseNot = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)))
@@ -34,53 +32,49 @@ struct Environment {
         "MAX": TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)), variadic: true)
     ]
     
-    enum ColumnResult: Equatable {
-        case found(QueryField)
-        case ambiguous
-        case notFound
-    }
-    
-    enum SourceKey: Hashable {
+    /// A key for a value stored in the environment.
+    /// Some are named and some arent. If you have a subquery
+    /// that in an included table that is not named. Instead of
+    /// keeping the query and hashing that we can just keep a counter
+    /// to have uniqueness
+    private enum Key: Hashable {
         case named(Substring)
-        case subquery(Int)
+        case unnamed(Int)
     }
     
     init() {}
 
     mutating func include(table: Substring, source: QuerySource) {
-        sources[.named(table)] = source
+        include(.named(table), as: .row(.named(source.fields.mapValues(\.type))))
+        
+        for (name, column) in source.fields {
+            include(.named(name), as: column.type)
+        }
     }
     
     mutating func include(subquery: QuerySource) {
-        defer { subquerySourcesCount += 1 }
-        sources[.subquery(subquerySourcesCount)] = subquery
-    }
-    
-    func column(name: Identifier) -> ColumnResult {
-        var result: ColumnResult = .notFound
+        defer { unnamedElementCount += 1 }
         
-        for (_, table) in sources {
-            if let column = table.fields[name.name] {
-                if result != .notFound {
-                    return .ambiguous
-                }
-                
-                result = .found(column)
-            }
+        include(
+            .unnamed(unnamedElementCount),
+            as: .row(.named(subquery.fields.mapValues(\.type)))
+        )
+        
+        for (name, column) in subquery.fields {
+            include(.named(name), as: column.type)
         }
-        
-        return result
     }
     
-    func column(table: Identifier, name: Identifier) -> ColumnResult {
-        guard let table = sources[.named(table.name)],
-              let column = table.fields[name.name] else { return .notFound }
-        
-        return .found(column)
+    subscript(_ key: Substring) -> TypeScheme? {
+        return env[.named(key)]
     }
     
-    func function(name: Identifier, argCount: Int) -> TypeScheme? {
-        guard let scheme = Self.functions[name.name],
+    subscript(_ key: Identifier) -> TypeScheme? {
+        return env[.named(key.name)]
+    }
+    
+    subscript(function name: Substring, argCount argCount: Int) -> TypeScheme? {
+        guard let scheme = Self.functions[name],
                 case let .fn(params, ret) = scheme.type else { return nil }
         
         // This is how variadics are handled. If a variadic function is called
@@ -100,7 +94,7 @@ struct Environment {
         )
     }
     
-    func prefixFunction(for op: Operator) -> TypeScheme? {
+    subscript(prefix op: Operator) -> TypeScheme? {
         switch op {
         case .plus:
             return Environment.pos
@@ -113,7 +107,7 @@ struct Environment {
         }
     }
     
-    func infixFunction(for op: Operator) -> TypeScheme? {
+    subscript(infix op: Operator) -> TypeScheme? {
         switch op {
         case .plus, .minus, .multiply, .divide, .bitwuseOr,
                 .bitwiseAnd, .shl, .shr, .mod:
@@ -141,7 +135,7 @@ struct Environment {
         }
     }
     
-    func postfixFunction(for op: Operator) -> TypeScheme? {
+    subscript(postfix op: Operator) -> TypeScheme? {
         switch op {
         case .collate:
             return Environment.concat
@@ -149,6 +143,14 @@ struct Environment {
             return Environment.escape
         default:
             return nil
+        }
+    }
+    
+    private mutating func include(_ key: Key, as type: Ty) {
+        if let existing = env[key] {
+            env[key] = existing.ambiguous()
+        } else {
+            env[key] = TypeScheme(type)
         }
     }
 }
@@ -267,15 +269,38 @@ struct TypeScheme: CustomStringConvertible, Sendable {
     let typeVariables: [TypeVariable]
     let type: Ty
     let variadic: Bool
+    let isAmbiguous: Bool
     
-    init(typeVariables: [TypeVariable], type: Ty, variadic: Bool = false) {
+    init(
+        typeVariables: [TypeVariable],
+        type: Ty,
+        variadic: Bool = false,
+        isAmbiguous: Bool = false
+    ) {
         self.typeVariables = typeVariables
         self.type = type
         self.variadic = variadic
+        self.isAmbiguous = isAmbiguous
+    }
+    
+    init(_ type: Ty) {
+        self.typeVariables = []
+        self.type = type
+        self.variadic = false
+        self.isAmbiguous = false
     }
     
     var description : String {
         return "∀\(typeVariables.map(\.description).joined(separator: ", ")).\(self.type)"
+    }
+    
+    func ambiguous() -> TypeScheme {
+        return TypeScheme(
+            typeVariables: typeVariables,
+            type: type,
+            variadic: variadic,
+            isAmbiguous: true
+        )
     }
 }
 
@@ -494,14 +519,14 @@ struct Names {
 }
 
 struct TypeChecker {
-    private let scope: Environment
+    private let env: Environment
     private var diagnostics: Diagnostics
     private var tyVars = 0
     private var tyVarLookup: [BindParameter.Kind: TypeVariable] = [:]
     private var names: [Int: Substring] = [:]
     
-    init(scope: Environment, diagnostics: Diagnostics = Diagnostics()) {
-        self.scope = scope
+    init(env: Environment, diagnostics: Diagnostics = Diagnostics()) {
+        self.env = env
         self.diagnostics = diagnostics
     }
     
@@ -521,6 +546,7 @@ struct TypeChecker {
     }
     
     private mutating func instantiate(_ typeScheme: TypeScheme) -> Ty {
+        guard !typeScheme.typeVariables.isEmpty else { return typeScheme.type }
         let sub = Substitution(typeScheme.typeVariables.map { ($0, .var(freshTyVar())) }, uniquingKeysWith: {$1})
         return typeScheme.type.apply(sub)
     }
@@ -684,35 +710,61 @@ extension TypeChecker: ExprVisitor {
     }
     
     mutating func visit(_ expr: ColumnExpr) throws -> (Ty, Substitution, Constraints, Names) {
-        let result: Environment.ColumnResult = if let table = expr.table {
-            scope.column(table: table, name: expr.column)
+        if let tableName = expr.table {
+            guard let scheme = env[tableName] else {
+                diagnostics.add(.init(
+                    "Table named '\(expr)' does not exist",
+                    at: expr.range
+                ))
+                return (.error, [:], [:], .some(expr.column.name))
+            }
+            
+            if scheme.isAmbiguous {
+                diagnostics.add(.ambiguous(tableName.name, at: tableName.range))
+            }
+            
+            let tableTy = instantiate(scheme)
+            
+            guard case let .row(.named(columns)) = tableTy else {
+                diagnostics.add(.init(
+                    "'\(tableName)' is not a row",
+                    at: expr.range
+                ))
+                return (.error, [:], [:], .some(expr.column.name))
+            }
+
+            guard let type = columns[expr.column.name] else {
+                diagnostics.add(.init(
+                    "Table '\(tableName)' has no column '\(expr.column)'",
+                    at: expr.range
+                ))
+                return (.error, [:], [:], .some(expr.column.name))
+            }
+            
+            return (type, [:], [:], .some(expr.column.name))
         } else {
-            scope.column(name: expr.column)
-        }
-        
-        switch result {
-        case .found(let column):
-            return (column.type, [:], [:], .some(expr.column.name))
-        case .ambiguous:
-            diagnostics.add(.init(
-                "Column '\(expr)' is ambiguous in the current context",
-                at: expr.range,
-                suggestion: "\(Diagnostic.placeholder(name: "tableName")).\(expr)"
-            ))
-            return (.error, [:], [:], .some(expr.column.name))
-        case .notFound:
-            diagnostics.add(.init(
-                "No such column '\(expr)' available in current context",
-                at: expr.range
-            ))
-            return (.error, [:], [:], .some(expr.column.name))
+            guard let scheme = env[expr.column] else {
+                diagnostics.add(.init(
+                    "Column '\(expr.column)' does not exist",
+                    at: expr.range
+                ))
+                return (.error, [:], [:], .some(expr.column.name))
+            }
+            
+            if scheme.isAmbiguous {
+                diagnostics.add(.ambiguous(expr.column.name, at: expr.column.range))
+            }
+            
+            let type = instantiate(scheme)
+            
+            return (type, [:], [:], .some(expr.column.name))
         }
     }
     
     mutating func visit(_ expr: PrefixExpr) throws -> (Ty, Substitution, Constraints, Names) {
         let (t, s, c, n) = try expr.rhs.accept(visitor: &self)
         
-        guard let scheme = scope.prefixFunction(for: expr.operator.operator) else {
+        guard let scheme = env[prefix: expr.operator.operator] else {
             diagnostics.add(.init("'\(expr.operator.operator)' is not a valid prefix operator", at: expr.operator.range))
             return (.error, s, c, n)
         }
@@ -728,7 +780,7 @@ extension TypeChecker: ExprVisitor {
         let (rTy, rSub, rCon, rNames) = try expr.rhs.accept(visitor: &self)
         let names = lNames.merging(rNames)
         
-        guard let scheme = scope.infixFunction(for: expr.operator.operator) else {
+        guard let scheme = env[infix: expr.operator.operator] else {
             diagnostics.add(.init("'\(expr.operator.operator)' is not a valid infix operator", at: expr.operator.range))
             return (.error, rSub.merging(lSub), lCon.merging(rCon), names)
         }
@@ -742,7 +794,7 @@ extension TypeChecker: ExprVisitor {
     mutating func visit(_ expr: PostfixExpr) throws -> (Ty, Substitution, Constraints, Names) {
         let (t, s, c, n) = try expr.lhs.accept(visitor: &self)
         
-        guard let scheme = scope.postfixFunction(for: expr.operator.operator) else {
+        guard let scheme = env[postfix: expr.operator.operator] else {
             diagnostics.add(.init("'\(expr.operator.operator)' is not a valid postfix operator", at: expr.operator.range))
             return (.error, s, c, n)
         }
@@ -762,7 +814,7 @@ extension TypeChecker: ExprVisitor {
     mutating func visit(_ expr: FunctionExpr) throws -> (Ty, Substitution, Constraints, Names) {
         let (argTys, argSub, argConstraints, argNames) = try visit(many: expr.args)
         
-        guard let scheme = scope.function(name: expr.name, argCount: argTys.count) else {
+        guard let scheme = env[function: expr.name.name, argCount: argTys.count] else {
             diagnostics.add(.init("No such function '\(expr.name)' exits", at: expr.range))
             return (.error, argSub, argConstraints, argNames)
         }

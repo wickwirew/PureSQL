@@ -6,11 +6,12 @@
 //
 
 import Schema
+import OrderedCollections
 
 struct QuerySource: Sendable {
     var name: Substring?
     var tableName: Substring?
-    var fields: [Substring: QueryField]
+    var fields: OrderedDictionary<Substring, QueryField>
     var isError = false
     
     static let error = QuerySource(
@@ -32,7 +33,7 @@ struct QueryField: Equatable, CustomStringConvertible, Sendable {
 
 struct CompiledQuery {
     var inputs: [QueryField]
-    var outputs: [QueryField]
+    var outputs: [Ty]
 }
 
 struct QueryCompiler {
@@ -41,7 +42,7 @@ struct QueryCompiler {
     var schema: DatabaseSchema
     
     private(set) var inputs: [QueryField] = []
-    private(set) var outputs: [QueryField] = []
+    private(set) var outputs: [Ty] = []
     
     init(
         environment: Environment,
@@ -63,7 +64,7 @@ struct QueryCompiler {
     }
     
     private mutating func check(_ expression: Expression) throws -> Ty {
-        var typeChecker = TypeChecker(scope: environment)
+        var typeChecker = TypeChecker(env: environment)
         let solution = try typeChecker.check(expression)
         diagnositics.add(contentsOf: solution.diagnostics)
         return solution.type
@@ -128,21 +129,21 @@ struct QueryCompiler {
     private mutating func compile(_ resultColumn: ResultColumn) throws {
         switch resultColumn {
         case .expr(let expr, let `as`):
-            var typeChecker = TypeChecker(scope: environment)
+            var typeChecker = TypeChecker(env: environment)
             var solution = try typeChecker.check(expr)
-            outputs.append(.init(name: `as`?.name ?? solution.lastName ?? "TODO", type: solution.type))
+            outputs.append(solution.type)
             inputs.append(contentsOf: solution.allNames.map { QueryField(name: $0.0, type: $0.1) })
         case .all(let tableName):
             if let tableName {
-                if let table = environment.sources[.named(tableName.name)] {
-                    outputs.append(contentsOf: table.fields.values)
+                if let table = environment[tableName.name] {
+//                    outputs.append(contentsOf: table.fields.values)
                 } else {
                     diagnositics.add(.init("Table '\(tableName)' does not exist", at: tableName.range))
                 }
             } else {
-                for table in environment.sources.values {
-                    outputs.append(contentsOf: table.fields.values)
-                }
+//                for table in environment.sources.values {
+//                    outputs.append(contentsOf: table.fields.values)
+//                }
             }
         }
     }
@@ -218,16 +219,16 @@ struct QueryCompiler {
                 schema: schema
             )
             
-            let result = try compiler.compile(selectStmt)
-            
-            let source = QuerySource(
-                name: nil,
-                tableName: nil,
-                fields: result.outputs.reduce(into: [:], { $0[$1.name] = $1 })
-            )
-            
-            environment.include(subquery: source)
-            inputs.append(contentsOf: result.inputs)
+//            let result = try compiler.compile(selectStmt)
+//            
+//            let source = QuerySource(
+//                name: nil,
+//                tableName: nil,
+//                fields: result.outputs.reduce(into: [:], { $0[$1.name] = $1 })
+//            )
+//            
+//            environment.include(subquery: source)
+//            inputs.append(contentsOf: result.inputs)
         case let .join(joinClause):
             try compile(joinClause)
         case let .subTableOrSubqueries(array, alias):

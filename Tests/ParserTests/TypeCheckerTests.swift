@@ -177,7 +177,7 @@ class TypeCheckerTests: XCTestCase {
     
     private func solution(for source: String, in scope: Environment = Environment()) throws -> Solution {
         let expr = try parse(source)
-        var typeChecker = TypeChecker(scope: scope)
+        var typeChecker = TypeChecker(env: scope)
         let solution = try typeChecker.check(expr)
         return solution
     }
