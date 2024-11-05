@@ -190,6 +190,14 @@ enum Ty: Equatable, CustomStringConvertible, Sendable {
     /// `error + INTEGER = INTEGER` - Good
     case error
     
+    /// Rows or "Tables" can come in the form of two ways.
+    /// Named and unnamed. Named is obviously a table from
+    /// a FROM or JOIN. Unnamed would be from a subquery.
+    ///
+    /// Example:
+    /// ```
+    /// SELECT foo FROM (SELECT foo FROM bar);
+    /// ```
     enum RowTy: Equatable, Sendable, ExpressibleByArrayLiteral {
         case named(OrderedDictionary<Substring, Ty>)
         case unnamed([Ty])
@@ -241,8 +249,8 @@ enum Ty: Equatable, CustomStringConvertible, Sendable {
         case .var(let typeVariable): typeVariable.description
         case let .fn(args, ret): "(\(args.map(\.description).joined(separator: ","))) -> \(ret)"
         case let .row(row): switch row {
-        case .named(let values): "(\(values.map{ "\($0):\($1)" }.joined(separator: ",")))"
-        case .unnamed(let values): "(\(values.map(\.description).joined(separator: ",")))"
+            case .named(let values): "(\(values.map{ "\($0):\($1)" }.joined(separator: ",")))"
+            case .unnamed(let values): "(\(values.map(\.description).joined(separator: ",")))"
         }
         case let .optional(ty): "\(ty)?"
         case .error: "<<error>>"
@@ -280,19 +288,17 @@ enum Ty: Equatable, CustomStringConvertible, Sendable {
     }
 }
 
+/// Manages the inference for the unnamed bind parameters.
 struct Names {
+    /// The last expressions possible name.
     let last: Name
+    /// A map of all unnamed params `?` to their new name.
     let map: [Int: Substring]
     
     enum Name {
         case needed(index: Int)
         case some(Substring)
         case none
-    }
-    
-    enum Context {
-        case lower
-        case upper
     }
     
     static let none = Names(last: .none, map: [:])
@@ -335,7 +341,7 @@ struct TypeChecker {
     private var diagnostics: Diagnostics
     private var tyVars = 0
     private var tyVarLookup: [BindParameter.Kind: TypeVariable] = [:]
-    private var names: [Int: Substring] = [:]
+    private var constraints: Constraints = [:]
     
     init(env: Environment, diagnostics: Diagnostics = Diagnostics()) {
         self.env = env
@@ -359,15 +365,18 @@ struct TypeChecker {
     
     private mutating func instantiate(_ typeScheme: TypeScheme) -> Ty {
         guard !typeScheme.typeVariables.isEmpty else { return typeScheme.type }
-        let sub = Substitution(typeScheme.typeVariables.map { ($0, .var(freshTyVar())) }, uniquingKeysWith: {$1})
+        let sub = Substitution(
+            typeScheme.typeVariables.map { ($0, .var(freshTyVar())) },
+            uniquingKeysWith: {$1}
+        )
         return typeScheme.type.apply(sub)
     }
     
     mutating func check<E: Expr>(_ expr: E) throws -> Solution {
-        let (ty, sub, con, names) = expr.accept(visitor: &self)
+        let (ty, sub, names) = expr.accept(visitor: &self)
         
         let result = ty.apply(sub)
-        let resultCon = finalize(constraints: con, with: sub)
+        let resultCon = finalizeConstraints(with: sub)
         
         return Solution(
             diagnostics: diagnostics,
@@ -379,8 +388,7 @@ struct TypeChecker {
         )
     }
     
-    private mutating func finalize(
-        constraints: Constraints,
+    private mutating func finalizeConstraints(
         with substitution: Substitution
     ) -> Constraints {
         var result: [TypeVariable: TypeConstraints] = [:]
@@ -492,24 +500,25 @@ struct TypeChecker {
 }
 
 extension TypeChecker: ExprVisitor {
-    mutating func visit(_ expr: borrowing LiteralExpr) -> (Ty, Substitution, Constraints, Names) {
+    mutating func visit(_ expr: borrowing LiteralExpr) -> (Ty, Substitution, Names) {
         switch expr.kind {
         case .numeric(_, let isInt):
             if isInt {
                 let tv = freshTyVar()
-                return (.var(tv), [:], [tv: .numeric], .none)
+                constraints[tv] = .numeric
+                return (.var(tv), [:], .none)
             } else {
-                return (.real, [:], [:], .none)
+                return (.real, [:], .none)
             }
-        case .string: return (.text, [:], [:], .none)
-        case .blob: return (.blob, [:], [:], .none)
-        case .null: return (.any, [:], [:], .none)
-        case .true, .false: return (.bool, [:], [:], .none)
-        case .currentTime, .currentDate, .currentTimestamp: return (.text, [:], [:], .none)
+        case .string: return (.text, [:], .none)
+        case .blob: return (.blob, [:], .none)
+        case .null: return (.any, [:], .none)
+        case .true, .false: return (.bool, [:], .none)
+        case .currentTime, .currentDate, .currentTimestamp: return (.text, [:], .none)
         }
     }
     
-    mutating func visit(_ expr: borrowing BindParameter) -> (Ty, Substitution, Constraints, Names) {
+    mutating func visit(_ expr: borrowing BindParameter) -> (Ty, Substitution, Names) {
         // This is the only expr that needs to be consumed. We hold on to these
         // to keep track of naming and type info.
         let expr = copy expr
@@ -517,17 +526,17 @@ extension TypeChecker: ExprVisitor {
         case .named: .none
         case .unnamed(let index): .needed(index: index)
         }
-        return (.var(freshTyVar(for: expr)), [:], [:], names)
+        return (.var(freshTyVar(for: expr)), [:], names)
     }
     
-    mutating func visit(_ expr: borrowing ColumnExpr) -> (Ty, Substitution, Constraints, Names) {
+    mutating func visit(_ expr: borrowing ColumnExpr) -> (Ty, Substitution, Names) {
         if let tableName = expr.table {
             guard let scheme = env[tableName.value] else {
                 diagnostics.add(.init(
                     "Table named '\(expr)' does not exist",
                     at: expr.range
                 ))
-                return (.error, [:], [:], .some(expr.column.value))
+                return (.error, [:], .some(expr.column.value))
             }
             
             // TODO: Maybe put this in the scheme instantiation?
@@ -542,7 +551,7 @@ extension TypeChecker: ExprVisitor {
                     "'\(tableName)' is not a row",
                     at: expr.range
                 ))
-                return (.error, [:], [:], .some(expr.column.value))
+                return (.error, [:], .some(expr.column.value))
             }
 
             guard let type = columns[expr.column.value] else {
@@ -550,17 +559,17 @@ extension TypeChecker: ExprVisitor {
                     "Table '\(tableName)' has no column '\(expr.column)'",
                     at: expr.range
                 ))
-                return (.error, [:], [:], .some(expr.column.value))
+                return (.error, [:], .some(expr.column.value))
             }
             
-            return (type, [:], [:], .some(expr.column.value))
+            return (type, [:], .some(expr.column.value))
         } else {
             guard let scheme = env[expr.column.value] else {
                 diagnostics.add(.init(
                     "Column '\(expr.column)' does not exist",
                     at: expr.range
                 ))
-                return (.error, [:], [:], .some(expr.column.value))
+                return (.error, [:], .some(expr.column.value))
             }
             
             // TODO: Maybe put this in the scheme instantiation?
@@ -570,140 +579,135 @@ extension TypeChecker: ExprVisitor {
             
             let type = instantiate(scheme)
             
-            return (type, [:], [:], .some(expr.column.value))
+            return (type, [:], .some(expr.column.value))
         }
     }
     
-    mutating func visit(_ expr: borrowing PrefixExpr) -> (Ty, Substitution, Constraints, Names) {
-        let (t, s, c, n) = expr.rhs.accept(visitor: &self)
+    mutating func visit(_ expr: borrowing PrefixExpr) -> (Ty, Substitution, Names) {
+        let (t, s, n) = expr.rhs.accept(visitor: &self)
         
         guard let scheme = env[prefix: expr.operator.operator] else {
             diagnostics.add(.init("'\(expr.operator.operator)' is not a valid prefix operator", at: expr.operator.range))
-            return (.error, s, c, n)
+            return (.error, s, n)
         }
         
         let tv: Ty = .var(freshTyVar())
         let fnType = instantiate(scheme)
         let sub = unify(fnType, with: .fn(params: [t], ret: tv), at: expr.range)
-        return (tv.apply(sub), sub.merging(s), c, n)
+        return (tv.apply(sub), sub.merging(s), n)
     }
     
-    mutating func visit(_ expr: borrowing InfixExpr) -> (Ty, Substitution, Constraints, Names) {
-        let (lTy, lSub, lCon, lNames) = expr.lhs.accept(visitor: &self)
-        let (rTy, rSub, rCon, rNames) = expr.rhs.accept(visitor: &self)
+    mutating func visit(_ expr: borrowing InfixExpr) -> (Ty, Substitution, Names) {
+        let (lTy, lSub, lNames) = expr.lhs.accept(visitor: &self)
+        let (rTy, rSub, rNames) = expr.rhs.accept(visitor: &self)
         let names = lNames.merging(rNames)
         
         guard let scheme = env[infix: expr.operator.operator] else {
             diagnostics.add(.init("'\(expr.operator.operator)' is not a valid infix operator", at: expr.operator.range))
-            return (.error, rSub.merging(lSub), lCon.merging(rCon), names)
+            return (.error, rSub.merging(lSub), names)
         }
         
         let tv: Ty = .var(freshTyVar())
         let fnType = instantiate(scheme)
         let sub = unify(fnType, with: .fn(params: [lTy.apply(rSub), rTy], ret: tv), at: expr.range)
-        return (tv.apply(sub), sub.merging(rSub, lSub), lCon.merging(rCon), names)
+        return (tv.apply(sub), sub.merging(rSub, lSub), names)
     }
     
-    mutating func visit(_ expr: borrowing PostfixExpr) -> (Ty, Substitution, Constraints, Names) {
-        let (t, s, c, n) = expr.lhs.accept(visitor: &self)
+    mutating func visit(_ expr: borrowing PostfixExpr) -> (Ty, Substitution, Names) {
+        let (t, s, n) = expr.lhs.accept(visitor: &self)
         
         guard let scheme = env[postfix: expr.operator.operator] else {
             diagnostics.add(.init("'\(expr.operator.operator)' is not a valid postfix operator", at: expr.operator.range))
-            return (.error, s, c, n)
+            return (.error, s, n)
         }
         
         let tv: Ty = .var(freshTyVar())
         let fnType = instantiate(scheme)
         let sub = unify(fnType, with: .fn(params: [t], ret: tv), at: expr.range)
-        return (tv.apply(sub), sub.merging(s), c, n)
+        return (tv.apply(sub), sub.merging(s), n)
     }
     
-    mutating func visit(_ expr: borrowing BetweenExpr) -> (Ty, Substitution, Constraints, Names) {
-        let (tys, sub, con, names) = visit(many: [expr.value, expr.lower, expr.upper])
+    mutating func visit(_ expr: borrowing BetweenExpr) -> (Ty, Substitution, Names) {
+        let (tys, sub, names) = visit(many: [expr.value, expr.lower, expr.upper])
         let betSub = unify(instantiate(Builtins.between), with: .fn(params: tys, ret: .bool), at: expr.range)
-        return (.bool, betSub.merging(sub), con, names)
+        return (.bool, betSub.merging(sub), names)
     }
     
-    mutating func visit(_ expr: borrowing FunctionExpr) -> (Ty, Substitution, Constraints, Names) {
-        let (argTys, argSub, argConstraints, argNames) = visit(many: expr.args)
+    mutating func visit(_ expr: borrowing FunctionExpr) -> (Ty, Substitution, Names) {
+        let (argTys, argSub, argNames) = visit(many: expr.args)
         
         guard let scheme = env[function: expr.name.value, argCount: argTys.count] else {
             diagnostics.add(.init("No such function '\(expr.name)' exits", at: expr.range))
-            return (.error, argSub, argConstraints, argNames)
+            return (.error, argSub, argNames)
         }
         
         let tv: Ty = .var(freshTyVar())
         let sub = unify(instantiate(scheme), with: .fn(params: argTys, ret: tv), at: expr.range)
-        return (tv, sub.merging(argSub), argConstraints, argNames)
+        return (tv, sub.merging(argSub), argNames)
     }
     
-    mutating func visit(_ expr: borrowing CastExpr) -> (Ty, Substitution, Constraints, Names) {
-        let (_, s, c, n) = expr.expr.accept(visitor: &self)
+    mutating func visit(_ expr: borrowing CastExpr) -> (Ty, Substitution, Names) {
+        let (_, s, n) = expr.expr.accept(visitor: &self)
         
         if expr.ty.resolved == nil {
             diagnostics.add(.init("Type '\(expr.ty)' is not a valid type", at: expr.range))
         }
         
-        return (.nominal(expr.ty.name.value), s, c, n)
+        return (.nominal(expr.ty.name.value), s, n)
     }
     
-    mutating func visit(_ expr: borrowing Expression) -> (Ty, Substitution, Constraints, Names) {
+    mutating func visit(_ expr: borrowing Expression) -> (Ty, Substitution, Names) {
         fatalError("TODO: Clean this up. Should never get called. It's `accept` calls the wrapped method, not this")
     }
     
-    mutating func visit(_ expr: borrowing CaseWhenThenExpr) -> (Ty, Substitution, Constraints, Names) {
+    mutating func visit(_ expr: borrowing CaseWhenThenExpr) -> (Ty, Substitution, Names) {
         let ret: Ty = .var(freshTyVar())
-        let (whenTys, whenSub, whenCons, whenNames) = visit(many: expr.whenThen.map(\.when))
-        let (thenTys, thenSub, thenCons, thenNames) = visit(many: expr.whenThen.map(\.then))
+        let (whenTys, whenSub, whenNames) = visit(many: expr.whenThen.map(\.when))
+        let (thenTys, thenSub, thenNames) = visit(many: expr.whenThen.map(\.then))
         
         var sub = whenSub.merging(thenSub)
-        var cons = whenCons.merging(thenCons)
         var names = whenNames.merging(thenNames)
         
-        if let (t, s, c, n) = expr.case?.accept(visitor: &self) {
+        if let (t, s, n) = expr.case?.accept(visitor: &self) {
             // Each when should have same type as case
             sub = sub.merging(unify(all: [t] + whenTys, at: expr.range), s)
-            cons = cons.merging(c)
             names = names.merging(n)
         } else {
             // No case expr, so each when should be a bool
             sub = sub.merging(unify(all: [.bool] + whenTys, at: expr.range))
         }
         
-        if let (t, s, c, n) = expr.else?.accept(visitor: &self) {
+        if let (t, s, n) = expr.else?.accept(visitor: &self) {
             sub = sub.merging(unify(all: [t, ret] + thenTys, at: expr.range), s)
-            cons = cons.merging(c)
             names = names.merging(n)
         } else {
             sub = sub.merging(unify(all: [ret] + thenTys, at: expr.range))
         }
         
-        return (ret, sub, cons, names)
+        return (ret, sub, names)
     }
     
-    mutating func visit(_ expr: borrowing GroupedExpr) -> (Ty, Substitution, Constraints, Names) {
-        let (t, s, c, n) = visit(many: expr.exprs)
-        return (.row(.unnamed(t)), s, c, n)
+    mutating func visit(_ expr: borrowing GroupedExpr) -> (Ty, Substitution, Names) {
+        let (t, s, n) = visit(many: expr.exprs)
+        return (.row(.unnamed(t)), s, n)
     }
     
-    mutating func visit(_ expr: borrowing SelectExpr) -> (Ty, Substitution, Constraints, Names) {
+    mutating func visit(_ expr: borrowing SelectExpr) -> (Ty, Substitution, Names) {
         fatalError()
     }
     
-    private mutating func visit(many exprs: [Expression]) -> ([Ty], Substitution, Constraints, Names) {
+    private mutating func visit(many exprs: [Expression]) -> ([Ty], Substitution, Names) {
         var tys: [Ty] = []
         var sub: Substitution = [:]
-        var constraints: [TypeVariable: TypeConstraints] = [:]
         var names: Names = .none
         
         for expr in exprs {
-            let (t, s, c, n) = expr.accept(visitor: &self)
+            let (t, s, n) = expr.accept(visitor: &self)
             tys.append(t.apply(sub))
             sub.merge(s, uniquingKeysWith: {$1})
-            constraints.merge(c, uniquingKeysWith: { $0.union($1) })
             names = names.merging(n)
         }
         
-        return (tys, sub, constraints, names)
+        return (tys, sub, names)
     }
 }
