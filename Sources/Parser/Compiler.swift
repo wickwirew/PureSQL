@@ -201,7 +201,7 @@ struct QueryCompiler {
                 fields: tableShema.columns
                     .filter { columns.isEmpty || columns.contains($0.key) }
                     .reduce(into: [:]) { acc, column in
-                        let ty: Ty = .nominal(column.value.type)
+                        let ty: Ty = .nominal(column.value.type.name.name)
                         return acc[column.key.name] = .init(
                             name: column.value.name.name,
                             type: isOptional ? .optional(ty) : ty

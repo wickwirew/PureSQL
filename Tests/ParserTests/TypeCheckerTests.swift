@@ -167,7 +167,7 @@ class TypeCheckerTests: XCTestCase {
             name: table.name.name.name,
             tableName: table.name.name.name,
             fields: table.columns.values
-                .reduce(into: [:]) { $0[$1.name.name] = QueryField(name: $1.name.name, type: .nominal($1.type)) }
+                .reduce(into: [:]) { $0[$1.name.name] = QueryField(name: $1.name.name, type: .nominal($1.type.name.name)) }
         )
         
         var env = Environment()

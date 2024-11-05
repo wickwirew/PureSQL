@@ -8,153 +8,6 @@
 import OrderedCollections
 import Schema
 
-struct Environment {
-    private var env: OrderedDictionary<Key, TypeScheme> = [:]
-    private var unnamedElementCount = 0
-    
-    static let negate = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)))
-    static let bitwiseNot = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)))
-    static let pos = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)))
-    static let between = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0), .var(0)], ret: .bool))
-    static let arithmetic = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0)], ret: .var(0)))
-    static let comparison = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0)], ret: .bool))
-    static let `in` = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .row([.var(0)])], ret: .bool))
-    static let concat = TypeScheme(typeVariables: [0, 1], type: .fn(params: [.var(0), .var(1)], ret: .text))
-    static let extract = TypeScheme(typeVariables: [0, 1], type: .fn(params: [.var(0)], ret: .var(1)))
-    static let extractJson = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .any))
-    static let collate = TypeScheme(typeVariables: [], type: .fn(params: [.text], ret: .text))
-    static let escape = TypeScheme(typeVariables: [], type: .fn(params: [.text], ret: .text))
-    static let match = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .text], ret: .bool))
-    static let regexp = TypeScheme(typeVariables: [], type: .fn(params: [.text, .text], ret: .bool))
-    static let glob = TypeScheme(typeVariables: [], type: .fn(params: [.text, .text], ret: .bool))
-    
-    static let functions: [Substring: TypeScheme] = [
-        "MAX": TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)), variadic: true)
-    ]
-    
-    /// A key for a value stored in the environment.
-    /// Some are named and some arent. If you have a subquery
-    /// that in an included table that is not named. Instead of
-    /// keeping the query and hashing that we can just keep a counter
-    /// to have uniqueness
-    private enum Key: Hashable {
-        case named(Substring)
-        case unnamed(Int)
-    }
-    
-    init() {}
-
-    mutating func include(table: Substring, source: QuerySource) {
-        include(.named(table), as: .row(.named(source.fields.mapValues(\.type))))
-        
-        for (name, column) in source.fields {
-            include(.named(name), as: column.type)
-        }
-    }
-    
-    mutating func include(subquery: QuerySource) {
-        defer { unnamedElementCount += 1 }
-        
-        include(
-            .unnamed(unnamedElementCount),
-            as: .row(.named(subquery.fields.mapValues(\.type)))
-        )
-        
-        for (name, column) in subquery.fields {
-            include(.named(name), as: column.type)
-        }
-    }
-    
-    subscript(_ key: Substring) -> TypeScheme? {
-        return env[.named(key)]
-    }
-    
-    subscript(_ key: Identifier) -> TypeScheme? {
-        return env[.named(key.name)]
-    }
-    
-    subscript(function name: Substring, argCount argCount: Int) -> TypeScheme? {
-        guard let scheme = Self.functions[name],
-                case let .fn(params, ret) = scheme.type else { return nil }
-        
-        // This is how variadics are handled. If a variadic function is called
-        // we extend the signature to match the input count. It is always
-        // assumed the last parameter is the variadic.
-        let numberOfArgsToAdd = argCount - params.count
-        
-        guard scheme.variadic, argCount > 0, let last = params.last else { return scheme }
-        
-        return TypeScheme(
-            typeVariables: scheme.typeVariables,
-            type: .fn(
-                params: params + (0..<numberOfArgsToAdd).map { _ in last },
-                ret: ret
-            ),
-            variadic: true
-        )
-    }
-    
-    subscript(prefix op: Operator) -> TypeScheme? {
-        switch op {
-        case .plus:
-            return Environment.pos
-        case .minus:
-            return Environment.negate
-        case .tilde:
-            return Environment.bitwiseNot
-        default:
-            return nil
-        }
-    }
-    
-    subscript(infix op: Operator) -> TypeScheme? {
-        switch op {
-        case .plus, .minus, .multiply, .divide, .bitwuseOr,
-                .bitwiseAnd, .shl, .shr, .mod:
-            return Environment.arithmetic
-        case .eq, .eq2, .neq, .neq2, .lt, .gt, .lte, .gte, .is,
-                .notNull, .notnull, .like, .isNot, .isDistinctFrom,
-                .isNotDistinctFrom, .between, .and, .or, .isnull, .not:
-            return Environment.comparison
-        case .in:
-            return Environment.in
-        case .concat:
-            return Environment.concat
-        case .doubleArrow:
-            return Environment.extract
-        case .match:
-            return Environment.match
-        case .regexp:
-            return Environment.regexp
-        case .arrow:
-            return Environment.extractJson
-        case .glob:
-            return Environment.glob
-        default:
-            return nil
-        }
-    }
-    
-    subscript(postfix op: Operator) -> TypeScheme? {
-        switch op {
-        case .collate:
-            return Environment.concat
-        case .escape:
-            return Environment.escape
-        default:
-            return nil
-        }
-    }
-    
-    private mutating func include(_ key: Key, as type: Ty) {
-        if let existing = env[key] {
-            env[key] = existing.ambiguous()
-        } else {
-            env[key] = TypeScheme(type)
-        }
-    }
-}
-
 struct Solution: CustomStringConvertible {
     let diagnostics: Diagnostics
     private let resultType: Ty
@@ -356,7 +209,7 @@ extension Substitution {
 
 enum Ty: Equatable, CustomStringConvertible, Sendable {
     /// A builtin nominal type from the db (INTEGER, REAL...)
-    case nominal(TypeName)
+    case nominal(Substring)
     /// A type variable
     case `var`(TypeVariable)
     /// A function.
@@ -415,13 +268,13 @@ enum Ty: Equatable, CustomStringConvertible, Sendable {
         }
     }
     
-    static let text: Ty = .nominal(TypeName(name: "TEXT", args: nil, resolved: .text))
-    static let int: Ty = .nominal(TypeName(name: "INT", args: nil, resolved: .int))
-    static let integer: Ty = .nominal(TypeName(name: "INTEGER", args: nil, resolved: .integer))
-    static let real: Ty = .nominal(TypeName(name: "REAL", args: nil, resolved: .real))
-    static let blob: Ty = .nominal(TypeName(name: "BLOB", args: nil, resolved: .blob))
-    static let any: Ty = .nominal(TypeName(name: "ANY", args: nil, resolved: .any))
-    static let bool: Ty = .nominal(TypeName(name: "BOOL", args: nil, resolved: .int))
+    static let text: Ty = .nominal("TEXT")
+    static let int: Ty = .nominal("INT")
+    static let integer: Ty = .nominal("INTEGER")
+    static let real: Ty = .nominal("REAL")
+    static let blob: Ty = .nominal("BLOB")
+    static let any: Ty = .nominal("ANY")
+    static let bool: Ty = .nominal("BOOL")
     
     var description: String {
         return switch self {
@@ -604,17 +457,13 @@ struct TypeChecker {
             return [tv: ty]
         case let (ty, .var(tv)):
             return [tv: ty]
-        case let (.nominal(t1), .nominal(t2)):
-            guard t1 != t2 else { return [:] }
-            
-            switch (t1, t2) {
-            case (.integer, .real):
-                return [:]
-            case (.real, .integer):
-                return [:]
-            default:
-                diagnostics.add(.init("Unable to unify types '\(ty)' and '\(other)'", at: range))
-            }
+        case (.integer, .real):
+            return [:]
+        case (.real, .integer):
+            return [:]
+        case (.nominal, .nominal):
+            guard ty != other else { return [:] }
+            diagnostics.add(.init("Unable to unify types '\(ty)' and '\(other)'", at: range))
             return [:]
         case let (.optional(t1), t2):
             return unify(t1, with: t2, at: range)
@@ -807,7 +656,7 @@ extension TypeChecker: ExprVisitor {
     
     mutating func visit(_ expr: BetweenExpr) throws -> (Ty, Substitution, Constraints, Names) {
         let (tys, sub, con, names) = try visit(many: [expr.value, expr.lower, expr.upper])
-        let betSub = unify(instantiate(Environment.between), with: .fn(params: tys, ret: .bool), at: expr.range)
+        let betSub = unify(instantiate(Builtins.between), with: .fn(params: tys, ret: .bool), at: expr.range)
         return (.bool, betSub.merging(sub), con, names)
     }
     
@@ -831,7 +680,7 @@ extension TypeChecker: ExprVisitor {
             diagnostics.add(.init("Type '\(expr.ty)' is not a valid type", at: expr.range))
         }
         
-        return (.nominal(expr.ty), s, c, n)
+        return (.nominal(expr.ty.name.name), s, c, n)
     }
     
     mutating func visit(_ expr: Expression) throws -> (Ty, Substitution, Constraints, Names) {
