@@ -133,3 +133,42 @@ struct Builtins {
     /// Functions
     static let max = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)), variadic: true)
 }
+
+struct TypeScheme: CustomStringConvertible, Sendable {
+    let typeVariables: [TypeVariable]
+    let type: Ty
+    let variadic: Bool
+    let isAmbiguous: Bool
+    
+    init(
+        typeVariables: [TypeVariable],
+        type: Ty,
+        variadic: Bool = false,
+        isAmbiguous: Bool = false
+    ) {
+        self.typeVariables = typeVariables
+        self.type = type
+        self.variadic = variadic
+        self.isAmbiguous = isAmbiguous
+    }
+    
+    init(_ type: Ty) {
+        self.typeVariables = []
+        self.type = type
+        self.variadic = false
+        self.isAmbiguous = false
+    }
+    
+    var description : String {
+        return "∀\(typeVariables.map(\.description).joined(separator: ", ")).\(self.type)"
+    }
+    
+    func ambiguous() -> TypeScheme {
+        return TypeScheme(
+            typeVariables: typeVariables,
+            type: type,
+            variadic: variadic,
+            isAmbiguous: true
+        )
+    }
+}

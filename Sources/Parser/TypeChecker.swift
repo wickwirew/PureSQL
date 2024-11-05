@@ -100,8 +100,6 @@ struct TypeConstraints: OptionSet, Hashable {
     static let numeric = TypeConstraints(rawValue: 1 << 0)
 }
 
-
-
 struct TypeVariable: Hashable, CustomStringConvertible, ExpressibleByIntegerLiteral {
     let n: Int
     
@@ -115,45 +113,6 @@ struct TypeVariable: Hashable, CustomStringConvertible, ExpressibleByIntegerLite
     
     var description: String {
         return "τ\(n)"
-    }
-}
-
-struct TypeScheme: CustomStringConvertible, Sendable {
-    let typeVariables: [TypeVariable]
-    let type: Ty
-    let variadic: Bool
-    let isAmbiguous: Bool
-    
-    init(
-        typeVariables: [TypeVariable],
-        type: Ty,
-        variadic: Bool = false,
-        isAmbiguous: Bool = false
-    ) {
-        self.typeVariables = typeVariables
-        self.type = type
-        self.variadic = variadic
-        self.isAmbiguous = isAmbiguous
-    }
-    
-    init(_ type: Ty) {
-        self.typeVariables = []
-        self.type = type
-        self.variadic = false
-        self.isAmbiguous = false
-    }
-    
-    var description : String {
-        return "∀\(typeVariables.map(\.description).joined(separator: ", ")).\(self.type)"
-    }
-    
-    func ambiguous() -> TypeScheme {
-        return TypeScheme(
-            typeVariables: typeVariables,
-            type: type,
-            variadic: variadic,
-            isAmbiguous: true
-        )
     }
 }
 
@@ -405,7 +364,7 @@ struct TypeChecker {
     }
     
     mutating func check<E: Expr>(_ expr: E) throws -> Solution {
-        let (ty, sub, con, names) = try expr.accept(visitor: &self)
+        let (ty, sub, con, names) = expr.accept(visitor: &self)
         
         let result = ty.apply(sub)
         let resultCon = finalize(constraints: con, with: sub)
@@ -533,7 +492,7 @@ struct TypeChecker {
 }
 
 extension TypeChecker: ExprVisitor {
-    mutating func visit(_ expr: LiteralExpr) throws -> (Ty, Substitution, Constraints, Names) {
+    mutating func visit(_ expr: borrowing LiteralExpr) -> (Ty, Substitution, Constraints, Names) {
         switch expr.kind {
         case .numeric(_, let isInt):
             if isInt {
@@ -550,7 +509,10 @@ extension TypeChecker: ExprVisitor {
         }
     }
     
-    mutating func visit(_ expr: BindParameter) throws -> (Ty, Substitution, Constraints, Names) {
+    mutating func visit(_ expr: borrowing BindParameter) -> (Ty, Substitution, Constraints, Names) {
+        // This is the only expr that needs to be consumed. We hold on to these
+        // to keep track of naming and type info.
+        let expr = copy expr
         let names: Names = switch expr.kind {
         case .named: .none
         case .unnamed(let index): .needed(index: index)
@@ -558,7 +520,7 @@ extension TypeChecker: ExprVisitor {
         return (.var(freshTyVar(for: expr)), [:], [:], names)
     }
     
-    mutating func visit(_ expr: ColumnExpr) throws -> (Ty, Substitution, Constraints, Names) {
+    mutating func visit(_ expr: borrowing ColumnExpr) -> (Ty, Substitution, Constraints, Names) {
         if let tableName = expr.table {
             guard let scheme = env[tableName] else {
                 diagnostics.add(.init(
@@ -610,8 +572,8 @@ extension TypeChecker: ExprVisitor {
         }
     }
     
-    mutating func visit(_ expr: PrefixExpr) throws -> (Ty, Substitution, Constraints, Names) {
-        let (t, s, c, n) = try expr.rhs.accept(visitor: &self)
+    mutating func visit(_ expr: borrowing PrefixExpr) -> (Ty, Substitution, Constraints, Names) {
+        let (t, s, c, n) = expr.rhs.accept(visitor: &self)
         
         guard let scheme = env[prefix: expr.operator.operator] else {
             diagnostics.add(.init("'\(expr.operator.operator)' is not a valid prefix operator", at: expr.operator.range))
@@ -624,9 +586,9 @@ extension TypeChecker: ExprVisitor {
         return (tv.apply(sub), sub.merging(s), c, n)
     }
     
-    mutating func visit(_ expr: InfixExpr) throws -> (Ty, Substitution, Constraints, Names) {
-        let (lTy, lSub, lCon, lNames) = try expr.lhs.accept(visitor: &self)
-        let (rTy, rSub, rCon, rNames) = try expr.rhs.accept(visitor: &self)
+    mutating func visit(_ expr: borrowing InfixExpr) -> (Ty, Substitution, Constraints, Names) {
+        let (lTy, lSub, lCon, lNames) = expr.lhs.accept(visitor: &self)
+        let (rTy, rSub, rCon, rNames) = expr.rhs.accept(visitor: &self)
         let names = lNames.merging(rNames)
         
         guard let scheme = env[infix: expr.operator.operator] else {
@@ -640,8 +602,8 @@ extension TypeChecker: ExprVisitor {
         return (tv.apply(sub), sub.merging(rSub, lSub), lCon.merging(rCon), names)
     }
     
-    mutating func visit(_ expr: PostfixExpr) throws -> (Ty, Substitution, Constraints, Names) {
-        let (t, s, c, n) = try expr.lhs.accept(visitor: &self)
+    mutating func visit(_ expr: borrowing PostfixExpr) -> (Ty, Substitution, Constraints, Names) {
+        let (t, s, c, n) = expr.lhs.accept(visitor: &self)
         
         guard let scheme = env[postfix: expr.operator.operator] else {
             diagnostics.add(.init("'\(expr.operator.operator)' is not a valid postfix operator", at: expr.operator.range))
@@ -654,14 +616,14 @@ extension TypeChecker: ExprVisitor {
         return (tv.apply(sub), sub.merging(s), c, n)
     }
     
-    mutating func visit(_ expr: BetweenExpr) throws -> (Ty, Substitution, Constraints, Names) {
-        let (tys, sub, con, names) = try visit(many: [expr.value, expr.lower, expr.upper])
+    mutating func visit(_ expr: borrowing BetweenExpr) -> (Ty, Substitution, Constraints, Names) {
+        let (tys, sub, con, names) = visit(many: [expr.value, expr.lower, expr.upper])
         let betSub = unify(instantiate(Builtins.between), with: .fn(params: tys, ret: .bool), at: expr.range)
         return (.bool, betSub.merging(sub), con, names)
     }
     
-    mutating func visit(_ expr: FunctionExpr) throws -> (Ty, Substitution, Constraints, Names) {
-        let (argTys, argSub, argConstraints, argNames) = try visit(many: expr.args)
+    mutating func visit(_ expr: borrowing FunctionExpr) -> (Ty, Substitution, Constraints, Names) {
+        let (argTys, argSub, argConstraints, argNames) = visit(many: expr.args)
         
         guard let scheme = env[function: expr.name.value, argCount: argTys.count] else {
             diagnostics.add(.init("No such function '\(expr.name)' exits", at: expr.range))
@@ -673,8 +635,8 @@ extension TypeChecker: ExprVisitor {
         return (tv, sub.merging(argSub), argConstraints, argNames)
     }
     
-    mutating func visit(_ expr: CastExpr) throws -> (Ty, Substitution, Constraints, Names) {
-        let (_, s, c, n) = try expr.expr.accept(visitor: &self)
+    mutating func visit(_ expr: borrowing CastExpr) -> (Ty, Substitution, Constraints, Names) {
+        let (_, s, c, n) = expr.expr.accept(visitor: &self)
         
         if expr.ty.resolved == nil {
             diagnostics.add(.init("Type '\(expr.ty)' is not a valid type", at: expr.range))
@@ -683,20 +645,20 @@ extension TypeChecker: ExprVisitor {
         return (.nominal(expr.ty.name.value), s, c, n)
     }
     
-    mutating func visit(_ expr: Expression) throws -> (Ty, Substitution, Constraints, Names) {
+    mutating func visit(_ expr: borrowing Expression) -> (Ty, Substitution, Constraints, Names) {
         fatalError("TODO: Clean this up. Should never get called. It's `accept` calls the wrapped method, not this")
     }
     
-    mutating func visit(_ expr: CaseWhenThenExpr) throws -> (Ty, Substitution, Constraints, Names) {
+    mutating func visit(_ expr: borrowing CaseWhenThenExpr) -> (Ty, Substitution, Constraints, Names) {
         let ret: Ty = .var(freshTyVar())
-        let (whenTys, whenSub, whenCons, whenNames) = try visit(many: expr.whenThen.map(\.when))
-        let (thenTys, thenSub, thenCons, thenNames) = try visit(many: expr.whenThen.map(\.then))
+        let (whenTys, whenSub, whenCons, whenNames) = visit(many: expr.whenThen.map(\.when))
+        let (thenTys, thenSub, thenCons, thenNames) = visit(many: expr.whenThen.map(\.then))
         
         var sub = whenSub.merging(thenSub)
         var cons = whenCons.merging(thenCons)
         var names = whenNames.merging(thenNames)
         
-        if let (t, s, c, n) = try expr.case?.accept(visitor: &self) {
+        if let (t, s, c, n) = expr.case?.accept(visitor: &self) {
             // Each when should have same type as case
             sub = sub.merging(unify(all: [t] + whenTys, at: expr.range), s)
             cons = cons.merging(c)
@@ -706,7 +668,7 @@ extension TypeChecker: ExprVisitor {
             sub = sub.merging(unify(all: [.bool] + whenTys, at: expr.range))
         }
         
-        if let (t, s, c, n) = try expr.else?.accept(visitor: &self) {
+        if let (t, s, c, n) = expr.else?.accept(visitor: &self) {
             sub = sub.merging(unify(all: [t, ret] + thenTys, at: expr.range), s)
             cons = cons.merging(c)
             names = names.merging(n)
@@ -717,23 +679,23 @@ extension TypeChecker: ExprVisitor {
         return (ret, sub, cons, names)
     }
     
-    mutating func visit(_ expr: GroupedExpr) throws -> (Ty, Substitution, Constraints, Names) {
-        let (t, s, c, n) = try visit(many: expr.exprs)
+    mutating func visit(_ expr: borrowing GroupedExpr) -> (Ty, Substitution, Constraints, Names) {
+        let (t, s, c, n) = visit(many: expr.exprs)
         return (.row(.unnamed(t)), s, c, n)
     }
     
-    mutating func visit(_ expr: SelectExpr) throws -> (Ty, Substitution, Constraints, Names) {
+    mutating func visit(_ expr: borrowing SelectExpr) -> (Ty, Substitution, Constraints, Names) {
         fatalError()
     }
     
-    private mutating func visit(many exprs: [Expression]) throws -> ([Ty], Substitution, Constraints, Names) {
+    private mutating func visit(many exprs: [Expression]) -> ([Ty], Substitution, Constraints, Names) {
         var tys: [Ty] = []
         var sub: Substitution = [:]
         var constraints: [TypeVariable: TypeConstraints] = [:]
         var names: Names = .none
         
         for expr in exprs {
-            let (t, s, c, n) = try expr.accept(visitor: &self)
+            let (t, s, c, n) = expr.accept(visitor: &self)
             tys.append(t.apply(sub))
             sub.merge(s, uniquingKeysWith: {$1})
             constraints.merge(c, uniquingKeysWith: { $0.union($1) })
