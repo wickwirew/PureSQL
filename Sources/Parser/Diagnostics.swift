@@ -87,6 +87,7 @@ public struct Diagnostics {
         diagnostics.append(diagnostic)
     }
     
+    // TODO: Rename to `merge`
     public mutating func add(contentsOf diagnostics: Diagnostics) {
         self.diagnostics.append(contentsOf: diagnostics.diagnostics)
     }

@@ -167,15 +167,9 @@ extension Substitution {
 }
 
 enum Ty: Equatable, CustomStringConvertible, Sendable {
-    /// A builtin nominal type from the db (INTEGER, REAL...)
     case nominal(Substring)
-    /// A type variable
     case `var`(TypeVariable)
-    /// A function.
-    /// If `variadic` is `true`, it assumes it is over the last type in the arguments.
     indirect case fn(params: [Ty], ret: Ty)
-    /// A row. This can be a list of values in parenthesis
-    /// or even a single value.
     case row(RowTy)
     indirect case optional(Ty)
     /// There was an error somewhere in the analysis. We can just return
@@ -192,12 +186,8 @@ enum Ty: Equatable, CustomStringConvertible, Sendable {
     
     /// Rows or "Tables" can come in the form of two ways.
     /// Named and unnamed. Named is obviously a table from
-    /// a FROM or JOIN. Unnamed would be from a subquery.
-    ///
-    /// Example:
-    /// ```
-    /// SELECT foo FROM (SELECT foo FROM bar);
-    /// ```
+    /// a FROM or JOIN. Unnamed would be from a subquery or
+    /// a row expression `(?, ?, ?)`.
     enum RowTy: Equatable, Sendable, ExpressibleByArrayLiteral {
         case named(OrderedDictionary<Substring, Ty>)
         case unnamed([Ty])
@@ -372,9 +362,18 @@ struct TypeChecker {
         return typeScheme.type.apply(sub)
     }
     
-    mutating func check<E: Expr>(_ expr: E) throws -> Solution {
+    mutating func check(_ stmt: SelectStmt) -> Solution {
+        fatalError("TODO")
+//        let (ty, sub, names) = stmt.accept(visitor: &self)
+//        return finalize(ty: ty, sub: sub, names: names)
+    }
+    
+    mutating func check<E: Expr>(_ expr: E) -> (Solution, Diagnostics) {
         let (ty, sub, names) = expr.accept(visitor: &self)
-        
+        return (finalize(ty: ty, sub: sub, names: names), diagnostics)
+    }
+    
+    private mutating func finalize(ty: Ty, sub: Substitution, names: Names) -> Solution {
         let result = ty.apply(sub)
         let resultCon = finalizeConstraints(with: sub)
         
@@ -409,8 +408,7 @@ struct TypeChecker {
     
     /// Unifies the two types together. Will produce a substitution if one
     /// is a type variable. If there are two nominal types they and
-    /// they can be coerced en empty substitution will be return with
-    /// the coerced type.
+    /// they can be coerced en empty substitution will be returned
     private mutating func unify(
         _ ty: Ty,
         with other: Ty,
@@ -709,5 +707,87 @@ extension TypeChecker: ExprVisitor {
         }
         
         return (tys, sub, names)
+    }
+}
+
+typealias Schema = OrderedDictionary<Substring, Ty>
+
+struct SchemaCompiler: StatementVisitor {
+    private var schema = Schema()
+    private var diagnostics = Diagnostics()
+    
+    consuming func compile(_ stmts: [Statement]) -> (Schema, Diagnostics) {
+        for stmt in stmts {
+            guard let (name, ty) = stmt.accept(visitor: &self) else { continue }
+            schema[name] = ty
+        }
+        
+        return (schema, diagnostics)
+    }
+    
+    consuming func compile(_ source: String) throws -> (Schema, Diagnostics) {
+        let statements = try StmtParser()
+            .semiColonSeparated()
+            .parse(source)
+        
+        return compile(statements)
+    }
+    
+    mutating func visit(_ stmt: borrowing CreateTableStatement) -> (Substring, Ty)? {
+        switch stmt.kind {
+        case .select(let selectStmt):
+            var typeChecker = TypeChecker(env: Environment())
+            let solution = typeChecker.check(selectStmt)
+//            diagnostics.add(contentsOf: diagnostics)
+            // TODO: Validate no params and returns named row
+            return (stmt.name.value, solution.type)
+        case .columns(let columns):
+            return (stmt.name.value, .row(.named(columns.reduce(into: [:], { $0[$1.value.name.value] = typeFor(column: $1.value) }))))
+        }
+    }
+    
+    mutating func visit(_ stmt: borrowing AlterTableStatement) -> (Substring, Ty)? {
+        guard let ty = schema[stmt.name.value] else {
+            // TODO: Add ranges to stmts
+            diagnostics.add(.init("Table '\(stmt.name)' does not exist", at: "".startIndex ..< "".endIndex))
+            return nil
+        }
+        
+        guard case var .row(.named(columns)) = ty else {
+            // TODO: Add ranges to stmts
+            diagnostics.add(.init("Internal error, table '\(stmt.name)' is not a table?", at: "".startIndex ..< "".endIndex))
+            return nil
+        }
+        
+        switch stmt.kind {
+        case let .rename(newName):
+            schema[stmt.name.value] = nil
+            schema[newName.value] = ty
+        case let .renameColumn(oldName, newName):
+            columns = columns.reduce(into: [:], { $0[$1.key == oldName.value ? newName.value : $1.key] = $1.value })
+        case .addColumn(let column):
+            columns[column.name.value] = typeFor(column: column)
+        case .dropColumn(let column):
+            columns[column.value] = nil
+        }
+        
+        return (stmt.name.value, .row(.named(columns)))
+    }
+    
+    mutating func visit(_ stmt: borrowing EmptyStatement) -> (Substring, Ty)? {
+        return nil
+    }
+    
+    private func typeFor(column: borrowing ColumnDef) -> Ty {
+        // Technically you can have a NULL primary key but I don't
+        // think people actually do that...
+        let isNotNullable = column.constraints
+            .contains { $0.isPkConstraint || $0.isNotNullConstraint }
+        
+        if isNotNullable {
+            return .nominal(column.type.name.value)
+        } else {
+            return .optional(.nominal(column.type.name.value))
+        }
     }
 }

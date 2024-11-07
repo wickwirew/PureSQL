@@ -14,10 +14,10 @@ class CompilerTests: XCTestCase {
         let query = try compile(
             schema: """
             CREATE TABLE foo(bar INTEGER);
-            CREATE TABLE baz(qux INTEGER, meow TEXT);
+            CREATE TABLE baz(qux INTEGER PRIMARY KEY, meow TEXT);
             """,
             source: """
-            SELECT * FROM foo WHERE bar = ?
+            SELECT * FROM (SELECT * FROM baz);
             """
         )
         
@@ -28,10 +28,12 @@ class CompilerTests: XCTestCase {
         let parser = SelectStmtParser()
         let stmt = try parser.parse(source)
         
+        
+        
         let compiler = QueryCompiler(
             environment: .init(),
             diagnositics: .init(),
-            schema: try SchemaBuilder.build(from: schema)
+            schema: try SchemaCompiler().compile(schema).0
         )
         
         return try compiler.compile(stmt)

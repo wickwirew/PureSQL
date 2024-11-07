@@ -8,15 +8,14 @@
 import OrderedCollections
 
 public protocol StatementVisitor {
-    associatedtype Input
     associatedtype Output
-    func visit(statement: CreateTableStatement, with input: Input) throws -> Output
-    func visit(statement: AlterTableStatement, with input: Input) throws -> Output
-    func visit(statement: EmptyStatement, with input: Input) throws -> Output
+    mutating func visit(_ stmt: borrowing CreateTableStatement) -> Output
+    mutating func visit(_ stmt: borrowing AlterTableStatement) -> Output
+    mutating func visit(_ stmt: borrowing EmptyStatement) -> Output
 }
 
 public protocol Statement {
-    func accept<V: StatementVisitor>(visitor: V, with input: V.Input) throws -> V.Output
+    func accept<V: StatementVisitor>(visitor: inout V) -> V.Output
 }
 
 public struct CreateTableStatement: Equatable, Statement {
@@ -51,8 +50,8 @@ public struct CreateTableStatement: Equatable, Statement {
         self.options = options
     }
     
-    public func accept<V>(visitor: V, with input: V.Input) throws -> V.Output where V : StatementVisitor {
-        try visitor.visit(statement: self, with: input)
+    public func accept<V>(visitor: inout V) -> V.Output where V : StatementVisitor {
+        visitor.visit(self)
     }
 }
 
@@ -78,15 +77,15 @@ public struct AlterTableStatement: Equatable, Statement {
         case dropColumn(IdentifierSyntax)
     }
     
-    public func accept<V>(visitor: V, with input: V.Input) throws -> V.Output where V : StatementVisitor {
-        try visitor.visit(statement: self, with: input)
+    public func accept<V>(visitor: inout V) -> V.Output where V : StatementVisitor {
+        visitor.visit(self)
     }
 }
 
 public struct EmptyStatement: Equatable, Statement {
     public init() {}
     
-    public func accept<V>(visitor: V, with input: V.Input) throws -> V.Output where V : StatementVisitor {
-        try visitor.visit(statement: self, with: input)
+    public func accept<V>(visitor: inout V) -> V.Output where V : StatementVisitor {
+        visitor.visit(self)
     }
 }

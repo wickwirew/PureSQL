@@ -176,17 +176,13 @@ class TypeCheckerTests: XCTestCase {
     }
     
     private func solution(for source: String, in scope: Environment = Environment()) throws -> Solution {
-        let expr = try parse(source)
+        let expr = try ExprParser().parse(source)
         var typeChecker = TypeChecker(env: scope)
-        let solution = try typeChecker.check(expr)
+        let solution = typeChecker.check(expr).0
         return solution
     }
     
     private func check(_ source: String, in scope: Environment = Environment()) throws -> Ty {
         return try solution(for: source, in: scope).type
-    }
-    
-    private func parse(_ source: String) throws -> Schema.Expression {
-        return try ExprParser().parse(source)
     }
 }

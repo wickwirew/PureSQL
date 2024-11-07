@@ -17,6 +17,7 @@ struct Environment {
     
     init() {}
 
+    // TODO: Delete me
     mutating func include(table: Substring, source: QuerySource) {
         include(table, as: .row(.named(source.fields.mapValues(\.type))))
         
@@ -25,6 +26,28 @@ struct Environment {
         }
     }
     
+    /// Inserts or updates the type for the given name
+    mutating func upsert(_ name: Substring, ty: Ty) {
+        env[name] = TypeScheme(ty)
+    }
+    
+    /// Inserts the type for the given name. If the name
+    /// already exists it will be marked as ambiguous
+    mutating func insert(_ name: Substring, ty: Ty) {
+        if let existing = env[name] {
+            env[name] = existing.ambiguous()
+        } else {
+            env[name] = TypeScheme(ty)
+        }
+    }
+    
+    mutating func rename(_ key: Substring, to newValue: Substring) {
+        guard let value = self[key] else { return }
+        env[key] = nil
+        env[newValue] = value
+    }
+    
+    // TODO: Delete me
     mutating func include(subquery: QuerySource) {
         for (name, column) in subquery.fields {
             include(name, as: column.type)
@@ -36,6 +59,7 @@ struct Environment {
     }
     
     subscript(function name: Substring, argCount argCount: Int) -> TypeScheme? {
+        // TODO: Move this out of the env
         guard let scheme = self[name],
                 case let .fn(params, ret) = scheme.type else { return nil }
         
@@ -105,6 +129,14 @@ struct Environment {
 extension Environment: CustomStringConvertible {
     var description: String {
         return self.env.map { "\($0.key): \($0.value)" }.joined(separator: "\n")
+    }
+}
+
+extension Environment: Sequence {
+    typealias Iterator = OrderedDictionary<Substring, TypeScheme>.Iterator
+    
+    func makeIterator() -> OrderedDictionary<Substring, TypeScheme>.Iterator {
+        return env.makeIterator()
     }
 }
 
