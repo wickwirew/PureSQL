@@ -17,7 +17,7 @@ class CompilerTests: XCTestCase {
             CREATE TABLE baz(qux INTEGER PRIMARY KEY, meow TEXT);
             """,
             source: """
-            SELECT * FROM (SELECT * FROM baz);
+            SELECT * FROM (SELECT * FROM baz) INNER JOIN foo ON bar = qux WHERE qux = ? AND meow = :anus;
             """
         )
         

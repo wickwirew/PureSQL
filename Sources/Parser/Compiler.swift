@@ -65,8 +65,9 @@ struct QueryCompiler {
     
     private mutating func check(_ expression: Expression) throws -> Ty {
         var typeChecker = TypeChecker(env: environment)
-        let (solution, diagnostics) = typeChecker.check(expression)
+        var (solution, diagnostics) = typeChecker.check(expression)
         diagnositics.add(contentsOf: diagnostics)
+        inputs.append(contentsOf: solution.allNames.map { QueryField(name: $0.0, type: $0.1) })
         return solution.type
     }
     
