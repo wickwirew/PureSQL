@@ -30,8 +30,8 @@ struct QueryCompiler {
     private(set) var inputs: [QueryInput] = []
     
     init(
-        environment: Environment,
-        diagnositics: Diagnostics,
+        environment: Environment = .init(),
+        diagnositics: Diagnostics = .init(),
         schema: Schema
     ) {
         self.environment = environment
@@ -39,7 +39,7 @@ struct QueryCompiler {
         self.schema = schema
     }
     
-    consuming func compile(_ select: SelectStmt) throws -> CompiledQuery {
+    mutating func compile(_ select: SelectStmt) throws -> CompiledQuery {
         switch select.selects.value {
         case .single(let select):
             return try compile(select)
@@ -210,16 +210,24 @@ struct QueryCompiler {
                 environment.insert(table.name.value, ty: .error)
                 return
             }
+            
+            let isOptional = switch joinOp {
+            case nil, .inner: false
+            default: true
+            }
 
-            environment.insert(table.alias?.value ?? table.name.value, ty: tableTy)
+            environment.insert(
+                table.alias?.value ?? table.name.value,
+                ty: isOptional ? .optional(tableTy) : tableTy
+            )
             
             for column in columns where usedColumns.isEmpty || usedColumns.contains(column.key) {
-                environment.insert(column.key, ty: column.value)
+                environment.insert(column.key, ty: isOptional ? .optional(column.value) : column.value)
             }
         case .tableFunction:
             fatalError()
         case let .subquery(selectStmt, alias):
-            let compiler = QueryCompiler(
+            var compiler = QueryCompiler(
                 environment: Environment(),
                 diagnositics: Diagnostics(),
                 schema: schema

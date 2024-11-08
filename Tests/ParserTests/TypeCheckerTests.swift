@@ -59,13 +59,13 @@ class TypeCheckerTests: XCTestCase {
         
         var solution = try solution(for: "bar = ?", in: scope)
         XCTAssertEqual(.bool, solution.type)
-        XCTAssertEqual(.integer, solution.type(for: .unnamed(0)))
+        XCTAssertEqual(.optional(.integer), solution.type(for: .unnamed(0)))
         XCTAssertEqual("bar", solution.name(for: 0))
     }
     
     func testUnnamedBindParamNameNotRightNextToColumn() throws {
         let scope = try scope(table: "foo", schema: """
-        CREATE TABLE foo(bar INTEGER);
+        CREATE TABLE foo(bar INTEGER NOT NULL);
         """)
         
         var solution = try solution(for: "bar + 1 = ?", in: scope)
@@ -76,7 +76,7 @@ class TypeCheckerTests: XCTestCase {
     
     func testUnnamedBindParamNameNotRightNextToColumn2() throws {
         let scope = try scope(table: "foo", schema: """
-        CREATE TABLE foo(bar INTEGER);
+        CREATE TABLE foo(bar INTEGER NOT NULL);
         """)
         
         var solution = try solution(for: "1 + bar = ?", in: scope)
@@ -102,7 +102,7 @@ class TypeCheckerTests: XCTestCase {
     
     func testTypeFunctionComplex() throws {
         let scope = try scope(table: "foo", schema: """
-        CREATE TABLE foo(bar REAL);
+        CREATE TABLE foo(bar REAL NOT NULL);
         """)
         
         let solution = try solution(for: "MAX(1, 1, bar + 1, 1)", in: scope)
@@ -111,7 +111,7 @@ class TypeCheckerTests: XCTestCase {
     
     func testTypeFunctionInputGetBound() throws {
         let scope = try scope(table: "foo", schema: """
-        CREATE TABLE foo(bar REAL);
+        CREATE TABLE foo(bar REAL NOT NULL);
         """)
         
         let solution = try solution(for: "MAX(1, 1, bar + ?, 1)", in: scope)
@@ -160,16 +160,21 @@ class TypeCheckerTests: XCTestCase {
     
     func scope(table: String, schema: String) throws -> Environment {
         let schema = try SchemaCompiler().compile(schema).0
-        guard let ty = schema[table[...]] else { fatalError("'table' provided not in 'schema'") }
+        guard let ty = schema[table[...]],
+                case let .row(.named(columns)) = ty else { fatalError("'table' provided not in 'schema'") }
         var env = Environment()
         env.upsert(table[...], ty: ty)
+        columns.forEach { env.upsert($0, ty: $1) }
         return env
     }
     
     private func solution(for source: String, in scope: Environment = Environment()) throws -> Solution {
         let expr = try ExprParser().parse(source)
         var typeChecker = TypeChecker(env: scope)
-        let solution = typeChecker.check(expr).0
+        let (solution, diag) = typeChecker.check(expr)
+        for d in diag.diagnostics {
+            print(d.message)
+        }
         return solution
     }
     

@@ -247,7 +247,7 @@ public enum SelectCore: Equatable {
     }
 }
 
-public struct SelectStmt: Equatable {
+public struct SelectStmt: Statement, Equatable {
     public let cte: Indirect<CommonTableExpression>?
     public let cteRecursive: Bool
     public let selects: Indirect<Selects>
@@ -295,6 +295,10 @@ public struct SelectStmt: Equatable {
             self.expr = expr
             self.offset = offset
         }
+    }
+    
+    public func accept<V>(visitor: inout V) -> V.Output where V : StatementVisitor {
+        visitor.visit(self)
     }
 }
 

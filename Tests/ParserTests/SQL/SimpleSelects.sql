@@ -1,0 +1,12 @@
+CREATE TABLE foo (id INTEGER PRIMARY KEY, bar INTEGER, baz TEXT NOT NULL);
+
+-- CHECK: IN id: INTEGER
+-- CHECK: OUT id: INTEGER
+-- CHECK: OUT bar: INTEGER?
+-- CHECK: OUT baz: TEXT
+SELECT * FROM foo WHERE id = ?;
+
+-- CHECK: IN bar: INTEGER?
+-- CHECK: OUT id: INTEGER
+-- CHECK: OUT bar: INTEGER?
+SELECT id, bar + 1 FROM foo WHERE bar * 20 > ?;

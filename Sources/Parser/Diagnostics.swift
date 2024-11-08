@@ -85,10 +85,6 @@ public struct Diagnostics {
     }
     
     public mutating func add(_ diagnostic: Diagnostic) {
-#if DEBUG
-        print(diagnostic.message)
-#endif
-        
         diagnostics.append(diagnostic)
     }
     

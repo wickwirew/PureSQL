@@ -63,6 +63,10 @@ struct Solution: CustomStringConvertible {
     }
     
     mutating func name(for index: Int) -> Substring {
+        if let name = names.map[index] {
+            return name
+        }
+        
         return index == 0 ? "value" : "value\(index)"
     }
     
@@ -539,7 +543,14 @@ extension TypeChecker: ExprVisitor {
                 diagnostics.add(.ambiguous(tableName.value, at: tableName.range))
             }
             
-            guard case let .row(.named(columns)) = result.type else {
+            // Table may be optionally included
+            let (tableTy, isOptional) = if case let .optional(inner) = result.type {
+                (inner, true)
+            } else {
+                (result.type, false)
+            }
+            
+            guard case let .row(.named(columns)) = tableTy else {
                 diagnostics.add(.init(
                     "'\(tableName)' is not a row",
                     at: expr.range
@@ -555,7 +566,7 @@ extension TypeChecker: ExprVisitor {
                 return (.error, [:], .some(expr.column.value))
             }
             
-            return (type, [:], .some(expr.column.value))
+            return (isOptional ? .optional(type) : type, [:], .some(expr.column.value))
         } else {
             guard let result = env[expr.column.value] else {
                 diagnostics.add(.init(
@@ -765,6 +776,10 @@ struct SchemaCompiler: StatementVisitor {
         }
         
         return (stmt.name.value, .row(.named(columns)))
+    }
+    
+    func visit(_ stmt: borrowing SelectStmt) -> (Substring, Ty)? {
+        return nil
     }
     
     mutating func visit(_ stmt: borrowing EmptyStatement) -> (Substring, Ty)? {

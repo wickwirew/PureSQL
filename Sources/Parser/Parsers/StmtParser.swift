@@ -16,6 +16,9 @@ struct StmtParser: Parser {
         case (.alter, .table):
             return try AlterTableParser()
                 .parse(state: &state)
+        case (.select, _):
+            return try SelectStmtParser()
+                .parse(state: &state)
         case (.semiColon, _), (.eof, _):
             try state.skip()
             return EmptyStatement()

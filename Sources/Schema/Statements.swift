@@ -12,6 +12,7 @@ public protocol StatementVisitor {
     mutating func visit(_ stmt: borrowing CreateTableStatement) -> Output
     mutating func visit(_ stmt: borrowing AlterTableStatement) -> Output
     mutating func visit(_ stmt: borrowing EmptyStatement) -> Output
+    mutating func visit(_ stmt: borrowing SelectStmt) -> Output
 }
 
 public protocol Statement {
