@@ -8,21 +8,7 @@
 import Schema
 import OrderedCollections
 
-struct QuerySource: Sendable {
-    var name: Substring?
-    var tableName: Substring?
-    var fields: OrderedDictionary<Substring, QueryField>
-    var isError = false
-    
-    static let error = QuerySource(
-        name: "<<error>>",
-        tableName: "<<error>>",
-        fields: [:],
-        isError: true
-    )
-}
-
-struct QueryField: Equatable, CustomStringConvertible, Sendable {
+struct QueryInput: Equatable, CustomStringConvertible, Sendable {
     var name: Substring
     var type: Ty
     
@@ -32,8 +18,8 @@ struct QueryField: Equatable, CustomStringConvertible, Sendable {
 }
 
 struct CompiledQuery {
-    var inputs: [QueryField]
-    var outputs: [QueryField]
+    var inputs: [QueryInput]
+    var output: Ty
 }
 
 struct QueryCompiler {
@@ -41,8 +27,7 @@ struct QueryCompiler {
     var diagnositics: Diagnostics
     var schema: Schema
     
-    private(set) var inputs: [QueryField] = []
-    private(set) var outputs: [QueryField] = []
+    private(set) var inputs: [QueryInput] = []
     
     init(
         environment: Environment,
@@ -67,7 +52,7 @@ struct QueryCompiler {
         var typeChecker = TypeChecker(env: environment)
         var (solution, diagnostics) = typeChecker.check(expression)
         diagnositics.add(contentsOf: diagnostics)
-        inputs.append(contentsOf: solution.allNames.map { QueryField(name: $0.0, type: $0.1) })
+        inputs.append(contentsOf: solution.allNames.map { QueryInput(name: $0.0, type: $0.1) })
         return solution.type
     }
     
@@ -92,9 +77,7 @@ struct QueryCompiler {
             break
         }
         
-        for column in select.columns {
-            try compile(column)
-        }
+        let output = try compile(select.columns)
         
         if let whereExpr = select.where {
             let type = try check(whereExpr)
@@ -124,42 +107,59 @@ struct QueryCompiler {
             }
         }
         
-        return CompiledQuery(inputs: inputs, outputs: outputs)
+        return CompiledQuery(inputs: inputs, output: output)
     }
     
-    private mutating func compile(_ resultColumn: ResultColumn) throws {
-        switch resultColumn {
-        case .expr(let expr, let `as`):
-            var typeChecker = TypeChecker(env: environment)
-            var (solution, diag) = typeChecker.check(expr)
-            outputs.append(QueryField(name: `as`?.value ?? "TODO", type: solution.type))
-            inputs.append(contentsOf: solution.allNames.map { QueryField(name: $0.0, type: $0.1) })
-            diagnositics.add(contentsOf: diag)
-        case .all(let tableName):
-            if let tableName {
-                if let table = environment[tableName.value]?.type {
-                    guard case let .row(.named(columns)) = table else {
-                        return diagnositics.add(.init("'\(tableName)' is not a table", at: tableName.range))
-                    }
-                    
-                    for (name, type) in columns {
-                        outputs.append(QueryField(name: name, type: type))
+    private mutating func compile(_ resultColumns: [ResultColumn]) throws -> Ty {
+        var columns: OrderedDictionary<Substring, Ty> = [:]
+        
+        for resultColumn in resultColumns {
+            switch resultColumn {
+            case .expr(let expr, let alias):
+                var typeChecker = TypeChecker(env: environment)
+                var (solution, diag) = typeChecker.check(expr)
+                inputs.append(contentsOf: solution.allNames.map { QueryInput(name: $0.0, type: $0.1) })
+                diagnositics.add(contentsOf: diag)
+                
+                let name = alias?.value ?? solution.lastName
+                
+                // Name will default to stringified expression, this is what SQLite actually
+                // does, but we require one for.
+                columns[alias?.value ?? solution.lastName ?? "__name_required__"] = solution.type
+                
+                if name == nil {
+                    diagnositics.add(.init(
+                        "Column name required, add via 'AS'",
+                        at: expr.range,
+                        suggestion: .append("AS \(Diagnostic.placeholder(name: "name"))")
+                    ))
+                }
+            case .all(let tableName):
+                if let tableName {
+                    if let table = environment[tableName.value]?.type {
+                        guard case let .row(.named(tableColumns)) = table else {
+                            diagnositics.add(.init("'\(tableName)' is not a table", at: tableName.range))
+                            continue
+                        }
+                        
+                        for (name, type) in tableColumns {
+                            columns[name] = type
+                        }
+                    } else {
+                        diagnositics.add(.init("Table '\(tableName)' does not exist", at: tableName.range))
                     }
                 } else {
-                    diagnositics.add(.init("Table '\(tableName)' does not exist", at: tableName.range))
-                }
-            } else {
-                // TODO: Find better way to do this than to iterate through the env
-                for (name, type) in environment {
-                    switch type.type {
-                    case .nominal, .optional:
-                        outputs.append(QueryField(name: name, type: type.type))
-                    default:
-                        continue
+                    for (name, type) in environment {
+                        switch type.type {
+                        case .row: continue // Ignore tables
+                        default: columns[name] = type.type
+                        }
                     }
                 }
             }
         }
+        
+        return .row(.named(columns))
     }
     
     private mutating func compile(_ joinClause: JoinClause) throws {
@@ -201,13 +201,13 @@ struct QueryCompiler {
             
             guard let tableTy = schema[tableName.name.value] else {
                 // TODO: Add diag
-                environment.include(table: table.name.value, source: .error)
+                environment.insert(table.name.value, ty: .error)
                 return
             }
             
             guard case let .row(.named(columns)) = tableTy else {
                 // TODO: Add diag
-                environment.include(table: table.name.value, source: .error)
+                environment.insert(table.name.value, ty: .error)
                 return
             }
 
@@ -229,13 +229,16 @@ struct QueryCompiler {
             
             inputs.append(contentsOf: result.inputs)
             
-            environment.insert(
-                alias?.value ?? "TODO",
-                ty: .row(.named(result.outputs.reduce(into: [:], { $0[$1.name] = $1.type })))
-            )
+            if let alias {
+                environment.insert(alias.value, ty: result.output)
+            }
             
-            for output in result.outputs {
-                environment.insert(output.name, ty: output.type)
+            guard case let .row(.named(columns)) = result.output else {
+                fatalError("SELECT did not result a row type")
+            }
+            
+            for (name, type) in columns {
+                environment.insert(name, ty: type)
             }
         case let .join(joinClause):
             try compile(joinClause)

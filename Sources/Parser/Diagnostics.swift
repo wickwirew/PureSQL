@@ -10,12 +10,17 @@ import Schema
 public struct Diagnostic: Error {
     public let message: String
     public let range: Range<String.Index>
-    public let suggestion: String?
+    public let suggestion: Suggestion?
+    
+    public enum Suggestion: Sendable {
+        case replace(String)
+        case append(String)
+    }
     
     public init(
         _ message: String,
         at range: Range<String.Index>,
-        suggestion: String? = nil
+        suggestion: Suggestion? = nil
     ) {
         self.message = message
         self.range = range
@@ -29,7 +34,7 @@ public struct Diagnostic: Error {
     ) {
         self.message = "Incorrect type, expected '\(expected.name)' got '\(actual.name)'"
         self.range = range
-        self.suggestion = expected.name.description
+        self.suggestion = .replace(expected.name.description)
     }
     
     static func placeholder(name: String) -> String {
@@ -47,7 +52,7 @@ extension Diagnostic {
         Diagnostic(
             "Incorrect type, expected '\(expected.name)' got '\(actual.name)'",
             at: range,
-            suggestion: expected.name.description
+            suggestion: .replace(expected.name.description)
         )
     }
     

@@ -11,56 +11,47 @@ import Schema
 /// The environment for which every query and statement is
 /// type checked against as well as any other static analysis.
 struct Environment {
-    private var env: OrderedDictionary<Substring, TypeScheme> = [
+    private var identifiers: OrderedDictionary<Substring, TyContainer> = [:]
+    
+    private var functions: OrderedDictionary<Substring, TypeScheme> = [
         "MAX": Builtins.max
     ]
     
-    init() {}
-
-    // TODO: Delete me
-    mutating func include(table: Substring, source: QuerySource) {
-        include(table, as: .row(.named(source.fields.mapValues(\.type))))
-        
-        for (name, column) in source.fields {
-            include(name, as: column.type)
-        }
+    struct TyContainer {
+        let type: Ty
+        let isAmbiguous: Bool
     }
     
+    init() {}
+
     /// Inserts or updates the type for the given name
     mutating func upsert(_ name: Substring, ty: Ty) {
-        env[name] = TypeScheme(ty)
+        identifiers[name] = TyContainer(type: ty, isAmbiguous: false)
     }
     
     /// Inserts the type for the given name. If the name
     /// already exists it will be marked as ambiguous
     mutating func insert(_ name: Substring, ty: Ty) {
-        if let existing = env[name] {
-            env[name] = existing.ambiguous()
+        if let existing = identifiers[name] {
+            identifiers[name] = TyContainer(type: existing.type, isAmbiguous: true)
         } else {
-            env[name] = TypeScheme(ty)
+            identifiers[name] = TyContainer(type: ty, isAmbiguous: false)
         }
     }
     
     mutating func rename(_ key: Substring, to newValue: Substring) {
-        guard let value = self[key] else { return }
-        env[key] = nil
-        env[newValue] = value
+        guard let value = identifiers[key] else { return }
+        identifiers[key] = nil
+        identifiers[newValue] = value
     }
     
-    // TODO: Delete me
-    mutating func include(subquery: QuerySource) {
-        for (name, column) in subquery.fields {
-            include(name, as: column.type)
-        }
-    }
-    
-    subscript(_ key: Substring) -> TypeScheme? {
-        return env[key]
+    subscript(_ key: Substring) -> TyContainer? {
+        return identifiers[key]
     }
     
     subscript(function name: Substring, argCount argCount: Int) -> TypeScheme? {
         // TODO: Move this out of the env
-        guard let scheme = self[name],
+        guard let scheme = self.functions[name],
                 case let .fn(params, ret) = scheme.type else { return nil }
         
         // This is how variadics are handled. If a variadic function is called
@@ -116,27 +107,19 @@ struct Environment {
         default: nil
         }
     }
-    
-    private mutating func include(_ key: Substring, as type: Ty) {
-        if let existing = env[key] {
-            env[key] = existing.ambiguous()
-        } else {
-            env[key] = TypeScheme(type)
-        }
-    }
 }
 
 extension Environment: CustomStringConvertible {
     var description: String {
-        return self.env.map { "\($0.key): \($0.value)" }.joined(separator: "\n")
+        return self.identifiers.map { "\($0.key): \($0.value)" }.joined(separator: "\n")
     }
 }
 
 extension Environment: Sequence {
-    typealias Iterator = OrderedDictionary<Substring, TypeScheme>.Iterator
+    typealias Iterator = OrderedDictionary<Substring, Environment.TyContainer>.Iterator
     
-    func makeIterator() -> OrderedDictionary<Substring, TypeScheme>.Iterator {
-        return env.makeIterator()
+    func makeIterator() -> OrderedDictionary<Substring, Environment.TyContainer>.Iterator {
+        return identifiers.makeIterator()
     }
 }
 
@@ -166,37 +149,24 @@ struct TypeScheme: CustomStringConvertible, Sendable {
     let typeVariables: [TypeVariable]
     let type: Ty
     let variadic: Bool
-    let isAmbiguous: Bool
     
     init(
         typeVariables: [TypeVariable],
         type: Ty,
-        variadic: Bool = false,
-        isAmbiguous: Bool = false
+        variadic: Bool = false
     ) {
         self.typeVariables = typeVariables
         self.type = type
         self.variadic = variadic
-        self.isAmbiguous = isAmbiguous
     }
     
     init(_ type: Ty) {
         self.typeVariables = []
         self.type = type
         self.variadic = false
-        self.isAmbiguous = false
     }
     
     var description : String {
         return "∀\(typeVariables.map(\.description).joined(separator: ", ")).\(self.type)"
-    }
-    
-    func ambiguous() -> TypeScheme {
-        return TypeScheme(
-            typeVariables: typeVariables,
-            type: type,
-            variadic: variadic,
-            isAmbiguous: true
-        )
     }
 }

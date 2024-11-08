@@ -17,7 +17,7 @@ class CompilerTests: XCTestCase {
             CREATE TABLE baz(qux INTEGER PRIMARY KEY, meow TEXT);
             """,
             source: """
-            SELECT * FROM (SELECT * FROM baz) INNER JOIN foo ON bar = qux WHERE qux = ? AND meow = :anus;
+            SELECT * FROM baz WHERE qux = ? AND :anus = meow;
             """
         )
         
@@ -27,9 +27,7 @@ class CompilerTests: XCTestCase {
     private func compile(schema: String, source: String) throws -> CompiledQuery {
         let parser = SelectStmtParser()
         let stmt = try parser.parse(source)
-        
-        
-        
+
         let compiler = QueryCompiler(
             environment: .init(),
             diagnositics: .init(),
