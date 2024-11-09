@@ -3,7 +3,6 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 import Parser
-import Schema
 import SwiftDiagnostics
 
 struct GenError: Error, CustomStringConvertible {
