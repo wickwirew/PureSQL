@@ -8,18 +8,28 @@
 import Schema
 import OrderedCollections
 
-struct QueryInput: Equatable, CustomStringConvertible, Sendable {
-    var name: Substring
-    var type: Ty
+public struct QueryInput: Equatable, CustomStringConvertible, Sendable {
+    public var name: Substring
+    public var type: Ty
     
-    var description: String {
+    public var description: String {
         return "\(name): \(type)"
     }
 }
 
-struct CompiledQuery {
-    var inputs: [QueryInput]
-    var output: Ty
+public struct CompiledQuery {
+    public var inputs: [QueryInput]
+    public var output: Ty
+}
+
+public func query(from source: String, schema: Schema) throws -> (CompiledQuery, Diagnostics) {
+    // TODO: Diag
+    let stmt = try SelectStmtParser()
+        .parse(source)
+    
+    var compiler = QueryCompiler(schema: schema)
+    let query = try compiler.compile(stmt)
+    return (query, compiler.diagnositics)
 }
 
 struct QueryCompiler {
@@ -39,6 +49,7 @@ struct QueryCompiler {
         self.schema = schema
     }
     
+    // TODO: Return diags
     mutating func compile(_ select: SelectStmt) throws -> CompiledQuery {
         switch select.selects.value {
         case .single(let select):

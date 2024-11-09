@@ -78,7 +78,7 @@ extension Diagnostic {
 }
 
 public struct Diagnostics {
-    private(set) var diagnostics: [Diagnostic] = []
+    public private(set) var diagnostics: [Diagnostic] = []
     
     public init(diagnostics: [Diagnostic] = []) {
         self.diagnostics = diagnostics

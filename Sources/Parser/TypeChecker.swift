@@ -101,18 +101,18 @@ struct TypeConstraints: OptionSet, Hashable {
     static let numeric = TypeConstraints(rawValue: 1 << 0)
 }
 
-struct TypeVariable: Hashable, CustomStringConvertible, ExpressibleByIntegerLiteral {
+public struct TypeVariable: Hashable, CustomStringConvertible, ExpressibleByIntegerLiteral, Sendable {
     let n: Int
     
     init(_ n: Int) {
         self.n = n
     }
     
-    init(integerLiteral value: Int) {
+    public init(integerLiteral value: Int) {
         self.n = value
     }
     
-    var description: String {
+    public var description: String {
         return "τ\(n)"
     }
 }
@@ -167,7 +167,7 @@ extension Substitution {
     }
 }
 
-enum Ty: Equatable, CustomStringConvertible, Sendable {
+public enum Ty: Equatable, CustomStringConvertible, Sendable {
     case nominal(Substring)
     case `var`(TypeVariable)
     indirect case fn(params: [Ty], ret: Ty)
@@ -189,11 +189,11 @@ enum Ty: Equatable, CustomStringConvertible, Sendable {
     /// Named and unnamed. Named is obviously a table from
     /// a FROM or JOIN. Unnamed would be from a subquery or
     /// a row expression `(?, ?, ?)`.
-    enum RowTy: Equatable, Sendable, ExpressibleByArrayLiteral {
+    public enum RowTy: Equatable, Sendable, ExpressibleByArrayLiteral {
         case named(OrderedDictionary<Substring, Ty>)
         case unnamed([Ty])
         
-        init(arrayLiteral elements: Ty...) {
+        public init(arrayLiteral elements: Ty...) {
             self = .unnamed(elements)
         }
         
@@ -234,7 +234,7 @@ enum Ty: Equatable, CustomStringConvertible, Sendable {
     static let any: Ty = .nominal("ANY")
     static let bool: Ty = .nominal("BOOL")
     
-    var description: String {
+    public var description: String {
         return switch self {
         case .nominal(let typeName): typeName.description
         case .var(let typeVariable): typeVariable.description
@@ -552,7 +552,7 @@ extension TypeChecker: ExprVisitor {
             
             guard case let .row(.named(columns)) = tableTy else {
                 diagnostics.add(.init(
-                    "'\(tableName)' is not a row",
+                    "'\(tableName)' is not a row, got \(tableTy)",
                     at: expr.range
                 ))
                 return (.error, [:], .some(expr.column.value))
@@ -714,7 +714,11 @@ extension TypeChecker: ExprVisitor {
     }
 }
 
-typealias Schema = OrderedDictionary<Substring, Ty>
+public typealias Schema = OrderedDictionary<Substring, Ty>
+
+public func schema(from source: String) throws -> Schema {
+    return try SchemaCompiler().compile(source).0
+}
 
 struct SchemaCompiler: StatementVisitor {
     private var schema = Schema()
