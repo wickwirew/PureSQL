@@ -69,9 +69,17 @@ public struct DatabaseMacro: MemberMacro {
                 return (name.segments.description, source.segments.description, source)
             }
         
-        let schema = try schema(from: migrations)
+        var schemaCompiler = SchemaCompiler()
+        let (schema, diags) = try schemaCompiler.compile(migrations)
         
-        let compiledQueries = try queries.map { ($0, try query(from: $1, schema: schema), $1, $2) }
+        for diag in diags.diagnostics {
+            // TODO: Need syntax
+        }
+        
+        let compiledQueries = try queries.map {
+            var queryCompiler = QueryCompiler(schema: schema)
+            return ($0, try queryCompiler.compile($1), $1, $2)
+        }
         
         return compiledQueries.flatMap { (name, query, source, syntax) in
             guard case let .row(.named(columns)) = query.0.output else { fatalError() }

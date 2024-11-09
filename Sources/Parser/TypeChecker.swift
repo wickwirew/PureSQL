@@ -716,15 +716,13 @@ extension TypeChecker: ExprVisitor {
 
 public typealias Schema = OrderedDictionary<Substring, Ty>
 
-public func schema(from source: String) throws -> Schema {
-    return try SchemaCompiler().compile(source).0
-}
-
-struct SchemaCompiler: StatementVisitor {
+public struct SchemaCompiler: StatementVisitor {
     private var schema = Schema()
     private var diagnostics = Diagnostics()
     
-    consuming func compile(_ stmts: [Statement]) -> (Schema, Diagnostics) {
+    public init() {}
+    
+    public consuming func compile(_ stmts: [Statement]) -> (Schema, Diagnostics) {
         for stmt in stmts {
             guard let (name, ty) = stmt.accept(visitor: &self) else { continue }
             schema[name] = ty
@@ -733,7 +731,7 @@ struct SchemaCompiler: StatementVisitor {
         return (schema, diagnostics)
     }
     
-    consuming func compile(_ source: String) throws -> (Schema, Diagnostics) {
+    public mutating func compile(_ source: String) throws -> (Schema, Diagnostics) {
         let statements = try StmtParser()
             .semiColonSeparated()
             .parse(source)
@@ -741,7 +739,7 @@ struct SchemaCompiler: StatementVisitor {
         return compile(statements)
     }
     
-    mutating func visit(_ stmt: borrowing CreateTableStatement) -> (Substring, Ty)? {
+    public mutating func visit(_ stmt: borrowing CreateTableStatement) -> (Substring, Ty)? {
         switch stmt.kind {
         case .select(let selectStmt):
             var typeChecker = TypeChecker(env: Environment())
@@ -754,7 +752,7 @@ struct SchemaCompiler: StatementVisitor {
         }
     }
     
-    mutating func visit(_ stmt: borrowing AlterTableStatement) -> (Substring, Ty)? {
+    public mutating func visit(_ stmt: borrowing AlterTableStatement) -> (Substring, Ty)? {
         guard let ty = schema[stmt.name.value] else {
             // TODO: Add ranges to stmts
             diagnostics.add(.init("Table '\(stmt.name)' does not exist", at: "".startIndex ..< "".endIndex))
@@ -782,11 +780,11 @@ struct SchemaCompiler: StatementVisitor {
         return (stmt.name.value, .row(.named(columns)))
     }
     
-    func visit(_ stmt: borrowing SelectStmt) -> (Substring, Ty)? {
+    public func visit(_ stmt: borrowing SelectStmt) -> (Substring, Ty)? {
         return nil
     }
     
-    mutating func visit(_ stmt: borrowing EmptyStatement) -> (Substring, Ty)? {
+    public mutating func visit(_ stmt: borrowing EmptyStatement) -> (Substring, Ty)? {
         return nil
     }
     

@@ -22,38 +22,26 @@ public struct CompiledQuery {
     public var output: Ty
 }
 
-public func query(from source: String, schema: Schema) throws -> (CompiledQuery, Diagnostics) {
-    // TODO: Diag
-    let stmt = try SelectStmtParser()
-        .parse(source)
-    
-    var compiler = QueryCompiler(schema: schema)
-    let query = try compiler.compile(stmt)
-    return (query, compiler.diagnositics)
-}
-
-struct QueryCompiler {
-    var environment: Environment
-    var diagnositics: Diagnostics
+public struct QueryCompiler {
+    var environment = Environment()
+    var diagnositics = Diagnostics()
     var schema: Schema
     
     private(set) var inputs: [QueryInput] = []
     
-    init(
-        environment: Environment = .init(),
-        diagnositics: Diagnostics = .init(),
-        schema: Schema
-    ) {
-        self.environment = environment
-        self.diagnositics = diagnositics
+    public init(schema: Schema) {
         self.schema = schema
     }
     
-    // TODO: Return diags
-    mutating func compile(_ select: SelectStmt) throws -> CompiledQuery {
+    public mutating func compile(_ source: String) throws -> (CompiledQuery, Diagnostics) {
+        return try compile(SelectStmtParser().parse(source))
+    }
+    
+    public mutating func compile(_ select: SelectStmt) throws -> (CompiledQuery, Diagnostics) {
         switch select.selects.value {
         case .single(let select):
-            return try compile(select)
+            let result = try compile(select)
+            return (result, diagnositics)
         case .compound:
             fatalError()
         }
@@ -238,13 +226,10 @@ struct QueryCompiler {
         case .tableFunction:
             fatalError()
         case let .subquery(selectStmt, alias):
-            var compiler = QueryCompiler(
-                environment: Environment(),
-                diagnositics: Diagnostics(),
-                schema: schema
-            )
+            var compiler = QueryCompiler(schema: schema)
+            let (result, diags) = try compiler.compile(selectStmt)
             
-            let result = try compiler.compile(selectStmt)
+            diagnositics.add(contentsOf: diags)
             
             inputs.append(contentsOf: result.inputs)
             

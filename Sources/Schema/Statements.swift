@@ -7,6 +7,7 @@
 
 import OrderedCollections
 
+// TODO: Make not public once the modules are merged
 public protocol StatementVisitor {
     associatedtype Output
     mutating func visit(_ stmt: borrowing CreateTableStatement) -> Output
