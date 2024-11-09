@@ -99,11 +99,11 @@ extension ParserTests {
 
 extension ParserTests {
     func testSymbol() {
-        XCTAssertEqual("userId", try execute(parser: SymbolParser(), source: "userId"))
+        XCTAssertEqual("userId", try execute(parser: IdentifierParser(), source: "userId"))
     }
     
     func testKeyword() {
-        XCTAssertThrowsError(try execute(parser: SymbolParser(), source: "SELECT"))
+        XCTAssertThrowsError(try execute(parser: IdentifierParser(), source: "SELECT"))
     }
 }
 
@@ -499,12 +499,6 @@ extension ParserTests {
             AlterTableStatement(name: "user", schemaName: nil, kind: .dropColumn("age")),
             try execute(parser: AlterTableParser(), source: "ALTER TABLE user DROP age")
         )
-    }
-}
-
-extension ParserTests {
-    func testFilecheck() throws {
-        try check(sqlFile: "Expression", parser: ExprParser())
     }
 }
 

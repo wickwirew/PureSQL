@@ -1,12 +1,12 @@
 //
-//  SymbolParser.swift
+//  IdentifierParser.swift
 //
 //
 //  Created by Wes Wickwire on 10/9/24.
 //
 
 /// Parses a symbol, this can be a column name or any sort of non keyword
-struct SymbolParser: Parser {
+struct IdentifierParser: Parser {
     func parse(state: inout ParserState) throws -> IdentifierSyntax {
         let token = try state.take()
         
@@ -19,5 +19,5 @@ struct SymbolParser: Parser {
 }
 
 extension Substring: Parsable {
-    static let parser = SymbolParser()
+    static let parser = IdentifierParser()
 }

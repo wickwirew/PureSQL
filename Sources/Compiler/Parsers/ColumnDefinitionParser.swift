@@ -11,7 +11,7 @@
 /// https://www.sqlite.org/syntax/column-def.html
 struct ColumnDefinitionParser: Parser {
     func parse(state: inout ParserState) throws -> ColumnDef {
-        let name = try SymbolParser().parse(state: &state)
+        let name = try IdentifierParser().parse(state: &state)
         let type = try TypeNameParser().parse(state: &state)
         let constraints = try ColumnConstraintParser()
             .collect(until: [.comma, .closeParen, .eof, .semiColon])

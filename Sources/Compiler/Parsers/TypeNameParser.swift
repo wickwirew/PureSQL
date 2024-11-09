@@ -8,7 +8,7 @@
 /// https://www.sqlite.org/syntax/type-name.html
 struct TypeNameParser: Parser {
     func parse(state: inout ParserState) throws -> TypeName {
-        let parser = SymbolParser()
+        let parser = IdentifierParser()
         
         var name = try parser.parse(state: &state)
         

@@ -350,7 +350,7 @@ struct BindParameterParser: Parser {
             let symbol = try parseSymbol(state: &state)
             return BindParameter(kind: .named(symbol), range: token.range.lowerBound..<symbol.range.upperBound)
         case .dollarSign:
-            let segments = try SymbolParser()
+            let segments = try IdentifierParser()
                 .separated(by: .colon, and: .colon)
                 .parse(state: &state)
             
@@ -359,7 +359,7 @@ struct BindParameterParser: Parser {
             let fullName = segments.map(\.value)
                 .joined(separator: "::")[...]
             
-            let suffix = try SymbolParser()
+            let suffix = try IdentifierParser()
                 .inParenthesis()
                 .take(if: .openParen)
                 .parse(state: &state)
@@ -378,7 +378,7 @@ struct BindParameterParser: Parser {
     }
     
     private func parseSymbol(state: inout ParserState) throws -> IdentifierSyntax {
-        return try SymbolParser()
+        return try IdentifierParser()
             .parse(state: &state)
     }
 }
@@ -389,7 +389,7 @@ extension BindParameter: Parsable {
 
 struct QualifiedColumnParser: Parser {
     func parse(state: inout ParserState) throws -> ColumnExpr {
-        let symbol = SymbolParser()
+        let symbol = IdentifierParser()
         
         let first = try symbol.parse(state: &state)
         

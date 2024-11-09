@@ -27,14 +27,14 @@ struct AlterTableParser: Parser {
             case .to:
                 try state.skip()
                 
-                let newName = try SymbolParser()
+                let newName = try IdentifierParser()
                     .parse(state: &state)
                 
                 return .rename(newName)
             default:
                 _ = try state.take(if: .column)
                 
-                let symbol = SymbolParser()
+                let symbol = IdentifierParser()
                 let oldName = try symbol.parse(state: &state)
                 try state.consume(.to)
                 let newName = try symbol.parse(state: &state)
@@ -47,7 +47,7 @@ struct AlterTableParser: Parser {
             return .addColumn(column)
         case .drop:
             _ = try state.take(if: .column)
-            let column = try SymbolParser()
+            let column = try IdentifierParser()
                 .parse(state: &state)
             return .dropColumn(column)
         default:

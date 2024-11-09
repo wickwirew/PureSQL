@@ -16,10 +16,10 @@ struct ForeignKeyClauseParser: Parser {
     func parse(state: inout ParserState) throws -> ForeignKeyClause {
         try state.consume(.references)
         
-        let table = try SymbolParser()
+        let table = try IdentifierParser()
             .parse(state: &state)
         
-        let columns = try SymbolParser()
+        let columns = try IdentifierParser()
             .commaSeparated()
             .inParenthesis()
             .take(if: .openParen)
@@ -60,7 +60,7 @@ struct ForeignKeyClauseParser: Parser {
             return .onDo(on, try parseOnDeleteOrUpdateAction(state: &state))
         case .match:
             try state.skip()
-            let name = try SymbolParser()
+            let name = try IdentifierParser()
                 .parse(state: &state)
             
             return .match(name, try parseActions(state: &state))

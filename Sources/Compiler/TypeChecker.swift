@@ -753,14 +753,12 @@ public struct SchemaCompiler: StatementVisitor {
     
     public mutating func visit(_ stmt: borrowing AlterTableStatement) -> (Substring, Ty)? {
         guard let ty = schema[stmt.name.value] else {
-            // TODO: Add ranges to stmts
-            diagnostics.add(.init("Table '\(stmt.name)' does not exist", at: "".startIndex ..< "".endIndex))
+            diagnostics.add(.init("Table '\(stmt.name)' does not exist", at: stmt.name.range))
             return nil
         }
         
         guard case var .row(.named(columns)) = ty else {
-            // TODO: Add ranges to stmts
-            diagnostics.add(.init("Internal error, table '\(stmt.name)' is not a table?", at: "".startIndex ..< "".endIndex))
+            diagnostics.add(.init("Internal error, table '\(stmt.name)' is not a table?", at: stmt.name.range))
             return nil
         }
         

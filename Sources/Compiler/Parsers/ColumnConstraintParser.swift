@@ -19,7 +19,7 @@ struct ColumnConstraintParser: Parser {
         case .constraint:
             try state.skip()
             
-            let name = try SymbolParser()
+            let name = try IdentifierParser()
                 .parse(state: &state)
             
             return try ColumnConstraintParser(name: name)
@@ -55,7 +55,7 @@ struct ColumnConstraintParser: Parser {
             }
         case .collate:
             try state.skip()
-            let collation = try SymbolParser().parse(state: &state)
+            let collation = try IdentifierParser().parse(state: &state)
             return ColumnConstraint(name: name, kind: .collate(collation))
         case .references:
             let fk = try ForeignKeyClauseParser()

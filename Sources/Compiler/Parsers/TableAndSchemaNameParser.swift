@@ -7,7 +7,7 @@
 
 struct TableAndSchemaNameParser: Parser {
     func parse(state: inout ParserState) throws -> (schema: IdentifierSyntax?, table: IdentifierSyntax) {
-        let symbol = SymbolParser()
+        let symbol = IdentifierParser()
         
         let first = try symbol.parse(state: &state)
         

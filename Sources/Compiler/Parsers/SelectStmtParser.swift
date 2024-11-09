@@ -180,7 +180,7 @@ struct SelectCoreParser: Parser {
     
     private struct WindowParser: Parser {
         func parse(state: inout ParserState) throws -> SelectCore.Window {
-            let name = try SymbolParser().parse(state: &state)
+            let name = try IdentifierParser().parse(state: &state)
             try state.consume(.as)
             let window = try WindowDefinitionParser().parse(state: &state)
             return SelectCore.Window(name: name, window: window)
@@ -236,7 +236,7 @@ struct ResultColumnParser: Parser {
                 .parse(state: &state)
             
             if try state.take(if: .as) {
-                let alias = try SymbolParser().parse(state: &state)
+                let alias = try IdentifierParser().parse(state: &state)
                 return .expr(expr, as: alias)
             } else if case let .symbol(alias) = state.current.kind {
                 let alias = IdentifierSyntax(value: alias, range: state.current.range)
@@ -277,7 +277,7 @@ struct TableOrSubqueryParser: Parser {
                 case .indexed:
                     try state.skip()
                     try state.consume(.by)
-                    indexedBy = try SymbolParser().parse(state: &state)
+                    indexedBy = try IdentifierParser().parse(state: &state)
                 case .not:
                     try state.skip()
                     try state.consume(.indexed)
@@ -323,7 +323,7 @@ struct TableOrSubqueryParser: Parser {
     
     private func parseAlias(state: inout ParserState) throws -> IdentifierSyntax? {
         if try state.take(if: .as) {
-            return try SymbolParser().parse(state: &state)
+            return try IdentifierParser().parse(state: &state)
         } else if case .symbol(let alias) = state.current.kind {
             let alias = IdentifierSyntax(value: alias, range: state.current.range)
             try state.skip()
@@ -448,7 +448,7 @@ struct JoinConstraintParser: Parser {
             )
         } else if try state.take(if: .using) {
             return .using(
-                try SymbolParser()
+                try IdentifierParser()
                     .commaSeparated()
                     .inParenthesis()
                     .parse(state: &state)
@@ -461,9 +461,9 @@ struct JoinConstraintParser: Parser {
 
 struct CommonTableExprParser: Parser {
     func parse(state: inout ParserState) throws -> CommonTableExpression {
-        let table = try SymbolParser().parse(state: &state)
+        let table = try IdentifierParser().parse(state: &state)
         
-        let columns = try SymbolParser()
+        let columns = try IdentifierParser()
             .commaSeparated()
             .inParenthesis()
             .take(if: .openParen)

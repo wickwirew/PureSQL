@@ -181,40 +181,7 @@ public struct SchemaMacro: DeclarationMacro {
         of node: some FreestandingMacroExpansionSyntax,
         in context: some MacroExpansionContext
     ) throws -> [DeclSyntax] {
-        guard let argument = node.argumentList.first?.expression else {
-            throw GenError("No arguments")
-        }
-        
-        guard let dictionary = argument.as(DictionaryExprSyntax.self), 
-                let migrations = dictionary.content.as(DictionaryElementListSyntax.self) else {
-            throw GenError("Migrations must be a dictionary literal, with both key/value as stirng literals")
-        }
-        
-        let values: [(name: String, script: String)] = try migrations
-            .map {
-                guard let name = $0.key.as(StringLiteralExprSyntax.self),
-                      let source = $0.value.as(StringLiteralExprSyntax.self) else {
-                    throw GenError("Key/value must be string literals")
-                }
-                
-                return (name.segments.description, source.segments.description)
-            }
-        
-        let schema = try SchemaBuilder
-            .build(from: values.map(\.script).joined(separator: ";"))
-        
-        return schema.tables.values.map { table in
-            DeclSyntax(StructDeclSyntax(name: "\(raw: table.name.name.value.capitalized)") {
-                for column in table.columns.values {
-                    let isNonOptional = column.constraints
-                        .contains { $0.isPkConstraint || $0.isNotNullConstraint }
-                    
-                    """
-                    let \(raw: column.name): \(raw: column.type.swiftType)\(raw: isNonOptional ? "" : "?")
-                    """
-                }
-            })
-        }
+        return []
     }
 }
 
