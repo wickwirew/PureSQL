@@ -31,13 +31,13 @@ let package = Package(
             dependencies: [
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
-                "Parser",
+                "Compiler",
             ]
         ),
 
         // Library that exposes a macro as part of its API, which is used in client programs.
         .target(name: "SQL", dependencies: ["SQLMacros"]),
-        .target(name: "Parser", dependencies: [.product(name: "OrderedCollections", package: "swift-collections")]),
+        .target(name: "Compiler", dependencies: [.product(name: "OrderedCollections", package: "swift-collections")]),
 
         // A client of the library, which is able to use the macro in its own code.
         .executableTarget(name: "SQLClient", dependencies: ["SQL"]),
@@ -47,14 +47,14 @@ let package = Package(
             name: "SQLTests",
             dependencies: [
                 "SQLMacros",
-                "Parser",
+                "Compiler",
                 .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
             ]
         ),
         
         .testTarget(
-            name: "ParserTests",
-            dependencies: ["Parser"],
+            name: "CompilerTests",
+            dependencies: ["Compiler"],
             resources: [.process("SQL")]
         ),
     ]

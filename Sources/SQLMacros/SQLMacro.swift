@@ -2,7 +2,7 @@ import SwiftCompilerPlugin
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
-import Parser
+import Compiler
 import SwiftDiagnostics
 
 struct GenError: Error, CustomStringConvertible {
