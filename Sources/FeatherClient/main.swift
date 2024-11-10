@@ -1,4 +1,4 @@
-import SQL
+import Feather
 
 let a = 17
 let b = 25
@@ -50,6 +50,10 @@ struct DB: Database {
                 ownerId INTEGER REFERENCES user,
                 name TEXT NOT NULL
             );
+            """,
+            
+            """
+            ALTER TABLE user ADD COLUMN favoriteColor INTEGER
             """
         ]
     }

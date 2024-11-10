@@ -362,7 +362,7 @@ struct TypeChecker {
         return typeScheme.type.apply(sub)
     }
     
-    mutating func check(_ stmt: SelectStmt) -> Solution {
+    mutating func check(_ stmt: SelectStmt) -> (Solution, Diagnostics) {
         fatalError("TODO")
 //        let (ty, sub, names) = stmt.accept(visitor: &self)
 //        return finalize(ty: ty, sub: sub, names: names)
@@ -742,8 +742,8 @@ public struct SchemaCompiler: StatementVisitor {
         switch stmt.kind {
         case .select(let selectStmt):
             var typeChecker = TypeChecker(env: Environment())
-            let solution = typeChecker.check(selectStmt)
-//            diagnostics.add(contentsOf: diagnostics)
+            let (solution, diag) = typeChecker.check(selectStmt)
+            diagnostics.add(contentsOf: diag)
             // TODO: Validate no params and returns named row
             return (stmt.name.value, solution.type)
         case .columns(let columns):
