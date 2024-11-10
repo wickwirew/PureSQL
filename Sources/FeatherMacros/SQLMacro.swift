@@ -71,7 +71,7 @@ public struct DatabaseMacro: MemberMacro {
         var schemaCompiler = SchemaCompiler()
         let (schema, diags) = try schemaCompiler.compile(migrations)
         
-        for diag in diags.diagnostics {
+        for _ in diags.diagnostics {
             // TODO: Need syntax
         }
         
@@ -93,7 +93,11 @@ public struct DatabaseMacro: MemberMacro {
             return [
                 DeclSyntax(StructDeclSyntax(name: "\(raw: name)Query") {
                     """
-                    let input: Input
+                    func statement(in connection: borrowing Connection, with input: Input) throws(FeatherError) -> Statement {
+                        var statement = try Statement(\"\"\"\n\(raw: source)\n\"\"\", connection: connection)
+                        \(raw: query.0.inputs.map { "try statement.bind(value: input.\($0.name))" }.joined(separator: "\n"))
+                        return statement
+                    }
                     """
                     
                     DeclSyntax(StructDeclSyntax(name: "Input") {
@@ -105,12 +109,19 @@ public struct DatabaseMacro: MemberMacro {
                     })
                 }),
                 
-                DeclSyntax(StructDeclSyntax(name: "\(raw: name)") {
+                DeclSyntax(StructDeclSyntax(name: "\(raw: name): RowDecodable") {
                     for (column, type) in columns {
                         """
                         let \(raw: column): \(raw: type.swiftType)
                         """
                     }
+                    
+                    """
+                    init(cursor: borrowing Cursor) throws(FeatherError) {
+                        var columns = cursor.indexedColumns()
+                        \(raw: columns.map { "self.\($0.key) = try columns.next()" }.joined(separator: "\n"))
+                    }
+                    """
                 })
             ]
         }

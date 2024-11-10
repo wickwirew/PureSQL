@@ -55,7 +55,7 @@ let package = Package(
         .testTarget(
             name: "CompilerTests",
             dependencies: ["Compiler"],
-            resources: [.process("Feather")]
+            resources: [.process("SQL")]
         ),
     ]
 )
