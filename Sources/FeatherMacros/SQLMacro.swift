@@ -91,7 +91,10 @@ public struct DatabaseMacro: MemberMacro {
             }
             
             return [
-                DeclSyntax(StructDeclSyntax(name: "\(raw: name)Query") {
+                DeclSyntax(StructDeclSyntax(name: "\(raw: name)Query: DatabaseQuery") {
+                    "typealias Output = [\(raw: name)]"
+                    "typealias Context = Connection"
+                    
                     """
                     func statement(in connection: borrowing Connection, with input: Input) throws(FeatherError) -> Statement {
                         var statement = try Statement(\"\"\"\n\(raw: source)\n\"\"\", connection: connection)

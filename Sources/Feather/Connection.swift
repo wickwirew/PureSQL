@@ -11,7 +11,7 @@ public struct Transaction: ~Copyable {
     private let connection: Connection
 }
 
-public struct Connection: ~Copyable {
+public struct Connection {
     var raw: OpaquePointer
     
     // SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_URI
@@ -88,7 +88,7 @@ public struct Cursor: ~Copyable {
         switch code {
         case .sqliteDone:
             return false
-        case .sqliteOk:
+        case .sqliteRow:
             return true
         default:
             throw .sqlite(code)
