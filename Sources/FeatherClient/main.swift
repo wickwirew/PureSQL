@@ -35,7 +35,8 @@ struct DB: Database {
 let connection = try Connection(path: url.absoluteString)
 
 let users = try await DB.UserQuery()
-    .execute(with: .init(), in: connection)
+    .with(input: .init())
+    .execute(in: connection)
 
 for user in users {
     print(user.id, user.name)

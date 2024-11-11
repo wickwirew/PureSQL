@@ -11,8 +11,8 @@ public struct Transaction: ~Copyable {
     private let connection: Connection
 }
 
-public struct Connection {
-    var raw: OpaquePointer
+public final class Connection {
+    let raw: OpaquePointer
     
     // SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_URI
     
@@ -27,8 +27,12 @@ public struct Connection {
         self.raw = raw
     }
     
-    public consuming func close() throws(FeatherError) {
-        try throwing(sqlite3_close_v2(raw))
+    deinit {
+        do {
+            try throwing(sqlite3_close_v2(raw))
+        } catch {
+            assertionFailure("\(error)")
+        }
     }
 }
 
@@ -68,22 +72,30 @@ public struct Statement: ~Copyable {
         try value.bind(to: raw, at: bindIndex)
         bindIndex += 1
     }
+    
+    deinit {
+        do {
+            try throwing(sqlite3_finalize(raw))
+        } catch {
+            fatalError("Failed to finalize statement: \(error)")
+        }
+    }
 }
 
 public struct Cursor: ~Copyable {
-    private var raw: OpaquePointer
+    private let statement: Statement
     private var column: Int32 = 0
     
     public init(of statement: consuming Statement) {
-        self.raw = statement.raw
+        self.statement = statement
     }
     
     public func indexedColumns() -> IndexedColumns {
-        return IndexedColumns(raw)
+        return IndexedColumns(statement.raw)
     }
     
     public mutating func step() throws(FeatherError) -> Bool {
-        let code = SQLiteCode(sqlite3_step(raw))
+        let code = SQLiteCode(sqlite3_step(statement.raw))
         
         switch code {
         case .sqliteDone:
@@ -92,14 +104,6 @@ public struct Cursor: ~Copyable {
             return true
         default:
             throw .sqlite(code)
-        }
-    }
-    
-    deinit {
-        do {
-            try throwing(sqlite3_finalize(raw))
-        } catch {
-            fatalError("Failed to finalize statement: \(error)")
         }
     }
 }
