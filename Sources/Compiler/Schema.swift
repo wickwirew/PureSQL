@@ -614,3 +614,103 @@ public struct TableName: Hashable, CustomStringConvertible {
         return TableName(schema: schema, name: name)
     }
 }
+
+public struct InsertStmt: Equatable {
+    public let cte: Indirect<CommonTableExpression>?
+    public let cteRecursive: Bool
+    public let action: Action
+    public let tableName: TableName
+    public let tableAlias: IdentifierSyntax
+    public let values: Values
+    public let returningClause: ReturningClause
+    
+    public enum Values: Equatable {
+        case select(SelectStmt, UpsertClause?)
+        case defaultValues
+    }
+    
+    public enum Action: Equatable {
+        case replace
+        case insert(Or?)
+    }
+    
+    public enum Or: Equatable {
+        case abort
+        case fail
+        case ignore
+        case replace
+        case rollback
+    }
+    
+    public init(
+        cte: CommonTableExpression?,
+        cteRecursive: Bool,
+        action: Action,
+        tableName: TableName,
+        tableAlias: IdentifierSyntax,
+        values: Values,
+        returningClause: ReturningClause
+    ) {
+        self.cte = cte.map(Indirect.init)
+        self.cteRecursive = cteRecursive
+        self.action = action
+        self.tableName = tableName
+        self.tableAlias = tableAlias
+        self.values = values
+        self.returningClause = returningClause
+    }
+}
+
+public struct ReturningClause: Equatable {
+    public let values: [Value]
+    
+    public init(values: [Value]) {
+        self.values = values
+    }
+    
+    public struct Value: Equatable {
+        public let expr: Expression
+        public let alias: IdentifierSyntax?
+        
+        public init(expr: Expression, alias: IdentifierSyntax?) {
+            self.expr = expr
+            self.alias = alias
+        }
+    }
+}
+
+public struct UpsertClause: Equatable {
+    public let confictTarget: Expression?
+    public let doAction: Do
+    
+    public init(confictTarget: Expression?, doAction: Do) {
+        self.confictTarget = confictTarget
+        self.doAction = doAction
+    }
+    
+    public struct ConflictTarget: Equatable {
+        public let columns: [IndexedColumn]
+        public let condition: Expression?
+    }
+    
+    public enum Do: Equatable {
+        case nothing
+        case updateSet(sets: [SetAction], where: Expression?)
+    }
+    
+    public struct SetAction: Equatable {
+        public let column: Column
+        public let expr: Expression
+        
+        public init(column: Column, expr: Expression) {
+            self.column = column
+            self.expr = expr
+        }
+    }
+    
+    public enum Column: Equatable {
+        case single(Substring)
+        case list([Substring])
+    }
+}
+

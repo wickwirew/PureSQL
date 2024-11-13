@@ -6,6 +6,7 @@
 //
 
 import SQLite3
+import Collections
 
 public struct Transaction: ~Copyable {
     private let connection: Connection
@@ -14,9 +15,10 @@ public struct Transaction: ~Copyable {
 public final class Connection {
     let raw: OpaquePointer
     
-    // SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_URI
-    
-    public init(path: String, flags: Int32 = SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_URI) throws(FeatherError) {
+    public init(
+        path: String,
+        flags: Int32 = SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_URI
+    ) throws(FeatherError) {
         var raw: OpaquePointer?
         try throwing(sqlite3_open_v2(path, &raw, flags, nil))
         
@@ -34,6 +36,13 @@ public final class Connection {
             assertionFailure("\(error)")
         }
     }
+}
+
+public actor ConnectionPool: Sendable {
+    private var count = 0
+    private var connections: Deque<Connection> = []
+    
+    public init() {}
 }
 
 public enum FeatherError: Error {
