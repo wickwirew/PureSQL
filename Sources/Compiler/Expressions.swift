@@ -7,7 +7,7 @@
 
 import Foundation
 
-public protocol ExprVisitor {
+protocol ExprVisitor {
     associatedtype Output
     
     mutating func visit(_ expr: borrowing LiteralExpr) -> Output
@@ -55,11 +55,11 @@ extension ExprVisitor {
     }
 }
 
-public struct OperatorSyntax: Equatable, CustomStringConvertible {
-    public let `operator`: Operator
-    public let range: Range<String.Index>
+struct OperatorSyntax: Equatable, CustomStringConvertible {
+    let `operator`: Operator
+    let range: Range<String.Index>
     
-    public init(
+    init(
         `operator`: Operator,
         range: Range<String.Index>
     ) {
@@ -67,21 +67,21 @@ public struct OperatorSyntax: Equatable, CustomStringConvertible {
         self.range = range
     }
     
-    public var description: String {
+    var description: String {
         return `operator`.description
     }
 }
 
-public protocol Expr {
+protocol Expr {
     var range: Range<String.Index> { get }
     func accept<V: ExprVisitor>(visitor: inout V) -> V.Output
 }
 
-public struct LiteralExpr: Expr, Equatable {
-    public let kind: Kind
-    public let range: Range<String.Index>
+struct LiteralExpr: Expr, Equatable {
+    let kind: Kind
+    let range: Range<String.Index>
     
-    public enum Kind: Equatable {
+    enum Kind: Equatable {
         case numeric(Numeric, isInt: Bool)
         case string(Substring)
         case blob(Substring)
@@ -93,18 +93,18 @@ public struct LiteralExpr: Expr, Equatable {
         case currentTimestamp
     }
     
-    public init(kind: Kind, range: Range<String.Index>) {
+    init(kind: Kind, range: Range<String.Index>) {
         self.kind = kind
         self.range = range
     }
     
-    public func accept<V>(visitor: inout V) -> V.Output where V : ExprVisitor {
+    func accept<V>(visitor: inout V) -> V.Output where V : ExprVisitor {
         return visitor.visit(self)
     }
 }
 
 extension LiteralExpr: CustomStringConvertible {
-    public var description: String {
+    var description: String {
         switch self.kind {
         case .numeric(let numeric, _):
             return numeric.description
@@ -128,7 +128,7 @@ extension LiteralExpr: CustomStringConvertible {
     }
 }
 
-public indirect enum Expression: Expr, Equatable {
+indirect enum Expression: Expr, Equatable {
     case literal(LiteralExpr)
     case bindParameter(BindParameter)
     case column(ColumnExpr)
@@ -150,7 +150,7 @@ public indirect enum Expression: Expr, Equatable {
     case caseWhenThen(CaseWhenThenExpr)
     case select(SelectExpr)
     
-    public var range: Range<String.Index> {
+    var range: Range<String.Index> {
         return switch self {
         case .literal(let expr): expr.range
         case .bindParameter(let expr): expr.range
@@ -167,18 +167,18 @@ public indirect enum Expression: Expr, Equatable {
         }
     }
     
-    public var literal: LiteralExpr? {
+    var literal: LiteralExpr? {
         if case .literal(let l) = self { return l }
         return nil
     }
     
-    public func accept<V>(visitor: inout V) -> V.Output where V : ExprVisitor {
+    func accept<V>(visitor: inout V) -> V.Output where V : ExprVisitor {
         return visitor.visit(self)
     }
 }
 
 extension Expression: CustomStringConvertible {
-    public var description: String {
+    var description: String {
         switch self {
         case .literal(let literal):
             return literal.description
@@ -208,99 +208,99 @@ extension Expression: CustomStringConvertible {
     }
 }
 
-public struct GroupedExpr: Expr, Equatable, CustomStringConvertible {
-    public let exprs: [Expression]
-    public let range: Range<String.Index>
+struct GroupedExpr: Expr, Equatable, CustomStringConvertible {
+    let exprs: [Expression]
+    let range: Range<String.Index>
     
-    public init(exprs: [Expression], range: Range<String.Index>) {
+    init(exprs: [Expression], range: Range<String.Index>) {
         self.exprs = exprs
         self.range = range
     }
     
-    public var description: String {
+    var description: String {
         return "(\(exprs.map(\.description).joined(separator: ", ")))"
     }
     
-    public func accept<V>(visitor: inout V) -> V.Output where V : ExprVisitor {
+    func accept<V>(visitor: inout V) -> V.Output where V : ExprVisitor {
         return visitor.visit(self)
     }
 }
 
-public struct PrefixExpr: Expr, Equatable, CustomStringConvertible {
-    public let `operator`: OperatorSyntax
-    public let rhs: Expression
+struct PrefixExpr: Expr, Equatable, CustomStringConvertible {
+    let `operator`: OperatorSyntax
+    let rhs: Expression
     
-    public init(`operator`: OperatorSyntax, rhs: Expression) {
+    init(`operator`: OperatorSyntax, rhs: Expression) {
         self.operator = `operator`
         self.rhs = rhs
     }
     
-    public var description: String {
+    var description: String {
         return "(\(`operator`)\(rhs))"
     }
     
-    public var range: Range<String.Index> {
+    var range: Range<String.Index> {
         return `operator`.range.lowerBound..<rhs.range.upperBound
     }
     
-    public func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
+    func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
         return visitor.visit(self)
     }
 }
 
-public struct PostfixExpr: Expr, Equatable, CustomStringConvertible {
-    public let lhs: Expression
-    public let `operator`: OperatorSyntax
+struct PostfixExpr: Expr, Equatable, CustomStringConvertible {
+    let lhs: Expression
+    let `operator`: OperatorSyntax
     
-    public init(lhs: Expression, `operator`: OperatorSyntax) {
+    init(lhs: Expression, `operator`: OperatorSyntax) {
         self.lhs = lhs
         self.operator = `operator`
     }
     
-    public var description: String {
+    var description: String {
         return "(\(lhs) \(`operator`))"
     }
     
-    public var range: Range<String.Index> {
+    var range: Range<String.Index> {
         return lhs.range.lowerBound..<`operator`.range.upperBound
     }
     
-    public func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
+    func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
         return visitor.visit(self)
     }
 }
 
-public struct InfixExpr: Expr, Equatable, CustomStringConvertible {
-    public let lhs: Expression
-    public let `operator`: OperatorSyntax
-    public let rhs: Expression
+struct InfixExpr: Expr, Equatable, CustomStringConvertible {
+    let lhs: Expression
+    let `operator`: OperatorSyntax
+    let rhs: Expression
     
-    public var range: Range<String.Index> {
+    var range: Range<String.Index> {
         return lhs.range.lowerBound..<rhs.range.upperBound
     }
     
-    public init(lhs: Expression, `operator`: OperatorSyntax, rhs: Expression) {
+    init(lhs: Expression, `operator`: OperatorSyntax, rhs: Expression) {
         self.lhs = lhs
         self.operator = `operator`
         self.rhs = rhs
     }
     
-    public var description: String {
+    var description: String {
         return "(\(lhs) \(`operator`) \(rhs))"
     }
     
-    public func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
+    func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
         return visitor.visit(self)
     }
 }
 
-public struct BetweenExpr: Expr, Equatable, CustomStringConvertible {
-    public let not: Bool
-    public let value: Expression
-    public let lower: Expression
-    public let upper: Expression
+struct BetweenExpr: Expr, Equatable, CustomStringConvertible {
+    let not: Bool
+    let value: Expression
+    let lower: Expression
+    let upper: Expression
     
-    public init(
+    init(
         not: Bool,
         value: Expression,
         lower: Expression,
@@ -312,26 +312,26 @@ public struct BetweenExpr: Expr, Equatable, CustomStringConvertible {
         self.upper = upper
     }
     
-    public var range: Range<String.Index> {
+    var range: Range<String.Index> {
         return value.range.lowerBound..<upper.range.upperBound
     }
     
-    public var description: String {
+    var description: String {
         return "(\(value)\(not ? " NOT" : "") BETWEEN \(lower) AND \(upper))"
     }
     
-    public func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
+    func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
         return visitor.visit(self)
     }
 }
 
-public struct FunctionExpr: Expr, Equatable, CustomStringConvertible {
-    public let table: IdentifierSyntax?
-    public let name: IdentifierSyntax
-    public let args: [Expression]
-    public let range: Range<String.Index>
+struct FunctionExpr: Expr, Equatable, CustomStringConvertible {
+    let table: IdentifierSyntax?
+    let name: IdentifierSyntax
+    let args: [Expression]
+    let range: Range<String.Index>
     
-    public init(
+    init(
         table: IdentifierSyntax?,
         name: IdentifierSyntax,
         args: [Expression],
@@ -343,56 +343,56 @@ public struct FunctionExpr: Expr, Equatable, CustomStringConvertible {
         self.range = range
     }
     
-    public var description: String {
+    var description: String {
         return "\(table.map { "\($0)." } ?? "")\(name)(\(args.map(\.description).joined(separator: ", ")))"
     }
     
-    public func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
+    func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
         return visitor.visit(self)
     }
 }
 
-public struct CastExpr: Expr, Equatable, CustomStringConvertible {
-    public let expr: Expression
-    public let ty: TypeName
-    public let range: Range<String.Index>
+struct CastExpr: Expr, Equatable, CustomStringConvertible {
+    let expr: Expression
+    let ty: TypeName
+    let range: Range<String.Index>
     
-    public init(expr: Expression, ty: TypeName, range: Range<String.Index>) {
+    init(expr: Expression, ty: TypeName, range: Range<String.Index>) {
         self.expr = expr
         self.ty = ty
         self.range = range
     }
     
-    public var description: String {
+    var description: String {
         return "CAST(\(expr) AS \(ty))"
     }
     
-    public func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
+    func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
         return visitor.visit(self)
     }
 }
 
-public struct BindParameter: Expr, Hashable {
-    public let kind: Kind
-    public let range: Range<String.Index>
+struct BindParameter: Expr, Hashable {
+    let kind: Kind
+    let range: Range<String.Index>
     
-    public init(kind: Kind, range: Range<String.Index>) {
+    init(kind: Kind, range: Range<String.Index>) {
         self.kind = kind
         self.range = range
     }
     
-    public enum Kind: Hashable {
+    enum Kind: Hashable {
         case named(IdentifierSyntax)
         case unnamed(Int)
     }
     
-    public func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
+    func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
         return visitor.visit(self)
     }
 }
 
 extension BindParameter: CustomStringConvertible {
-    public var description: String {
+    var description: String {
         return switch kind {
         case .named(let name): ":\(name)"
         case .unnamed: "?"
@@ -400,7 +400,7 @@ extension BindParameter: CustomStringConvertible {
     }
 }
 
-public enum Operator: Equatable {
+enum Operator: Equatable {
     case tilde
     case collate(Substring)
     case concat
@@ -441,22 +441,22 @@ public enum Operator: Equatable {
     indirect case not(Operator?)
     case or
     
-    public typealias Precedence = Int
+    typealias Precedence = Int
     
-    public enum Usage {
+    enum Usage {
         case prefix
         case infix
         case postfix
     }
     
-    public var canBePrefix: Bool {
+    var canBePrefix: Bool {
         return switch self {
         case .plus, .tilde, .minus: true
         default: false
         }
     }
     
-    public var canHaveNotPrefix: Bool {
+    var canHaveNotPrefix: Bool {
         return self == .between
             || self == .in
             || self == .match
@@ -469,7 +469,7 @@ public enum Operator: Equatable {
     /// is not valid for the usage then `nil` is returned.
     ///
     /// https://www.sqlite.org/lang_expr.html
-    public func precedence(usage: Usage) -> Precedence {
+    func precedence(usage: Usage) -> Precedence {
         switch usage {
         case .prefix:
             return switch self {
@@ -502,7 +502,7 @@ public enum Operator: Equatable {
 }
 
 extension Operator: CustomStringConvertible {
-    public var description: String {
+    var description: String {
         return switch self {
         case .tilde: "~"
         case .collate(let collation): "COLLATE \(collation)"
@@ -547,12 +547,12 @@ extension Operator: CustomStringConvertible {
     }
 }
 
-public struct ColumnExpr: Expr, Equatable, CustomStringConvertible {
-    public let schema: IdentifierSyntax?
-    public let table: IdentifierSyntax?
-    public let column: IdentifierSyntax // TODO: Support *
+struct ColumnExpr: Expr, Equatable, CustomStringConvertible {
+    let schema: IdentifierSyntax?
+    let table: IdentifierSyntax?
+    let column: IdentifierSyntax // TODO: Support *
     
-    public init(
+    init(
         schema: IdentifierSyntax?,
         table: IdentifierSyntax?,
         column: IdentifierSyntax
@@ -562,29 +562,29 @@ public struct ColumnExpr: Expr, Equatable, CustomStringConvertible {
         self.column = column
     }
     
-    public var description: String {
+    var description: String {
         return [schema, table, column]
             .compactMap { $0?.value }
             .joined(separator: ".")
     }
     
-    public var range: Range<String.Index> {
+    var range: Range<String.Index> {
         let first = schema ?? table ?? column
         return first.range.lowerBound..<column.range.upperBound
     }
     
-    public func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
+    func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
         return visitor.visit(self)
     }
 }
 
-public struct CaseWhenThenExpr: Expr, Equatable {
-    public let `case`: Expression?
-    public let whenThen: [WhenThen]
-    public let `else`: Expression?
-    public let range: Range<String.Index>
+struct CaseWhenThenExpr: Expr, Equatable {
+    let `case`: Expression?
+    let whenThen: [WhenThen]
+    let `else`: Expression?
+    let range: Range<String.Index>
     
-    public init(
+    init(
         `case`: Expression?,
         whenThen: [WhenThen],
         `else`: Expression?,
@@ -596,23 +596,23 @@ public struct CaseWhenThenExpr: Expr, Equatable {
         self.range = range
     }
     
-    public struct WhenThen: Equatable {
-        public let when: Expression
-        public let then: Expression
+    struct WhenThen: Equatable {
+        let when: Expression
+        let then: Expression
         
-        public init(when: Expression, then: Expression) {
+        init(when: Expression, then: Expression) {
             self.when = when
             self.then = then
         }
     }
     
-    public func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
+    func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
         return visitor.visit(self)
     }
 }
 
 extension CaseWhenThenExpr: CustomStringConvertible {
-    public var description: String {
+    var description: String {
         var str = "CASE"
         if let `case` = `case` {
             str += " \(`case`)"
@@ -628,16 +628,16 @@ extension CaseWhenThenExpr: CustomStringConvertible {
     }
 }
 
-public struct SelectExpr: Expr, Equatable {
-    public let select: SelectStmt
-    public let range: Range<String.Index>
+struct SelectExpr: Expr, Equatable {
+    let select: SelectStmt
+    let range: Range<String.Index>
     
-    public init(select: SelectStmt, range: Range<String.Index>) {
+    init(select: SelectStmt, range: Range<String.Index>) {
         self.select = select
         self.range = range
     }
     
-    public func accept<V>(visitor: inout V) -> V.Output where V : ExprVisitor {
+    func accept<V>(visitor: inout V) -> V.Output where V : ExprVisitor {
         return visitor.visit(self)
     }
 }

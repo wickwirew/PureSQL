@@ -25,7 +25,7 @@ public struct Diagnostic: Error {
         self.suggestion = suggestion
     }
     
-    public init(
+    init(
         expected: TypeName,
         got actual: TypeName,
         at range: Range<String.Index>

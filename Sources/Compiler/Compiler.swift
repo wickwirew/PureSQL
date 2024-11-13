@@ -36,7 +36,7 @@ public struct QueryCompiler {
         return try compile(SelectStmtParser().parse(source))
     }
     
-    public mutating func compile(_ select: SelectStmt) throws -> (CompiledQuery, Diagnostics) {
+    mutating func compile(_ select: SelectStmt) throws -> (CompiledQuery, Diagnostics) {
         switch select.selects.value {
         case .single(let select):
             let result = try compile(select)

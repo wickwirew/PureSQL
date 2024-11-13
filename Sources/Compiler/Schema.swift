@@ -7,37 +7,37 @@
 
 import OrderedCollections
 
-public struct TypeName: Equatable, CustomStringConvertible, Sendable {
-    public let name: IdentifierSyntax
-    public let args: Args?
-    public let resolved: Resolved?
+struct TypeName: Equatable, CustomStringConvertible, Sendable {
+    let name: IdentifierSyntax
+    let args: Args?
+    let resolved: Resolved?
     
-    public static let text = TypeName(name: "TEXT", args: nil, resolved: .text)
-    public static let int = TypeName(name: "INT", args: nil, resolved: .int)
-    public static let integer = TypeName(name: "INTEGER", args: nil, resolved: .integer)
-    public static let real = TypeName(name: "REAL", args: nil, resolved: .real)
-    public static let blob = TypeName(name: "BLOB", args: nil, resolved: .blob)
-    public static let any = TypeName(name: "ANY", args: nil, resolved: .any)
-    public static let bool = TypeName(name: "BOOL", args: nil, resolved: .int)
+    static let text = TypeName(name: "TEXT", args: nil, resolved: .text)
+    static let int = TypeName(name: "INT", args: nil, resolved: .int)
+    static let integer = TypeName(name: "INTEGER", args: nil, resolved: .integer)
+    static let real = TypeName(name: "REAL", args: nil, resolved: .real)
+    static let blob = TypeName(name: "BLOB", args: nil, resolved: .blob)
+    static let any = TypeName(name: "ANY", args: nil, resolved: .any)
+    static let bool = TypeName(name: "BOOL", args: nil, resolved: .int)
     
-    public init(name: IdentifierSyntax, args: Args?) {
+    init(name: IdentifierSyntax, args: Args?) {
         self.name = name
         self.args = args
         self.resolved = Resolved(name.description)
     }
     
-    public init(name: IdentifierSyntax, args: Args?, resolved: Resolved) {
+    init(name: IdentifierSyntax, args: Args?, resolved: Resolved) {
         self.name = name
         self.args = args
         self.resolved = resolved
     }
     
-    public enum Args: Equatable, Sendable {
+    enum Args: Equatable, Sendable {
         case one(SignedNumber)
         case two(SignedNumber, SignedNumber)
     }
     
-    public var isNumber: Bool {
+    var isNumber: Bool {
         return self == .int
             || self == .integer
             || self == .real
@@ -46,7 +46,7 @@ public struct TypeName: Equatable, CustomStringConvertible, Sendable {
     /// SQLites data types are a bit funny. You can type in pretty much
     /// anything you want and it be valid SQL. These are just the types
     /// that SQLite will recognize and to be used for static analysis.
-    public enum Resolved: Equatable, Sendable {
+    enum Resolved: Equatable, Sendable {
         case text
         case int
         case integer
@@ -67,7 +67,7 @@ public struct TypeName: Equatable, CustomStringConvertible, Sendable {
         }
     }
 
-    public var description: String {
+    var description: String {
         switch self.args {
         case .none:
             return name.description
@@ -79,7 +79,7 @@ public struct TypeName: Equatable, CustomStringConvertible, Sendable {
     }
 }
 
-public enum ConfictClause: Equatable {
+enum ConfictClause: Equatable {
     case rollback
     case abort
     case fail
@@ -92,12 +92,12 @@ public enum ConfictClause: Equatable {
     case none
 }
 
-public struct PrimaryKeyConstraint: Equatable {
-    public let columns: [IdentifierSyntax]
-    public let confictClause: ConfictClause
-    public let autoincrement: Bool
+struct PrimaryKeyConstraint: Equatable {
+    let columns: [IdentifierSyntax]
+    let confictClause: ConfictClause
+    let autoincrement: Bool
     
-    public init(
+    init(
         columns: [IdentifierSyntax],
         confictClause: ConfictClause,
         autoincrement: Bool
@@ -108,34 +108,34 @@ public struct PrimaryKeyConstraint: Equatable {
     }
 }
 
-public enum Order: Equatable {
+enum Order: Equatable {
     case asc
     case desc
 }
 
-public struct IndexedColumn: Equatable {
-    public let kind: Kind
-    public let collation: IdentifierSyntax?
-    public let order: Order
+struct IndexedColumn: Equatable {
+    let kind: Kind
+    let collation: IdentifierSyntax?
+    let order: Order
     
-    public init(kind: Kind, collation: IdentifierSyntax?, order: Order) {
+    init(kind: Kind, collation: IdentifierSyntax?, order: Order) {
         self.kind = kind
         self.collation = collation
         self.order = order
     }
     
-    public enum Kind: Equatable {
+    enum Kind: Equatable {
         case column(IdentifierSyntax)
         case expr(Expression)
     }
 }
 
-public struct ForeignKeyClause: Equatable {
-    public let foreignTable: IdentifierSyntax
-    public let foreignColumns: [IdentifierSyntax]
-    public let actions: [Action]
+struct ForeignKeyClause: Equatable {
+    let foreignTable: IdentifierSyntax
+    let foreignColumns: [IdentifierSyntax]
+    let actions: [Action]
     
-    public init(
+    init(
         foreignTable: IdentifierSyntax,
         foreignColumns: [IdentifierSyntax],
         actions: [Action]
@@ -145,19 +145,19 @@ public struct ForeignKeyClause: Equatable {
         self.actions = actions
     }
     
-    public enum Action: Equatable {
+    enum Action: Equatable {
         case onDo(On, Do)
         indirect case match(IdentifierSyntax, [Action])
         case deferrable(Deferrable?)
         case notDeferrable(Deferrable?)
     }
     
-    public enum On: Equatable {
+    enum On: Equatable {
         case delete
         case update
     }
     
-    public enum Do: Equatable {
+    enum Do: Equatable {
         case setNull
         case setDefault
         case cascade
@@ -165,31 +165,31 @@ public struct ForeignKeyClause: Equatable {
         case noAction
     }
     
-    public enum Deferrable: Equatable {
+    enum Deferrable: Equatable {
         case initiallyDeferred
         case initiallyImmediate
     }
 }
 
-public typealias Numeric = Double
-public typealias SignedNumber = Double
+typealias Numeric = Double
+typealias SignedNumber = Double
 
 /// https://www.sqlite.org/syntax/select-core.html
-public enum SelectCore: Equatable {
+enum SelectCore: Equatable {
     /// SELECT column FROM foo
     case select(Select)
     /// VALUES (foo, bar baz)
     case values([Expression])
     
-    public struct Select: Equatable {
-        public let distinct: Bool
-        public let columns: [ResultColumn]
-        public let from: From?
-        public let `where`: Expression?
-        public let groupBy: GroupBy?
-        public let windows: [Window]
+    struct Select: Equatable {
+        let distinct: Bool
+        let columns: [ResultColumn]
+        let from: From?
+        let `where`: Expression?
+        let groupBy: GroupBy?
+        let windows: [Window]
         
-        public init(
+        init(
             distinct: Bool = false,
             columns: [ResultColumn],
             from: From?,
@@ -206,11 +206,11 @@ public enum SelectCore: Equatable {
         }
     }
     
-    public struct Window: Equatable {
-        public let name: IdentifierSyntax
-        public let window: WindowDefinition
+    struct Window: Equatable {
+        let name: IdentifierSyntax
+        let window: WindowDefinition
         
-        public init(
+        init(
             name: IdentifierSyntax,
             window: WindowDefinition
         ) {
@@ -219,25 +219,25 @@ public enum SelectCore: Equatable {
         }
     }
     
-    public enum From: Equatable {
+    enum From: Equatable {
         case tableOrSubqueries([TableOrSubquery])
         case join(JoinClause)
         
-        public init(table: IdentifierSyntax) {
+        init(table: IdentifierSyntax) {
             self = .join(JoinClause(table: table))
         }
     }
     
-    public struct GroupBy: Equatable {
-        public let expressions: [Expression]
-        public let having: Expression?
+    struct GroupBy: Equatable {
+        let expressions: [Expression]
+        let having: Expression?
         
-        public enum Nulls: Equatable {
+        enum Nulls: Equatable {
             case first
             case last
         }
         
-        public init(
+        init(
             expressions: [Expression],
             having: Expression?
         ) {
@@ -247,19 +247,19 @@ public enum SelectCore: Equatable {
     }
 }
 
-public struct SelectStmt: Statement, Equatable {
-    public let cte: Indirect<CommonTableExpression>?
-    public let cteRecursive: Bool
-    public let selects: Indirect<Selects>
-    public let orderBy: [OrderingTerm]
-    public let limit: Limit?
+struct SelectStmt: Statement, Equatable {
+    let cte: Indirect<CommonTableExpression>?
+    let cteRecursive: Bool
+    let selects: Indirect<Selects>
+    let orderBy: [OrderingTerm]
+    let limit: Limit?
     
-    public enum Selects: Equatable {
+    enum Selects: Equatable {
         case single(SelectCore)
         indirect case compound(Selects, CompoundOperator, SelectCore)
     }
     
-    public init(
+    init(
         cte: CommonTableExpression?,
         cteRecursive: Bool,
         selects: Selects,
@@ -273,7 +273,7 @@ public struct SelectStmt: Statement, Equatable {
         self.limit = limit
     }
     
-    public init(
+    init(
         cte: CommonTableExpression? = nil,
         cteRecursive: Bool = false,
         select: SelectCore.Select,
@@ -287,39 +287,39 @@ public struct SelectStmt: Statement, Equatable {
         self.limit = limit
     }
     
-    public struct Limit: Equatable {
-        public let expr: Expression
-        public let offset: Expression?
+    struct Limit: Equatable {
+        let expr: Expression
+        let offset: Expression?
         
-        public init(expr: Expression, offset: Expression?) {
+        init(expr: Expression, offset: Expression?) {
             self.expr = expr
             self.offset = offset
         }
     }
     
-    public func accept<V>(visitor: inout V) -> V.Output where V : StatementVisitor {
+    func accept<V>(visitor: inout V) -> V.Output where V : StatementVisitor {
         visitor.visit(self)
     }
 }
 
-public enum ResultColumn: Equatable {
+enum ResultColumn: Equatable {
     /// Note: This will represent even just a single column select
     case expr(Expression, as: IdentifierSyntax?)
     /// `*` or `table.*`
     case all(table: IdentifierSyntax?)
 }
 
-public struct OrderingTerm: Equatable {
-    public let expr: Expression
-    public let order: Order
-    public let nulls: Nulls?
+struct OrderingTerm: Equatable {
+    let expr: Expression
+    let order: Order
+    let nulls: Nulls?
     
-    public enum Nulls: Equatable {
+    enum Nulls: Equatable {
         case first
         case last
     }
     
-    public init(
+    init(
         expr: Expression,
         order: Order,
         nulls: Nulls?
@@ -330,18 +330,18 @@ public struct OrderingTerm: Equatable {
     }
 }
 
-public enum CompoundOperator: Equatable {
+enum CompoundOperator: Equatable {
     case union
     case unionAll
     case intersect
     case except
 }
 
-public struct JoinClause: Equatable {
-    public let tableOrSubquery: TableOrSubquery
-    public let joins: [Join]
+struct JoinClause: Equatable {
+    let tableOrSubquery: TableOrSubquery
+    let joins: [Join]
     
-    public init(
+    init(
         tableOrSubquery: TableOrSubquery,
         joins: [Join]
     ) {
@@ -349,7 +349,7 @@ public struct JoinClause: Equatable {
         self.joins = joins
     }
     
-    public init(
+    init(
         table: IdentifierSyntax,
         joins: [Join] = []
     ) {
@@ -357,12 +357,12 @@ public struct JoinClause: Equatable {
         self.joins = joins
     }
     
-    public struct Join: Equatable {
-        public let op: JoinOperator
-        public let tableOrSubquery: TableOrSubquery
-        public let constraint: JoinConstraint
+    struct Join: Equatable {
+        let op: JoinOperator
+        let tableOrSubquery: TableOrSubquery
+        let constraint: JoinConstraint
         
-        public init(
+        init(
             op: JoinOperator,
             tableOrSubquery: TableOrSubquery,
             constraint: JoinConstraint
@@ -374,7 +374,7 @@ public struct JoinClause: Equatable {
     }
 }
 
-public enum JoinOperator: Equatable {
+enum JoinOperator: Equatable {
     case comma
     case join
     case natural
@@ -385,25 +385,25 @@ public enum JoinOperator: Equatable {
     case cross
 }
 
-public enum JoinConstraint: Equatable {
+enum JoinConstraint: Equatable {
     case on(Expression)
     case using([IdentifierSyntax])
     case none
     
-    public var on: Expression? {
+    var on: Expression? {
         if case let .on(e) = self { return e }
         return nil
     }
 }
 
-public enum TableOrSubquery: Equatable {
+enum TableOrSubquery: Equatable {
     case table(Table)
     case tableFunction(schema: IdentifierSyntax?, table: IdentifierSyntax, args: [Expression], alias: IdentifierSyntax?)
     case subquery(SelectStmt, alias: IdentifierSyntax?)
     indirect case join(JoinClause)
     case subTableOrSubqueries([TableOrSubquery], alias: IdentifierSyntax?)
     
-    public init(
+    init(
         schema: IdentifierSyntax? = nil,
         table: IdentifierSyntax,
         alias: IdentifierSyntax? = nil,
@@ -417,13 +417,13 @@ public enum TableOrSubquery: Equatable {
         ))
     }
     
-    public struct Table: Equatable {
-        public let schema: IdentifierSyntax?
-        public let name: IdentifierSyntax
-        public let alias: IdentifierSyntax?
-        public let indexedBy: IdentifierSyntax?
+    struct Table: Equatable {
+        let schema: IdentifierSyntax?
+        let name: IdentifierSyntax
+        let alias: IdentifierSyntax?
+        let indexedBy: IdentifierSyntax?
         
-        public init(
+        init(
             schema: IdentifierSyntax?,
             name: IdentifierSyntax,
             alias: IdentifierSyntax?,
@@ -437,17 +437,17 @@ public enum TableOrSubquery: Equatable {
     }
 }
 
-public struct WindowDefinition: Equatable {
-    public init() {}
+struct WindowDefinition: Equatable {
+    init() {}
 }
 
-public struct CommonTableExpression: Equatable {
-    public let table: IdentifierSyntax?
-    public let columns: [IdentifierSyntax]
-    public let materialized: Bool
-    public let select: SelectStmt
+struct CommonTableExpression: Equatable {
+    let table: IdentifierSyntax?
+    let columns: [IdentifierSyntax]
+    let materialized: Bool
+    let select: SelectStmt
     
-    public init(
+    init(
         table: IdentifierSyntax?,
         columns: [IdentifierSyntax],
         materialized: Bool = false,
@@ -460,16 +460,16 @@ public struct CommonTableExpression: Equatable {
     }
 }
 
-public struct TableConstraint: Equatable {
-    public let name: IdentifierSyntax?
-    public let kind: Kind
+struct TableConstraint: Equatable {
+    let name: IdentifierSyntax?
+    let kind: Kind
     
-    public init(name: IdentifierSyntax?, kind: Kind) {
+    init(name: IdentifierSyntax?, kind: Kind) {
         self.name = name
         self.kind = kind
     }
     
-    public enum Kind: Equatable {
+    enum Kind: Equatable {
         case primaryKey([IndexedColumn], ConfictClause)
         case unique(IndexedColumn, ConfictClause)
         case check(Expression)
@@ -477,16 +477,16 @@ public struct TableConstraint: Equatable {
     }
 }
 
-public struct ColumnConstraint: Equatable {
-    public let name: IdentifierSyntax?
-    public let kind: Kind
+struct ColumnConstraint: Equatable {
+    let name: IdentifierSyntax?
+    let kind: Kind
     
-    public init(name: IdentifierSyntax?, kind: Kind) {
+    init(name: IdentifierSyntax?, kind: Kind) {
         self.name = name
         self.kind = kind
     }
     
-    public enum Kind: Equatable {
+    enum Kind: Equatable {
         case primaryKey(order: Order, ConfictClause, autoincrement: Bool)
         case notNull(ConfictClause)
         case unique(ConfictClause)
@@ -497,19 +497,19 @@ public struct ColumnConstraint: Equatable {
         case generated(Expression, GeneratedKind?)
     }
     
-    public enum GeneratedKind {
+    enum GeneratedKind {
         case stored
         case virtual
     }
     
-    public var isPkConstraint: Bool {
+    var isPkConstraint: Bool {
         switch kind {
         case .primaryKey: return true
         default: return false
         }
     }
     
-    public var isNotNullConstraint: Bool {
+    var isNotNullConstraint: Bool {
         switch kind {
         case .notNull: return true
         default: return false
@@ -517,12 +517,12 @@ public struct ColumnConstraint: Equatable {
     }
 }
 
-public struct ColumnDef: Equatable {
-    public var name: IdentifierSyntax
-    public var type: TypeName
-    public var constraints: [ColumnConstraint]
+struct ColumnDef: Equatable {
+    var name: IdentifierSyntax
+    var type: TypeName
+    var constraints: [ColumnConstraint]
     
-    public init(
+    init(
         name: IdentifierSyntax,
         type: TypeName,
         constraints: [ColumnConstraint]
@@ -532,67 +532,67 @@ public struct ColumnDef: Equatable {
         self.constraints = constraints
     }
     
-    public enum Default: Equatable {
+    enum Default: Equatable {
         case literal(LiteralExpr)
         case signedNumber(SignedNumber)
         case expr(Expression)
     }
 }
 
-public struct TableOptions: OptionSet, Sendable {
-    public let rawValue: UInt8
+struct TableOptions: OptionSet, Sendable {
+    let rawValue: UInt8
     
-    public init(rawValue: UInt8) {
+    init(rawValue: UInt8) {
         self.rawValue = rawValue
     }
     
-    public static let withoutRowId = TableOptions(rawValue: 1 << 0)
-    public static let strict = TableOptions(rawValue: 1 << 1)
+    static let withoutRowId = TableOptions(rawValue: 1 << 0)
+    static let strict = TableOptions(rawValue: 1 << 1)
 }
 
 
 @dynamicMemberLookup
-public final class Indirect<Wrapped> {
-    public var value: Wrapped
+final class Indirect<Wrapped> {
+    var value: Wrapped
     
-    public init(_ value: Wrapped) {
+    init(_ value: Wrapped) {
         self.value = value
     }
     
-    public subscript<T>(dynamicMember keyPath: KeyPath<Wrapped, T>) -> T {
+    subscript<T>(dynamicMember keyPath: KeyPath<Wrapped, T>) -> T {
         return value[keyPath: keyPath]
     }
 }
 
 extension Indirect: Equatable where Wrapped: Equatable {
-    public static func == (lhs: Indirect<Wrapped>, rhs: Indirect<Wrapped>) -> Bool {
+    static func == (lhs: Indirect<Wrapped>, rhs: Indirect<Wrapped>) -> Bool {
         lhs.value == rhs.value
     }
 }
 
 extension Indirect: CustomStringConvertible {
-    public var description: String {
+    var description: String {
         return "\(value)"
     }
 }
 
-public struct TableName: Hashable, CustomStringConvertible {
-    public let schema: Schema
-    public let name: IdentifierSyntax
+struct TableName: Hashable, CustomStringConvertible {
+    let schema: Schema
+    let name: IdentifierSyntax
     
-    public static let main: IdentifierSyntax = "main"
+    static let main: IdentifierSyntax = "main"
     
-    public enum Schema: Hashable {
+    enum Schema: Hashable {
         case main
         case other(IdentifierSyntax)
     }
     
-    public init(schema: Schema, name: IdentifierSyntax) {
+    init(schema: Schema, name: IdentifierSyntax) {
         self.schema = schema
         self.name = name
     }
     
-    public init(schema: IdentifierSyntax?, name: IdentifierSyntax) {
+    init(schema: IdentifierSyntax?, name: IdentifierSyntax) {
         if let schema, schema == Self.main {
             self.schema = .other(schema)
         } else {
@@ -601,7 +601,7 @@ public struct TableName: Hashable, CustomStringConvertible {
         self.name = name
     }
     
-    public var description: String {
+    var description: String {
         switch schema {
         case .main:
             return name.description
@@ -610,31 +610,31 @@ public struct TableName: Hashable, CustomStringConvertible {
         }
     }
     
-    public func with(name: IdentifierSyntax) -> TableName {
+    func with(name: IdentifierSyntax) -> TableName {
         return TableName(schema: schema, name: name)
     }
 }
 
-public struct InsertStmt: Equatable {
-    public let cte: Indirect<CommonTableExpression>?
-    public let cteRecursive: Bool
-    public let action: Action
-    public let tableName: TableName
-    public let tableAlias: IdentifierSyntax
-    public let values: Values
-    public let returningClause: ReturningClause
+struct InsertStmt: Equatable {
+    let cte: Indirect<CommonTableExpression>?
+    let cteRecursive: Bool
+    let action: Action
+    let tableName: TableName
+    let tableAlias: IdentifierSyntax
+    let values: Values
+    let returningClause: ReturningClause
     
-    public enum Values: Equatable {
+    enum Values: Equatable {
         case select(SelectStmt, UpsertClause?)
         case defaultValues
     }
     
-    public enum Action: Equatable {
+    enum Action: Equatable {
         case replace
         case insert(Or?)
     }
     
-    public enum Or: Equatable {
+    enum Or: Equatable {
         case abort
         case fail
         case ignore
@@ -642,7 +642,7 @@ public struct InsertStmt: Equatable {
         case rollback
     }
     
-    public init(
+    init(
         cte: CommonTableExpression?,
         cteRecursive: Bool,
         action: Action,
@@ -661,54 +661,54 @@ public struct InsertStmt: Equatable {
     }
 }
 
-public struct ReturningClause: Equatable {
-    public let values: [Value]
+struct ReturningClause: Equatable {
+    let values: [Value]
     
-    public init(values: [Value]) {
+    init(values: [Value]) {
         self.values = values
     }
     
-    public struct Value: Equatable {
-        public let expr: Expression
-        public let alias: IdentifierSyntax?
+    struct Value: Equatable {
+        let expr: Expression
+        let alias: IdentifierSyntax?
         
-        public init(expr: Expression, alias: IdentifierSyntax?) {
+        init(expr: Expression, alias: IdentifierSyntax?) {
             self.expr = expr
             self.alias = alias
         }
     }
 }
 
-public struct UpsertClause: Equatable {
-    public let confictTarget: Expression?
-    public let doAction: Do
+struct UpsertClause: Equatable {
+    let confictTarget: Expression?
+    let doAction: Do
     
-    public init(confictTarget: Expression?, doAction: Do) {
+    init(confictTarget: Expression?, doAction: Do) {
         self.confictTarget = confictTarget
         self.doAction = doAction
     }
     
-    public struct ConflictTarget: Equatable {
-        public let columns: [IndexedColumn]
-        public let condition: Expression?
+    struct ConflictTarget: Equatable {
+        let columns: [IndexedColumn]
+        let condition: Expression?
     }
     
-    public enum Do: Equatable {
+    enum Do: Equatable {
         case nothing
         case updateSet(sets: [SetAction], where: Expression?)
     }
     
-    public struct SetAction: Equatable {
-        public let column: Column
-        public let expr: Expression
+    struct SetAction: Equatable {
+        let column: Column
+        let expr: Expression
         
-        public init(column: Column, expr: Expression) {
+        init(column: Column, expr: Expression) {
             self.column = column
             self.expr = expr
         }
     }
     
-    public enum Column: Equatable {
+    enum Column: Equatable {
         case single(Substring)
         case list([Substring])
     }

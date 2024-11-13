@@ -230,28 +230,6 @@ struct SQLPlugin: CompilerPlugin {
     ]
 }
 
-extension TypeName {
-    var swiftType: String {
-        return "Never"
-//        return switch self {
-//        case .int, .integer: "Int"
-//        case .tinyint: "Int8"
-//        case .smallint, .int2: "Int16"
-//        case .mediumint: "Int32"
-//        case .bigint, .int8: "Int64"
-//        case .unsignedBigInt: "UInt64"
-//        case .numeric, .decimal: "Double"
-//        case .boolean: "Boolean"
-//        case .date, .datetime: "Date"
-//        case .real, .float: "Float"
-//        case .double, .doublePrecision: "Double"
-//        case .character, .varchar, .varyingCharacter, .nativeCharacter, 
-//             .nvarchar, .text, .nchar, .clob: "String"
-//        case .blob: "Data"
-//        }
-    }
-}
-
 struct LogError: Error, CustomStringConvertible {
     let description: String
 }
