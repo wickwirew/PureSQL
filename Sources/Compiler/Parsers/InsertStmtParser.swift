@@ -8,7 +8,7 @@
 
 
 struct InserStmtParser: Parser {
-    func parse(state: inout ParserState) throws -> InsertStmt {
+    func parse(state: inout ParserState) throws -> InsertStmtSyntax {
         let (cte, cteRecursive) = try parseCte(state: &state)
         let action = try parseAction(state: &state)
         
@@ -38,7 +38,7 @@ struct InserStmtParser: Parser {
         }
     }
     
-    private func parseAction(state: inout ParserState) throws -> InsertStmt.Action {
+    private func parseAction(state: inout ParserState) throws -> InsertStmtSyntax.Action {
         let token = try state.take()
         
         switch token.kind {
@@ -64,19 +64,50 @@ struct InserStmtParser: Parser {
         }
     }
     
-    private func parseValues(state: inout ParserState) throws -> InsertStmt.Values {
+    private func parseValues(state: inout ParserState) throws -> InsertStmtSyntax.Values? {
         if try state.take(if: .default) {
             try state.consume(.values)
-            return .defaultValues
+            return nil
         } else {
-            return try .select(SelectStmtParser().parse(state: &state), nil)
+            let select = try SelectStmtParser().parse(state: &state)
+            let upsertClause = try UpsertClauseParser()
+                .take(if: .on, consume: false)
+                .parse(state: &state)
+            return .init(select: select, upsertClause: upsertClause)
         }
     }
 }
 
 
-//struct UpsertClauseParser: Parser {
-//    func parse(state: inout ParserState) throws -> UpsertClause {
-//        
-//    }
-//}
+struct UpsertClauseParser: Parser {
+    func parse(state: inout ParserState) throws -> UpsertClauseSyntax {
+        let on = try state.take(.on)
+        try state.consume(.conflict)
+        
+        let conflictTarget = try parseConflictTarget(state: &state)
+        
+        try state.consume(.do)
+        
+        if try state.take(if: .nothing) {
+            return .init(
+                confictTarget: conflictTarget,
+                doAction: .nothing,
+                range: on.range.lowerBound ..< state.current.range.lowerBound
+            )
+        }
+        
+        try state.consume(.update)
+        try state.consume(.set)
+        
+//        let meow = try IdentifierParser()
+//            .take(if: .abort)
+//            .commaSeparated()
+//            .parse(state: &state)
+//
+        fatalError()
+    }
+    
+    private func parseConflictTarget(state: inout ParserState) throws -> UpsertClauseSyntax.ConflictTarget? {
+        fatalError()
+    }
+}
