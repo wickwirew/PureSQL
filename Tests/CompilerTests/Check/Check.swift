@@ -24,18 +24,17 @@ func check<P: Parser>(
     let contents = try String(contentsOf: url)
     
     var state = try ParserState(Lexer(source: contents))
-    var output: [P.Output] = []
+    var lines: [String] = []
     
     while state.current.kind != .eof {
-        try output.append(parser.parse(state: &state))
+        var emitter = CheckEmitter()
+        try emitter.emit(parser.parse(state: &state), indent: 0)
+        lines.append(contentsOf: emitter.lines)
     }
-    
-    let encoder = CheckEncoder(indent: 0)
-    let checks = try encoder.encode(output)
     
     try check(
         contents: contents,
-        equalTo: checks,
+        equalTo: lines.joined(separator: "\n"),
         prefix: prefix,
         file: file,
         line: line
@@ -155,11 +154,13 @@ struct CheckParser {
 }
 
 struct CheckEmitter {
-    var storage: [String] = []
+    var lines: [String] = []
     
     mutating func emit(_ value: Any, for key: String? = nil, indent: Int) {
         if isPrimitive(value) {
             write(value, for: key, indent: indent)
+        } else if value is Range<Substring.Index> {
+            return // Skip ranges since it would be too much
         } else if let arr = value as? [Any] {
             for value in arr {
                 emit(value, indent: indent + 1)
@@ -188,16 +189,16 @@ struct CheckEmitter {
         let indent = String(repeating: " ", count: indent * 2)
         
         if let key {
-            storage.append("\(indent)\(uppersnakeCase(key)) \(value)")
+            lines.append("\(indent)\(uppersnakeCase(key)) \(value)")
         } else {
-            storage.append("\(indent)\(value)")
+            lines.append("\(indent)\(value)")
         }
     }
     
     private mutating func write(key: String, indent: Int) {
         let key = uppersnakeCase(key)
         let indent = String(repeating: " ", count: indent * 2)
-        storage.append("\(indent)\(key)")
+        lines.append("\(indent)\(key)")
     }
     
     private mutating func uppersnakeCase(_ value: String) -> String {
@@ -212,29 +213,5 @@ struct CheckEmitter {
         }
         
         return result
-    }
-}
-
-class TestIt: XCTestCase {
-    struct Foo {
-        let bar = 1
-        let baz = "MEowwer"
-        let qux = Qux()
-        let nums = [1,2,3]
-    }
-    
-    struct Qux {
-        let meow = "Meow"
-        let anal = 1
-        let nums = [1,2,3]
-    }
-    
-    func testIt() {
-        var emitter = CheckEmitter()
-        emitter.emit(Foo(), indent: 0)
-        
-        for line in emitter.storage {
-            print(line)
-        }
     }
 }
