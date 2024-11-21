@@ -13,9 +13,10 @@ func check<P: Parser>(
     sqlFile: String,
     parser: P,
     prefix: String = "CHECK",
+    dump: Bool = false,
     file: StaticString = #filePath,
     line: UInt = #line
-) throws where P.Output: Encodable {
+) throws {
     guard let url = Bundle.module.url(forResource: sqlFile, withExtension: "sql") else {
         XCTFail("Could not find SQL file named \(sqlFile)", file: file, line: line)
         return
@@ -30,6 +31,12 @@ func check<P: Parser>(
         var emitter = CheckEmitter()
         try emitter.emit(parser.parse(state: &state), indent: 0)
         lines.append(contentsOf: emitter.lines)
+    }
+    
+    if dump {
+        for line in lines {
+            print(line)
+        }
     }
     
     try check(
@@ -153,24 +160,97 @@ struct CheckParser {
     }
 }
 
+fileprivate protocol CheckOptional {
+    var innerValue: Any? { get }
+}
+
+extension Optional: CheckOptional {
+    var innerValue: Any? {
+        self
+    }
+}
+
 struct CheckEmitter {
     var lines: [String] = []
     
-    mutating func emit(_ value: Any, for key: String? = nil, indent: Int) {
+    mutating func emit(
+        _ value: Any,
+        for key: String? = nil,
+        typeAsBackupKey: Bool = false,
+        indent: Int
+    ) {
+        // Skip optionals
+        if let opt = value as? CheckOptional {
+            guard let inner = opt.innerValue else { return }
+            return emit(inner, for: key, indent: indent)
+        }
+        
         if isPrimitive(value) {
-            write(value, for: key, indent: indent)
+            write(value, for: key, typeAsBackupKey: typeAsBackupKey, indent: indent)
         } else if value is Range<Substring.Index> {
             return // Skip ranges since it would be too much
         } else if let arr = value as? [Any] {
+            guard !arr.isEmpty else { return }
+            
+            if let key {
+                write(key: key, indent: indent)
+            }
+            
             for value in arr {
                 emit(value, indent: indent + 1)
             }
         } else {
-            write(key: "\(type(of: value))", indent: indent)
-            
             let mirror = Mirror(reflecting: value)
             
-            for child in mirror.children {
+            if mirror.displayStyle == .enum && mirror.children.isEmpty {
+                // Enum with no payload so just use the value
+                if let key {
+                    write(value, for: key, typeAsBackupKey: typeAsBackupKey, indent: indent)
+                } else {
+                    // No key, this is for top level enums. So Foo.bar shows as FOO bar
+                    write(value, for: "\(mirror.subjectType)", typeAsBackupKey: typeAsBackupKey, indent: indent)
+                }
+            } else {
+                if mirror.displayStyle != .tuple {
+                    // For non tuple types we want a backup name to be the type name.
+                    // Tuple types will show as `(foo: Bar)` which is obviously not wanted
+                    write(key: key ?? "\(type(of: value))", indent: indent)
+                } else if let key {
+                    // Write key if there is one.
+                    write(key: key, indent: indent)
+                }
+                
+                if mirror.displayStyle == .enum {
+                    emitEnum(children: mirror.children, indent: indent)
+                } else {
+                    emit(
+                        children: mirror.children,
+                        typeAsBackupKey: mirror.displayStyle == .tuple,
+                        indent: indent
+                    )
+                }
+            }
+        }
+    }
+    
+    private mutating func emit(children: Mirror.Children, typeAsBackupKey: Bool, indent: Int) {
+        for child in children {
+            emit(child.value, for: child.label, typeAsBackupKey: typeAsBackupKey, indent: indent + 1)
+        }
+    }
+    
+    private mutating func emitEnum(children: Mirror.Children, indent: Int) {
+        for child in children {
+            if let opt = child.value as? CheckOptional {
+                if let inner = opt.innerValue {
+                    emit(inner, for: child.label, indent: indent + 1)
+                } else {
+                    guard let label = child.label else { continue }
+                    // If the enum payload is nil we don't want to skip the
+                    // the enum, so just write the label
+                    write(key: label, indent: indent + 1)
+                }
+            } else {
                 emit(child.value, for: child.label, indent: indent + 1)
             }
         }
@@ -180,22 +260,30 @@ struct CheckEmitter {
         return switch value {
         case is Bool, is Int, is Int8, is Int16, is Int32, is Int64,
                 is UInt, is UInt8, is UInt16, is UInt32, is UInt64,
-            is Float, is Double, is String, is Any.Type: true
+            is Float, is Double, is String, is Any.Type, is IdentifierSyntax, is LiteralExpr: true
         default: false
         }
     }
     
-    private mutating func write(_ value: Any, for key: String? = nil, indent: Int) {
+    private mutating func write(
+        _ value: Any,
+        for key: String? = nil,
+        typeAsBackupKey: Bool,
+        indent: Int
+    ) {
         let indent = String(repeating: " ", count: indent * 2)
-        
-        if let key {
+
+        if let key, key.first != "." {
             lines.append("\(indent)\(uppersnakeCase(key)) \(value)")
+        } else if typeAsBackupKey, !isPrimitive(value) {
+            lines.append("\(indent)\(uppersnakeCase("\(type(of: value))")) \(value)")
         } else {
             lines.append("\(indent)\(value)")
         }
     }
     
     private mutating func write(key: String, indent: Int) {
+        guard key.first != "." else { return }
         let key = uppersnakeCase(key)
         let indent = String(repeating: " ", count: indent * 2)
         lines.append("\(indent)\(key)")
@@ -213,5 +301,20 @@ struct CheckEmitter {
         }
         
         return result
+    }
+}
+
+class TestIt: XCTestCase {
+    enum Foo {
+        case bar(meow: Int)
+        case baz
+    }
+    func testIt() {
+        var emitter = CheckEmitter()
+        emitter.emit(Foo.bar(meow: 123), indent: 0)
+        
+        for line in emitter.lines {
+            print(line)
+        }
     }
 }

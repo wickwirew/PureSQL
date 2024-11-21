@@ -1,0 +1,4 @@
+-- CHECK: ORDER asc
+ASC
+-- CHECK: ORDER desc
+DESC
