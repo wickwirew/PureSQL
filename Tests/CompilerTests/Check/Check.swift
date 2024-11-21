@@ -12,6 +12,7 @@ import XCTest
 func check<P: Parser>(
     sqlFile: String,
     parser: P,
+    delimiter: Token.Kind? = nil,
     prefix: String = "CHECK",
     dump: Bool = false,
     file: StaticString = #filePath,
@@ -28,9 +29,17 @@ func check<P: Parser>(
     var lines: [String] = []
     
     while state.current.kind != .eof {
-        var emitter = CheckEmitter()
-        try emitter.emit(parser.parse(state: &state), indent: 0)
-        lines.append(contentsOf: emitter.lines)
+        if let delimiter {
+            for output in try parser.separated(by: delimiter).parse(state: &state) {
+                var emitter = CheckEmitter()
+                emitter.emit(output, indent: 0)
+                lines.append(contentsOf: emitter.lines)
+            }
+        } else {
+            var emitter = CheckEmitter()
+            try emitter.emit(parser.parse(state: &state), indent: 0)
+            lines.append(contentsOf: emitter.lines)
+        }
     }
     
     if dump {
@@ -289,6 +298,8 @@ struct CheckEmitter {
         lines.append("\(indent)\(key)")
     }
     
+    /// Note: We upper snakecase the keys. This make it much more obvious
+    /// what is a key and what is a value.
     private mutating func uppersnakeCase(_ value: String) -> String {
         var result = ""
         

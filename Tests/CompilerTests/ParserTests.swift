@@ -141,27 +141,9 @@ extension ParserTests {
     func testColumnConstraint() throws {
         try check(sqlFile: "ColumnConstraint", parser: ColumnConstraintParser())
     }
-}
-
-
-// MARK: - Column Definition
-
-extension ParserTests {
-    func testColumnDefinition() {
-        XCTAssertEqual(
-            ColumnDef(name: "age", type: TypeName(name: "INT", args: nil), constraints: []),
-            try execute(parser: ColumnDefinitionParser(), source: "age INT")
-        )
-        
-        XCTAssertEqual(
-            ColumnDef(name: "age", type: TypeName(name: "BIGINT", args: nil), constraints: []),
-            try execute(parser: ColumnDefinitionParser(), source: "age BIGINT")
-        )
-        
-        XCTAssertEqual(
-            ColumnDef(name: "age", type: TypeName(name: "UNSIGNED BIG INT", args: nil), constraints: [ColumnConstraint(name: nil, kind: .notNull(.none))]),
-            try execute(parser: ColumnDefinitionParser(), source: "age UNSIGNED BIG INT NOT NULL")
-        )
+    
+    func testColumnDefinition() throws {
+        try check(sqlFile: "ColumnDefinition", parser: ColumnDefinitionParser(), delimiter: .semiColon)
     }
 }
 
