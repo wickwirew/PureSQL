@@ -12,7 +12,6 @@ import XCTest
 func check<P: Parser>(
     sqlFile: String,
     parser: P,
-    delimiter: Token.Kind? = nil,
     prefix: String = "CHECK",
     dump: Bool = false,
     file: StaticString = #filePath,
@@ -29,15 +28,9 @@ func check<P: Parser>(
     var lines: [String] = []
     
     while state.current.kind != .eof {
-        if let delimiter {
-            for output in try parser.separated(by: delimiter).parse(state: &state) {
-                var emitter = CheckEmitter()
-                emitter.emit(output, indent: 0)
-                lines.append(contentsOf: emitter.lines)
-            }
-        } else {
+        for output in try parser.separated(by: .semiColon).parse(state: &state) {
             var emitter = CheckEmitter()
-            try emitter.emit(parser.parse(state: &state), indent: 0)
+            emitter.emit(output, indent: 0)
             lines.append(contentsOf: emitter.lines)
         }
     }
@@ -174,9 +167,7 @@ fileprivate protocol CheckOptional {
 }
 
 extension Optional: CheckOptional {
-    var innerValue: Any? {
-        self
-    }
+    var innerValue: Any? { self }
 }
 
 struct CheckEmitter {
@@ -269,7 +260,8 @@ struct CheckEmitter {
         return switch value {
         case is Bool, is Int, is Int8, is Int16, is Int32, is Int64,
                 is UInt, is UInt8, is UInt16, is UInt32, is UInt64,
-            is Float, is Double, is String, is Any.Type, is IdentifierSyntax, is LiteralExpr: true
+                is Float, is Double, is String, is Any.Type, is IdentifierSyntax,
+                is LiteralExpr, is TableOptions, is TypeName: true
         default: false
         }
     }

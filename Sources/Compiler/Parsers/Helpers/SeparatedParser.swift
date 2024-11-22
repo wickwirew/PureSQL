@@ -28,9 +28,9 @@ struct SeparatedParser<Element: Parser>: Parser {
 
     private func shouldRepeat(state: inout ParserState) throws -> Bool {
         if let other, try state.take(if: separator, and: other) {
-            return true
+            return state.current.kind != .eof
         } else if try state.take(if: separator) {
-            return true
+            return state.current.kind != .eof
         } else {
             return false
         }

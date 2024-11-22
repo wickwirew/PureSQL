@@ -539,15 +539,22 @@ struct ColumnDef: Equatable {
     }
 }
 
-struct TableOptions: OptionSet, Sendable {
+struct TableOptions: OptionSet, Sendable, CustomStringConvertible {
     let rawValue: UInt8
+    
+    static let withoutRowId = TableOptions(rawValue: 1 << 0)
+    static let strict = TableOptions(rawValue: 1 << 1)
     
     init(rawValue: UInt8) {
         self.rawValue = rawValue
     }
     
-    static let withoutRowId = TableOptions(rawValue: 1 << 0)
-    static let strict = TableOptions(rawValue: 1 << 1)
+    var description: String {
+        var opts: [String] = []
+        if self.contains(.withoutRowId) { opts.append("WITHOUT ROWID") }
+        if self.contains(.strict) { opts.append("STRICT") }
+        return opts.joined(separator: ", ")
+    }
 }
 
 

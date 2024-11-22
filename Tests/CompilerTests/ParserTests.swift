@@ -21,37 +21,6 @@ final class ParserTests: XCTestCase {
     }
 }
 
-// MARK: - TableOptions
-
-extension ParserTests {
-    func testTableOptionsEmpty() throws {
-        let result = try execute(parser: TableOptionsParser(), source: "")
-        
-        XCTAssertEqual(result, [])
-    }
-    
-    func testTableOptionsWithoutRowId() throws {
-        let result = try execute(parser: TableOptionsParser(), source: "WITHOUT ROWID")
-        XCTAssertEqual(result, [.withoutRowId])
-    }
-    
-    func testTableOptionsStrict() throws {
-        let result = try execute(parser: TableOptionsParser(), source: "STRICT")
-        XCTAssertEqual(result, [.strict])
-    }
-    
-    func testTableOptionsAll() throws {
-        let result = try execute(parser: TableOptionsParser(), source: "WITHOUT ROWID, STRICT")
-        XCTAssertEqual(result, [.strict, .withoutRowId])
-    }
-    
-    func testTableOptionsDoesNoConsumeNextToken() throws {
-        var state = try parserState("WITHOUT ROWID SELECT")
-        let result = try TableOptionsParser().parse(state: &state)
-        XCTAssertEqual(result, [.withoutRowId, .withoutRowId])
-        XCTAssertEqual(.select, try state.take().kind)
-    }
-}
 
 // MARK: - Ty
 
@@ -95,37 +64,14 @@ extension ParserTests {
     }
 }
 
-// MARK: - Symbol
-
-extension ParserTests {
-    func testSymbol() {
-        XCTAssertEqual("userId", try execute(parser: IdentifierParser(), source: "userId"))
-    }
-    
-    func testKeyword() {
-        XCTAssertThrowsError(try execute(parser: IdentifierParser(), source: "SELECT"))
-    }
-}
-
-// MARK: - SignedNumber
-
-extension ParserTests {
-    func testNoSign() {
-        XCTAssertEqual(123, try execute(parser: SignedNumberParser(), source: "123"))
-    }
-    
-    func testPositiveSign() {
-        XCTAssertEqual(123, try execute(parser: SignedNumberParser(), source: "+123"))
-    }
-    
-    func testNegativeSign() {
-        XCTAssertEqual(-123, try execute(parser: SignedNumberParser(), source: "-123"))
-    }
-}
 
 // MARK: - ConflictClause
 
 extension ParserTests {
+    func testTableOptions() throws {
+        try check(sqlFile: "TableOptions", parser: TableOptionsParser())
+    }
+    
     func testConflictClause() throws {
         try check(sqlFile: "ConflictClause", parser: ConfictClauseParser())
     }
@@ -143,74 +89,18 @@ extension ParserTests {
     }
     
     func testColumnDefinition() throws {
-        try check(sqlFile: "ColumnDefinition", parser: ColumnDefinitionParser(), delimiter: .semiColon)
-    }
-}
-
-// MARK: - Alter Table
-
-extension ParserTests {
-    func testAlterTableRename() {
-        XCTAssertEqual(
-            AlterTableStatement(name: "user", schemaName: nil, kind: .rename("coolUser")),
-            try execute(parser: AlterTableParser(), source: "ALTER TABLE user RENAME TO coolUser")
-        )
+        try check(sqlFile: "ColumnDefinition", parser: ColumnDefinitionParser())
     }
     
-    func testAlterTableRenameColumn() {
-        XCTAssertEqual(
-            AlterTableStatement(name: "user", schemaName: nil, kind: .renameColumn("firstN", "firstName")),
-            try execute(parser: AlterTableParser(), source: "ALTER TABLE user RENAME COLUMN firstN TO firstName")
-        )
-        
-        XCTAssertEqual(
-            AlterTableStatement(name: "user", schemaName: nil, kind: .renameColumn("firstN", "firstName")),
-            try execute(parser: AlterTableParser(), source: "ALTER TABLE user RENAME firstN TO firstName")
-        )
+    func testAlterTable() throws {
+        try check(sqlFile: "AlterTable", parser: AlterTableParser())
     }
     
-    func testAlterTableAddColumn() {
-        XCTAssertEqual(
-            AlterTableStatement(name: "user", schemaName: nil, kind: .addColumn(ColumnDef(name: "lastName", type: TypeName(name: "TEXT", args: nil), constraints: []))),
-            try execute(parser: AlterTableParser(), source: "ALTER TABLE user ADD COLUMN lastName TEXT")
-        )
-        
-        XCTAssertEqual(
-            AlterTableStatement(name: "user", schemaName: nil, kind: .addColumn(ColumnDef(name: "lastName", type: TypeName(name: "TEXT", args: nil), constraints: []))),
-            try execute(parser: AlterTableParser(), source: "ALTER TABLE user ADD lastName TEXT")
-        )
+    func testSignedNumber() throws {
+        try check(sqlFile: "SignedNumber", parser: SignedNumberParser())
     }
     
-    func testAlterTableDropColumn() {
-        XCTAssertEqual(
-            AlterTableStatement(name: "user", schemaName: nil, kind: .dropColumn("age")),
-            try execute(parser: AlterTableParser(), source: "ALTER TABLE user DROP COLUMN age")
-        )
-        
-        XCTAssertEqual(
-            AlterTableStatement(name: "user", schemaName: nil, kind: .dropColumn("age")),
-            try execute(parser: AlterTableParser(), source: "ALTER TABLE user DROP age")
-        )
-    }
-}
-
-extension ParserTests {
-    func testMultipleStatements() throws {
-        let result = try! execute(
-            parser: StmtParser()
-                .semiColonSeparated(),
-            source: """
-            CREATE TABLE user (
-                id INT PRIMARY KEY AUTOINCREMENT,
-                firstName TEXT,
-                lastName TEXT,
-                age INT NOT NULL
-            );
-            
-            ALTER TABLE user ADD COLUMN favoriteColor TEXT;
-            """
-        )
-        
-        print(result)
+    func testTypeName() throws {
+        try check(sqlFile: "TypeName", parser: TypeNameParser())
     }
 }
