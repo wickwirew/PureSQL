@@ -372,31 +372,29 @@ struct CastExpr: Expr, Equatable, CustomStringConvertible {
     }
 }
 
-struct BindParameter: Expr, Hashable {
+struct BindParameter: Expr, Hashable, CustomStringConvertible {
     let kind: Kind
     let range: Range<String.Index>
-    
-    init(kind: Kind, range: Range<String.Index>) {
-        self.kind = kind
-        self.range = range
-    }
     
     enum Kind: Hashable {
         case named(IdentifierSyntax)
         case unnamed(Int)
     }
     
-    func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
-        return visitor.visit(self)
+    init(kind: Kind, range: Range<String.Index>) {
+        self.kind = kind
+        self.range = range
     }
-}
-
-extension BindParameter: CustomStringConvertible {
+    
     var description: String {
         return switch kind {
-        case .named(let name): ":\(name)"
-        case .unnamed: "?"
+        case .named(let name): name.description
+        case .unnamed(let index): "?\(index)"
         }
+    }
+    
+    func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
+        return visitor.visit(self)
     }
 }
 

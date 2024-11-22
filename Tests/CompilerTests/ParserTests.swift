@@ -50,4 +50,16 @@ final class ParserTests: XCTestCase {
     func testCreateTable() throws {
         try check(sqlFile: "CreateTable", parser: CreateTableParser())
     }
+    
+    func testBindParameter() throws {
+        try check(sqlFile: "BindParameter", parser: BindParameterParser())
+    }
+    
+    func testOpertators() throws {
+        try check(sqlFile: "Operators", parser: OperatorParser())
+    }
+    
+    func testExpression() throws {
+        try check(sqlFile: "Expression", parser: ExprParser())
+    }
 }

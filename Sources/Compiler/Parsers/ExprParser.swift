@@ -337,18 +337,15 @@ struct BindParameterParser: Parser {
         
         switch token.kind {
         case .questionMark:
-            if case let .symbol(param) = state.current.kind {
-                let paramRange = try state.take()
-                return BindParameter(kind: .named(IdentifierSyntax(value: param, range: paramRange.range)), range: token.range)
-            } else {
-                return BindParameter(kind: .unnamed(state.nextParameterIndex()), range: token.range)
-            }
+            return BindParameter(kind: .unnamed(state.nextParameterIndex()), range: token.range)
         case .colon:
             let symbol = try parseSymbol(state: &state)
-            return BindParameter(kind: .named(symbol), range: token.range.lowerBound..<symbol.range.upperBound)
+            let range = token.range.lowerBound..<symbol.range.upperBound
+            return BindParameter(kind: .named(.init(value: ":\(symbol)", range: range)), range: range)
         case .at:
             let symbol = try parseSymbol(state: &state)
-            return BindParameter(kind: .named(symbol), range: token.range.lowerBound..<symbol.range.upperBound)
+            let range = token.range.lowerBound..<symbol.range.upperBound
+            return BindParameter(kind: .named(.init(value: "@\(symbol)", range: range)), range: range)
         case .dollarSign:
             let segments = try IdentifierParser()
                 .separated(by: .colon, and: .colon)
@@ -366,10 +363,10 @@ struct BindParameterParser: Parser {
             
             if let suffix {
                 let range = token.range.lowerBound..<suffix.range.upperBound
-                let ident = IdentifierSyntax(value: "\(fullName)(\(suffix))", range: range)
+                let ident = IdentifierSyntax(value: "$\(fullName)(\(suffix))", range: range)
                 return BindParameter(kind: .named(ident), range: range)
             } else {
-                let ident = IdentifierSyntax(value: fullName, range: nameRange)
+                let ident = IdentifierSyntax(value: "$\(fullName)", range: nameRange)
                 return BindParameter(kind: .named(ident), range: nameRange)
             }
         default:

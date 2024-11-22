@@ -40,6 +40,13 @@ extension IdentifierSyntax: ExpressibleByStringLiteral {
     }
 }
 
+extension IdentifierSyntax: ExpressibleByStringInterpolation {
+    public init(stringInterpolation: DefaultStringInterpolation) {
+        self.value = stringInterpolation.description[...]
+        self.range = value.startIndex..<value.endIndex
+    }
+}
+
 extension IdentifierSyntax {
     public mutating func append(_ identifier: IdentifierSyntax) {
         value += identifier.value

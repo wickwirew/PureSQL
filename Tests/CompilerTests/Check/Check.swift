@@ -261,7 +261,8 @@ struct CheckEmitter {
         case is Bool, is Int, is Int8, is Int16, is Int32, is Int64,
                 is UInt, is UInt8, is UInt16, is UInt32, is UInt64,
                 is Float, is Double, is String, is Any.Type, is IdentifierSyntax,
-                is LiteralExpr, is TableOptions, is TypeName: true
+                is LiteralExpr, is TableOptions, is TypeName, is BindParameter,
+                is OperatorSyntax: true
         default: false
         }
     }

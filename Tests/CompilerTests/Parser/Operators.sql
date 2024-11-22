@@ -1,0 +1,116 @@
+-- CHECK: ~
+~
+
+-- CHECK: COLLATE SIMPLE
+COLLATE SIMPLE
+
+-- CHECK: ||
+||
+
+-- CHECK: ->
+->
+
+-- CHECK: ->>
+->>
+
+-- CHECK: *
+*
+
+-- CHECK: /
+/
+
+-- CHECK: %
+%
+
+-- CHECK: +
++
+
+-- CHECK: -
+-
+
+-- CHECK: &
+&
+
+-- CHECK: |
+|
+
+-- CHECK: <<
+<<
+
+-- CHECK: >>
+>>
+
+-- CHECK: ESCAPE
+ESCAPE
+
+-- CHECK: <
+<
+
+-- CHECK: >
+>
+
+-- CHECK: <=
+<=
+
+-- CHECK: >=
+>=
+
+-- CHECK: =
+=
+
+-- CHECK: ==
+==
+
+-- CHECK: !=
+!=
+
+-- CHECK: <>
+<>
+
+-- CHECK: IS
+IS
+
+-- CHECK: IS NOT
+IS NOT
+
+-- CHECK: IS DISTINCT FROM
+IS DISTINCT FROM
+
+-- CHECK: IS NOT DISTINCT FROM
+IS NOT DISTINCT FROM
+
+-- CHECK: BETWEEN
+BETWEEN
+
+-- CHECK: AND
+AND
+
+-- CHECK: IN
+IN
+
+-- CHECK: MATCH
+MATCH
+
+-- CHECK: LIKE
+LIKE
+
+-- CHECK: REGEXP
+REGEXP
+
+-- CHECK: GLOB
+GLOB
+
+-- CHECK: ISNULL
+ISNULL
+
+-- CHECK: NOT NULL
+NOT NULL
+
+-- CHECK: NOTNULL
+NOTNULL
+
+-- CHECK: NOT BETWEEN
+NOT BETWEEN
+
+-- CHECK: OR
+OR

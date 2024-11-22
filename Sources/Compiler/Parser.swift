@@ -22,7 +22,7 @@ struct ParserState {
     private(set) var current: Token
     private(set) var peek: Token
     private(set) var peek2: Token
-    private(set) var parameterIndex: Int = 0
+    private(set) var parameterIndex: Int = 1
     
     init(_ lexer: Lexer) throws {
         self.lexer = lexer
