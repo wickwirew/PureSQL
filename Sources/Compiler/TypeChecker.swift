@@ -649,11 +649,6 @@ extension TypeChecker: ExprVisitor {
     
     mutating func visit(_ expr: borrowing CastExpr) -> (Ty, Substitution, Names) {
         let (_, s, n) = expr.expr.accept(visitor: &self)
-        
-        if expr.ty.resolved == nil {
-            diagnostics.add(.init("Type '\(expr.ty)' is not a valid type", at: expr.range))
-        }
-        
         return (.nominal(expr.ty.name.value), s, n)
     }
     

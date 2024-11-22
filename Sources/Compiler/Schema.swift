@@ -10,26 +10,18 @@ import OrderedCollections
 struct TypeName: Equatable, CustomStringConvertible, Sendable {
     let name: IdentifierSyntax
     let args: Args?
-    let resolved: Resolved?
     
-    static let text = TypeName(name: "TEXT", args: nil, resolved: .text)
-    static let int = TypeName(name: "INT", args: nil, resolved: .int)
-    static let integer = TypeName(name: "INTEGER", args: nil, resolved: .integer)
-    static let real = TypeName(name: "REAL", args: nil, resolved: .real)
-    static let blob = TypeName(name: "BLOB", args: nil, resolved: .blob)
-    static let any = TypeName(name: "ANY", args: nil, resolved: .any)
-    static let bool = TypeName(name: "BOOL", args: nil, resolved: .int)
+    static let text = TypeName(name: "TEXT", args: nil)
+    static let int = TypeName(name: "INT", args: nil)
+    static let integer = TypeName(name: "INTEGER", args: nil)
+    static let real = TypeName(name: "REAL", args: nil)
+    static let blob = TypeName(name: "BLOB", args: nil)
+    static let any = TypeName(name: "ANY", args: nil)
+    static let bool = TypeName(name: "BOOL", args: nil)
     
     init(name: IdentifierSyntax, args: Args?) {
         self.name = name
         self.args = args
-        self.resolved = Resolved(name.description)
-    }
-    
-    init(name: IdentifierSyntax, args: Args?, resolved: Resolved) {
-        self.name = name
-        self.args = args
-        self.resolved = resolved
     }
     
     enum Args: Equatable, Sendable {
