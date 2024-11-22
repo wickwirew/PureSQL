@@ -1,0 +1,16 @@
+-- CHECK: SELECT_STMT
+-- CHECK:   CTE_RECURSIVE false
+-- CHECK:   SELECTS
+-- CHECK:     VALUE
+-- CHECK:       SINGLE
+-- CHECK:         SELECT
+-- CHECK:           DISTINCT false
+-- CHECK:           COLUMNS
+-- CHECK:             RESULT_COLUMN
+-- CHECK:               ALL
+-- CHECK:           FROM
+-- CHECK:             JOIN
+-- CHECK:               TABLE_OR_SUBQUERY
+-- CHECK:                 TABLE
+-- CHECK:                   NAME foo
+SELECT * FROM foo;

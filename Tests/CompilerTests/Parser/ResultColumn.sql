@@ -1,0 +1,25 @@
+-- CHECK: RESULT_COLUMN
+-- CHECK:   ALL
+*;
+
+-- CHECK: RESULT_COLUMN
+-- CHECK:   ALL
+-- CHECK:     TABLE foo
+foo.*;
+
+-- CHECK: RESULT_COLUMN
+-- CHECK:   EXPR
+-- CHECK:       LITERAL 1.0
+1;
+
+-- CHECK: RESULT_COLUMN
+-- CHECK:   EXPR
+-- CHECK:       LITERAL 1.0
+-- CHECK:     AS one
+1 AS one;
+
+-- CHECK: RESULT_COLUMN
+-- CHECK:   EXPR
+-- CHECK:       LITERAL 1.0
+-- CHECK:     AS one
+1 one;

@@ -230,6 +230,7 @@ struct ResultColumnParser: Parser {
             let table = IdentifierSyntax(value: table, range: state.current.range)
             try state.skip()
             try state.consume(.dot)
+            try state.consume(.star)
             return .all(table: table)
         default:
             let expr = try ExprParser()

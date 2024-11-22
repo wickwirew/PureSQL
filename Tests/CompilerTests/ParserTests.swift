@@ -62,4 +62,36 @@ final class ParserTests: XCTestCase {
     func testExpression() throws {
         try check(sqlFile: "Expression", parser: ExprParser())
     }
+    
+    func testSelectStmt() throws {
+        try check(sqlFile: "SelectStmt", parser: SelectStmtParser())
+    }
+    
+    func testJoinConstraint() throws {
+        try check(sqlFile: "JoinConstraint", parser: JoinConstraintParser())
+    }
+    
+    func testCommonTableExpression() throws {
+        try check(sqlFile: "CommonTableExpression", parser: CommonTableExprParser())
+    }
+    
+    func testJoinOperator() throws {
+        try check(sqlFile: "JoinOperator", parser: JoinOperatorParser())
+    }
+    
+    func testOrderingTerm() throws {
+        try check(sqlFile: "OrderingTerm", parser: OrderingTermParser())
+    }
+    
+    func testResultColumn() throws {
+        try check(sqlFile: "ResultColumn", parser: ResultColumnParser())
+    }
+    
+    func testTableOrSubquery() throws {
+        try check(sqlFile: "TableOrSubquery", parser: TableOrSubqueryParser())
+    }
+    
+    func testJoinClause() throws {
+        try check(sqlFile: "JoinClause", parser: JoinClauseOrTableOrSubqueryParser())
+    }
 }

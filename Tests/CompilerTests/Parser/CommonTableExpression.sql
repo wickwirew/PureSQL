@@ -1,0 +1,22 @@
+-- CHECK: COMMON_TABLE_EXPRESSION
+-- CHECK:   TABLE foo
+-- CHECK:   COLUMNS
+-- CHECK:     id
+-- CHECK:     name
+-- CHECK:   MATERIALIZED false
+-- CHECK:   SELECT
+-- CHECK:     CTE_RECURSIVE false
+-- CHECK:     SELECTS
+-- CHECK:       VALUE
+-- CHECK:         SINGLE
+-- CHECK:           SELECT
+-- CHECK:             DISTINCT false
+-- CHECK:             COLUMNS
+-- CHECK:               RESULT_COLUMN
+-- CHECK:                 ALL
+-- CHECK:             FROM
+-- CHECK:               JOIN
+-- CHECK:                 TABLE_OR_SUBQUERY
+-- CHECK:                   TABLE
+-- CHECK:                     NAME bar
+foo (id, name) AS (SELECT * FROM bar);

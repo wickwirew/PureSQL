@@ -1,0 +1,79 @@
+-- CHECK: OUTPUT
+-- CHECK:   JOIN
+-- CHECK:     TABLE_OR_SUBQUERY
+-- CHECK:       TABLE
+-- CHECK:         NAME foo
+-- CHECK:     JOINS
+-- CHECK:       JOIN
+-- CHECK:         OP
+-- CHECK:           INNER
+-- CHECK:             NATURAL false
+-- CHECK:         TABLE_OR_SUBQUERY
+-- CHECK:           TABLE
+-- CHECK:             NAME bar
+-- CHECK:         CONSTRAINT none
+foo INNER JOIN bar;
+
+-- CHECK: OUTPUT
+-- CHECK:   JOIN
+-- CHECK:     TABLE_OR_SUBQUERY
+-- CHECK:       TABLE
+-- CHECK:         NAME foo
+-- CHECK:     JOINS
+-- CHECK:       JOIN
+-- CHECK:         OP
+-- CHECK:           INNER
+-- CHECK:             NATURAL false
+-- CHECK:         TABLE_OR_SUBQUERY
+-- CHECK:           TABLE
+-- CHECK:             NAME bar
+-- CHECK:         CONSTRAINT none
+-- CHECK:       JOIN
+-- CHECK:         OP
+-- CHECK:           LEFT
+-- CHECK:             NATURAL false
+-- CHECK:             OUTER false
+-- CHECK:         TABLE_OR_SUBQUERY
+-- CHECK:           TABLE
+-- CHECK:             NAME baz
+-- CHECK:         CONSTRAINT none
+foo INNER JOIN bar LEFT JOIN baz;
+
+-- CHECK: OUTPUT
+-- CHECK:   JOIN
+-- CHECK:     TABLE_OR_SUBQUERY
+-- CHECK:       TABLE
+-- CHECK:         NAME foo
+-- CHECK:     JOINS
+-- CHECK:       JOIN
+-- CHECK:         OP
+-- CHECK:           INNER
+-- CHECK:             NATURAL false
+-- CHECK:         TABLE_OR_SUBQUERY
+-- CHECK:           TABLE
+-- CHECK:             NAME bar
+-- CHECK:         CONSTRAINT
+-- CHECK:           ON
+-- CHECK:             LITERAL 1.0
+foo INNER JOIN bar ON 1;
+
+-- CHECK: OUTPUT
+-- CHECK:   JOIN
+-- CHECK:     TABLE_OR_SUBQUERY
+-- CHECK:       TABLE
+-- CHECK:         NAME foo
+-- CHECK:     JOINS
+-- CHECK:       JOIN
+-- CHECK:         OP
+-- CHECK:           INNER
+-- CHECK:             NATURAL false
+-- CHECK:         TABLE_OR_SUBQUERY
+-- CHECK:           SUB_TABLE_OR_SUBQUERIES
+-- CHECK:               TABLE_OR_SUBQUERY
+-- CHECK:                 TABLE
+-- CHECK:                   NAME bar
+-- CHECK:               TABLE_OR_SUBQUERY
+-- CHECK:                 TABLE
+-- CHECK:                   NAME baz
+-- CHECK:         CONSTRAINT none
+foo INNER JOIN (bar, baz);

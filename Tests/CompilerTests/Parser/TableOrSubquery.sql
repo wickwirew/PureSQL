@@ -1,0 +1,104 @@
+-- CHECK: TABLE_OR_SUBQUERY
+-- CHECK:   TABLE
+-- CHECK:     NAME foo
+foo;
+
+-- CHECK: TABLE_OR_SUBQUERY
+-- CHECK:   TABLE
+-- CHECK:     SCHEMA foo
+-- CHECK:     NAME bar
+foo.bar;
+
+-- CHECK: TABLE_OR_SUBQUERY
+-- CHECK:   TABLE
+-- CHECK:     SCHEMA foo
+-- CHECK:     NAME bar
+-- CHECK:     ALIAS baz
+foo.bar AS baz;
+
+-- CHECK: TABLE_OR_SUBQUERY
+-- CHECK:   TABLE
+-- CHECK:     SCHEMA foo
+-- CHECK:     NAME bar
+-- CHECK:     ALIAS baz
+-- CHECK:     INDEXED_BY qux
+foo.bar AS baz INDEXED BY qux;
+
+-- CHECK: TABLE_OR_SUBQUERY
+-- CHECK:   TABLE
+-- CHECK:     SCHEMA foo
+-- CHECK:     NAME bar
+-- CHECK:     ALIAS baz
+foo.bar AS baz NOT INDEXED;
+
+-- CHECK: TABLE_OR_SUBQUERY
+-- CHECK:   SUB_TABLE_OR_SUBQUERIES
+-- CHECK:       TABLE_OR_SUBQUERY
+-- CHECK:         TABLE
+-- CHECK:           NAME foo
+-- CHECK:       TABLE_OR_SUBQUERY
+-- CHECK:         TABLE
+-- CHECK:           NAME bar
+(foo, bar);
+
+-- CHECK: TABLE_OR_SUBQUERY
+-- CHECK:   SUB_TABLE_OR_SUBQUERIES
+-- CHECK:       TABLE_OR_SUBQUERY
+-- CHECK:         TABLE
+-- CHECK:           NAME foo
+-- CHECK:       TABLE_OR_SUBQUERY
+-- CHECK:         TABLE
+-- CHECK:           NAME bar
+-- CHECK:     ALIAS qux
+(foo, bar) AS qux;
+
+-- CHECK: TABLE_OR_SUBQUERY
+-- CHECK:   SUB_TABLE_OR_SUBQUERIES
+-- CHECK:       TABLE_OR_SUBQUERY
+-- CHECK:         TABLE
+-- CHECK:           NAME foo
+-- CHECK:       TABLE_OR_SUBQUERY
+-- CHECK:         TABLE
+-- CHECK:           NAME bar
+-- CHECK:     ALIAS qux
+(foo, bar) qux;
+
+-- CHECK: TABLE_OR_SUBQUERY
+-- CHECK:   JOIN
+-- CHECK:     TABLE_OR_SUBQUERY
+-- CHECK:       TABLE
+-- CHECK:         NAME foo
+(foo);
+
+-- CHECK: TABLE_OR_SUBQUERY
+-- CHECK:   JOIN
+-- CHECK:     TABLE_OR_SUBQUERY
+-- CHECK:       TABLE
+-- CHECK:         NAME foo
+-- CHECK:     JOINS
+-- CHECK:       JOIN
+-- CHECK:         OP
+-- CHECK:           INNER
+-- CHECK:             NATURAL false
+-- CHECK:         TABLE_OR_SUBQUERY
+-- CHECK:           TABLE
+-- CHECK:             NAME bar
+-- CHECK:         CONSTRAINT none
+(foo inner join bar);
+
+-- CHECK: TABLE_OR_SUBQUERY
+-- CHECK:   TABLE_FUNCTION
+-- CHECK:     TABLE foo
+-- CHECK:     ARGS
+-- CHECK:       EXPRESSION
+-- CHECK:         LITERAL 1.0
+foo(1);
+
+-- CHECK: TABLE_OR_SUBQUERY
+-- CHECK:   TABLE_FUNCTION
+-- CHECK:     TABLE foo
+-- CHECK:     ARGS
+-- CHECK:       EXPRESSION
+-- CHECK:         LITERAL 1.0
+-- CHECK:     ALIAS bar
+foo(1) AS bar;
