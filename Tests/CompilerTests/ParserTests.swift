@@ -46,4 +46,8 @@ final class ParserTests: XCTestCase {
     func testTypeName() throws {
         try check(sqlFile: "TypeName", parser: TypeNameParser())
     }
+    
+    func testCreateTable() throws {
+        try check(sqlFile: "CreateTable", parser: CreateTableParser())
+    }
 }

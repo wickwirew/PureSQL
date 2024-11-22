@@ -550,10 +550,11 @@ struct TableOptions: OptionSet, Sendable, CustomStringConvertible {
     }
     
     var description: String {
+        guard rawValue > 0 else { return "[]" }
         var opts: [String] = []
         if self.contains(.withoutRowId) { opts.append("WITHOUT ROWID") }
         if self.contains(.strict) { opts.append("STRICT") }
-        return opts.joined(separator: ", ")
+        return "[\(opts.joined(separator: ", "))]"
     }
 }
 
