@@ -106,20 +106,9 @@ enum Order: Equatable {
 }
 
 struct IndexedColumn: Equatable {
-    let kind: Kind
+    let expr: Expression
     let collation: IdentifierSyntax?
     let order: Order
-    
-    init(kind: Kind, collation: IdentifierSyntax?, order: Order) {
-        self.kind = kind
-        self.collation = collation
-        self.order = order
-    }
-    
-    enum Kind: Equatable {
-        case column(IdentifierSyntax)
-        case expr(Expression)
-    }
 }
 
 struct ForeignKeyClause: Equatable {
@@ -614,103 +603,3 @@ struct TableName: Hashable, CustomStringConvertible {
         return TableName(schema: schema, name: name)
     }
 }
-
-struct InsertStmt: Equatable {
-    let cte: Indirect<CommonTableExpression>?
-    let cteRecursive: Bool
-    let action: Action
-    let tableName: TableName
-    let tableAlias: IdentifierSyntax
-    let values: Values
-    let returningClause: ReturningClause
-    
-    enum Values: Equatable {
-        case select(SelectStmt, UpsertClause?)
-        case defaultValues
-    }
-    
-    enum Action: Equatable {
-        case replace
-        case insert(Or?)
-    }
-    
-    enum Or: Equatable {
-        case abort
-        case fail
-        case ignore
-        case replace
-        case rollback
-    }
-    
-    init(
-        cte: CommonTableExpression?,
-        cteRecursive: Bool,
-        action: Action,
-        tableName: TableName,
-        tableAlias: IdentifierSyntax,
-        values: Values,
-        returningClause: ReturningClause
-    ) {
-        self.cte = cte.map(Indirect.init)
-        self.cteRecursive = cteRecursive
-        self.action = action
-        self.tableName = tableName
-        self.tableAlias = tableAlias
-        self.values = values
-        self.returningClause = returningClause
-    }
-}
-
-struct ReturningClause: Equatable {
-    let values: [Value]
-    
-    init(values: [Value]) {
-        self.values = values
-    }
-    
-    struct Value: Equatable {
-        let expr: Expression
-        let alias: IdentifierSyntax?
-        
-        init(expr: Expression, alias: IdentifierSyntax?) {
-            self.expr = expr
-            self.alias = alias
-        }
-    }
-}
-
-struct UpsertClause: Equatable {
-    let confictTarget: Expression?
-    let doAction: Do
-    
-    init(confictTarget: Expression?, doAction: Do) {
-        self.confictTarget = confictTarget
-        self.doAction = doAction
-    }
-    
-    struct ConflictTarget: Equatable {
-        let columns: [IndexedColumn]
-        let condition: Expression?
-    }
-    
-    enum Do: Equatable {
-        case nothing
-        case updateSet(sets: [SetAction], where: Expression?)
-    }
-    
-    struct SetAction: Equatable {
-        let column: Column
-        let expr: Expression
-        
-        init(column: Column, expr: Expression) {
-            self.column = column
-            self.expr = expr
-        }
-    }
-    
-    enum Column: Equatable {
-        case single(Substring)
-        case list([Substring])
-    }
-}
-

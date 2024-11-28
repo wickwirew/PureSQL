@@ -17,6 +17,24 @@ func check<P: Parser>(
     file: StaticString = #filePath,
     line: UInt = #line
 ) throws {
+    try check(
+        sqlFile: sqlFile,
+        parse: parser.parse,
+        prefix: prefix,
+        dump: dump,
+        file: file,
+        line: line
+    )
+}
+
+func check<Output>(
+    sqlFile: String,
+    parse: (inout ParserState) throws -> Output,
+    prefix: String = "CHECK",
+    dump: Bool = false,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws {
     guard let url = Bundle.module.url(forResource: sqlFile, withExtension: "sql") else {
         XCTFail("Could not find SQL file named \(sqlFile)", file: file, line: line)
         return
@@ -28,11 +46,12 @@ func check<P: Parser>(
     var lines: [String] = []
     
     while state.current.kind != .eof {
-        for output in try parser.separated(by: .semiColon).parse(state: &state) {
+        repeat {
+            let output = try parse(&state)
             var emitter = CheckEmitter()
             emitter.emit(output, indent: 0)
             lines.append(contentsOf: emitter.lines)
-        }
+        } while try state.take(if: .semiColon) && state.current.kind != .eof
     }
     
     if dump {

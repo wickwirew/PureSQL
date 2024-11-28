@@ -11,37 +11,20 @@ protocol Syntax {
     var range: Range<Substring.Index> { get }
 }
 
-/*
- InsertStmtSyntax
-    cteRecursive = true
-    values
-        SelectStmtSyntax
-   
- 
- CreateTableStatementSyntax
-    name: user
-    isTemporary: true
-    onlyIfExists: true
-    kind:
-        SelectStatementSytax
-            selec
- */
-
-
-
-struct InsertStmtSyntax: Syntax, Equatable {
-    let cte: Indirect<CommonTableExpression>?
+struct InsertStmt: Syntax, Equatable {
+    let cte: CommonTableExpression?
     let cteRecursive: Bool
     let action: Action
     let tableName: TableName
-    let tableAlias: IdentifierSyntax
+    let tableAlias: IdentifierSyntax?
+    let columns: [IdentifierSyntax]?
     let values: Values? // if nil, default values
-    let returningClause: ReturningClauseSyntax?
+    let returningClause: ReturningClause?
     let range: Range<Substring.Index>
     
     struct Values: Equatable {
         let select: SelectStmt
-        let upsertClause: UpsertClauseSyntax?
+        let upsertClause: UpsertClause?
     }
     
     enum Action: Equatable, Encodable {
@@ -60,17 +43,17 @@ struct InsertStmtSyntax: Syntax, Equatable {
 
 
 
-struct ReturningClauseSyntax: Syntax, Equatable {
+struct ReturningClause: Syntax, Equatable {
     let values: [Value]
     let range: Range<Substring.Index>
 
-    struct Value: Equatable {
-        let expr: Expression
-        let alias: IdentifierSyntax?
+    enum Value: Equatable {
+        case expr(expr: Expression, alias: IdentifierSyntax?)
+        case all
     }
 }
 
-struct UpsertClauseSyntax: Syntax, Equatable {
+struct UpsertClause: Syntax, Equatable {
     let confictTarget: ConflictTarget?
     let doAction: Do
     let range: Range<Substring.Index>
@@ -88,15 +71,10 @@ struct UpsertClauseSyntax: Syntax, Equatable {
     struct SetAction: Equatable {
         let column: Column
         let expr: Expression
-        
-        init(column: Column, expr: Expression) {
-            self.column = column
-            self.expr = expr
-        }
     }
     
     enum Column: Equatable {
-        case single(Substring)
-        case list([Substring])
+        case single(IdentifierSyntax)
+        case list([IdentifierSyntax])
     }
 }

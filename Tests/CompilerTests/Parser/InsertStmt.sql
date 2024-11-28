@@ -1,0 +1,87 @@
+-- CHECK: INSERT_STMT
+-- CHECK:   CTE_RECURSIVE false
+-- CHECK:   ACTION
+-- CHECK:     INSERT
+-- CHECK:   TABLE_NAME
+-- CHECK:     SCHEMA main
+-- CHECK:     NAME foo
+-- CHECK:   COLUMNS
+-- CHECK:     bar
+-- CHECK:     baz
+-- CHECK:   VALUES
+-- CHECK:     SELECT
+-- CHECK:       CTE_RECURSIVE false
+-- CHECK:       SELECTS
+-- CHECK:         VALUE
+-- CHECK:           SINGLE
+-- CHECK:             VALUES
+-- CHECK:               EXPRESSION
+-- CHECK:                 LITERAL 1.0
+-- CHECK:               EXPRESSION
+-- CHECK:                 LITERAL 'two'
+INSERT INTO foo (bar, baz) VALUES (1, 'two');
+
+-- CHECK: INSERT_STMT
+-- CHECK:   CTE_RECURSIVE false
+-- CHECK:   ACTION replace
+-- CHECK:   TABLE_NAME
+-- CHECK:     SCHEMA main
+-- CHECK:     NAME foo
+-- CHECK:   COLUMNS
+-- CHECK:     bar
+-- CHECK:   VALUES
+-- CHECK:     SELECT
+-- CHECK:       CTE_RECURSIVE false
+-- CHECK:       SELECTS
+-- CHECK:         VALUE
+-- CHECK:           SINGLE
+-- CHECK:             SELECT
+-- CHECK:               DISTINCT false
+-- CHECK:               COLUMNS
+-- CHECK:                 RESULT_COLUMN
+-- CHECK:                   EXPR
+-- CHECK:                       COLUMN
+-- CHECK:                         COLUMN baz
+-- CHECK:               FROM
+-- CHECK:                 JOIN
+-- CHECK:                   TABLE_OR_SUBQUERY
+-- CHECK:                     TABLE
+-- CHECK:                       NAME qux
+-- CHECK:   RETURNING_CLAUSE
+-- CHECK:     VALUES
+-- CHECK:       VALUE
+-- CHECK:         EXPR
+-- CHECK:           EXPR
+-- CHECK:             COLUMN
+-- CHECK:               COLUMN bar
+REPLACE INTO foo (bar) SELECT baz FROM qux RETURNING bar;
+
+-- CHECK: INSERT_STMT
+-- CHECK:   CTE
+-- CHECK:     TABLE foo
+-- CHECK:     MATERIALIZED false
+-- CHECK:     SELECT
+-- CHECK:       CTE_RECURSIVE false
+-- CHECK:       SELECTS
+-- CHECK:         VALUE
+-- CHECK:           SINGLE
+-- CHECK:             SELECT
+-- CHECK:               DISTINCT false
+-- CHECK:               COLUMNS
+-- CHECK:                 RESULT_COLUMN
+-- CHECK:                   EXPR
+-- CHECK:                       COLUMN
+-- CHECK:                         COLUMN bar
+-- CHECK:               FROM
+-- CHECK:                 JOIN
+-- CHECK:                   TABLE_OR_SUBQUERY
+-- CHECK:                     TABLE
+-- CHECK:                       NAME baz
+-- CHECK:   CTE_RECURSIVE true
+-- CHECK:   ACTION
+-- CHECK:     INSERT replace
+-- CHECK:   TABLE_NAME
+-- CHECK:     SCHEMA main
+-- CHECK:     NAME user
+WITH RECURSIVE foo AS (SELECT bar FROM baz)
+INSERT OR REPLACE INTO user DEFAULT VALUES;

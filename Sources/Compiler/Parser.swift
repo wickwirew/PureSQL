@@ -23,7 +23,8 @@ struct ParserState {
     private(set) var peek: Token
     private(set) var peek2: Token
     private(set) var parameterIndex: Int = 1
-    
+    var diagnostics = Diagnostics()
+    	
     init(_ lexer: Lexer) throws {
         self.lexer = lexer
         self.current = try self.lexer.next()
@@ -37,8 +38,12 @@ extension ParserState {
         return current.range
     }
     
-    func range(from range: Range<String.Index>) -> Range<String.Index> {
+    func range(from range: borrowing Range<String.Index>) -> Range<String.Index> {
         return range.lowerBound..<current.range.upperBound
+    }
+    
+    func range(from token: borrowing Token) -> Range<String.Index> {
+        return token.range.lowerBound..<current.range.upperBound
     }
     
     func skippingOne() throws -> ParserState {

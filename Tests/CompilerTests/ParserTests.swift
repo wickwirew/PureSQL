@@ -94,4 +94,8 @@ final class ParserTests: XCTestCase {
     func testJoinClause() throws {
         try check(sqlFile: "JoinClause", parser: JoinClauseOrTableOrSubqueryParser())
     }
+    
+    func testInsertStmt() throws {
+        try check(sqlFile: "InsertStmt", parse: Parsers.insertStmt, dump: true)
+    }
 }
