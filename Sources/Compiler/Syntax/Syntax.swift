@@ -31,17 +31,15 @@ struct InsertStmt: Syntax, Equatable {
         case replace
         case insert(Or?)
     }
-    
-    enum Or: Equatable, Encodable {
-        case abort
-        case fail
-        case ignore
-        case replace
-        case rollback
-    }
 }
 
-
+enum Or: Equatable, Encodable {
+    case abort
+    case fail
+    case ignore
+    case replace
+    case rollback
+}
 
 struct ReturningClause: Syntax, Equatable {
     let values: [Value]
@@ -67,14 +65,49 @@ struct UpsertClause: Syntax, Equatable {
         case nothing
         case updateSet(sets: [SetAction], where: Expression?)
     }
-    
-    struct SetAction: Equatable {
-        let column: Column
-        let expr: Expression
-    }
+}
+
+struct SetAction: Equatable {
+    let column: Column
+    let expr: Expression
     
     enum Column: Equatable {
         case single(IdentifierSyntax)
         case list([IdentifierSyntax])
+    }
+}
+
+struct UpdateStmt: Syntax {
+    let cte: CommonTableExpression?
+    let cteRecursive: Bool
+    let or: Or?
+    let tableName: QualifiedTableName
+    let sets: [SetAction]
+    let from: From?
+    let whereExpr: Expression?
+    let returningClause: ReturningClause?
+    let range: Range<Substring.Index>
+}
+
+struct QualifiedTableName: Syntax {
+    let tableName: TableName
+    let alias: IdentifierSyntax?
+    let indexed: Indexed?
+    let range: Range<Substring.Index>
+    
+    enum Indexed {
+        case not
+        case by(IdentifierSyntax)
+    }
+}
+
+/// Used in a select and update. Not a centralized thing in
+/// there docs but it shows up in both.
+enum From: Equatable {
+    case tableOrSubqueries([TableOrSubquery])
+    case join(JoinClause)
+    
+    init(table: IdentifierSyntax) {
+        self = .join(JoinClause(table: table))
     }
 }

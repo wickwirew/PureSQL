@@ -96,6 +96,10 @@ final class ParserTests: XCTestCase {
     }
     
     func testInsertStmt() throws {
-        try check(sqlFile: "InsertStmt", parse: Parsers.insertStmt, dump: true)
+        try check(sqlFile: "InsertStmt", parse: Parsers.insertStmt)
+    }
+    
+    func testUpdateStmt() throws {
+        try check(sqlFile: "UpdateStmt", parse: Parsers.updateStmt)
     }
 }

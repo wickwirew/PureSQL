@@ -123,7 +123,7 @@ struct SelectCoreParser: Parser {
             .commaSeparated()
             .parse(state: &state)
         
-        let from = try parseFrom(state: &state)
+        let from = try Parsers.from(state: &state)
         
         let `where` = try ExprParser()
             .take(if: .where, consume: true)
@@ -146,21 +146,6 @@ struct SelectCoreParser: Parser {
         )
         
         return .select(select)
-    }
-    
-    private func parseFrom(state: inout ParserState) throws -> SelectCore.From? {
-        let output = try JoinClauseOrTableOrSubqueryParser()
-            .take(if: .from, consume: true)
-            .parse(state: &state)
-        
-        switch output {
-        case .join(let joinClause):
-            return .join(joinClause)
-        case .tableOrSubqueries(let tableOrSubqueries):
-            return .tableOrSubqueries(tableOrSubqueries)
-        case nil:
-            return nil
-        }
     }
     
     private func parseGroupBy(state: inout ParserState) throws -> SelectCore.GroupBy? {

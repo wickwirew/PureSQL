@@ -1,0 +1,70 @@
+-- CHECK: UPDATE_STMT
+-- CHECK:   CTE_RECURSIVE false
+-- CHECK:   TABLE_NAME
+-- CHECK:     TABLE_NAME
+-- CHECK:       SCHEMA main
+-- CHECK:       NAME foo
+-- CHECK:   SETS
+-- CHECK:     SET_ACTION
+-- CHECK:       COLUMN
+-- CHECK:         SINGLE bar
+-- CHECK:       EXPR
+-- CHECK:         LITERAL 1.0
+UPDATE foo SET bar = 1;
+
+-- CHECK: UPDATE_STMT
+-- CHECK:   CTE
+-- CHECK:     TABLE foo
+-- CHECK:     MATERIALIZED false
+-- CHECK:     SELECT
+-- CHECK:       CTE_RECURSIVE false
+-- CHECK:       SELECTS
+-- CHECK:         VALUE
+-- CHECK:           SINGLE
+-- CHECK:             SELECT
+-- CHECK:               DISTINCT false
+-- CHECK:               COLUMNS
+-- CHECK:                 RESULT_COLUMN
+-- CHECK:                   EXPR
+-- CHECK:                       COLUMN
+-- CHECK:                         COLUMN foo
+-- CHECK:               FROM
+-- CHECK:                 JOIN
+-- CHECK:                   TABLE_OR_SUBQUERY
+-- CHECK:                     TABLE
+-- CHECK:                       NAME bar
+-- CHECK:   CTE_RECURSIVE false
+-- CHECK:   TABLE_NAME
+-- CHECK:     TABLE_NAME
+-- CHECK:       SCHEMA main
+-- CHECK:       NAME foo
+-- CHECK:   SETS
+-- CHECK:     SET_ACTION
+-- CHECK:       COLUMN
+-- CHECK:         SINGLE bar
+-- CHECK:       EXPR
+-- CHECK:         LITERAL 1.0
+-- CHECK:     SET_ACTION
+-- CHECK:       COLUMN
+-- CHECK:         SINGLE baz
+-- CHECK:       EXPR
+-- CHECK:         LITERAL 'two'
+-- CHECK:   WHERE_EXPR
+-- CHECK:     INFIX
+-- CHECK:       LHS
+-- CHECK:         COLUMN
+-- CHECK:           COLUMN bar
+-- CHECK:       OPERATOR >
+-- CHECK:       RHS
+-- CHECK:         LITERAL 2.0
+-- CHECK:   RETURNING_CLAUSE
+-- CHECK:     VALUES
+-- CHECK:       VALUE
+-- CHECK:         EXPR
+-- CHECK:           EXPR
+-- CHECK:             COLUMN
+-- CHECK:               COLUMN bar
+WITH foo AS (SELECT foo FROM bar)
+UPDATE foo SET bar = 1, baz = 'two'
+WHERE bar > 2
+RETURNING bar;

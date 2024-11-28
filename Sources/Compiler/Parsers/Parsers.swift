@@ -49,24 +49,23 @@ enum Parsers {
     ) throws -> InsertStmt.Action {
         let token = try state.take()
         
+        return switch token.kind {
+        case .replace: .replace
+        case .insert: try .insert(take(if: .or, state: &state, parse: or))
+        default:
+            throw ParsingError.unexpectedToken(of: token.kind, at: token.range)
+        }
+    }
+    
+    static func or(state: inout ParserState) throws -> Or {
+        try state.consume(.or)
+        let token = try state.take()
         switch token.kind {
-        case .replace:
-            return .replace
-        case .insert:
-            if try state.take(if: .or) {
-                let token = try state.take()
-                switch token.kind {
-                case .abort: return .insert(.abort)
-                case .fail: return .insert(.fail)
-                case .ignore: return .insert(.ignore)
-                case .replace: return .insert(.replace)
-                case .rollback: return .insert(.rollback)
-                default:
-                    throw ParsingError.unexpectedToken(of: token.kind, at: token.range)
-                }
-            } else {
-                return .insert(nil)
-            }
+        case .abort: return .abort
+        case .fail: return .fail
+        case .ignore: return .ignore
+        case .replace: return .replace
+        case .rollback: return .rollback
         default:
             throw ParsingError.unexpectedToken(of: token.kind, at: token.range)
         }
@@ -94,7 +93,7 @@ enum Parsers {
         try state.consume(.update)
         try state.consume(.set)
         
-        let sets = try delimited(by: .comma, state: &state, element: upsertClauseSet)
+        let sets = try delimited(by: .comma, state: &state, element: setAction)
         
         let whereExpr: Expression?
         if try state.take(if: .where) {
@@ -110,10 +109,10 @@ enum Parsers {
         )
     }
     
-    static func upsertClauseSet(
+    static func setAction(
         state: inout ParserState
-    ) throws -> UpsertClause.SetAction {
-        let column: UpsertClause.Column
+    ) throws -> SetAction {
+        let column: SetAction.Column
         if state.current.kind == .openParen {
             let columns = try parens(state: &state) { state in
                 try delimited(by: .comma, state: &state, element: identifier)
@@ -129,7 +128,7 @@ enum Parsers {
         let expr = try ExprParser()
             .parse(state: &state)
         
-        return UpsertClause.SetAction(column: column, expr: expr)
+        return SetAction(column: column, expr: expr)
     }
     
     static func conflictTarget(
@@ -171,6 +170,58 @@ enum Parsers {
         return ReturningClause(values: values, range: state.range(from: start))
     }
     
+    static func updateStmt(state: inout ParserState) throws -> UpdateStmt {
+        let start = state.range
+        let cte = try withCte(state: &state)
+        try state.consume(.update)
+        let or = try take(if: .or, state: &state, parse: or)
+        let tableName = try qualifiedTableName(state: &state)
+        try state.consume(.set)
+        let sets = try delimited(by: .comma, state: &state, element: setAction)
+        let from = try from(state: &state)
+        let whereExpr = try take(if: .where, state: &state) { state in
+            try state.consume(.where)
+            return try expr(state: &state)
+        }
+        let returningClause = try take(if: .returning, state: &state, parse: returningClause)
+        return UpdateStmt(
+            cte: cte.cte,
+            cteRecursive: cte.recursive,
+            or: or,
+            tableName: tableName,
+            sets: sets,
+            from: from,
+            whereExpr: whereExpr,
+            returningClause: returningClause,
+            range: state.range(from: start)
+        )
+    }
+    
+    static func qualifiedTableName(
+        state: inout ParserState
+    ) throws -> QualifiedTableName {
+        let tableName = try tableName(state: &state)
+        let alias = try take(if: .as, state: &state, parse: alias)
+        
+        let indexed: QualifiedTableName.Indexed?
+        if try state.take(if: .indexed) {
+            try state.consume(.by)
+            indexed = try .by(identifier(state: &state))
+        } else if try state.take(if: .not) {
+            try state.consume(.indexed)
+            indexed = .not
+        } else {
+            indexed = nil
+        }
+        
+        return QualifiedTableName(
+            tableName: tableName,
+            alias: alias,
+            indexed: indexed,
+            range: state.range(from: tableName.range)
+        )
+    }
+    
     /// https://www.sqlite.org/syntax/indexed-column.html
     static func indexedColumn(
         state: inout ParserState
@@ -204,6 +255,18 @@ enum Parsers {
         state: inout ParserState
     ) throws -> CommonTableExpression {
         return try CommonTableExprParser().parse(state: &state)
+    }
+    
+    static func from(state: inout ParserState) throws -> From? {
+        let output = try JoinClauseOrTableOrSubqueryParser()
+            .take(if: .from, consume: true)
+            .parse(state: &state)
+        
+        return switch output {
+        case .join(let joinClause): .join(joinClause)
+        case .tableOrSubqueries(let tableOrSubqueries): .tableOrSubqueries(tableOrSubqueries)
+        case nil: nil
+        }
     }
     
     /// https://www.sqlite.org/syntax/column-name-list.html

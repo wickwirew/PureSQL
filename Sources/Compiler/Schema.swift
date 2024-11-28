@@ -200,15 +200,6 @@ enum SelectCore: Equatable {
         }
     }
     
-    enum From: Equatable {
-        case tableOrSubqueries([TableOrSubquery])
-        case join(JoinClause)
-        
-        init(table: IdentifierSyntax) {
-            self = .join(JoinClause(table: table))
-        }
-    }
-    
     struct GroupBy: Equatable {
         let expressions: [Expression]
         let having: Expression?
@@ -596,6 +587,13 @@ struct TableName: Hashable, CustomStringConvertible {
             return name.description
         case .other(let schema):
             return "\(schema).\(name)"
+        }
+    }
+    
+    var range: Range<Substring.Index> {
+        return switch schema {
+        case .main: name.range
+        case .other(let schema): schema.range.lowerBound..<name.range.upperBound
         }
     }
     
