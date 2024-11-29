@@ -74,7 +74,7 @@ struct PrimaryExprParser: Parser {
     func parse(state: inout ParserState) throws -> Expression {
         switch state.current.kind {
         case .double, .string, .int, .hex, .currentDate, .currentTime, .currentTimestamp, .true, .false:
-            return .literal(try .parse(state: &state))
+            return .literal(try Parsers.literal(state: &state))
         case .symbol:
             let column = try QualifiedColumnParser()
                 .parse(state: &state)
@@ -109,8 +109,7 @@ struct PrimaryExprParser: Parser {
             let expr = try ExprParser()
                 .parse(state: &state)
             try state.consume(.as)
-            let type = try TypeNameParser()
-                .parse(state: &state)
+            let type = try Parsers.typeName(state: &state)
             try state.consume(.closeParen)
             return .cast(CastExpr(expr: expr, ty: type, range: state.range(from: start.range)))
         case .select:

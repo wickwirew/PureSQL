@@ -62,16 +62,6 @@ struct AlterTableStatement: Equatable, Statement {
     let schemaName: IdentifierSyntax?
     let kind: Kind
     
-    init(
-        name: IdentifierSyntax,
-        schemaName: IdentifierSyntax?,
-        kind: Kind
-    ) {
-        self.name = name
-        self.schemaName = schemaName
-        self.kind = kind
-    }
-    
     enum Kind: Equatable {
         case rename(IdentifierSyntax)
         case renameColumn(IdentifierSyntax, IdentifierSyntax)

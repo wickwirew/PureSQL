@@ -12,43 +12,43 @@ import XCTest
 /// Just tests for the smaller, less complex parsers that dont really need their own file.
 final class ParserTests: XCTestCase {
     func testTableOptions() throws {
-        try check(sqlFile: "TableOptions", parser: TableOptionsParser())
+        try check(sqlFile: "TableOptions", parse: Parsers.tableOptions)
     }
     
     func testConflictClause() throws {
-        try check(sqlFile: "ConflictClause", parser: ConfictClauseParser())
+        try check(sqlFile: "ConflictClause", parse: Parsers.conflictClause)
     }
     
     func testForeignKeyClause() throws {
-        try check(sqlFile: "ForeignKeyClause", parser: ForeignKeyClauseParser())
+        try check(sqlFile: "ForeignKeyClause", parse: Parsers.foreignKeyClause)
     }
     
     func testOrder() throws {
-        try check(sqlFile: "Order", parser: OrderParser())
+        try check(sqlFile: "Order", parse: Parsers.order)
     }
     
     func testColumnConstraint() throws {
-        try check(sqlFile: "ColumnConstraint", parser: ColumnConstraintParser())
+        try check(sqlFile: "ColumnConstraint", parse: { try Parsers.columnConstraint(state: &$0) })
     }
     
     func testColumnDefinition() throws {
-        try check(sqlFile: "ColumnDefinition", parser: ColumnDefinitionParser())
+        try check(sqlFile: "ColumnDefinition", parse: Parsers.columnDef)
     }
     
     func testAlterTable() throws {
-        try check(sqlFile: "AlterTable", parser: AlterTableParser())
+        try check(sqlFile: "AlterTable", parse: Parsers.alterStmt)
     }
     
     func testSignedNumber() throws {
-        try check(sqlFile: "SignedNumber", parser: SignedNumberParser())
+        try check(sqlFile: "SignedNumber", parse: Parsers.signedNumber)
     }
     
     func testTypeName() throws {
-        try check(sqlFile: "TypeName", parser: TypeNameParser())
+        try check(sqlFile: "TypeName", parse: Parsers.typeName)
     }
     
     func testCreateTable() throws {
-        try check(sqlFile: "CreateTable", parser: CreateTableParser())
+        try check(sqlFile: "CreateTable", parse: Parsers.createTableStmt)
     }
     
     func testBindParameter() throws {

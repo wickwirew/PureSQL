@@ -9,11 +9,9 @@ struct StmtParser: Parser {
     func parse(state: inout ParserState) throws -> any Statement {
         switch (state.current.kind, state.peek.kind) {
         case (.create, .table):
-            return try CreateTableParser()
-                .parse(state: &state)
+            return try Parsers.createTableStmt(state: &state)
         case (.alter, .table):
-            return try AlterTableParser()
-                .parse(state: &state)
+            return try Parsers.alterStmt(state: &state)
         case (.select, _):
             return try Parsers.selectStmt(state: &state)
         case (.semiColon, _), (.eof, _):
