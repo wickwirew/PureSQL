@@ -33,7 +33,7 @@ public struct QueryCompiler {
     }
     
     public mutating func compile(_ source: String) throws -> (CompiledQuery, Diagnostics) {
-        return try compile(SelectStmtParser().parse(source))
+        return try compile(Parsers.parse(source: source, parser: Parsers.selectStmt))
     }
     
     mutating func compile(_ select: SelectStmt) throws -> (CompiledQuery, Diagnostics) {

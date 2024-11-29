@@ -6,6 +6,14 @@
 //
 
 enum Parsers {
+    static func parse<Output>(
+        source: String,
+        parser: (inout ParserState) throws -> Output
+    ) throws -> Output {
+        var state = try ParserState(Lexer(source: source))
+        return try parser(&state)
+    }
+    
     static func insertStmt(state: inout ParserState) throws -> InsertStmt {
         let start = state.current
         let cte = try withCte(state: &state)
@@ -52,7 +60,7 @@ enum Parsers {
             try state.consume(.values)
             return nil
         } else {
-            let select = try SelectStmtParser().parse(state: &state)
+            let select = try selectStmt(state: &state)
             let upsertClause = state.current.kind == .on ? try upsertClause(state: &state) : nil
             return .init(select: select, upsertClause: upsertClause)
         }
@@ -287,9 +295,7 @@ enum Parsers {
             materialized = false
         }
         
-        let select = try SelectStmtParser()
-            .inParenthesis()
-            .parse(state: &state)
+        let select = try parens(state: &state, value: selectStmt)
         
         return CommonTableExpression(
             table: table,
@@ -400,6 +406,171 @@ enum Parsers {
         }
     }
     
+    static func selectStmt(state: inout ParserState) throws -> SelectStmt {
+        let start = state.current
+        let cte = try withCte(state: &state)
+        return try selectStmt(state: &state, start: start, cteRecursive: cte.recursive, cte: cte.cte)
+    }
+    
+    static func selectStmt(
+        state: inout ParserState,
+        start: Token,
+        cteRecursive: Bool,
+        cte: CommonTableExpression?
+    ) throws -> SelectStmt {
+        let cte: CommonTableExpression?
+        let cteRecursive: Bool
+        if try state.take(if: .with) {
+            cteRecursive = try state.take(if: .recursive)
+            cte = try Parsers.cte(state: &state)
+        } else {
+            cteRecursive = false
+            cte = nil
+        }
+        
+        let selects: [SelectCore]? = state.current.kind == .select || state.current.kind == .values
+            ? try Parsers.commaDelimited(state: &state, element: Parsers.selectCore)
+            : nil
+        
+        let orderBy = try orderingTerms(state: &state)
+        let limit = try limit(state: &state)
+        
+        return SelectStmt(
+            cte: cte,
+            cteRecursive: cteRecursive,
+            selects: .single(selects!.first!), // TODO: Fix this and do it properly
+            orderBy: orderBy,
+            limit: limit
+        )
+    }
+    
+    static func orderingTerms(state: inout ParserState) throws -> [OrderingTerm] {
+        guard try state.take(if: .order) else { return [] }
+        try state.consume(.by)
+        return try Parsers.commaDelimited(state: &state, element: Parsers.orderingTerm)
+    }
+    
+    static func limit(state: inout ParserState) throws -> SelectStmt.Limit? {
+        guard try state.take(if: .limit) else { return nil }
+        let expr = ExprParser()
+        
+        let first = try expr.parse(state: &state)
+        
+        switch state.current.kind {
+        case .comma:
+            try state.skip()
+            let second = try expr.parse(state: &state)
+            return SelectStmt.Limit(expr: second, offset: first)
+        case .offset:
+            try state.skip()
+            let offset = try expr.parse(state: &state)
+            return SelectStmt.Limit(expr: first, offset: offset)
+        default:
+            return SelectStmt.Limit(expr: first, offset: nil)
+        }
+    }
+    
+    static func orderingTerm(state: inout ParserState) throws -> OrderingTerm {
+        let expr = try ExprParser()
+            .parse(state: &state)
+        
+        let order: Order = if try state.take(if: .asc) {
+            .asc
+        } else if try state.take(if: .desc) {
+            .desc
+        } else {
+            .asc
+        }
+        
+        let nulls: OrderingTerm.Nulls? = if try state.take(if: .nulls) {
+            if try state.take(if: .first) {
+                .first
+            } else if try state.take(if: .last) {
+                .last
+            } else {
+                throw ParsingError.expected(.first, .last, at: state.range)
+            }
+        } else {
+            nil
+        }
+        
+        return OrderingTerm(expr: expr, order: order, nulls: nulls)
+    }
+    
+    static func selectCore(state: inout ParserState) throws -> SelectCore {
+        // Check if its values and to just get it out of the way
+        if try state.take(if: .values) {
+            return .values(
+                try ExprParser()
+                    .commaSeparated()
+                    .inParenthesis()
+                    .parse(state: &state)
+            )
+        }
+        
+        try state.consume(.select)
+        
+        let distinct = if try state.take(if: .distinct) {
+            true
+        } else if try state.take(if: .all) {
+            false
+        } else {
+            false
+        }
+        
+        let columns = try Parsers.commaDelimited(state: &state, element: Parsers.resultColumn)
+        
+        let from = try Parsers.from(state: &state)
+        
+        let `where` = try ExprParser()
+            .take(if: .where, consume: true)
+            .parse(state: &state)
+        
+        let groupBy = try groupBy(state: &state)
+        
+        let windows = try take(if: .window, state: &state) { state in
+            try state.consume(.window)
+            return try commaDelimited(state: &state, element: window)
+        }
+        
+        let select = SelectCore.Select(
+            distinct: distinct,
+            columns: columns,
+            from: from,
+            where: `where`,
+            groupBy: groupBy,
+            windows: windows ?? []
+        )
+        
+        return .select(select)
+    }
+    
+    static func groupBy(state: inout ParserState) throws -> SelectCore.GroupBy? {
+        guard try state.take(if: .group) else { return nil }
+        try state.consume(.by)
+        
+        let exprs = try ExprParser()
+            .commaSeparated()
+            .parse(state: &state)
+        
+        let having = try ExprParser()
+            .take(if: .having, consume: true)
+            .parse(state: &state)
+        
+        return SelectCore.GroupBy(expressions: exprs, having: having)
+    }
+    
+    static func window(state: inout ParserState) throws -> SelectCore.Window {
+        let name = try IdentifierParser().parse(state: &state)
+        try state.consume(.as)
+        let window = try windowDef(state: &state)
+        return SelectCore.Window(name: name, window: window)
+    }
+    
+    static func windowDef(state: inout ParserState) throws -> WindowDefinition {
+        fatalError("TODO")
+    }
+    
     enum JoinClauseOrTableOrSubqueries: Equatable {
         case join(JoinClause)
         case tableOrSubqueries([TableOrSubquery])
@@ -499,10 +670,7 @@ enum Parsers {
             }
         case .openParen:
             if state.peek.kind == .select {
-                let subquery = try SelectStmtParser()
-                    .inParenthesis()
-                    .parse(state: &state)
-                
+                let subquery = try parens(state: &state, value: selectStmt)
                 let alias = try maybeAlias(state: &state, asRequired: false)
                 return .subquery(subquery, alias: alias)
             } else {
@@ -521,11 +689,12 @@ enum Parsers {
         }
     }
     
-    static let joinOperatorStarts: Set<Token.Kind> = [.natural, .comma, .left, .right, .full, .inner, .cross, .join]
     static func joinClause(
         state: inout ParserState,
         tableOrSubquery: TableOrSubquery
     ) throws -> JoinClause {
+        let joinOperatorStarts: Set<Token.Kind> = [.natural, .comma, .left, .right, .full, .inner, .cross, .join]
+        
         var joins: [JoinClause.Join] = []
         while joinOperatorStarts.contains(state.current.kind) {
             try joins.append(join(state: &state))

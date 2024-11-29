@@ -64,7 +64,7 @@ final class ParserTests: XCTestCase {
     }
     
     func testSelectStmt() throws {
-        try check(sqlFile: "SelectStmt", parser: SelectStmtParser())
+        try check(sqlFile: "SelectStmt", parse: Parsers.selectStmt)
     }
     
     func testJoinConstraint() throws {
@@ -80,7 +80,7 @@ final class ParserTests: XCTestCase {
     }
     
     func testOrderingTerm() throws {
-        try check(sqlFile: "OrderingTerm", parser: OrderingTermParser())
+        try check(sqlFile: "OrderingTerm", parse: Parsers.orderingTerm)
     }
     
     func testResultColumn() throws {
