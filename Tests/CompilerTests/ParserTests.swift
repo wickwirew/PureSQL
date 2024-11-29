@@ -68,15 +68,15 @@ final class ParserTests: XCTestCase {
     }
     
     func testJoinConstraint() throws {
-        try check(sqlFile: "JoinConstraint", parser: JoinConstraintParser())
+        try check(sqlFile: "JoinConstraint", parse: Parsers.joinConstraint)
     }
     
     func testCommonTableExpression() throws {
-        try check(sqlFile: "CommonTableExpression", parser: CommonTableExprParser())
+        try check(sqlFile: "CommonTableExpression", parse: Parsers.cte)
     }
     
     func testJoinOperator() throws {
-        try check(sqlFile: "JoinOperator", parser: JoinOperatorParser())
+        try check(sqlFile: "JoinOperator", parse: Parsers.joinOperator)
     }
     
     func testOrderingTerm() throws {
@@ -84,15 +84,15 @@ final class ParserTests: XCTestCase {
     }
     
     func testResultColumn() throws {
-        try check(sqlFile: "ResultColumn", parser: ResultColumnParser())
+        try check(sqlFile: "ResultColumn", parse: Parsers.resultColumn)
     }
     
     func testTableOrSubquery() throws {
-        try check(sqlFile: "TableOrSubquery", parser: TableOrSubqueryParser())
+        try check(sqlFile: "TableOrSubquery", parse: Parsers.tableOrSubquery)
     }
     
     func testJoinClause() throws {
-        try check(sqlFile: "JoinClause", parser: JoinClauseOrTableOrSubqueryParser())
+        try check(sqlFile: "JoinClause", parse: Parsers.joinClauseOrTableOrSubqueries)
     }
     
     func testInsertStmt() throws {

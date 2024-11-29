@@ -6,21 +6,35 @@
 //
 
 enum Parsers {
-    /// https://www.sqlite.org/lang_insert.html
     static func insertStmt(state: inout ParserState) throws -> InsertStmt {
         let start = state.current
         let cte = try withCte(state: &state)
+        return try insertStmt(
+            state: &state,
+            start: start,
+            cteRecursive: cte.recursive,
+            cte: cte.cte
+        )
+    }
+    
+    /// https://www.sqlite.org/lang_insert.html
+    static func insertStmt(
+        state: inout ParserState,
+        start: Token,
+        cteRecursive: Bool,
+        cte: CommonTableExpression?
+    ) throws -> InsertStmt {
         let action = try insertAction(state: &state)
         try state.consume(.into)
         let tableName = try tableName(state: &state)
-        let alias = try take(if: .as, state: &state, parse: alias)
+        let alias = try maybeAlias(state: &state)
         let columns = try take(if: .openParen, state: &state, parse: columnNameList)
         let values = try insertValues(state: &state)
         let returningClause = try take(if: .returning, state: &state, parse: returningClause)
         
         return InsertStmt(
-            cte: cte.cte,
-            cteRecursive: cte.recursive,
+            cte: cte,
+            cteRecursive: cteRecursive,
             action: action,
             tableName: tableName,
             tableAlias: alias,
@@ -66,8 +80,7 @@ enum Parsers {
         case .ignore: return .ignore
         case .replace: return .replace
         case .rollback: return .rollback
-        default:
-            throw ParsingError.unexpectedToken(of: token.kind, at: token.range)
+        default: throw ParsingError.unexpectedToken(of: token.kind, at: token.range)
         }
     }
     
@@ -162,7 +175,7 @@ enum Parsers {
                 return .all
             } else {
                 let expr = try expr(state: &state)
-                let alias = try take(if: .as, state: &state, parse: alias)
+                let alias = try maybeAlias(state: &state)
                 return .expr(expr: expr, alias: alias)
             }
         }
@@ -201,7 +214,7 @@ enum Parsers {
         state: inout ParserState
     ) throws -> QualifiedTableName {
         let tableName = try tableName(state: &state)
-        let alias = try take(if: .as, state: &state, parse: alias)
+        let alias = try maybeAlias(state: &state)
         
         let indexed: QualifiedTableName.Indexed?
         if try state.take(if: .indexed) {
@@ -254,13 +267,115 @@ enum Parsers {
     static func cte(
         state: inout ParserState
     ) throws -> CommonTableExpression {
-        return try CommonTableExprParser().parse(state: &state)
+        let table = try identifier(state: &state)
+        
+        let columns = try take(if: .openParen, state: &state) { state in
+            try parens(state: &state) { state in
+                try delimited(by: .comma, state: &state, element: identifier)
+            }
+        }
+
+        try state.consume(.as)
+        
+        let materialized: Bool
+        if try state.take(if: .not) {
+            try state.consume(.materialized)
+            materialized = false
+        } else if try state.take(if: .materialized) {
+            materialized = true
+        } else {
+            materialized = false
+        }
+        
+        let select = try SelectStmtParser()
+            .inParenthesis()
+            .parse(state: &state)
+        
+        return CommonTableExpression(
+            table: table,
+            columns: columns ?? [],
+            materialized: materialized,
+            select: select
+        )
+    }
+    
+    static func joinConstraint(state: inout ParserState) throws -> JoinConstraint {
+        if try state.take(if: .on) {
+            return .on(
+                try ExprParser()
+                    .parse(state: &state)
+            )
+        } else if try state.take(if: .using) {
+            return .using(
+                try parens(state: &state) { state in
+                    try commaDelimited(state: &state, element: identifier)
+                }
+            )
+        } else {
+            return .none
+        }
+    }
+    
+    static func joinOperator(state: inout ParserState) throws -> JoinOperator {
+        let token = try state.take()
+        
+        switch token.kind {
+        case .comma: return .comma
+        case .join: return .join
+        case .natural:
+            let token = try state.take()
+            switch token.kind {
+            case .join: return .natural
+            case .left:
+                if try state.take(if: .outer) {
+                    try state.consume(.join)
+                    return .left(natural: true, outer: true)
+                } else {
+                    try state.consume(.join)
+                    return .left(natural: true)
+                }
+            case .right:
+                try state.consume(.join)
+                return .right(natural: true)
+            case .inner:
+                try state.consume(.join)
+                return .inner(natural: true)
+            case .full:
+                try state.consume(.join)
+                return .full(natural: true)
+            default:
+                throw ParsingError.expected(.left, .right, .inner, .join, at: state.current.range)
+            }
+        case .left:
+            if try state.take(if: .outer) {
+                try state.consume(.join)
+                return .left(outer: true)
+            } else {
+                try state.consume(.join)
+                return .left(outer: false)
+            }
+        case .right:
+            try state.consume(.join)
+            return .right()
+        case .inner:
+            try state.consume(.join)
+            return .inner()
+        case .cross:
+            try state.consume(.join)
+            return .cross
+        case .full:
+            try state.consume(.join)
+            return .full()
+        default:
+            throw ParsingError(description: "Invalid join operator", sourceRange: state.current.range)
+        }
     }
     
     static func from(state: inout ParserState) throws -> From? {
-        let output = try JoinClauseOrTableOrSubqueryParser()
-            .take(if: .from, consume: true)
-            .parse(state: &state)
+        let output = try take(if: .from, state: &state) { state in
+            try state.consume(.from)
+            return try joinClauseOrTableOrSubqueries(state: &state)
+        }
         
         return switch output {
         case .join(let joinClause): .join(joinClause)
@@ -285,9 +400,167 @@ enum Parsers {
         }
     }
     
-    static func alias(state: inout ParserState) throws -> IdentifierSyntax {
-        try state.consume(.as)
-        return try identifier(state: &state)
+    enum JoinClauseOrTableOrSubqueries: Equatable {
+        case join(JoinClause)
+        case tableOrSubqueries([TableOrSubquery])
+    }
+    
+    /// This isnt necessarily a part of the grammar, but there is abiguity when starting
+    /// a list of tables/subqueries or join clauses. Most likely the later but the the logic
+    /// is duplicated in SQLites docs for the parsing so this just centralizes it.
+    static func joinClauseOrTableOrSubqueries(
+        state: inout ParserState
+    ) throws -> JoinClauseOrTableOrSubqueries {
+        // Both begin with a table or subquery
+        let tableOrSubquery = try Parsers.tableOrSubquery(state: &state)
+        
+        if state.current.kind == .comma {
+            try state.skip()
+            
+            let more = try Parsers.commaDelimited(state: &state, element: Parsers.tableOrSubquery)
+            
+            return .tableOrSubqueries([tableOrSubquery] + more)
+        } else {
+            // No comma, we are in join clause
+            return .join(
+                try Parsers.joinClause(state: &state, tableOrSubquery: tableOrSubquery)
+            )
+        }
+    }
+    
+    static func resultColumn(state: inout ParserState) throws -> ResultColumn {
+        switch state.current.kind {
+        case .star:
+            try state.skip()
+            return .all(table: nil)
+        case .symbol(let table) where state.peek.kind == .dot && state.peek2.kind == .star:
+            let table = IdentifierSyntax(value: table, range: state.current.range)
+            try state.skip()
+            try state.consume(.dot)
+            try state.consume(.star)
+            return .all(table: table)
+        default:
+            let expr = try ExprParser()
+                .parse(state: &state)
+            
+            if try state.take(if: .as) {
+                let alias = try identifier(state: &state)
+                return .expr(expr, as: alias)
+            } else if case let .symbol(alias) = state.current.kind {
+                let alias = IdentifierSyntax(value: alias, range: state.current.range)
+                try state.skip()
+                return .expr(expr, as: alias)
+            } else {
+                return .expr(expr, as: nil)
+            }
+        }
+    }
+    
+    static func tableOrSubquery(state: inout ParserState) throws -> TableOrSubquery {
+        switch state.current.kind {
+        case .symbol:
+            let (schema, table) = try TableAndSchemaNameParser()
+                .parse(state: &state)
+            
+            if state.current.kind == .openParen {
+                let args = try ExprParser()
+                    .commaSeparated()
+                    .inParenthesis()
+                    .parse(state: &state)
+                
+                let alias = try maybeAlias(state: &state, asRequired: false)
+                
+                return .tableFunction(schema: schema, table: table, args: args, alias: alias)
+            } else {
+                let alias = try maybeAlias(state: &state, asRequired: false)
+                
+                let indexedBy: IdentifierSyntax?
+                switch state.current.kind {
+                case .indexed:
+                    try state.skip()
+                    try state.consume(.by)
+                    indexedBy = try identifier(state: &state)
+                case .not:
+                    try state.skip()
+                    try state.consume(.indexed)
+                    indexedBy = nil
+                default:
+                    indexedBy = nil
+                }
+                
+                let table = TableOrSubquery.Table(
+                    schema: schema,
+                    name: table,
+                    alias: alias,
+                    indexedBy: indexedBy
+                )
+                
+                return .table(table)
+            }
+        case .openParen:
+            if state.peek.kind == .select {
+                let subquery = try SelectStmtParser()
+                    .inParenthesis()
+                    .parse(state: &state)
+                
+                let alias = try maybeAlias(state: &state, asRequired: false)
+                return .subquery(subquery, alias: alias)
+            } else {
+                let result = try Parsers.parens(state: &state, value: Parsers.joinClauseOrTableOrSubqueries)
+                
+                switch result {
+                case .join(let joinClause):
+                    return .join(joinClause)
+                case .tableOrSubqueries(let table):
+                    let alias = try maybeAlias(state: &state, asRequired: false)
+                    return .subTableOrSubqueries(table, alias: alias)
+                }
+            }
+        default:
+            throw ParsingError(description: "Expected table or subquery", sourceRange: state.current.range)
+        }
+    }
+    
+    static let joinOperatorStarts: Set<Token.Kind> = [.natural, .comma, .left, .right, .full, .inner, .cross, .join]
+    static func joinClause(
+        state: inout ParserState,
+        tableOrSubquery: TableOrSubquery
+    ) throws -> JoinClause {
+        var joins: [JoinClause.Join] = []
+        while joinOperatorStarts.contains(state.current.kind) {
+            try joins.append(join(state: &state))
+        }
+        return JoinClause(tableOrSubquery: tableOrSubquery, joins: joins)
+    }
+    
+    static func join(state: inout ParserState) throws -> JoinClause.Join {
+        let op = try Parsers.joinOperator(state: &state)
+        
+        let tableOrSubquery = try Parsers.tableOrSubquery(state: &state)
+        
+        let constraint = try Parsers.joinConstraint(state: &state)
+        
+        return JoinClause.Join(
+            op: op,
+            tableOrSubquery: tableOrSubquery,
+            constraint: constraint
+        )
+    }
+    
+    /// Will try to parse out an alias
+    /// e.g. `AS foo`.
+    static func maybeAlias(
+        state: inout ParserState,
+        asRequired: Bool = true
+    ) throws -> IdentifierSyntax? {
+        if try state.take(if: .as) {
+            return try identifier(state: &state)
+        } else if !asRequired, case let .symbol(ident) = state.current.kind {
+            let tok = try state.take()
+            return IdentifierSyntax(value: ident, range: tok.range)
+        } else {
+            return nil
+        }
     }
     
     static func expr(state: inout ParserState) throws -> Expression {
@@ -301,6 +574,13 @@ enum Parsers {
     ) throws -> Output? {
         guard state.current.kind == kind else { return nil }
         return try parse(&state)
+    }
+    
+    static func commaDelimited<Element>(
+        state: inout ParserState,
+        element: (inout ParserState) throws -> Element
+    ) throws -> [Element] {
+        return try delimited(by: .comma, state: &state, element: element)
     }
     
     static func delimited<Element>(

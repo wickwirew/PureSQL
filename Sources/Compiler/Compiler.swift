@@ -64,28 +64,14 @@ public struct QueryCompiler {
     }
     
     private mutating func compile(_ select: SelectCore.Select) throws -> CompiledQuery {
-        switch select.from {
-        case .tableOrSubqueries(let t):
-            for table in t {
-                try compile(table)
-            }
-        case .join(let joinClause):
-            try compile(joinClause)
-        case nil:
-            break
+        if let from = select.from {
+            try compile(from: from)
         }
         
         let output = try compile(select.columns)
         
         if let whereExpr = select.where {
-            let type = try check(whereExpr)
-            
-            if type != .bool && type != .integer {
-                diagnositics.add(.init(
-                    "WHERE clause should return a 'BOOL' or 'INTEGER', got '\(type)'",
-                    at: whereExpr.range
-                ))
-            }
+            try compile(where: whereExpr)
         }
         
         if let groupBy = select.groupBy {
@@ -106,6 +92,28 @@ public struct QueryCompiler {
         }
         
         return CompiledQuery(inputs: inputs, output: output)
+    }
+    
+    private mutating func compile(from: From) throws {
+        switch from {
+        case .tableOrSubqueries(let t):
+            for table in t {
+                try compile(table)
+            }
+        case .join(let joinClause):
+            try compile(joinClause)
+        }
+    }
+    
+    private mutating func compile(where expr: Expression) throws {
+        let type = try check(expr)
+        
+        if type != .bool && type != .integer {
+            diagnositics.add(.init(
+                "WHERE clause should return a 'BOOL' or 'INTEGER', got '\(type)'",
+                at: expr.range
+            ))
+        }
     }
     
     private mutating func compile(_ resultColumns: [ResultColumn]) throws -> Ty {
