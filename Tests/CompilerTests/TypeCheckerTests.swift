@@ -169,7 +169,7 @@ class TypeCheckerTests: XCTestCase {
     }
     
     private func solution(for source: String, in scope: Environment = Environment()) throws -> Solution {
-        let expr = try ExprParser().parse(source)
+        let expr = try Parsers.parse(source: source, parser: { try Parsers.expr(state: &$0) })
         var typeChecker = TypeChecker(env: scope)
         let (solution, diag) = typeChecker.check(expr)
         for d in diag.diagnostics {

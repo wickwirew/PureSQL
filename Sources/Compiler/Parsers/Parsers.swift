@@ -148,8 +148,7 @@ enum Parsers {
         
         try state.consume(.equal)
         
-        let expr = try ExprParser()
-            .parse(state: &state)
+        let expr = try Parsers.expr(state: &state)
         
         return SetAction(column: column, expr: expr)
     }
@@ -310,8 +309,7 @@ enum Parsers {
     static func joinConstraint(state: inout ParserState) throws -> JoinConstraint {
         if try state.take(if: .on) {
             return .on(
-                try ExprParser()
-                    .parse(state: &state)
+                try Parsers.expr(state: &state)
             )
         } else if try state.take(if: .using) {
             return .using(
@@ -449,18 +447,16 @@ enum Parsers {
     
     static func limit(state: inout ParserState) throws -> SelectStmt.Limit? {
         guard try state.take(if: .limit) else { return nil }
-        let expr = ExprParser()
-        
-        let first = try expr.parse(state: &state)
+        let first = try expr(state: &state)
         
         switch state.current.kind {
         case .comma:
             try state.skip()
-            let second = try expr.parse(state: &state)
+            let second = try expr(state: &state)
             return SelectStmt.Limit(expr: second, offset: first)
         case .offset:
             try state.skip()
-            let offset = try expr.parse(state: &state)
+            let offset = try expr(state: &state)
             return SelectStmt.Limit(expr: first, offset: offset)
         default:
             return SelectStmt.Limit(expr: first, offset: nil)
@@ -468,8 +464,7 @@ enum Parsers {
     }
     
     static func orderingTerm(state: inout ParserState) throws -> OrderingTerm {
-        let expr = try ExprParser()
-            .parse(state: &state)
+        let expr = try expr(state: &state)
         
         let order: Order = if try state.take(if: .asc) {
             .asc
@@ -498,10 +493,7 @@ enum Parsers {
         // Check if its values and to just get it out of the way
         if try state.take(if: .values) {
             return .values(
-                try ExprParser()
-                    .commaSeparated()
-                    .inParenthesis()
-                    .parse(state: &state)
+                try commaDelimitedInParens(state: &state) { try Parsers.expr(state: &$0) }
             )
         }
         
@@ -519,9 +511,10 @@ enum Parsers {
         
         let from = try from(state: &state)
         
-        let `where` = try ExprParser()
-            .take(if: .where, consume: true)
-            .parse(state: &state)
+        let `where` = try take(if: .where, state: &state) { state in
+            try state.consume(.where)
+            return try Parsers.expr(state: &state)
+        }
         
         let groupBy = try groupBy(state: &state)
         
@@ -546,13 +539,12 @@ enum Parsers {
         guard try state.take(if: .group) else { return nil }
         try state.consume(.by)
         
-        let exprs = try ExprParser()
-            .commaSeparated()
-            .parse(state: &state)
+        let exprs = try commaDelimited(state: &state) { try Parsers.expr(state: &$0) }
         
-        let having = try ExprParser()
-            .take(if: .having, consume: true)
-            .parse(state: &state)
+        let having = try take(if: .having, state: &state) { state in
+            try state.consume(.having)
+            return try Parsers.expr(state: &state)
+        }
         
         return SelectCore.GroupBy(expressions: exprs, having: having)
     }
@@ -608,8 +600,7 @@ enum Parsers {
             try state.consume(.star)
             return .all(table: table)
         default:
-            let expr = try ExprParser()
-                .parse(state: &state)
+            let expr = try expr(state: &state)
             
             if try state.take(if: .as) {
                 let alias = try identifier(state: &state)
@@ -630,13 +621,8 @@ enum Parsers {
             let (schema, table) = try tableAndSchemaName(state: &state)
             
             if state.current.kind == .openParen {
-                let args = try ExprParser()
-                    .commaSeparated()
-                    .inParenthesis()
-                    .parse(state: &state)
-                
+                let args = try commaDelimitedInParens(state: &state) { try expr(state: &$0) }
                 let alias = try maybeAlias(state: &state, asRequired: false)
-                
                 return .tableFunction(schema: schema, table: table, args: args, alias: alias)
             } else {
                 let alias = try maybeAlias(state: &state, asRequired: false)
@@ -898,16 +884,12 @@ enum Parsers {
             return ColumnConstraint(name: name, kind: .unique(conflictClause))
         case .check:
             try state.skip()
-            let expr = try ExprParser()
-                .inParenthesis()
-                .parse(state: &state)
+            let expr = try parens(state: &state) { try Parsers.expr(state: &$0) }
             return ColumnConstraint(name: name, kind: .check(expr))
         case .default:
             try state.skip()
             if state.current.kind == .openParen {
-                let expr = try ExprParser()
-                    .inParenthesis()
-                    .parse(state: &state)
+                let expr = try parens(state: &state) { try Parsers.expr(state: &$0) }
                 return ColumnConstraint(name: name, kind: .default(expr))
             } else {
                 let literal = try Parsers.literal(state: &state)
@@ -924,21 +906,13 @@ enum Parsers {
             try state.skip()
             try state.consume(.always)
             try state.consume(.as)
-            
-            let expr = try ExprParser()
-                .inParenthesis()
-                .parse(state: &state)
-            
+            let expr = try parens(state: &state) { try Parsers.expr(state: &$0) }
             let generated = try parseGeneratedKind(state: &state)
             
             return ColumnConstraint(name: name, kind: .generated(expr, generated))
         case .as:
-            let expr = try ExprParser()
-                .inParenthesis()
-                .parse(state: &state)
-            
+            let expr = try parens(state: &state) { try Parsers.expr(state: &$0) }
             let generated = try parseGeneratedKind(state: &state)
-            
             return ColumnConstraint(name: name, kind: .generated(expr, generated))
         default:
             throw ParsingError.unexpectedToken(of: state.current.kind, at: state.current.range)
@@ -1091,8 +1065,147 @@ enum Parsers {
         }
     }
     
-    static func expr(state: inout ParserState) throws -> Expression {
-        return try ExprParser().parse(state: &state)
+    static func expr(
+        state: inout ParserState,
+        precedence: Operator.Precedence = 0
+    ) throws -> Expression {
+        var expr = try PrimaryExprParser(precedence: precedence)
+            .parse(state: &state)
+        
+        while true {
+            // If the lhs was a column refernce with no table/schema and we are
+            // at an open paren treat as a function call.
+            if state.is(of: .openParen), case let .column(column) = expr, column.schema == nil {
+                let args = try commaDelimitedInParens(state: &state) { try Parsers.expr(state: &$0) }
+                return .fn(FunctionExpr(table: column.table, name: column.column, args: args, range: state.range(from: expr.range)))
+            }
+            
+            guard let op = Operator.guess(for: state.current.kind, after: state.peek.kind),
+                  op.precedence(usage: .infix) >= precedence else {
+                return expr
+            }
+            
+            // The between operator is a different one. It doesnt act like a
+            // normal infix expression. There are two rhs expressions for the
+            // lower and upper bounds. Those need to be parsed individually
+            //
+            // TODO: Move this to the Infix Parser
+            if op == .between || op == .not(.between) {
+                let op = try Parsers.operator(state: &state)
+                assert(op.operator == .between || op.operator == .not(.between), "Guess cannot be wrong")
+                
+                // We need to dispatch the lower and upper bound expr's with a
+                // precedence above AND so the AND is not included in the expr.
+                // e.g. (a BETWEEN b AND C) not (a BETWEEN (b AND c))
+                let precAboveAnd = Operator.and.precedence(usage: .infix) + 1
+                let lowerBound = try Parsers.expr(state: &state, precedence: precAboveAnd)
+                try state.consume(.and)
+                let upperBound = try Parsers.expr(state: &state, precedence: precAboveAnd)
+                expr = .between(BetweenExpr(not: op.operator == .not(.between), value: expr, lower: lowerBound, upper: upperBound))
+            } else {
+                expr = try InfixExprParser(lhs: expr)
+                    .parse(state: &state)
+            }
+        }
+        
+        return expr
+    }
+    
+    static func columnExpr(state: inout ParserState) throws -> ColumnExpr {
+        let symbol = IdentifierParser()
+        
+        let first = try symbol.parse(state: &state)
+        
+        if try state.take(if: .dot) {
+            let second = try symbol.parse(state: &state)
+            
+            if try state.take(if: .dot) {
+                return ColumnExpr(schema: first, table: second, column: try symbol.parse(state: &state))
+            } else {
+                return ColumnExpr(schema: nil, table: first, column: second)
+            }
+        } else {
+            return ColumnExpr(schema: nil, table: nil, column: first)
+        }
+    }
+    
+    /// https://www.sqlite.org/c3ref/bind_blob.html
+    static func bindParameter(state: inout ParserState) throws -> BindParameter {
+        let token = try state.take()
+        
+        switch token.kind {
+        case .questionMark:
+            return BindParameter(kind: .unnamed(state.nextParameterIndex()), range: token.range)
+        case .colon:
+            let symbol = try identifier(state: &state)
+            let range = token.range.lowerBound..<symbol.range.upperBound
+            return BindParameter(kind: .named(.init(value: ":\(symbol)", range: range)), range: range)
+        case .at:
+            let symbol = try identifier(state: &state)
+            let range = token.range.lowerBound..<symbol.range.upperBound
+            return BindParameter(kind: .named(.init(value: "@\(symbol)", range: range)), range: range)
+        case .dollarSign:
+            let segments = try IdentifierParser()
+                .separated(by: .colon, and: .colon)
+                .parse(state: &state)
+            
+            let nameRange = token.range.lowerBound..<(segments.last?.range.upperBound ?? state.current.range.upperBound)
+            
+            let fullName = segments.map(\.value)
+                .joined(separator: "::")[...]
+            
+            let suffix = try IdentifierParser()
+                .inParenthesis()
+                .take(if: .openParen)
+                .parse(state: &state)
+            
+            if let suffix {
+                let range = token.range.lowerBound..<suffix.range.upperBound
+                let ident = IdentifierSyntax(value: "$\(fullName)(\(suffix))", range: range)
+                return BindParameter(kind: .named(ident), range: range)
+            } else {
+                let ident = IdentifierSyntax(value: "$\(fullName)", range: nameRange)
+                return BindParameter(kind: .named(ident), range: nameRange)
+            }
+        default:
+            throw ParsingError(description: "Invalid bind parameter", sourceRange: token.range)
+        }
+    }
+    
+    static func `operator`(state: inout ParserState) throws -> OperatorSyntax {
+        guard let op = Operator.guess(
+            for: state.current.kind,
+            after: state.peek.kind
+        ) else {
+            throw ParsingError(description: "Invalid operator", sourceRange: state.range)
+        }
+        
+        let start = state.current.range
+        try op.skip(state: &state)
+        
+        switch op {
+        case .tilde, .collate, .concat, .arrow, .doubleArrow, .multiply, .divide,
+             .mod, .plus, .minus, .bitwiseAnd, .bitwuseOr, .shl, .shr, .escape,
+             .lt, .gt, .lte, .gte, .eq, .eq2, .neq, .neq2, .match, .like, .regexp,
+             .glob, .or, .and, .between, .not, .in, .isnull, .notnull, .notNull, .isDistinctFrom:
+            return OperatorSyntax(operator: op, range: start)
+        case .`is`:
+            if try state.take(if: .distinct) {
+                let from = try state.take(.from)
+                return OperatorSyntax(operator: .isDistinctFrom, range: start.lowerBound..<from.range.upperBound)
+            } else {
+                return OperatorSyntax(operator: .is, range: start)
+            }
+        case .isNot:
+            if try state.take(if: .distinct) {
+                let from = try state.take(.from)
+                return OperatorSyntax(operator: .isNotDistinctFrom, range: start.lowerBound..<from.range.upperBound)
+            } else {
+                return OperatorSyntax(operator: .isNot, range: start.lowerBound..<state.current.range.upperBound)
+            }
+        case .isNotDistinctFrom:
+            fatalError("guess will not return these since the look ahead is only 2")
+        }
     }
     
     static func take<Output>(
@@ -1104,11 +1217,29 @@ enum Parsers {
         return try parse(&state)
     }
     
+    static func take<Output>(
+        ifNot kind: Token.Kind,
+        state: inout ParserState,
+        parse: (inout ParserState) throws -> Output
+    ) throws -> Output? {
+        guard state.current.kind != kind else { return nil }
+        return try parse(&state)
+    }
+    
     static func commaDelimited<Element>(
         state: inout ParserState,
         element: (inout ParserState) throws -> Element
     ) throws -> [Element] {
         return try delimited(by: .comma, state: &state, element: element)
+    }
+    
+    static func commaDelimitedInParens<Element>(
+        state: inout ParserState,
+        element: (inout ParserState) throws -> Element
+    ) throws -> [Element] {
+        return try parens(state: &state) { state in
+            try commaDelimited(state: &state, element: element)
+        }
     }
     
     static func delimited<Element>(

@@ -52,15 +52,15 @@ final class ParserTests: XCTestCase {
     }
     
     func testBindParameter() throws {
-        try check(sqlFile: "BindParameter", parser: BindParameterParser())
+        try check(sqlFile: "BindParameter", parse: Parsers.bindParameter)
     }
     
     func testOpertators() throws {
-        try check(sqlFile: "Operators", parser: OperatorParser())
+        try check(sqlFile: "Operators", parse: Parsers.operator)
     }
     
     func testExpression() throws {
-        try check(sqlFile: "Expression", parser: ExprParser())
+        try check(sqlFile: "Expression", parse: { try Parsers.expr(state: &$0) })
     }
     
     func testSelectStmt() throws {
