@@ -1065,12 +1065,12 @@ enum Parsers {
         }
     }
     
+    /// https://www.sqlite.org/syntax/expr.html
     static func expr(
         state: inout ParserState,
         precedence: Operator.Precedence = 0
     ) throws -> Expression {
-        var expr = try PrimaryExprParser(precedence: precedence)
-            .parse(state: &state)
+        var expr = try primaryExpr(state: &state, precedence: precedence)
         
         while true {
             // If the lhs was a column refernce with no table/schema and we are
@@ -1103,12 +1103,100 @@ enum Parsers {
                 let upperBound = try Parsers.expr(state: &state, precedence: precAboveAnd)
                 expr = .between(BetweenExpr(not: op.operator == .not(.between), value: expr, lower: lowerBound, upper: upperBound))
             } else {
-                expr = try InfixExprParser(lhs: expr)
-                    .parse(state: &state)
+                expr = try infixExpr(state: &state, lhs: expr)
             }
         }
         
         return expr
+    }
+    
+    /// https://www.sqlite.org/syntax/expr.html
+    static func primaryExpr(
+        state: inout ParserState,
+        precedence: Operator.Precedence
+    ) throws -> Expression {
+        switch state.current.kind {
+        case .double, .string, .int, .hex, .currentDate, .currentTime, .currentTimestamp, .true, .false:
+            return .literal(try Parsers.literal(state: &state))
+        case .symbol:
+            let column = try Parsers.columnExpr(state: &state)
+            return .column(column)
+        case .questionMark, .colon, .dollarSign, .at:
+            return try .bindParameter(Parsers.bindParameter(state: &state))
+        case .plus:
+            let token = try state.take()
+            let op = OperatorSyntax(operator: .plus, range: token.range)
+            return try .prefix(PrefixExpr(operator: op, rhs: Parsers.expr(state: &state, precedence: precedence)))
+        case .tilde:
+            let token = try state.take()
+            let op = OperatorSyntax(operator: .tilde, range: token.range)
+            return try .prefix(PrefixExpr(operator: op, rhs: Parsers.expr(state: &state, precedence: precedence)))
+        case .minus:
+            let token = try state.take()
+            let op = OperatorSyntax(operator: .minus, range: token.range)
+            return try .prefix(PrefixExpr(operator: op, rhs: Parsers.expr(state: &state, precedence: precedence)))
+        case .null:
+            let token = try state.take()
+            return .literal(LiteralExpr(kind: .null, range: token.range))
+        case .openParen:
+            let start = state.current.range
+            let expr = try Parsers.parens(state: &state) { state in
+                try Parsers.commaDelimited(state: &state) { try Parsers.expr(state: &$0) }
+            }
+            return .grouped(GroupedExpr(exprs: expr, range: state.range(from: start)))
+        case .cast:
+            let start = try state.take()
+            try state.consume(.openParen)
+            let expr = try Parsers.expr(state: &state)
+            try state.consume(.as)
+            let type = try Parsers.typeName(state: &state)
+            try state.consume(.closeParen)
+            return .cast(CastExpr(expr: expr, ty: type, range: state.range(from: start.range)))
+        case .select:
+            fatalError("TODO: Not yet implemented")
+        case .exists:
+            fatalError("TODO: Do when select is done")
+        case .case:
+            let start = try state.take()
+            let `case` = try Parsers.take(ifNot: .when, state: &state) { try Parsers.expr(state: &$0) }
+            
+            var whenThens: [CaseWhenThenExpr.WhenThen] = []
+            while state.current.kind == .when {
+                try whenThens.append(Parsers.whenThen(state: &state))
+            }
+            
+            let el: Expression? = if try state.take(if: .else) {
+                try Parsers.expr(state: &state)
+            } else {
+                nil
+            }
+            
+            try state.consume(.end)
+            
+            return .caseWhenThen(.init(case: `case`, whenThen: whenThens, else: el, range: state.range(from: start.range)))
+        default:
+            throw ParsingError(description: "Expected Expression", sourceRange: state.range)
+        }
+    }
+    
+    static func infixExpr(
+        state: inout ParserState,
+        lhs: Expression
+    ) throws -> Expression {
+        let op = try Parsers.operator(state: &state)
+        
+        switch op.operator {
+        case .isnull, .notnull, .notNull, .collate:
+            return .postfix(PostfixExpr(lhs: lhs, operator: op))
+        default: break
+        }
+        
+        let rhs = try Parsers.expr(
+            state: &state,
+            precedence: op.operator.precedence(usage: .infix) + 1
+        )
+        
+        return .infix(InfixExpr(lhs: lhs, operator: op, rhs: rhs))
     }
     
     static func columnExpr(state: inout ParserState) throws -> ColumnExpr {
@@ -1127,6 +1215,14 @@ enum Parsers {
         } else {
             return ColumnExpr(schema: nil, table: nil, column: first)
         }
+    }
+    
+    static func whenThen(state: inout ParserState) throws -> CaseWhenThenExpr.WhenThen {
+        try state.consume(.when)
+        let when = try Parsers.expr(state: &state)
+        try state.consume(.then)
+        let then = try Parsers.expr(state: &state)
+        return CaseWhenThenExpr.WhenThen(when: when, then: then)
     }
     
     /// https://www.sqlite.org/c3ref/bind_blob.html

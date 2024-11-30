@@ -463,6 +463,30 @@ enum Operator: Equatable {
             || self == .glob
     }
     
+    var words: Int {
+        return switch self {
+        case .collate, .isNot, .not(.some), .notNull: 2
+        case .isDistinctFrom: 3
+        case .isNotDistinctFrom: 4
+        default: 1
+        }
+    }
+    
+    /// Advances the parser past this operator
+    func skip(state: inout ParserState) throws {
+        for _ in 0..<words {
+            try state.skip()
+        }
+    }
+    
+    static func precedence(
+        for kind: Token.Kind,
+        after: Token.Kind,
+        usage: Operator.Usage
+    ) -> Operator.Precedence? {
+        return guess(for: kind, after: after)?.precedence(usage: usage)
+    }
+    
     /// Gets the precedence for the operator in the given usage. If the operator
     /// is not valid for the usage then `nil` is returned.
     ///
@@ -495,6 +519,88 @@ enum Operator: Equatable {
             case .collate: 11
             default: 0
             }
+        }
+    }
+    
+    /// Gives a guess as to what the operator is. This seems weird, cause when
+    /// would you ever need to guess. Well when checking the precedence of the
+    /// next operator we need to get the next operator. We don't have infinite look
+    /// ahead but we only need the first 2 to get an operator close enough in the
+    /// same precedence group.
+    ///
+    /// Example:
+    /// `IS NOT DISTINCT FROM` will return `IS NOT`, which is in the same precendence group.
+    /// https://www.sqlite.org/lang_expr.html
+    static func guess(
+        for kind: Token.Kind,
+        after: Token.Kind
+    ) -> Operator? {
+        switch kind {
+        case .tilde: return .tilde
+        case .plus: return .plus
+        case .minus: return .minus
+        case .concat: return .concat
+        case .arrow: return .arrow
+        case .doubleArrow: return .doubleArrow
+        case .star: return .multiply
+        case .divide: return .divide
+        case .cast: return .mod
+        case .ampersand: return .bitwiseAnd
+        case .pipe: return .bitwuseOr
+        case .shiftLeft: return .shl
+        case .shiftRight: return .shr
+        case .escape: return .escape
+        case .lt: return .lt
+        case .gt: return .gt
+        case .lte: return .lte
+        case .gte: return .gte
+        case .equal: return .eq
+        case .doubleEqual: return .eq2
+        case .notEqual: return .neq
+        case .notEqual2: return .neq2
+        case .and: return .and
+        case .`in`: return .`in`
+        case .match: return .match
+        case .like: return .like
+        case .regexp: return .regexp
+        case .glob: return .glob
+        case .isnull: return .isnull
+        case .is:
+            if after == .distinct {
+                return .isDistinctFrom
+            } else if after == .not {
+                return .isNot
+            } else {
+                return .is
+            }
+        case .notnull: return .notnull
+        case .or: return .or
+        case .between: return .between
+        case .modulo: return .mod
+        case .collate:
+            guard case let .symbol(collation) = after else {
+                return nil
+            }
+            return .collate(collation)
+        case .not:
+            if after == .null {
+                return .notNull
+            } else if after == .between {
+                return .not(.between)
+            } else if after == .in {
+                return .not(.in)
+            } else if after == .match {
+                return .not(.match)
+            } else if after == .like {
+                return .not(.like)
+            } else if after == .regexp {
+                return .not(.regexp)
+            } else if after == .glob {
+                return .not(.glob)
+            } else {
+                return nil
+            }
+        default: return nil
         }
     }
 }
