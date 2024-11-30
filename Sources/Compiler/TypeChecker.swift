@@ -710,13 +710,13 @@ extension TypeChecker: ExprVisitor {
 
 public typealias Schema = OrderedDictionary<Substring, Ty>
 
-public struct SchemaCompiler: StatementVisitor {
+public struct SchemaCompiler: StmtVisitor {
     private var schema = Schema()
     private var diagnostics = Diagnostics()
     
     public init() {}
     
-    consuming func compile(_ stmts: [Statement]) -> (Schema, Diagnostics) {
+    consuming func compile(_ stmts: [Stmt]) -> (Schema, Diagnostics) {
         for stmt in stmts {
             guard let (name, ty) = stmt.accept(visitor: &self) else { continue }
             schema[name] = ty
@@ -730,7 +730,7 @@ public struct SchemaCompiler: StatementVisitor {
         return compile(statements)
     }
     
-    mutating func visit(_ stmt: borrowing CreateTableStatement) -> (Substring, Ty)? {
+    mutating func visit(_ stmt: borrowing CreateTableStmt) -> (Substring, Ty)? {
         switch stmt.kind {
         case .select(let selectStmt):
             var typeChecker = TypeChecker(env: Environment())
@@ -743,7 +743,7 @@ public struct SchemaCompiler: StatementVisitor {
         }
     }
     
-    mutating func visit(_ stmt: borrowing AlterTableStatement) -> (Substring, Ty)? {
+    mutating func visit(_ stmt: borrowing AlterTableStmt) -> (Substring, Ty)? {
         guard let ty = schema[stmt.name.value] else {
             diagnostics.add(.init("Table '\(stmt.name)' does not exist", at: stmt.name.range))
             return nil
@@ -773,7 +773,7 @@ public struct SchemaCompiler: StatementVisitor {
         return nil
     }
     
-    mutating func visit(_ stmt: borrowing EmptyStatement) -> (Substring, Ty)? {
+    mutating func visit(_ stmt: borrowing EmptyStmt) -> (Substring, Ty)? {
         return nil
     }
     

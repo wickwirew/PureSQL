@@ -16,16 +16,16 @@ enum Parsers {
         return try parser(&state)
     }
     
-    static func parse(source: String) throws -> [any Statement] {
+    static func parse(source: String) throws -> [any Stmt] {
         var state = try ParserState(Lexer(source: source))
         return try stmts(state: &state)
     }
     
-    static func stmts(state: inout ParserState) throws -> [any Statement] {
+    static func stmts(state: inout ParserState) throws -> [any Stmt] {
         return try delimited(by: .semiColon, state: &state, element: stmt)
     }
     
-    static func stmt(state: inout ParserState) throws -> any Statement {
+    static func stmt(state: inout ParserState) throws -> any Stmt {
         switch (state.current.kind, state.peek.kind) {
         case (.create, .table):
             return try Parsers.createTableStmt(state: &state)
@@ -35,7 +35,7 @@ enum Parsers {
             return try Parsers.selectStmt(state: &state)
         case (.semiColon, _), (.eof, _):
             try state.skip()
-            return EmptyStatement()
+            return EmptyStmt()
         default:
             throw ParsingError.unexpectedToken(of: state.current.kind, at: state.current.range)
         }
@@ -275,7 +275,7 @@ enum Parsers {
     ) throws -> IndexedColumn {
         let expr = try expr(state: &state)
         
-        let collation: IdentifierSyntax?
+        let collation: Identifier?
         if try state.take(if: .collate) {
             collation = try identifier(state: &state)
         } else {
@@ -416,7 +416,7 @@ enum Parsers {
     }
     
     /// https://www.sqlite.org/syntax/column-name-list.html
-    static func columnNameList(state: inout ParserState) throws -> [IdentifierSyntax] {
+    static func columnNameList(state: inout ParserState) throws -> [Identifier] {
         return try parens(state: &state) { state in
             try delimited(by: .comma, state: &state, element: identifier)
         }
@@ -427,7 +427,7 @@ enum Parsers {
         return TableName(schema: names.schema, name: names.table)
     }
     
-    static func tableAndSchemaName(state: inout ParserState) throws -> (schema: IdentifierSyntax?, table: IdentifierSyntax) {
+    static func tableAndSchemaName(state: inout ParserState) throws -> (schema: Identifier?, table: Identifier) {
         let first = try identifier(state: &state)
         if try state.take(if: .dot) {
             return (first, try identifier(state: &state))
@@ -619,7 +619,7 @@ enum Parsers {
             try state.skip()
             return .all(table: nil)
         case .symbol(let table) where state.peek.kind == .dot && state.peek2.kind == .star:
-            let table = IdentifierSyntax(value: table, range: state.current.range)
+            let table = Identifier(value: table, range: state.current.range)
             try state.skip()
             try state.consume(.dot)
             try state.consume(.star)
@@ -631,7 +631,7 @@ enum Parsers {
                 let alias = try identifier(state: &state)
                 return .expr(expr, as: alias)
             } else if case let .symbol(alias) = state.current.kind {
-                let alias = IdentifierSyntax(value: alias, range: state.current.range)
+                let alias = Identifier(value: alias, range: state.current.range)
                 try state.skip()
                 return .expr(expr, as: alias)
             } else {
@@ -652,7 +652,7 @@ enum Parsers {
             } else {
                 let alias = try maybeAlias(state: &state, asRequired: false)
                 
-                let indexedBy: IdentifierSyntax?
+                let indexedBy: Identifier?
                 switch state.current.kind {
                 case .indexed:
                     try state.skip()
@@ -728,12 +728,12 @@ enum Parsers {
     static func maybeAlias(
         state: inout ParserState,
         asRequired: Bool = true
-    ) throws -> IdentifierSyntax? {
+    ) throws -> Identifier? {
         if try state.take(if: .as) {
             return try identifier(state: &state)
         } else if !asRequired, case let .symbol(ident) = state.current.kind {
             let tok = try state.take()
-            return IdentifierSyntax(value: ident, range: tok.range)
+            return Identifier(value: ident, range: tok.range)
         } else {
             return nil
         }
@@ -788,15 +788,15 @@ enum Parsers {
         }
     }
     
-    static func alterStmt(state: inout ParserState) throws -> AlterTableStatement {
+    static func alterStmt(state: inout ParserState) throws -> AlterTableStmt {
         try state.consume(.alter)
         try state.consume(.table)
         let names = try tableAndSchemaName(state: &state)
         let kind = try alterKind(state: &state)
-        return AlterTableStatement(name: names.table, schemaName: names.schema, kind: kind)
+        return AlterTableStmt(name: names.table, schemaName: names.schema, kind: kind)
     }
     
-    static func alterKind(state: inout ParserState) throws -> AlterTableStatement.Kind {
+    static func alterKind(state: inout ParserState) throws -> AlterTableStmt.Kind {
         let token = try state.take()
         
         switch token.kind {
@@ -826,7 +826,7 @@ enum Parsers {
         }
     }
     
-    static func createTableStmt(state: inout ParserState) throws -> CreateTableStatement {
+    static func createTableStmt(state: inout ParserState) throws -> CreateTableStmt {
         try state.consume(.create)
         let isTemporary = try state.take(if: .temp, or: .temporary)
         try state.consume(.table)
@@ -842,14 +842,14 @@ enum Parsers {
         } else {
             let (schema, table) = try Parsers.tableAndSchemaName(state: &state)
             
-            let columns: OrderedDictionary<IdentifierSyntax, ColumnDef> = try parens(state: &state) { state in
+            let columns: OrderedDictionary<Identifier, ColumnDef> = try parens(state: &state) { state in
                 try commaDelimited(state: &state, element: columnDef)
                     .reduce(into: [:], { $0[$1.name] = $1 })
             }
             
             let options = try Parsers.tableOptions(state: &state)
             
-            return CreateTableStatement(
+            return CreateTableStmt(
                 name: table,
                 schemaName: schema,
                 isTemporary: isTemporary,
@@ -880,7 +880,7 @@ enum Parsers {
     
     static func columnConstraint(
         state: inout ParserState,
-        name: IdentifierSyntax? = nil
+        name: Identifier? = nil
     ) throws -> ColumnConstraint {
         switch state.current.kind {
         case .constraint:
@@ -949,7 +949,7 @@ enum Parsers {
     
     private static func parsePrimaryKey(
         state: inout ParserState,
-        name: IdentifierSyntax?
+        name: Identifier?
     ) throws -> ColumnConstraint {
         try state.consume(.primary)
         try state.consume(.key)
@@ -1272,10 +1272,10 @@ enum Parsers {
             
             if let suffix {
                 let range = token.range.lowerBound..<suffix.range.upperBound
-                let ident = IdentifierSyntax(value: "$\(fullName)(\(suffix))", range: range)
+                let ident = Identifier(value: "$\(fullName)(\(suffix))", range: range)
                 return BindParameter(kind: .named(ident), range: range)
             } else {
-                let ident = IdentifierSyntax(value: "$\(fullName)", range: nameRange)
+                let ident = Identifier(value: "$\(fullName)", range: nameRange)
                 return BindParameter(kind: .named(ident), range: nameRange)
             }
         default:
@@ -1394,15 +1394,15 @@ enum Parsers {
     
     static func identifier(
         state: inout ParserState
-    ) throws -> IdentifierSyntax {
+    ) throws -> Identifier {
         let token = try state.take()
         
         guard case let .symbol(ident) = token.kind else {
             state.diagnostics.add(.init("Expected identifier", at: token.range))
-            return IdentifierSyntax(value: "<<error>>", range: token.range)
+            return Identifier(value: "<<error>>", range: token.range)
         }
         
-        return IdentifierSyntax(value: ident, range: token.range)
+        return Identifier(value: ident, range: token.range)
     }
     
     /// https://www.sqlite.org/syntax/numeric-literal.html

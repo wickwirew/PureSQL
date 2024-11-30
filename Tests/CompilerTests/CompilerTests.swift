@@ -17,6 +17,28 @@ class CompilerTests: XCTestCase {
     func testSelectWithJoins() throws {
         try checkQueries(sqlFile: "SelectWithJoins")
     }
+    
+//    func compile(state: inout ParserState) throws -> ([CompiledQuery], Diagnostics) {
+//        var stmts: [Statement] = []
+//        
+//        while state.current.kind != .eof {
+//            try stmts.append(Parsers.stmt(state: &state))
+//        }
+//        
+//        let schemaCompiler = SchemaCompiler()
+//        var (schema, diags) = schemaCompiler.compile(stmts)
+//        
+//
+//        var queries: [CompiledQuery] = []
+//        
+//        for stmt in stmts {
+//            var compiler = QueryCompiler(schema: schema)
+//            let (query, queryDiags) = try compiler.compile(stmt)
+//            
+//        }
+//        
+//        
+//    }
 }
 
 func checkQueries(
@@ -33,7 +55,7 @@ func checkQueries(
     let contents = try String(contentsOf: url)
     
     var state = try ParserState(Lexer(source: contents))
-    var output: [Statement] = []
+    var output: [Stmt] = []
     
     let schemaCompiler = SchemaCompiler()
     

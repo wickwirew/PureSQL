@@ -7,22 +7,21 @@
 
 import OrderedCollections
 
-// TODO: Make not once the modules are merged
-protocol StatementVisitor {
+protocol StmtVisitor {
     associatedtype Output
-    mutating func visit(_ stmt: borrowing CreateTableStatement) -> Output
-    mutating func visit(_ stmt: borrowing AlterTableStatement) -> Output
-    mutating func visit(_ stmt: borrowing EmptyStatement) -> Output
+    mutating func visit(_ stmt: borrowing CreateTableStmt) -> Output
+    mutating func visit(_ stmt: borrowing AlterTableStmt) -> Output
+    mutating func visit(_ stmt: borrowing EmptyStmt) -> Output
     mutating func visit(_ stmt: borrowing SelectStmt) -> Output
 }
 
-protocol Statement {
-    func accept<V: StatementVisitor>(visitor: inout V) -> V.Output
+protocol Stmt {
+    func accept<V: StmtVisitor>(visitor: inout V) -> V.Output
 }
 
-struct CreateTableStatement: Equatable, Statement {
-    let name: IdentifierSyntax
-    let schemaName: IdentifierSyntax?
+struct CreateTableStmt: Equatable, Stmt {
+    let name: Identifier
+    let schemaName: Identifier?
     let isTemporary: Bool
     let onlyIfExists: Bool
     let kind: Kind
@@ -31,12 +30,12 @@ struct CreateTableStatement: Equatable, Statement {
     
     enum Kind: Equatable {
         case select(SelectStmt)
-        case columns(OrderedDictionary<IdentifierSyntax, ColumnDef>)
+        case columns(OrderedDictionary<Identifier, ColumnDef>)
     }
     
     init(
-        name: IdentifierSyntax,
-        schemaName: IdentifierSyntax?,
+        name: Identifier,
+        schemaName: Identifier?,
         isTemporary: Bool,
         onlyIfExists: Bool,
         kind: Kind,
@@ -52,32 +51,32 @@ struct CreateTableStatement: Equatable, Statement {
         self.options = options
     }
     
-    func accept<V>(visitor: inout V) -> V.Output where V : StatementVisitor {
+    func accept<V>(visitor: inout V) -> V.Output where V : StmtVisitor {
         visitor.visit(self)
     }
 }
 
-struct AlterTableStatement: Equatable, Statement {
-    let name: IdentifierSyntax
-    let schemaName: IdentifierSyntax?
+struct AlterTableStmt: Equatable, Stmt {
+    let name: Identifier
+    let schemaName: Identifier?
     let kind: Kind
     
     enum Kind: Equatable {
-        case rename(IdentifierSyntax)
-        case renameColumn(IdentifierSyntax, IdentifierSyntax)
+        case rename(Identifier)
+        case renameColumn(Identifier, Identifier)
         case addColumn(ColumnDef)
-        case dropColumn(IdentifierSyntax)
+        case dropColumn(Identifier)
     }
     
-    func accept<V>(visitor: inout V) -> V.Output where V : StatementVisitor {
+    func accept<V>(visitor: inout V) -> V.Output where V : StmtVisitor {
         visitor.visit(self)
     }
 }
 
-struct EmptyStatement: Equatable, Statement {
+struct EmptyStmt: Equatable, Stmt {
     init() {}
     
-    func accept<V>(visitor: inout V) -> V.Output where V : StatementVisitor {
+    func accept<V>(visitor: inout V) -> V.Output where V : StmtVisitor {
         visitor.visit(self)
     }
 }

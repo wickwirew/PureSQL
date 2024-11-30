@@ -8,7 +8,7 @@
 import OrderedCollections
 
 struct TypeName: Equatable, CustomStringConvertible, Sendable {
-    let name: IdentifierSyntax
+    let name: Identifier
     let args: Args?
     
     static let text = TypeName(name: "TEXT", args: nil)
@@ -19,7 +19,7 @@ struct TypeName: Equatable, CustomStringConvertible, Sendable {
     static let any = TypeName(name: "ANY", args: nil)
     static let bool = TypeName(name: "BOOL", args: nil)
     
-    init(name: IdentifierSyntax, args: Args?) {
+    init(name: Identifier, args: Args?) {
         self.name = name
         self.args = args
     }
@@ -85,12 +85,12 @@ enum ConfictClause: Equatable {
 }
 
 struct PrimaryKeyConstraint: Equatable {
-    let columns: [IdentifierSyntax]
+    let columns: [Identifier]
     let confictClause: ConfictClause
     let autoincrement: Bool
     
     init(
-        columns: [IdentifierSyntax],
+        columns: [Identifier],
         confictClause: ConfictClause,
         autoincrement: Bool
     ) {
@@ -107,18 +107,18 @@ enum Order: Equatable {
 
 struct IndexedColumn: Equatable {
     let expr: Expression
-    let collation: IdentifierSyntax?
+    let collation: Identifier?
     let order: Order
 }
 
 struct ForeignKeyClause: Equatable {
-    let foreignTable: IdentifierSyntax
-    let foreignColumns: [IdentifierSyntax]
+    let foreignTable: Identifier
+    let foreignColumns: [Identifier]
     let actions: [Action]
     
     init(
-        foreignTable: IdentifierSyntax,
-        foreignColumns: [IdentifierSyntax],
+        foreignTable: Identifier,
+        foreignColumns: [Identifier],
         actions: [Action]
     ) {
         self.foreignTable = foreignTable
@@ -128,7 +128,7 @@ struct ForeignKeyClause: Equatable {
     
     enum Action: Equatable {
         case onDo(On, Do)
-        indirect case match(IdentifierSyntax, [Action])
+        indirect case match(Identifier, [Action])
         case deferrable(Deferrable?)
         case notDeferrable(Deferrable?)
     }
@@ -188,11 +188,11 @@ enum SelectCore: Equatable {
     }
     
     struct Window: Equatable {
-        let name: IdentifierSyntax
+        let name: Identifier
         let window: WindowDefinition
         
         init(
-            name: IdentifierSyntax,
+            name: Identifier,
             window: WindowDefinition
         ) {
             self.name = name
@@ -219,7 +219,7 @@ enum SelectCore: Equatable {
     }
 }
 
-struct SelectStmt: Statement, Equatable {
+struct SelectStmt: Stmt, Equatable {
     let cte: Indirect<CommonTableExpression>?
     let cteRecursive: Bool
     let selects: Indirect<Selects>
@@ -269,16 +269,16 @@ struct SelectStmt: Statement, Equatable {
         }
     }
     
-    func accept<V>(visitor: inout V) -> V.Output where V : StatementVisitor {
+    func accept<V>(visitor: inout V) -> V.Output where V : StmtVisitor {
         visitor.visit(self)
     }
 }
 
 enum ResultColumn: Equatable {
     /// Note: This will represent even just a single column select
-    case expr(Expression, as: IdentifierSyntax?)
+    case expr(Expression, as: Identifier?)
     /// `*` or `table.*`
-    case all(table: IdentifierSyntax?)
+    case all(table: Identifier?)
 }
 
 struct OrderingTerm: Equatable {
@@ -322,7 +322,7 @@ struct JoinClause: Equatable {
     }
     
     init(
-        table: IdentifierSyntax,
+        table: Identifier,
         joins: [Join] = []
     ) {
         self.tableOrSubquery = TableOrSubquery(table: table)
@@ -359,7 +359,7 @@ enum JoinOperator: Equatable {
 
 enum JoinConstraint: Equatable {
     case on(Expression)
-    case using([IdentifierSyntax])
+    case using([Identifier])
     case none
     
     var on: Expression? {
@@ -370,16 +370,16 @@ enum JoinConstraint: Equatable {
 
 enum TableOrSubquery: Equatable {
     case table(Table)
-    case tableFunction(schema: IdentifierSyntax?, table: IdentifierSyntax, args: [Expression], alias: IdentifierSyntax?)
-    case subquery(SelectStmt, alias: IdentifierSyntax?)
+    case tableFunction(schema: Identifier?, table: Identifier, args: [Expression], alias: Identifier?)
+    case subquery(SelectStmt, alias: Identifier?)
     indirect case join(JoinClause)
-    case subTableOrSubqueries([TableOrSubquery], alias: IdentifierSyntax?)
+    case subTableOrSubqueries([TableOrSubquery], alias: Identifier?)
     
     init(
-        schema: IdentifierSyntax? = nil,
-        table: IdentifierSyntax,
-        alias: IdentifierSyntax? = nil,
-        indexedBy: IdentifierSyntax? = nil
+        schema: Identifier? = nil,
+        table: Identifier,
+        alias: Identifier? = nil,
+        indexedBy: Identifier? = nil
     ) {
         self = .table(TableOrSubquery.Table(
             schema: schema,
@@ -390,16 +390,16 @@ enum TableOrSubquery: Equatable {
     }
     
     struct Table: Equatable {
-        let schema: IdentifierSyntax?
-        let name: IdentifierSyntax
-        let alias: IdentifierSyntax?
-        let indexedBy: IdentifierSyntax?
+        let schema: Identifier?
+        let name: Identifier
+        let alias: Identifier?
+        let indexedBy: Identifier?
         
         init(
-            schema: IdentifierSyntax?,
-            name: IdentifierSyntax,
-            alias: IdentifierSyntax?,
-            indexedBy: IdentifierSyntax?
+            schema: Identifier?,
+            name: Identifier,
+            alias: Identifier?,
+            indexedBy: Identifier?
         ) {
             self.schema = schema
             self.name = name
@@ -414,14 +414,14 @@ struct WindowDefinition: Equatable {
 }
 
 struct CommonTableExpression: Equatable {
-    let table: IdentifierSyntax?
-    let columns: [IdentifierSyntax]
+    let table: Identifier?
+    let columns: [Identifier]
     let materialized: Bool
     let select: SelectStmt
     
     init(
-        table: IdentifierSyntax?,
-        columns: [IdentifierSyntax],
+        table: Identifier?,
+        columns: [Identifier],
         materialized: Bool = false,
         select: SelectStmt
     ) {
@@ -433,10 +433,10 @@ struct CommonTableExpression: Equatable {
 }
 
 struct TableConstraint: Equatable {
-    let name: IdentifierSyntax?
+    let name: Identifier?
     let kind: Kind
     
-    init(name: IdentifierSyntax?, kind: Kind) {
+    init(name: Identifier?, kind: Kind) {
         self.name = name
         self.kind = kind
     }
@@ -445,15 +445,15 @@ struct TableConstraint: Equatable {
         case primaryKey([IndexedColumn], ConfictClause)
         case unique(IndexedColumn, ConfictClause)
         case check(Expression)
-        case foreignKey([IdentifierSyntax], ForeignKeyClause)
+        case foreignKey([Identifier], ForeignKeyClause)
     }
 }
 
 struct ColumnConstraint: Equatable {
-    let name: IdentifierSyntax?
+    let name: Identifier?
     let kind: Kind
     
-    init(name: IdentifierSyntax?, kind: Kind) {
+    init(name: Identifier?, kind: Kind) {
         self.name = name
         self.kind = kind
     }
@@ -464,7 +464,7 @@ struct ColumnConstraint: Equatable {
         case unique(ConfictClause)
         case check(Expression)
         case `default`(Expression)
-        case collate(IdentifierSyntax)
+        case collate(Identifier)
         case foreignKey(ForeignKeyClause)
         case generated(Expression, GeneratedKind?)
     }
@@ -490,12 +490,12 @@ struct ColumnConstraint: Equatable {
 }
 
 struct ColumnDef: Equatable {
-    var name: IdentifierSyntax
+    var name: Identifier
     var type: TypeName
     var constraints: [ColumnConstraint]
     
     init(
-        name: IdentifierSyntax,
+        name: Identifier,
         type: TypeName,
         constraints: [ColumnConstraint]
     ) {
@@ -558,21 +558,21 @@ extension Indirect: CustomStringConvertible {
 
 struct TableName: Hashable, CustomStringConvertible {
     let schema: Schema
-    let name: IdentifierSyntax
+    let name: Identifier
     
-    static let main: IdentifierSyntax = "main"
+    static let main: Identifier = "main"
     
     enum Schema: Hashable {
         case main
-        case other(IdentifierSyntax)
+        case other(Identifier)
     }
     
-    init(schema: Schema, name: IdentifierSyntax) {
+    init(schema: Schema, name: Identifier) {
         self.schema = schema
         self.name = name
     }
     
-    init(schema: IdentifierSyntax?, name: IdentifierSyntax) {
+    init(schema: Identifier?, name: Identifier) {
         if let schema, schema == Self.main {
             self.schema = .other(schema)
         } else {
@@ -597,7 +597,7 @@ struct TableName: Hashable, CustomStringConvertible {
         }
     }
     
-    func with(name: IdentifierSyntax) -> TableName {
+    func with(name: Identifier) -> TableName {
         return TableName(schema: schema, name: name)
     }
 }

@@ -16,8 +16,8 @@ struct InsertStmt: Syntax, Equatable {
     let cteRecursive: Bool
     let action: Action
     let tableName: TableName
-    let tableAlias: IdentifierSyntax?
-    let columns: [IdentifierSyntax]?
+    let tableAlias: Identifier?
+    let columns: [Identifier]?
     let values: Values? // if nil, default values
     let returningClause: ReturningClause?
     let range: Range<Substring.Index>
@@ -46,7 +46,7 @@ struct ReturningClause: Syntax, Equatable {
     let range: Range<Substring.Index>
 
     enum Value: Equatable {
-        case expr(expr: Expression, alias: IdentifierSyntax?)
+        case expr(expr: Expression, alias: Identifier?)
         case all
     }
 }
@@ -72,8 +72,8 @@ struct SetAction: Equatable {
     let expr: Expression
     
     enum Column: Equatable {
-        case single(IdentifierSyntax)
-        case list([IdentifierSyntax])
+        case single(Identifier)
+        case list([Identifier])
     }
 }
 
@@ -91,13 +91,13 @@ struct UpdateStmt: Syntax {
 
 struct QualifiedTableName: Syntax {
     let tableName: TableName
-    let alias: IdentifierSyntax?
+    let alias: Identifier?
     let indexed: Indexed?
     let range: Range<Substring.Index>
     
     enum Indexed {
         case not
-        case by(IdentifierSyntax)
+        case by(Identifier)
     }
 }
 
@@ -107,7 +107,7 @@ enum From: Equatable {
     case tableOrSubqueries([TableOrSubquery])
     case join(JoinClause)
     
-    init(table: IdentifierSyntax) {
+    init(table: Identifier) {
         self = .join(JoinClause(table: table))
     }
 }

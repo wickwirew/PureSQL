@@ -326,14 +326,14 @@ struct BetweenExpr: Expr, Equatable, CustomStringConvertible {
 }
 
 struct FunctionExpr: Expr, Equatable, CustomStringConvertible {
-    let table: IdentifierSyntax?
-    let name: IdentifierSyntax
+    let table: Identifier?
+    let name: Identifier
     let args: [Expression]
     let range: Range<String.Index>
     
     init(
-        table: IdentifierSyntax?,
-        name: IdentifierSyntax,
+        table: Identifier?,
+        name: Identifier,
         args: [Expression],
         range: Range<String.Index>
     ) {
@@ -377,7 +377,7 @@ struct BindParameter: Expr, Hashable, CustomStringConvertible {
     let range: Range<String.Index>
     
     enum Kind: Hashable {
-        case named(IdentifierSyntax)
+        case named(Identifier)
         case unnamed(Int)
     }
     
@@ -652,14 +652,14 @@ extension Operator: CustomStringConvertible {
 }
 
 struct ColumnExpr: Expr, Equatable, CustomStringConvertible {
-    let schema: IdentifierSyntax?
-    let table: IdentifierSyntax?
-    let column: IdentifierSyntax // TODO: Support *
+    let schema: Identifier?
+    let table: Identifier?
+    let column: Identifier // TODO: Support *
     
     init(
-        schema: IdentifierSyntax?,
-        table: IdentifierSyntax?,
-        column: IdentifierSyntax
+        schema: Identifier?,
+        table: Identifier?,
+        column: Identifier
     ) {
         self.schema = schema
         self.table = table

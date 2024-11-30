@@ -9,28 +9,11 @@ import XCTest
 
 @testable import Compiler
 
-func check<P: Parser>(
-    sqlFile: String,
-    parser: P,
-    prefix: String = "CHECK",
-    dump: Bool = false,
-    file: StaticString = #filePath,
-    line: UInt = #line
-) throws {
-    try check(
-        sqlFile: sqlFile,
-        parse: parser.parse,
-        prefix: prefix,
-        dump: dump,
-        file: file,
-        line: line
-    )
-}
-
 func check<Output>(
     sqlFile: String,
     parse: (inout ParserState) throws -> Output,
     prefix: String = "CHECK",
+    emit: ((Output) -> [String])? = nil,
     dump: Bool = false,
     file: StaticString = #filePath,
     line: UInt = #line
@@ -48,9 +31,14 @@ func check<Output>(
     while state.current.kind != .eof {
         repeat {
             let output = try parse(&state)
-            var emitter = CheckEmitter()
-            emitter.emit(output, indent: 0)
-            lines.append(contentsOf: emitter.lines)
+            
+            if let emit {
+                lines.append(contentsOf: emit(output))
+            } else {
+                var emitter = CheckEmitter()
+                emitter.emit(output, indent: 0)
+                lines.append(contentsOf: emitter.lines)
+            }
         } while try state.take(if: .semiColon) && state.current.kind != .eof
     }
     
@@ -279,7 +267,7 @@ struct CheckEmitter {
         return switch value {
         case is Bool, is Int, is Int8, is Int16, is Int32, is Int64,
                 is UInt, is UInt8, is UInt16, is UInt32, is UInt64,
-                is Float, is Double, is String, is Any.Type, is IdentifierSyntax,
+                is Float, is Double, is String, is Any.Type, is Identifier,
                 is LiteralExpr, is TableOptions, is TypeName, is BindParameter,
                 is OperatorSyntax: true
         default: false
