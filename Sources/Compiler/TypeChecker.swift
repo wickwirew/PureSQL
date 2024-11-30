@@ -726,10 +726,7 @@ public struct SchemaCompiler: StatementVisitor {
     }
     
     public mutating func compile(_ source: String) throws -> (Schema, Diagnostics) {
-        let statements = try StmtParser()
-            .semiColonSeparated()
-            .parse(source)
-        
+        let statements = try Parsers.parse(source: source)
         return compile(statements)
     }
     

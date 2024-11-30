@@ -33,13 +33,12 @@ func checkQueries(
     let contents = try String(contentsOf: url)
     
     var state = try ParserState(Lexer(source: contents))
-    let parser = StmtParser()
     var output: [Statement] = []
     
     let schemaCompiler = SchemaCompiler()
     
     while state.current.kind != .eof {
-        try output.append(parser.parse(state: &state))
+        try output.append(Parsers.stmt(state: &state))
     }
     
     let schema = schemaCompiler.compile(output).0
