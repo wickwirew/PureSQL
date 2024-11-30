@@ -1,5 +1,5 @@
 //
-//  swift
+//  Parsers.swift
 //
 //
 //  Created by Wes Wickwire on 11/12/24.
@@ -938,8 +938,13 @@ enum Parsers {
     private static func parseGeneratedKind(
         state: inout ParserState
     ) throws -> ColumnConstraint.GeneratedKind? {
-        try LookupParser([.stored: .stored, .virtual: .virtual])
-            .parse(state: &state)
+        return if try state.take(if: .stored) {
+            .stored
+        } else if try state.take(if: .virtual) {
+            .virtual
+        } else {
+            nil
+        }
     }
     
     private static func parsePrimaryKey(
@@ -1014,8 +1019,15 @@ enum Parsers {
         switch state.current.kind {
         case .on:
             try state.skip()
-            let on: ForeignKeyClause.On = try LookupParser([.delete: .delete, .update: .update])
-                .parse(state: &state)
+            let on: ForeignKeyClause.On
+            if try state.take(if: .delete) {
+                on = .delete
+            } else if try state.take(if: .update) {
+                on = .update
+            } else {
+                state.diagnostics.add(.init("Expected 'UPDATE' or 'DELETE'", at: state.current.range))
+                on = .update
+            }
             
             return .onDo(on, try foreignKeyClauseOnDeleteOrUpdateAction(state: &state))
         case .match:
