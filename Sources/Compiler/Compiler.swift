@@ -38,6 +38,7 @@ public struct CompiledQuery {
 struct Compiler {
     private(set) var schema: Schema
     private(set) var diagnostics = Diagnostics()
+    private(set) var queries: [CompiledQuery] = []
     
     public init(
         schema: Schema = Schema(),
@@ -47,13 +48,13 @@ struct Compiler {
         self.diagnostics = diagnostics
     }
     
-    mutating func compile(_ stmts: [Stmt]) {
+    mutating func compile(_ stmts: [Stmt]) throws {
         for stmt in stmts {
-            switch stmt.accept(visitor: &self) {
+            switch try stmt.accept(visitor: &self) {
             case .table(let table):
                 schema[table.name] = table
             case .query(let query):
-                break
+                queries.append(query)
             case nil:
                 break
             }
@@ -72,7 +73,6 @@ extension Compiler: StmtVisitor {
             var typeInferrer = TypeInferrer(env: Environment())
             let (solution, diag) = typeInferrer.check(selectStmt)
             diagnostics.add(contentsOf: diag)
-            // TODO: Validate no params and returns named row
             guard case let .row(.named(columns)) = solution.type else { return nil }
             return .table(CompiledTable(name: stmt.name.value, columns: columns))
         case .columns(let columns):
@@ -104,9 +104,16 @@ extension Compiler: StmtVisitor {
         return .table(table)
     }
     
-    mutating func visit(_ stmt: borrowing SelectStmt) -> CompiledStmt? {
+    mutating func visit(_ stmt: borrowing SelectStmt) throws -> CompiledStmt? {
         var queryCompiler = QueryCompiler(schema: schema)
-        let (query, diags) = try! queryCompiler.compile(select: stmt)
+        let (query, diags) = try queryCompiler.compile(select: stmt)
+        diagnostics.add(contentsOf: diags)
+        return .query(query)
+    }
+    
+    mutating func visit(_ stmt: borrowing InsertStmt) throws -> CompiledStmt? {
+        var queryCompiler = QueryCompiler(schema: schema)
+        let (query, diags) = try queryCompiler.compile(insert: stmt)
         diagnostics.add(contentsOf: diags)
         return .query(query)
     }
@@ -130,9 +137,9 @@ extension Compiler: StmtVisitor {
 }
 
 struct QueryCompiler {
-    var environment = Environment()
-    var diagnositics = Diagnostics()
-    var schema: Schema
+    private(set) var environment = Environment()
+    private(set) var diagnositics = Diagnostics()
+    private(set) var schema: Schema
     
     private(set) var inputs: [CompiledQuery.Input] = []
     
@@ -141,6 +148,10 @@ struct QueryCompiler {
     }
     
     mutating func compile(select: SelectStmt) throws -> (CompiledQuery, Diagnostics) {
+        if let cte = select.cte?.value {
+            try compile(cte: cte)
+        }
+        
         switch select.selects.value {
         case .single(let select):
             let result = try compile(select)
@@ -150,12 +161,120 @@ struct QueryCompiler {
         }
     }
     
+    mutating func compile(insert: InsertStmt) throws -> (CompiledQuery, Diagnostics) {
+        if let cte = insert.cte {
+            try compile(cte: cte)
+        }
+        
+        guard let table = schema[insert.tableName.name.value] else {
+            diagnositics.add(.tableDoesNotExist(insert.tableName.name))
+            return (CompiledQuery(inputs: [], output: .error), diagnositics)
+        }
+        
+        let inputType: Ty
+        if let columns = insert.columns {
+            var columnTypes: [Ty] = []
+            for column in columns {
+                guard let def = table.columns[column.value] else {
+                    diagnositics.add(.columnDoesNotExist(column))
+                    columnTypes.append(.error)
+                    continue
+                }
+                
+                columnTypes.append(def)
+            }
+            inputType = .row(.unnamed(columnTypes))
+        } else {
+            inputType = table.type
+        }
+        
+        if let values = insert.values {
+            let (query, _) = try compile(select: values.select)
+            _ = inputType.unify(with: query.output, at: insert.range, diagnostics: &diagnositics)
+        } else {
+            // TODO: Using 'DEFALUT VALUES' make sure all columns
+            // TODO: actually have default values or null
+        }
+        
+        let ty: Ty = if let returningClause = insert.returningClause {
+            try compile(returningClause: returningClause, sourceTable: table)
+        } else {
+            .row(.empty)
+        }
+        
+        return (CompiledQuery(inputs: inputs, output: ty), diagnositics)
+    }
+    
+    private mutating func compile(
+        returningClause: ReturningClause,
+        sourceTable: CompiledTable
+    ) throws -> Ty {
+        var resultColumns: Columns = [:]
+        
+        for value in returningClause.values {
+            switch value {
+            case let .expr(expr, alias):
+                let (ty, inferredName) = try checkWithName(expression: expr)
+                
+                guard let name = alias?.value ?? inferredName else {
+                    diagnositics.add(.nameRequired(at: expr.range))
+                    continue
+                }
+                
+                resultColumns[name] = ty
+            case .all:
+                // TODO: See TODO on `Columns` typealias
+                resultColumns.merge(resultColumns, uniquingKeysWith: {$1})
+            }
+        }
+        
+        return .row(.named(resultColumns))
+    }
+    
     private mutating func check(expression: Expression) throws -> Ty {
+        let solution = try solution(of: expression)
+        return solution.type
+    }
+    
+    private mutating func checkWithName(expression: Expression) throws -> (Ty, Substring?) {
+        let solution = try solution(of: expression)
+        return (solution.type, solution.lastName)
+    }
+    
+    private mutating func solution(of expression: Expression) throws -> Solution {
         var typeInferrer = TypeInferrer(env: environment)
         var (solution, diagnostics) = typeInferrer.check(expression)
         diagnositics.add(contentsOf: diagnostics)
         inputs.append(contentsOf: solution.allNames.map { CompiledQuery.Input(name: $0.0, type: $0.1) })
-        return solution.type
+        return solution
+    }
+    
+    private mutating func compile(cte: CommonTableExpression) throws {
+        let (query, _) = try compile(select: cte.select)
+
+        let tableTy: Ty
+        if cte.columns.isEmpty {
+            tableTy = query.output
+        } else {
+            guard case let .row(row) = query.output else {
+                return assertionFailure("Select is not a row?")
+            }
+            
+            let columnTypes = row.types
+            if columnTypes.count != cte.columns.count {
+                diagnositics.add(.init(
+                    "CTE expected \(cte.columns.count) columns, but got \(row.count)",
+                    at: cte.range
+                ))
+            }
+            
+            tableTy = .row(.named(
+                (0..<min(columnTypes.count, cte.columns.count))
+                    .reduce(into: [:], { $0[cte.columns[$1].value] = columnTypes[$1] })
+            ))
+        }
+        
+        environment.insert(cte.table.value, ty: tableTy)
     }
     
     private mutating func compile(_ select: SelectCore) throws -> CompiledQuery {
@@ -232,17 +351,10 @@ struct QueryCompiler {
                 diagnositics.add(contentsOf: diag)
                 
                 let name = alias?.value ?? solution.lastName
-                
-                // Name will default to stringified expression, this is what SQLite actually
-                // does, but we require one for.
-                columns[alias?.value ?? solution.lastName ?? "__name_required__"] = solution.type
+                columns[name ?? "__name_required__"] = solution.type
                 
                 if name == nil {
-                    diagnositics.add(.init(
-                        "Column name required, add via 'AS'",
-                        at: expr.range,
-                        suggestion: .append("AS \(Diagnostic.placeholder(name: "name"))")
-                    ))
+                    diagnositics.add(.nameRequired(at: expr.range))
                 }
             case .all(let tableName):
                 if let tableName {
@@ -354,5 +466,14 @@ struct QueryCompiler {
         case .subTableOrSubqueries:
             fatalError()
         }
+    }
+    
+    private func assumeRow(_ ty: Ty) -> Ty.RowTy {
+        guard case let .row(rowTy) = ty else {
+            assertionFailure("This cannot happen")
+            return .unnamed([])
+        }
+
+        return rowTy
     }
 }

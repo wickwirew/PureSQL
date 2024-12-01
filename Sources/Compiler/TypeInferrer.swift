@@ -192,6 +192,8 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
         case named(OrderedDictionary<Substring, Ty>)
         case unnamed([Ty])
         
+        public static let empty: RowTy = .unnamed([])
+        
         public init(arrayLiteral elements: Ty...) {
             self = .unnamed(elements)
         }
@@ -275,6 +277,86 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
             // Literals can't be substituted for.
             return self
         }
+    }
+    
+    func unify(
+        with other: Ty,
+        at range: Range<String.Index>,
+        diagnostics: inout Diagnostics
+    ) -> Substitution {
+        // If they are the same, no need to unify
+        guard self != other else { return [:] }
+        
+        switch (self, other) {
+        case let (.var(tv), ty):
+            return [tv: ty]
+        case let (ty, .var(tv)):
+            return [tv: ty]
+        case (.integer, .real):
+            return [:]
+        case (.real, .integer):
+            return [:]
+        case (.nominal, .nominal):
+            guard self != other else { return [:] }
+            diagnostics.add(.init("Unable to unify types '\(self)' and '\(other)'", at: range))
+            return [:]
+        case let (.optional(t1), t2):
+            return t1.unify(with: t2, at: range, diagnostics: &diagnostics)
+        case let (t1, .optional(t2)):
+            return t1.unify(with: t2, at: range, diagnostics: &diagnostics)
+        case let (.fn(args1, ret1), .fn(args2, ret2)):
+            let args = unify(args1, with: args2, at: range, diagnostics: &diagnostics)
+            let ret = ret1.apply(args).unify(with: ret2.apply(args), at: range, diagnostics: &diagnostics)
+            return ret.merging(args)
+        case let (.row(lhs), .row(rhs)):
+            guard lhs.count == rhs.count else {
+                diagnostics.add(.init("Unable to unify types '\(self)' and '\(other)'", at: range))
+                return [:]
+            }
+            
+            return unify(lhs.types, with: rhs.types, at: range, diagnostics: &diagnostics)
+        case let (.row(row), t):
+            if row.count == 1, let first = row.first {
+                return first.unify(with: t, at: range, diagnostics: &diagnostics)
+            } else {
+                diagnostics.add(.init("Unable to unify types '\(self)' and '\(other)'", at: range))
+                return [:]
+            }
+        case let (t, .row(row)):
+            if row.count == 1, let first = row.first {
+                return first.unify(with: t, at: range, diagnostics: &diagnostics)
+            } else {
+                diagnostics.add(.init("Unable to unify types '\(self)' and '\(other)'", at: range))
+                return [:]
+            }
+        case (.error, _), (_, .error):
+            // Already had an upstream error so no need to emit any more diagnostics
+            return [:]
+        default:
+            diagnostics.add(.init("Unable to unify types '\(self)' and '\(other)'", at: range))
+            return [:]
+        }
+    }
+    
+    private func unify<T1: Collection, T2: Collection>(
+        _ tys: T1,
+        with others: T2,
+        at range: Range<String.Index>,
+        diagnostics: inout Diagnostics
+    ) -> Substitution
+        where T1.Element == Ty, T2.Element == Ty
+    {
+        assert(tys.count == others.count)
+        
+        var sub: Substitution = [:]
+        var tys = tys.makeIterator()
+        var others = others.makeIterator()
+        
+        while let ty1 = tys.next(), let ty2 = others.next() {
+            sub.merge(ty1.apply(sub).unify(with: ty2.apply(sub), at: range, diagnostics: &diagnostics), uniquingKeysWith: {$1})
+        }
+        
+        return sub
     }
 }
 
@@ -414,69 +496,7 @@ struct TypeInferrer {
         with other: Ty,
         at range: Range<String.Index>
     ) -> Substitution {
-        // If they are the same, no need to unify
-        guard ty != other else { return [:] }
-        
-        switch (ty, other) {
-        case let (.var(tv), ty):
-            return [tv: ty]
-        case let (ty, .var(tv)):
-            return [tv: ty]
-        case (.integer, .real):
-            return [:]
-        case (.real, .integer):
-            return [:]
-        case (.nominal, .nominal):
-            guard ty != other else { return [:] }
-            diagnostics.add(.init("Unable to unify types '\(ty)' and '\(other)'", at: range))
-            return [:]
-        case let (.optional(t1), t2):
-            return unify(t1, with: t2, at: range)
-        case let (t1, .optional(t2)):
-            return unify(t1, with: t2, at: range)
-        case let (.fn(args1, ret1), .fn(args2, ret2)):
-            let args = unify(args1, with: args2, at: range)
-            let ret = unify(ret1.apply(args), with: ret2.apply(args), at: range)
-            return ret.merging(args)
-        case let (.row(row), t):
-            if row.count == 1, let first = row.first {
-                return unify(first, with: t, at: range)
-            } else {
-                diagnostics.add(.init("Unable to unify types '\(ty)' and '\(other)'", at: range))
-                return [:]
-            }
-        case let (t, .row(row)):
-            if row.count == 1, let first = row.first {
-                return unify(first, with: t, at: range)
-            } else {
-                diagnostics.add(.init("Unable to unify types '\(ty)' and '\(other)'", at: range))
-                return [:]
-            }
-        case (.error, _), (_, .error):
-            // Already had an upstream error so no need to emit any more diagnostics
-            return [:]
-        default:
-            diagnostics.add(.init("Unable to unify types '\(ty)' and '\(other)'", at: range))
-            return [:]
-        }
-    }
-    
-    private mutating func unify(
-        _ tys: [Ty],
-        with others: [Ty],
-        at range: Range<String.Index>
-    ) -> Substitution {
-        assert(tys.count == others.count)
-        
-        var sub: Substitution = [:]
-        var tys = tys.makeIterator()
-        var others = others.makeIterator()
-        
-        while let ty1 = tys.next(), let ty2 = others.next() {
-            sub.merge(unify(ty1.apply(sub), with: ty2.apply(sub), at: range), uniquingKeysWith: {$1})
-        }
-        
-        return sub
+        ty.unify(with: other, at: range, diagnostics: &diagnostics)
     }
     
     private mutating func unify(
@@ -709,3 +729,9 @@ extension TypeInferrer: ExprVisitor {
 }
 
 public typealias Schema = OrderedDictionary<Substring, CompiledTable>
+
+// TODO: An ordered dictionary may not be the best representation of the
+// TODO: columns. Since this is used even in selects, the user could
+// TODO: technically do `SELECT foo, foo FROM bar;` which have the same
+// TODO: name which the ordered dictionary wouldnt catch. Or just error?
+public typealias Columns = OrderedDictionary<Substring, Ty>

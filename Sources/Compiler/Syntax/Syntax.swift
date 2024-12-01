@@ -11,7 +11,7 @@ protocol Syntax {
     var range: Range<Substring.Index> { get }
 }
 
-struct InsertStmt: Syntax, Equatable {
+struct InsertStmt: Stmt, Syntax, Equatable {
     let cte: CommonTableExpression?
     let cteRecursive: Bool
     let action: Action
@@ -30,6 +30,10 @@ struct InsertStmt: Syntax, Equatable {
     enum Action: Equatable, Encodable {
         case replace
         case insert(Or?)
+    }
+    
+    func accept<V>(visitor: inout V) throws -> V.Output where V : StmtVisitor {
+        try visitor.visit(self)
     }
 }
 

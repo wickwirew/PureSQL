@@ -63,7 +63,7 @@ func checkQueries(
         try output.append(Parsers.stmt(state: &state))
     }
     
-    schemaCompiler.compile(output)
+    try schemaCompiler.compile(output)
     
     var checkTexts: [String] = []
     

@@ -73,6 +73,28 @@ extension Diagnostic {
             at: range
         )
     }
+    
+    static func tableDoesNotExist(_ identifier: Identifier) -> Diagnostic {
+        Diagnostic(
+            "Table '\(identifier)' does not exist",
+            at: identifier.range
+        )
+    }
+    
+    static func columnDoesNotExist(_ identifier: Identifier) -> Diagnostic {
+        Diagnostic(
+            "Column '\(identifier)' does not exist",
+            at: identifier.range
+        )
+    }
+    
+    static func nameRequired(at range: Range<Substring.Index>) -> Diagnostic {
+        return Diagnostic(
+            "Name required, add via 'AS'",
+            at: range,
+            suggestion: .append("AS \(Diagnostic.placeholder(name: "name"))")
+        )
+    }
 }
 
 public struct Diagnostics {
@@ -94,5 +116,17 @@ public struct Diagnostics {
     public mutating func throwing(_ diagnostic: Diagnostic) throws {
         diagnostics.append(diagnostic)
         throw diagnostic
+    }
+    
+    public mutating func trying<Output>(
+        _ action: () throws -> Output,
+        at range: Range<Substring.Index>
+    ) -> Output? {
+        do {
+            return try action()
+        } catch {
+            add(.init("\(error)", at: range))
+            return nil
+        }
     }
 }

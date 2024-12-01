@@ -225,38 +225,11 @@ struct SelectStmt: Stmt, Equatable {
     let selects: Indirect<Selects>
     let orderBy: [OrderingTerm]
     let limit: Limit?
+    let range: Range<Substring.Index>
     
     enum Selects: Equatable {
         case single(SelectCore)
         indirect case compound(Selects, CompoundOperator, SelectCore)
-    }
-    
-    init(
-        cte: CommonTableExpression?,
-        cteRecursive: Bool,
-        selects: Selects,
-        orderBy: [OrderingTerm],
-        limit: Limit?
-    ) {
-        self.cte = cte.map(Indirect.init)
-        self.cteRecursive = cteRecursive
-        self.selects = Indirect(selects)
-        self.orderBy = orderBy
-        self.limit = limit
-    }
-    
-    init(
-        cte: CommonTableExpression? = nil,
-        cteRecursive: Bool = false,
-        select: SelectCore.Select,
-        orderBy: [OrderingTerm] = [],
-        limit: Limit? = nil
-    ) {
-        self.cte = cte.map(Indirect.init)
-        self.cteRecursive = cteRecursive
-        self.selects = Indirect(.single(.select(select)))
-        self.orderBy = orderBy
-        self.limit = limit
     }
     
     struct Limit: Equatable {
@@ -269,8 +242,8 @@ struct SelectStmt: Stmt, Equatable {
         }
     }
     
-    func accept<V>(visitor: inout V) -> V.Output where V : StmtVisitor {
-        visitor.visit(self)
+    func accept<V>(visitor: inout V) throws -> V.Output where V : StmtVisitor {
+        try visitor.visit(self)
     }
 }
 
@@ -414,22 +387,11 @@ struct WindowDefinition: Equatable {
 }
 
 struct CommonTableExpression: Equatable {
-    let table: Identifier?
+    let table: Identifier
     let columns: [Identifier]
     let materialized: Bool
     let select: SelectStmt
-    
-    init(
-        table: Identifier?,
-        columns: [Identifier],
-        materialized: Bool = false,
-        select: SelectStmt
-    ) {
-        self.table = table
-        self.columns = columns
-        self.materialized = materialized
-        self.select = select
-    }
+    let range: Range<Substring.Index>
 }
 
 struct TableConstraint: Equatable {
