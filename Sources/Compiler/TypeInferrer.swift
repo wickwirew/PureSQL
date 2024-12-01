@@ -191,6 +191,11 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
     public enum RowTy: Equatable, Sendable, ExpressibleByArrayLiteral {
         case named(OrderedDictionary<Substring, Ty>)
         case unnamed([Ty])
+        /// This is a special row that we don't know the inner types of.
+        /// It assumes that all types in it are the same type and of an
+        /// unbounded length. Allows us to define functions like `IN` that
+        /// take a row as an input but we are unsure of what the inner values are.
+        indirect case unknown(Ty)
         
         public static let empty: RowTy = .unnamed([])
         
@@ -202,6 +207,7 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
             return switch self {
             case .named(let v): v.values.first
             case .unnamed(let v): v.first
+            case .unknown(let t): t
             }
         }
         
@@ -209,6 +215,7 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
             return switch self {
             case .named(let v): v.count
             case .unnamed(let v): v.count
+            case .unknown: 1
             }
         }
         
@@ -216,6 +223,7 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
             return switch self {
             case .named(let v): Array(v.values)
             case .unnamed(let v): v
+            case .unknown(let t): [t]
             }
         }
         
@@ -223,6 +231,7 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
             return switch self {
             case .named(let v): .named(v.mapValues { $0.apply(s) })
             case .unnamed(let v): .unnamed(v.map { $0.apply(s) })
+            case .unknown(let t): .unknown(t.apply(s))
             }
         }
     }
@@ -243,6 +252,7 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
         case let .row(row): switch row {
             case .named(let values): "(\(values.map{ "\($0):\($1)" }.joined(separator: ",")))"
             case .unnamed(let values): "(\(values.map(\.description).joined(separator: ",")))"
+            case .unknown(let ty): "(\(ty)...)"
         }
         case let .optional(ty): "\(ty)?"
         case .error: "<<error>>"
@@ -284,6 +294,7 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
         at range: Range<String.Index>,
         diagnostics: inout Diagnostics
     ) -> Substitution {
+        print("Unifying", self, "with", other)
         // If they are the same, no need to unify
         guard self != other else { return [:] }
         
@@ -308,13 +319,12 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
             let args = unify(args1, with: args2, at: range, diagnostics: &diagnostics)
             let ret = ret1.apply(args).unify(with: ret2.apply(args), at: range, diagnostics: &diagnostics)
             return ret.merging(args)
-//        case let (.row(lhs), .row(rhs)):
-//            guard lhs.count == rhs.count else {
-//                diagnostics.add(.init("Unable to unify types '\(self)' and '\(other)'", at: range))
-//                return [:]
-//            }
-//            
-//            return unify(lhs.types, with: rhs.types, at: range, diagnostics: &diagnostics)
+        case let (.row(.unknown(ty)), .row(rhs)):
+            return unify(all: rhs.types, with: ty, at: range, diagnostics: &diagnostics)
+        case let (.row(lhs), .row(.unknown(ty))):
+            return unify(all: lhs.types, with: ty, at: range, diagnostics: &diagnostics)
+        case let (.row(rhs), .row(lhs)) where lhs.count == rhs.count:
+            return unify(rhs.types, with: lhs.types, at: range, diagnostics: &diagnostics)
         case let (.row(row), t):
             if row.count == 1, let first = row.first {
                 return first.unify(with: t, at: range, diagnostics: &diagnostics)
@@ -354,6 +364,26 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
         
         while let ty1 = tys.next(), let ty2 = others.next() {
             sub.merge(ty1.apply(sub).unify(with: ty2.apply(sub), at: range, diagnostics: &diagnostics), uniquingKeysWith: {$1})
+        }
+        
+        return sub
+    }
+    
+    private func unify<T1: Collection>(
+        all tys: T1,
+        with ty1: Ty,
+        at range: Range<String.Index>,
+        diagnostics: inout Diagnostics
+    ) -> Substitution
+        where T1.Element == Ty
+    {
+        var sub: Substitution = [:]
+        
+        for ty2 in tys {
+            sub.merge(
+                ty1.apply(sub).unify(with: ty2.apply(sub), at: range, diagnostics: &diagnostics),
+                uniquingKeysWith: {$1}
+            )
         }
         
         return sub

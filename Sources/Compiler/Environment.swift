@@ -130,7 +130,7 @@ struct Builtins {
     static let between = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0), .var(0)], ret: .bool))
     static let arithmetic = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0)], ret: .var(0)))
     static let comparison = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0)], ret: .bool))
-    static let `in` = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .row([.var(0)])], ret: .bool))
+    static let `in` = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .row(.unknown(.var(0)))], ret: .bool))
     static let concat = TypeScheme(typeVariables: [0, 1], type: .fn(params: [.var(0), .var(1)], ret: .text))
     static let extract = TypeScheme(typeVariables: [0, 1], type: .fn(params: [.var(0)], ret: .var(1)))
     static let extractJson = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .any))

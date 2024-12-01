@@ -145,10 +145,22 @@ class TypeCheckerTests: XCTestCase {
         XCTAssertEqual(.row([.integer, .text, .real]), solution.type)
     }
     
-    func testInRow() throws {
+    func testInRowSingleValue() throws {
+        let solution = try solution(for: ":bar IN (1)")
+        XCTAssertEqual(.bool, solution.type)
+        XCTAssertEqual(.integer, solution.type(for: .named(":bar")))
+    }
+    
+    func testInRowMultipleValues() throws {
+        let solution = try solution(for: ":bar IN (1, 2.0)")
+        XCTAssertEqual(.bool, solution.type)
+        XCTAssertEqual(.real, solution.type(for: .named(":bar")))
+    }
+    
+    func testInRowManyTypesUnUnifiable() throws {
         let solution = try solution(for: ":bar IN (1, 'Foo', 2.0)")
         XCTAssertEqual(.bool, solution.type)
-        XCTAssertEqual(.row([.integer, .text, .real]), solution.type(for: .named(":bar")))
+        XCTAssert(!solution.diagnostics.diagnostics.isEmpty)
     }
     
     func testInRowInferInputAsRow() throws {
