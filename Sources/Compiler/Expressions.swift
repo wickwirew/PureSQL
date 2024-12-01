@@ -55,7 +55,7 @@ extension ExprVisitor {
     }
 }
 
-struct OperatorSyntax: Equatable, CustomStringConvertible {
+struct OperatorSyntax: CustomStringConvertible {
     let `operator`: Operator
     let range: Range<String.Index>
     
@@ -77,11 +77,11 @@ protocol Expr {
     func accept<V: ExprVisitor>(visitor: inout V) -> V.Output
 }
 
-struct LiteralExpr: Expr, Equatable {
+struct LiteralExpr: Expr {
     let kind: Kind
     let range: Range<String.Index>
     
-    enum Kind: Equatable {
+    enum Kind {
         case numeric(Numeric, isInt: Bool)
         case string(Substring)
         case blob(Substring)
@@ -128,7 +128,7 @@ extension LiteralExpr: CustomStringConvertible {
     }
 }
 
-indirect enum Expression: Expr, Equatable {
+indirect enum Expression: Expr {
     case literal(LiteralExpr)
     case bindParameter(BindParameter)
     case column(ColumnExpr)
@@ -208,7 +208,7 @@ extension Expression: CustomStringConvertible {
     }
 }
 
-struct GroupedExpr: Expr, Equatable, CustomStringConvertible {
+struct GroupedExpr: Expr, CustomStringConvertible {
     let exprs: [Expression]
     let range: Range<String.Index>
     
@@ -226,7 +226,7 @@ struct GroupedExpr: Expr, Equatable, CustomStringConvertible {
     }
 }
 
-struct PrefixExpr: Expr, Equatable, CustomStringConvertible {
+struct PrefixExpr: Expr, CustomStringConvertible {
     let `operator`: OperatorSyntax
     let rhs: Expression
     
@@ -248,7 +248,7 @@ struct PrefixExpr: Expr, Equatable, CustomStringConvertible {
     }
 }
 
-struct PostfixExpr: Expr, Equatable, CustomStringConvertible {
+struct PostfixExpr: Expr, CustomStringConvertible {
     let lhs: Expression
     let `operator`: OperatorSyntax
     
@@ -270,7 +270,7 @@ struct PostfixExpr: Expr, Equatable, CustomStringConvertible {
     }
 }
 
-struct InfixExpr: Expr, Equatable, CustomStringConvertible {
+struct InfixExpr: Expr, CustomStringConvertible {
     let lhs: Expression
     let `operator`: OperatorSyntax
     let rhs: Expression
@@ -294,7 +294,7 @@ struct InfixExpr: Expr, Equatable, CustomStringConvertible {
     }
 }
 
-struct BetweenExpr: Expr, Equatable, CustomStringConvertible {
+struct BetweenExpr: Expr, CustomStringConvertible {
     let not: Bool
     let value: Expression
     let lower: Expression
@@ -325,7 +325,7 @@ struct BetweenExpr: Expr, Equatable, CustomStringConvertible {
     }
 }
 
-struct FunctionExpr: Expr, Equatable, CustomStringConvertible {
+struct FunctionExpr: Expr, CustomStringConvertible {
     let table: Identifier?
     let name: Identifier
     let args: [Expression]
@@ -352,7 +352,7 @@ struct FunctionExpr: Expr, Equatable, CustomStringConvertible {
     }
 }
 
-struct CastExpr: Expr, Equatable, CustomStringConvertible {
+struct CastExpr: Expr, CustomStringConvertible {
     let expr: Expression
     let ty: TypeName
     let range: Range<String.Index>
@@ -651,7 +651,7 @@ extension Operator: CustomStringConvertible {
     }
 }
 
-struct ColumnExpr: Expr, Equatable, CustomStringConvertible {
+struct ColumnExpr: Expr, CustomStringConvertible {
     let schema: Identifier?
     let table: Identifier?
     let column: Identifier // TODO: Support *
@@ -682,7 +682,7 @@ struct ColumnExpr: Expr, Equatable, CustomStringConvertible {
     }
 }
 
-struct CaseWhenThenExpr: Expr, Equatable {
+struct CaseWhenThenExpr: Expr {
     let `case`: Expression?
     let whenThen: [WhenThen]
     let `else`: Expression?
@@ -700,7 +700,7 @@ struct CaseWhenThenExpr: Expr, Equatable {
         self.range = range
     }
     
-    struct WhenThen: Equatable {
+    struct WhenThen {
         let when: Expression
         let then: Expression
         
@@ -732,7 +732,7 @@ extension CaseWhenThenExpr: CustomStringConvertible {
     }
 }
 
-struct SelectExpr: Expr, Equatable {
+struct SelectExpr: Expr {
     let select: SelectStmt
     let range: Range<String.Index>
     

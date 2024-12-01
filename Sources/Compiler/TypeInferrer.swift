@@ -308,13 +308,13 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
             let args = unify(args1, with: args2, at: range, diagnostics: &diagnostics)
             let ret = ret1.apply(args).unify(with: ret2.apply(args), at: range, diagnostics: &diagnostics)
             return ret.merging(args)
-        case let (.row(lhs), .row(rhs)):
-            guard lhs.count == rhs.count else {
-                diagnostics.add(.init("Unable to unify types '\(self)' and '\(other)'", at: range))
-                return [:]
-            }
-            
-            return unify(lhs.types, with: rhs.types, at: range, diagnostics: &diagnostics)
+//        case let (.row(lhs), .row(rhs)):
+//            guard lhs.count == rhs.count else {
+//                diagnostics.add(.init("Unable to unify types '\(self)' and '\(other)'", at: range))
+//                return [:]
+//            }
+//            
+//            return unify(lhs.types, with: rhs.types, at: range, diagnostics: &diagnostics)
         case let (.row(row), t):
             if row.count == 1, let first = row.first {
                 return first.unify(with: t, at: range, diagnostics: &diagnostics)

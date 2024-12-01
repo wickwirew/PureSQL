@@ -11,7 +11,7 @@ protocol Syntax {
     var range: Range<Substring.Index> { get }
 }
 
-struct InsertStmt: Stmt, Syntax, Equatable {
+struct InsertStmt: Stmt, Syntax {
     let cte: CommonTableExpression?
     let cteRecursive: Bool
     let action: Action
@@ -22,7 +22,7 @@ struct InsertStmt: Stmt, Syntax, Equatable {
     let returningClause: ReturningClause?
     let range: Range<Substring.Index>
     
-    struct Values: Equatable {
+    struct Values {
         let select: SelectStmt
         let upsertClause: UpsertClause?
     }
@@ -45,37 +45,37 @@ enum Or: Equatable, Encodable {
     case rollback
 }
 
-struct ReturningClause: Syntax, Equatable {
+struct ReturningClause: Syntax {
     let values: [Value]
     let range: Range<Substring.Index>
 
-    enum Value: Equatable {
+    enum Value {
         case expr(expr: Expression, alias: Identifier?)
         case all
     }
 }
 
-struct UpsertClause: Syntax, Equatable {
+struct UpsertClause: Syntax {
     let confictTarget: ConflictTarget?
     let doAction: Do
     let range: Range<Substring.Index>
     
-    struct ConflictTarget: Equatable {
+    struct ConflictTarget {
         let columns: [IndexedColumn]
         let condition: Expression?
     }
     
-    enum Do: Equatable {
+    enum Do {
         case nothing
         case updateSet(sets: [SetAction], where: Expression?)
     }
 }
 
-struct SetAction: Equatable {
+struct SetAction {
     let column: Column
     let expr: Expression
     
-    enum Column: Equatable {
+    enum Column {
         case single(Identifier)
         case list([Identifier])
     }
@@ -107,7 +107,7 @@ struct QualifiedTableName: Syntax {
 
 /// Used in a select and update. Not a centralized thing in
 /// there docs but it shows up in both.
-enum From: Equatable {
+enum From {
     case tableOrSubqueries([TableOrSubquery])
     case join(JoinClause)
     

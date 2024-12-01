@@ -609,7 +609,7 @@ enum Parsers {
         fatalError("TODO")
     }
     
-    enum JoinClauseOrTableOrSubqueries: Equatable {
+    enum JoinClauseOrTableOrSubqueries {
         case join(JoinClause)
         case tableOrSubqueries([TableOrSubquery])
     }

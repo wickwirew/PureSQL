@@ -20,7 +20,7 @@ protocol Stmt {
     func accept<V: StmtVisitor>(visitor: inout V) throws -> V.Output
 }
 
-struct CreateTableStmt: Equatable, Stmt {
+struct CreateTableStmt: Stmt {
     let name: Identifier
     let schemaName: Identifier?
     let isTemporary: Bool
@@ -29,7 +29,7 @@ struct CreateTableStmt: Equatable, Stmt {
     let constraints: [TableConstraint]
     let options: TableOptions
     
-    enum Kind: Equatable {
+    enum Kind {
         case select(SelectStmt)
         case columns(OrderedDictionary<Identifier, ColumnDef>)
     }
@@ -57,12 +57,12 @@ struct CreateTableStmt: Equatable, Stmt {
     }
 }
 
-struct AlterTableStmt: Equatable, Stmt {
+struct AlterTableStmt: Stmt {
     let name: Identifier
     let schemaName: Identifier?
     let kind: Kind
     
-    enum Kind: Equatable {
+    enum Kind {
         case rename(Identifier)
         case renameColumn(Identifier, Identifier)
         case addColumn(ColumnDef)
