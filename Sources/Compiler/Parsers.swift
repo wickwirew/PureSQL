@@ -11,9 +11,10 @@ enum Parsers {
     static func parse<Output>(
         source: String,
         parser: (inout ParserState) throws -> Output
-    ) throws -> Output {
+    ) throws -> (Output, Diagnostics) {
         var state = try ParserState(Lexer(source: source))
-        return try parser(&state)
+        let stmts = try parser(&state)
+        return (stmts, state.diagnostics)
     }
     
     static func parse(source: String) throws -> [any Stmt] {

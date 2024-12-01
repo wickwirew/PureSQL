@@ -68,66 +68,68 @@ public struct DatabaseMacro: MemberMacro {
                 return (name.segments.description, source.segments.description, source)
             }
         
-        var schemaCompiler = SchemaCompiler()
-        let (schema, diags) = try schemaCompiler.compile(migrations)
+        return []
         
-        for _ in diags.diagnostics {
-            // TODO: Need syntax
-        }
-        
-        let compiledQueries = try queries.map {
-            var queryCompiler = QueryCompiler(schema: schema)
-            return ($0, try queryCompiler.compile($1), $1, $2)
-        }
-        
-        return compiledQueries.flatMap { (name, query, source, syntax) in
-            guard case let .row(.named(columns)) = query.0.output else { fatalError() }
-            
-            for diag in query.1.diagnostics {
-                context.diagnose(.init(
-                    node: syntax,
-                    message: MyMessage(diag.message)
-                ))
-            }
-            
-            return [
-                DeclSyntax(StructDeclSyntax(name: "\(raw: name)Query: DatabaseQuery") {
-                    "typealias Output = [\(raw: name)]"
-                    "typealias Context = Connection"
-                    
-                    """
-                    func statement(in connection: borrowing Connection, with input: Input) throws(FeatherError) -> Statement {
-                        var statement = try Statement(\"\"\"\n\(raw: source)\n\"\"\", connection: connection)
-                        \(raw: query.0.inputs.map { "try statement.bind(value: input.\($0.name))" }.joined(separator: "\n"))
-                        return statement
-                    }
-                    """
-                    
-                    DeclSyntax(StructDeclSyntax(name: "Input") {
-                        for input in query.0.inputs {
-                            """
-                            let \(raw: input.name): \(raw: input.type.swiftType)
-                            """
-                        }
-                    })
-                }),
-                
-                DeclSyntax(StructDeclSyntax(name: "\(raw: name): RowDecodable") {
-                    for (column, type) in columns {
-                        """
-                        let \(raw: column): \(raw: type.swiftType)
-                        """
-                    }
-                    
-                    """
-                    init(cursor: borrowing Cursor) throws(FeatherError) {
-                        var columns = cursor.indexedColumns()
-                        \(raw: columns.map { "self.\($0.key) = try columns.next()" }.joined(separator: "\n"))
-                    }
-                    """
-                })
-            ]
-        }
+//        var schemaCompiler = SchemaCompiler()
+//        let (schema, diags) = try schemaCompiler.compile(migrations)
+//        
+//        for _ in diags.diagnostics {
+//            // TODO: Need syntax
+//        }
+//        
+//        let compiledQueries = try queries.map {
+//            var queryCompiler = QueryCompiler(schema: schema)
+//            return ($0, try queryCompiler.compile($1), $1, $2)
+//        }
+//        
+//        return compiledQueries.flatMap { (name, query, source, syntax) in
+//            guard case let .row(.named(columns)) = query.0.output else { fatalError() }
+//            
+//            for diag in query.1.diagnostics {
+//                context.diagnose(.init(
+//                    node: syntax,
+//                    message: MyMessage(diag.message)
+//                ))
+//            }
+//            
+//            return [
+//                DeclSyntax(StructDeclSyntax(name: "\(raw: name)Query: DatabaseQuery") {
+//                    "typealias Output = [\(raw: name)]"
+//                    "typealias Context = Connection"
+//                    
+//                    """
+//                    func statement(in connection: borrowing Connection, with input: Input) throws(FeatherError) -> Statement {
+//                        var statement = try Statement(\"\"\"\n\(raw: source)\n\"\"\", connection: connection)
+//                        \(raw: query.0.inputs.map { "try statement.bind(value: input.\($0.name))" }.joined(separator: "\n"))
+//                        return statement
+//                    }
+//                    """
+//                    
+//                    DeclSyntax(StructDeclSyntax(name: "Input") {
+//                        for input in query.0.inputs {
+//                            """
+//                            let \(raw: input.name): \(raw: input.type.swiftType)
+//                            """
+//                        }
+//                    })
+//                }),
+//                
+//                DeclSyntax(StructDeclSyntax(name: "\(raw: name): RowDecodable") {
+//                    for (column, type) in columns {
+//                        """
+//                        let \(raw: column): \(raw: type.swiftType)
+//                        """
+//                    }
+//                    
+//                    """
+//                    init(cursor: borrowing Cursor) throws(FeatherError) {
+//                        var columns = cursor.indexedColumns()
+//                        \(raw: columns.map { "self.\($0.key) = try columns.next()" }.joined(separator: "\n"))
+//                    }
+//                    """
+//                })
+//            ]
+//        }
     }
     
     private static func findQueriesAndMigrations(

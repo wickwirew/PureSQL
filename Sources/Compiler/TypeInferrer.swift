@@ -1,5 +1,5 @@
 //
-//  TypeChecker.swift
+//  TypeInferrer.swift
 //
 //
 //  Created by Wes Wickwire on 10/19/24.
@@ -326,7 +326,7 @@ struct Names {
     }
 }
 
-struct TypeChecker {
+struct TypeInferrer {
     private let env: Environment
     private var diagnostics: Diagnostics
     private var tyVars = 0
@@ -497,7 +497,7 @@ struct TypeChecker {
     }
 }
 
-extension TypeChecker: ExprVisitor {
+extension TypeInferrer: ExprVisitor {
     mutating func visit(_ expr: borrowing LiteralExpr) -> (Ty, Substitution, Names) {
         switch expr.kind {
         case .numeric(_, let isInt):
@@ -708,85 +708,4 @@ extension TypeChecker: ExprVisitor {
     }
 }
 
-public typealias Schema = OrderedDictionary<Substring, Ty>
-
-public struct SchemaCompiler: StmtVisitor {
-    private var schema = Schema()
-    private var diagnostics = Diagnostics()
-    
-    public init() {}
-    
-    consuming func compile(_ stmts: [Stmt]) -> (Schema, Diagnostics) {
-        for stmt in stmts {
-            guard let (name, ty) = stmt.accept(visitor: &self) else { continue }
-            schema[name] = ty
-        }
-        
-        return (schema, diagnostics)
-    }
-    
-    public mutating func compile(_ source: String) throws -> (Schema, Diagnostics) {
-        let statements = try Parsers.parse(source: source)
-        return compile(statements)
-    }
-    
-    mutating func visit(_ stmt: borrowing CreateTableStmt) -> (Substring, Ty)? {
-        switch stmt.kind {
-        case .select(let selectStmt):
-            var typeChecker = TypeChecker(env: Environment())
-            let (solution, diag) = typeChecker.check(selectStmt)
-            diagnostics.add(contentsOf: diag)
-            // TODO: Validate no params and returns named row
-            return (stmt.name.value, solution.type)
-        case .columns(let columns):
-            return (stmt.name.value, .row(.named(columns.reduce(into: [:], { $0[$1.value.name.value] = typeFor(column: $1.value) }))))
-        }
-    }
-    
-    mutating func visit(_ stmt: borrowing AlterTableStmt) -> (Substring, Ty)? {
-        guard let ty = schema[stmt.name.value] else {
-            diagnostics.add(.init("Table '\(stmt.name)' does not exist", at: stmt.name.range))
-            return nil
-        }
-        
-        guard case var .row(.named(columns)) = ty else {
-            diagnostics.add(.init("Internal error, table '\(stmt.name)' is not a table?", at: stmt.name.range))
-            return nil
-        }
-        
-        switch stmt.kind {
-        case let .rename(newName):
-            schema[stmt.name.value] = nil
-            schema[newName.value] = ty
-        case let .renameColumn(oldName, newName):
-            columns = columns.reduce(into: [:], { $0[$1.key == oldName.value ? newName.value : $1.key] = $1.value })
-        case .addColumn(let column):
-            columns[column.name.value] = typeFor(column: column)
-        case .dropColumn(let column):
-            columns[column.value] = nil
-        }
-        
-        return (stmt.name.value, .row(.named(columns)))
-    }
-    
-    func visit(_ stmt: borrowing SelectStmt) -> (Substring, Ty)? {
-        return nil
-    }
-    
-    mutating func visit(_ stmt: borrowing EmptyStmt) -> (Substring, Ty)? {
-        return nil
-    }
-    
-    private func typeFor(column: borrowing ColumnDef) -> Ty {
-        // Technically you can have a NULL primary key but I don't
-        // think people actually do that...
-        let isNotNullable = column.constraints
-            .contains { $0.isPkConstraint || $0.isNotNullConstraint }
-        
-        if isNotNullable {
-            return .nominal(column.type.name.value)
-        } else {
-            return .optional(.nominal(column.type.name.value))
-        }
-    }
-}
+public typealias Schema = OrderedDictionary<Substring, CompiledTable>

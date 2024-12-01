@@ -158,21 +158,20 @@ class TypeCheckerTests: XCTestCase {
     }
     
     func scope(table: String, schema: String) throws -> Environment {
-        var compiler = SchemaCompiler()
-        let schema = try compiler.compile(schema).0
-        guard let ty = schema[table[...]],
-                case let .row(.named(columns)) = ty else { fatalError("'table' provided not in 'schema'") }
+        var compiler = Compiler()
+        try compiler.compile(schema)
+        guard let table = compiler.schema[table[...]] else { fatalError("'table' provided not in 'schema'") }
         var env = Environment()
-        env.upsert(table[...], ty: ty)
-        columns.forEach { env.upsert($0, ty: $1) }
+        env.upsert(table.name, ty: table.type)
+        table.columns.forEach { env.upsert($0, ty: $1) }
         return env
     }
     
     private func solution(for source: String, in scope: Environment = Environment()) throws -> Solution {
-        let expr = try Parsers.parse(source: source, parser: { try Parsers.expr(state: &$0) })
-        var typeChecker = TypeChecker(env: scope)
-        let (solution, diag) = typeChecker.check(expr)
-        for d in diag.diagnostics {
+        let (expr, d1) = try Parsers.parse(source: source, parser: { try Parsers.expr(state: &$0) })
+        var typeInferrer = TypeInferrer(env: scope)
+        let (solution, d2) = typeInferrer.check(expr)
+        for d in (d1.diagnostics + d2.diagnostics) {
             print(d.message)
         }
         return solution
