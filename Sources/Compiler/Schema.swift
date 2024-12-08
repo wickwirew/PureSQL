@@ -1,5 +1,5 @@
 //
-//  AST.swift
+//  Schema.swift
 //
 //
 //  Created by Wes Wickwire on 10/8/24.
@@ -63,9 +63,9 @@ struct TypeName: Equatable, CustomStringConvertible, Sendable {
         switch self.args {
         case .none:
             return name.description
-        case .one(let arg):
+        case let .one(arg):
             return "\(name)(\(arg))"
-        case .two(let arg1, let arg2):
+        case let .two(arg1, arg2):
             return "\(name)(\(arg1), \(arg2))"
         }
     }
@@ -174,7 +174,7 @@ enum SelectCore {
             distinct: Bool = false,
             columns: [ResultColumn],
             from: From?,
-            `where`: Expression? = nil,
+            where: Expression? = nil,
             groupBy: GroupBy? = nil,
             windows: [Window] = []
         ) {
@@ -492,7 +492,6 @@ struct TableOptions: OptionSet, Sendable, CustomStringConvertible {
     }
 }
 
-
 @dynamicMemberLookup
 final class Indirect<Wrapped> {
     var value: Wrapped
@@ -547,7 +546,7 @@ struct TableName: Hashable, CustomStringConvertible {
         switch schema {
         case .main:
             return name.description
-        case .other(let schema):
+        case let .other(schema):
             return "\(schema).\(name)"
         }
     }
@@ -555,7 +554,7 @@ struct TableName: Hashable, CustomStringConvertible {
     var range: Range<Substring.Index> {
         return switch schema {
         case .main: name.range
-        case .other(let schema): schema.range.lowerBound..<name.range.upperBound
+        case let .other(schema): schema.range.lowerBound..<name.range.upperBound
         }
     }
     

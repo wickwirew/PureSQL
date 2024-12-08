@@ -113,11 +113,11 @@ public enum SQLiteCode: Int32, Error {
     case sqliteReadonlyRecovery = 264
     case sqliteReadonlyRollback = 776
     case sqliteWarningAutoindex = 284
-    
+
     var isError: Bool {
         return self != .sqliteOk
     }
-    
+
     init(_ rc: Int32) {
         self = .init(rawValue: rc) ?? .sqliteOk
     }
@@ -125,7 +125,6 @@ public enum SQLiteCode: Int32, Error {
 
 func throwing(_ rc: Int32) throws(FeatherError) {
     guard rc != SQLITE_OK, let code = SQLiteCode(rawValue: rc) else { return }
-    
-    
+
     throw .sqlite(code)
 }

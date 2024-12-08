@@ -47,9 +47,9 @@ struct Solution: CustomStringConvertible {
         mutating get {
             tyVarLookup.map { kind, tv in
                 switch kind {
-                case .named(let name):
+                case let .named(name):
                     return (name.value, type(for: .var(tv)))
-                case .unnamed(let index):
+                case let .unnamed(index):
                     return (name(for: index), type(for: .var(tv)))
                 }
             }
@@ -73,7 +73,7 @@ struct Solution: CustomStringConvertible {
         let ty = ty.apply(substitution)
         
         switch ty.apply(substitution) {
-        case .var(let tv):
+        case let .var(tv):
             // The type variable was never bound to a concrete type.
             // Check if the constraints gives any clues about a default type
             // if none just assume `ANY`
@@ -81,7 +81,7 @@ struct Solution: CustomStringConvertible {
                 return .integer
             }
             return .any
-        case .row(let tys):
+        case let .row(tys):
             // TODO: Clean this up
             return .row(.unnamed(tys.types.map { type(for: $0) }))
         default:
@@ -128,40 +128,68 @@ extension Constraints {
 extension Substitution {
     func merging(_ other: Substitution) -> Substitution {
         guard !other.isEmpty else { return self }
-        return merging(other, uniquingKeysWith: {$1})
+        return merging(other, uniquingKeysWith: { $1 })
     }
     
     func merging(_ a: Substitution, _ b: Substitution) -> Substitution {
         var output = self
-        for (k, v) in a { output[k] = v }
-        for (k, v) in b { output[k] = v }
+        for (k, v) in a {
+            output[k] = v
+        }
+        for (k, v) in b {
+            output[k] = v
+        }
         return output
     }
     
     func merging(_ a: Substitution, _ b: Substitution, _ c: Substitution) -> Substitution {
         var output = self
-        for (k, v) in a { output[k] = v }
-        for (k, v) in b { output[k] = v }
-        for (k, v) in c { output[k] = v }
+        for (k, v) in a {
+            output[k] = v
+        }
+        for (k, v) in b {
+            output[k] = v
+        }
+        for (k, v) in c {
+            output[k] = v
+        }
         return output
     }
     
     func merging(_ a: Substitution, _ b: Substitution, _ c: Substitution, _ d: Substitution) -> Substitution {
         var output = self
-        for (k, v) in a { output[k] = v }
-        for (k, v) in b { output[k] = v }
-        for (k, v) in c { output[k] = v }
-        for (k, v) in d { output[k] = v }
+        for (k, v) in a {
+            output[k] = v
+        }
+        for (k, v) in b {
+            output[k] = v
+        }
+        for (k, v) in c {
+            output[k] = v
+        }
+        for (k, v) in d {
+            output[k] = v
+        }
         return output
     }
     
     func merging(_ a: Substitution, _ b: Substitution, _ c: Substitution, _ d: Substitution, _ e: Substitution) -> Substitution {
         var output = self
-        for (k, v) in a { output[k] = v }
-        for (k, v) in b { output[k] = v }
-        for (k, v) in c { output[k] = v }
-        for (k, v) in d { output[k] = v }
-        for (k, v) in e { output[k] = v }
+        for (k, v) in a {
+            output[k] = v
+        }
+        for (k, v) in b {
+            output[k] = v
+        }
+        for (k, v) in c {
+            output[k] = v
+        }
+        for (k, v) in d {
+            output[k] = v
+        }
+        for (k, v) in e {
+            output[k] = v
+        }
         return output
     }
 }
@@ -205,33 +233,33 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
         
         var first: Ty? {
             return switch self {
-            case .named(let v): v.values.first
-            case .unnamed(let v): v.first
-            case .unknown(let t): t
+            case let .named(v): v.values.first
+            case let .unnamed(v): v.first
+            case let .unknown(t): t
             }
         }
         
         var count: Int {
             return switch self {
-            case .named(let v): v.count
-            case .unnamed(let v): v.count
+            case let .named(v): v.count
+            case let .unnamed(v): v.count
             case .unknown: 1
             }
         }
         
         var types: [Ty] {
             return switch self {
-            case .named(let v): Array(v.values)
-            case .unnamed(let v): v
-            case .unknown(let t): [t]
+            case let .named(v): Array(v.values)
+            case let .unnamed(v): v
+            case let .unknown(t): [t]
             }
         }
         
         func apply(_ s: Substitution) -> RowTy {
             return switch self {
-            case .named(let v): .named(v.mapValues { $0.apply(s) })
-            case .unnamed(let v): .unnamed(v.map { $0.apply(s) })
-            case .unknown(let t): .unknown(t.apply(s))
+            case let .named(v): .named(v.mapValues { $0.apply(s) })
+            case let .unnamed(v): .unnamed(v.map { $0.apply(s) })
+            case let .unknown(t): .unknown(t.apply(s))
             }
         }
     }
@@ -246,14 +274,14 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
     
     public var description: String {
         return switch self {
-        case .nominal(let typeName): typeName.description
-        case .var(let typeVariable): typeVariable.description
+        case let .nominal(typeName): typeName.description
+        case let .var(typeVariable): typeVariable.description
         case let .fn(args, ret): "(\(args.map(\.description).joined(separator: ","))) -> \(ret)"
         case let .row(row): switch row {
-            case .named(let values): "(\(values.map{ "\($0):\($1)" }.joined(separator: ",")))"
-            case .unnamed(let values): "(\(values.map(\.description).joined(separator: ",")))"
-            case .unknown(let ty): "(\(ty)...)"
-        }
+            case let .named(values): "(\(values.map { "\($0):\($1)" }.joined(separator: ",")))"
+            case let .unnamed(values): "(\(values.map(\.description).joined(separator: ",")))"
+            case let .unknown(ty): "(\(ty)...)"
+            }
         case let .optional(ty): "\(ty)?"
         case .error: "<<error>>"
         }
@@ -276,7 +304,7 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
             return self
         case let .fn(params, ret):
             return .fn(
-                params: params.map{ $0.apply(s) },
+                params: params.map { $0.apply(s) },
                 ret: ret.apply(s)
             )
         case let .row(tys):
@@ -363,7 +391,7 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
         var others = others.makeIterator()
         
         while let ty1 = tys.next(), let ty2 = others.next() {
-            sub.merge(ty1.apply(sub).unify(with: ty2.apply(sub), at: range, diagnostics: &diagnostics), uniquingKeysWith: {$1})
+            sub.merge(ty1.apply(sub).unify(with: ty2.apply(sub), at: range, diagnostics: &diagnostics), uniquingKeysWith: { $1 })
         }
         
         return sub
@@ -382,7 +410,7 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
         for ty2 in tys {
             sub.merge(
                 ty1.apply(sub).unify(with: ty2.apply(sub), at: range, diagnostics: &diagnostics),
-                uniquingKeysWith: {$1}
+                uniquingKeysWith: { $1 }
             )
         }
         
@@ -423,17 +451,17 @@ struct Names {
         case let (.needed(index), .some(name)):
             var map = map
             map[index] = name
-            return Names(last: .none, map: map.merging(other.map, uniquingKeysWith: {$1}))
+            return Names(last: .none, map: map.merging(other.map, uniquingKeysWith: { $1 }))
         case let (.some(name), .needed(index)):
             var map = map
             map[index] = name
-            return Names(last: .none, map: map.merging(other.map, uniquingKeysWith: {$1}))
+            return Names(last: .none, map: map.merging(other.map, uniquingKeysWith: { $1 }))
         case (.none, _):
-            return Names(last: other.last, map: map.merging(other.map, uniquingKeysWith: {$1}))
+            return Names(last: other.last, map: map.merging(other.map, uniquingKeysWith: { $1 }))
         case (_, .none):
-            return Names(last: last, map: map.merging(other.map, uniquingKeysWith: {$1}))
+            return Names(last: last, map: map.merging(other.map, uniquingKeysWith: { $1 }))
         default:
-            return Names(last: last, map: map.merging(other.map, uniquingKeysWith: {$1}))
+            return Names(last: last, map: map.merging(other.map, uniquingKeysWith: { $1 }))
         }
     }
 }
@@ -475,7 +503,7 @@ struct TypeInferrer {
         guard !typeScheme.typeVariables.isEmpty else { return typeScheme.type }
         let sub = Substitution(
             typeScheme.typeVariables.map { ($0, .var(freshTyVar())) },
-            uniquingKeysWith: {$1}
+            uniquingKeysWith: { $1 }
         )
         return typeScheme.type.apply(sub)
     }
@@ -547,7 +575,7 @@ struct TypeInferrer {
         guard var lastTy = tys.next() else { return sub }
 
         while let ty = tys.next() {
-            sub.merge(unify(lastTy, with: ty.apply(sub), at: range), uniquingKeysWith: {$1})
+            sub.merge(unify(lastTy, with: ty.apply(sub), at: range), uniquingKeysWith: { $1 })
             lastTy = ty
         }
         
@@ -558,7 +586,7 @@ struct TypeInferrer {
 extension TypeInferrer: ExprVisitor {
     mutating func visit(_ expr: borrowing LiteralExpr) -> (Ty, Substitution, Names) {
         switch expr.kind {
-        case .numeric(_, let isInt):
+        case let .numeric(_, isInt):
             if isInt {
                 let tv = freshTyVar()
                 constraints[tv] = .numeric
@@ -581,7 +609,7 @@ extension TypeInferrer: ExprVisitor {
         let expr = copy expr
         let names: Names = switch expr.kind {
         case .named: .none
-        case .unnamed(let index): .needed(index: index)
+        case let .unnamed(index): .needed(index: index)
         }
         return (.var(freshTyVar(for: expr)), [:], names)
     }
@@ -767,7 +795,7 @@ extension TypeInferrer: ExprVisitor {
         for expr in exprs {
             let (t, s, n) = expr.accept(visitor: &self)
             tys.append(t.apply(sub))
-            sub.merge(s, uniquingKeysWith: {$1})
+            sub.merge(s, uniquingKeysWith: { $1 })
             names = names.merging(n)
         }
         

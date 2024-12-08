@@ -28,31 +28,31 @@ protocol ExprVisitor {
 extension ExprVisitor {
     mutating func visit(_ expr: Expression) -> Output {
         switch expr {
-        case .literal(let expr):
+        case let .literal(expr):
             return expr.accept(visitor: &self)
-        case .bindParameter(let expr):
+        case let .bindParameter(expr):
             return expr.accept(visitor: &self)
-        case .column(let expr):
+        case let .column(expr):
             return expr.accept(visitor: &self)
-        case .prefix(let expr):
+        case let .prefix(expr):
             return expr.accept(visitor: &self)
-        case .infix(let expr):
+        case let .infix(expr):
             return expr.accept(visitor: &self)
-        case .postfix(let expr):
+        case let .postfix(expr):
             return expr.accept(visitor: &self)
-        case .between(let expr):
+        case let .between(expr):
             return expr.accept(visitor: &self)
-        case .fn(let expr):
+        case let .fn(expr):
             return expr.accept(visitor: &self)
-        case .cast(let expr):
+        case let .cast(expr):
             return expr.accept(visitor: &self)
-        case .grouped(let expr):
+        case let .grouped(expr):
             return expr.accept(visitor: &self)
-        case .caseWhenThen(let expr):
+        case let .caseWhenThen(expr):
             return expr.accept(visitor: &self)
-        case .select(let expr):
+        case let .select(expr):
             return expr.accept(visitor: &self)
-        case .invalid(let expr):
+        case let .invalid(expr):
             return expr.accept(visitor: &self)
         }
     }
@@ -63,7 +63,7 @@ struct OperatorSyntax: CustomStringConvertible {
     let range: Range<String.Index>
     
     init(
-        `operator`: Operator,
+        operator: Operator,
         range: Range<String.Index>
     ) {
         self.operator = `operator`
@@ -110,11 +110,11 @@ struct LiteralExpr: Expr {
 extension LiteralExpr: CustomStringConvertible {
     var description: String {
         switch self.kind {
-        case .numeric(let numeric, _):
+        case let .numeric(numeric, _):
             return numeric.description
-        case .string(let substring):
+        case let .string(substring):
             return "'\(substring.description)'"
-        case .blob(let substring):
+        case let .blob(substring):
             return substring.description
         case .null:
             return "NULL"
@@ -159,24 +159,24 @@ indirect enum Expression: Expr {
     
     var range: Range<String.Index> {
         return switch self {
-        case .literal(let expr): expr.range
-        case .bindParameter(let expr): expr.range
-        case .column(let expr): expr.range
-        case .prefix(let expr): expr.range
-        case .infix(let expr): expr.range
-        case .postfix(let expr): expr.range
-        case .between(let expr): expr.range
-        case .fn(let expr): expr.range
-        case .cast(let expr): expr.range
-        case .grouped(let expr): expr.range
-        case .caseWhenThen(let expr): expr.range
-        case .select(let expr): expr.range
-        case .invalid(let expr): expr.range
+        case let .literal(expr): expr.range
+        case let .bindParameter(expr): expr.range
+        case let .column(expr): expr.range
+        case let .prefix(expr): expr.range
+        case let .infix(expr): expr.range
+        case let .postfix(expr): expr.range
+        case let .between(expr): expr.range
+        case let .fn(expr): expr.range
+        case let .cast(expr): expr.range
+        case let .grouped(expr): expr.range
+        case let .caseWhenThen(expr): expr.range
+        case let .select(expr): expr.range
+        case let .invalid(expr): expr.range
         }
     }
     
     var literal: LiteralExpr? {
-        if case .literal(let l) = self { return l }
+        if case let .literal(l) = self { return l }
         return nil
     }
     
@@ -188,31 +188,31 @@ indirect enum Expression: Expr {
 extension Expression: CustomStringConvertible {
     var description: String {
         switch self {
-        case .literal(let literal):
+        case let .literal(literal):
             return literal.description
-        case .bindParameter(let bindParameter):
+        case let .bindParameter(bindParameter):
             return bindParameter.description
-        case .column(let expr):
+        case let .column(expr):
             return expr.description
-        case .prefix(let expr):
+        case let .prefix(expr):
             return expr.description
-        case .infix(let expr):
+        case let .infix(expr):
             return expr.description
-        case .postfix(let expr):
+        case let .postfix(expr):
             return expr.description
-        case .between(let expr):
+        case let .between(expr):
             return expr.description
-        case .fn(let expr):
+        case let .fn(expr):
             return expr.description
-        case .cast(let expr):
+        case let .cast(expr):
             return expr.description
-        case .grouped(let expr):
+        case let .grouped(expr):
             return expr.description
-        case .caseWhenThen(let expr):
+        case let .caseWhenThen(expr):
             return expr.description
-        case .select(let expr):
+        case let .select(expr):
             return "\(expr)"
-        case .invalid(let expr):
+        case let .invalid(expr):
             return expr.description
         }
     }
@@ -240,7 +240,7 @@ struct PrefixExpr: Expr, CustomStringConvertible {
     let `operator`: OperatorSyntax
     let rhs: Expression
     
-    init(`operator`: OperatorSyntax, rhs: Expression) {
+    init(operator: OperatorSyntax, rhs: Expression) {
         self.operator = `operator`
         self.rhs = rhs
     }
@@ -262,7 +262,7 @@ struct PostfixExpr: Expr, CustomStringConvertible {
     let lhs: Expression
     let `operator`: OperatorSyntax
     
-    init(lhs: Expression, `operator`: OperatorSyntax) {
+    init(lhs: Expression, operator: OperatorSyntax) {
         self.lhs = lhs
         self.operator = `operator`
     }
@@ -289,7 +289,7 @@ struct InfixExpr: Expr, CustomStringConvertible {
         return lhs.range.lowerBound..<rhs.range.upperBound
     }
     
-    init(lhs: Expression, `operator`: OperatorSyntax, rhs: Expression) {
+    init(lhs: Expression, operator: OperatorSyntax, rhs: Expression) {
         self.lhs = lhs
         self.operator = `operator`
         self.rhs = rhs
@@ -398,8 +398,8 @@ struct BindParameter: Expr, Hashable, CustomStringConvertible {
     
     var description: String {
         return switch kind {
-        case .named(let name): name.description
-        case .unnamed(let index): "?\(index)"
+        case let .named(name): name.description
+        case let .unnamed(index): "?\(index)"
         }
     }
     
@@ -517,9 +517,9 @@ enum Operator: Equatable {
             case .escape: 6
             case .lt, .gt, .lte, .gte: 5
             case .eq, .eq2, .neq, .neq2, .is, .isNot, .isDistinctFrom,
-                    .isNotDistinctFrom, .between, .in, .match, .like,
-                    .regexp, .glob, .isnull, .notNull, .notnull: 4
-            case .not(let op): op?.precedence(usage: usage) ?? 3
+                 .isNotDistinctFrom, .between, .in, .match, .like,
+                 .regexp, .glob, .isnull, .notNull, .notnull: 4
+            case let .not(op): op?.precedence(usage: usage) ?? 3
             case .and: 2
             case .or: 1
             default: 0
@@ -569,7 +569,7 @@ enum Operator: Equatable {
         case .notEqual: return .neq
         case .notEqual2: return .neq2
         case .and: return .and
-        case .`in`: return .`in`
+        case .in: return .in
         case .match: return .match
         case .like: return .like
         case .regexp: return .regexp
@@ -619,7 +619,7 @@ extension Operator: CustomStringConvertible {
     var description: String {
         return switch self {
         case .tilde: "~"
-        case .collate(let collation): "COLLATE \(collation)"
+        case let .collate(collation): "COLLATE \(collation)"
         case .concat: "||"
         case .arrow: "->"
         case .doubleArrow: "->>"
@@ -641,13 +641,13 @@ extension Operator: CustomStringConvertible {
         case .eq2: "=="
         case .neq: "!="
         case .neq2: "<>"
-        case .`is`: "IS"
+        case .is: "IS"
         case .isNot: "IS NOT"
         case .isDistinctFrom: "IS DISTINCT FROM"
         case .isNotDistinctFrom: "IS NOT DISTINCT FROM"
         case .between: "BETWEEN"
         case .and: "AND"
-        case .`in`: "IN"
+        case .in: "IN"
         case .match: "MATCH"
         case .like: "LIKE"
         case .regexp: "REGEXP"
@@ -655,7 +655,7 @@ extension Operator: CustomStringConvertible {
         case .isnull: "ISNULL"
         case .notNull: "NOT NULL"
         case .notnull: "NOTNULL"
-        case .not(let op): op.map { "NOT \($0)" } ?? "NOT"
+        case let .not(op): op.map { "NOT \($0)" } ?? "NOT"
         case .or: "OR"
         }
     }
@@ -699,14 +699,14 @@ struct CaseWhenThenExpr: Expr {
     let range: Range<String.Index>
     
     init(
-        `case`: Expression?,
+        case: Expression?,
         whenThen: [WhenThen],
-        `else`: Expression?,
+        else: Expression?,
         range: Range<String.Index>
     ) {
-        self.`case` = `case`
+        self.case = `case`
         self.whenThen = whenThen
-        self.`else` = `else`
+        self.else = `else`
         self.range = range
     }
     
@@ -728,13 +728,13 @@ struct CaseWhenThenExpr: Expr {
 extension CaseWhenThenExpr: CustomStringConvertible {
     var description: String {
         var str = "CASE"
-        if let `case` = `case` {
+        if let `case` {
             str += " \(`case`)"
         }
         for whenThen in whenThen {
             str += " WHEN \(whenThen.when) THEN \(whenThen.then)"
         }
-        if let `else` = `else` {
+        if let `else` {
             str += " ELSE \(`else`)"
         }
         str += " END"

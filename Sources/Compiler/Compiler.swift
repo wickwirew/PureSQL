@@ -51,9 +51,9 @@ struct Compiler {
     mutating func compile(_ stmts: [Stmt]) {
         for stmt in stmts {
             switch stmt.accept(visitor: &self) {
-            case .table(let table):
+            case let .table(table):
                 schema[table.name] = table
-            case .query(let query):
+            case let .query(query):
                 queries.append(query)
             case nil:
                 break
@@ -69,16 +69,16 @@ struct Compiler {
 extension Compiler: StmtVisitor {
     mutating func visit(_ stmt: borrowing CreateTableStmt) -> CompiledStmt? {
         switch stmt.kind {
-        case .select(let selectStmt):
+        case let .select(selectStmt):
             var typeInferrer = TypeInferrer(env: Environment(), schema: schema)
             let (solution, diag) = typeInferrer.check(selectStmt)
             diagnostics.add(contentsOf: diag)
             guard case let .row(.named(columns)) = solution.type else { return nil }
             return .table(CompiledTable(name: stmt.name.value, columns: columns))
-        case .columns(let columns):
+        case let .columns(columns):
             return .table(CompiledTable(
                 name: stmt.name.value,
-                columns: columns.reduce(into: [:], { $0[$1.value.name.value] = typeFor(column: $1.value) })
+                columns: columns.reduce(into: [:]) { $0[$1.value.name.value] = typeFor(column: $1.value) }
             ))
         }
     }
@@ -94,10 +94,10 @@ extension Compiler: StmtVisitor {
             schema[stmt.name.value] = nil
             schema[newName.value] = table
         case let .renameColumn(oldName, newName):
-            table.columns = table.columns.reduce(into: [:], { $0[$1.key == oldName.value ? newName.value : $1.key] = $1.value })
-        case .addColumn(let column):
+            table.columns = table.columns.reduce(into: [:]) { $0[$1.key == oldName.value ? newName.value : $1.key] = $1.value }
+        case let .addColumn(column):
             table.columns[column.name.value] = typeFor(column: column)
-        case .dropColumn(let column):
+        case let .dropColumn(column):
             table.columns[column.value] = nil
         }
         
@@ -153,7 +153,7 @@ struct QueryCompiler {
         }
         
         switch select.selects.value {
-        case .single(let select):
+        case let .single(select):
             let result = compile(select)
             return (result, diagnositics)
         case .compound:
@@ -224,7 +224,7 @@ struct QueryCompiler {
                 resultColumns[name] = ty
             case .all:
                 // TODO: See TODO on `Columns` typealias
-                resultColumns.merge(resultColumns, uniquingKeysWith: {$1})
+                resultColumns.merge(resultColumns, uniquingKeysWith: { $1 })
             }
         }
         
@@ -270,7 +270,7 @@ struct QueryCompiler {
             
             tableTy = .row(.named(
                 (0..<min(columnTypes.count, cte.columns.count))
-                    .reduce(into: [:], { $0[cte.columns[$1].value] = columnTypes[$1] })
+                    .reduce(into: [:]) { $0[cte.columns[$1].value] = columnTypes[$1] }
             ))
         }
         
@@ -279,7 +279,7 @@ struct QueryCompiler {
     
     private mutating func compile(_ select: SelectCore) -> CompiledQuery {
         switch select {
-        case .select(let select):
+        case let .select(select):
             return compile(select: select)
         case .values:
             fatalError()
@@ -305,7 +305,7 @@ struct QueryCompiler {
             if let having = groupBy.having {
                 let type = check(expression: having)
                 
-                if type != .bool && type != .integer {
+                if type != .bool, type != .integer {
                     diagnositics.add(.init(
                         "HAVING clause should return a 'BOOL' or 'INTEGER', got '\(type)'",
                         at: having.range
@@ -319,11 +319,11 @@ struct QueryCompiler {
     
     private mutating func compile(from: From) {
         switch from {
-        case .tableOrSubqueries(let t):
+        case let .tableOrSubqueries(t):
             for table in t {
                 compile(table)
             }
-        case .join(let joinClause):
+        case let .join(joinClause):
             compile(joinClause: joinClause)
         }
     }
@@ -331,7 +331,7 @@ struct QueryCompiler {
     private mutating func compile(where expr: Expression) {
         let type = check(expression: expr)
         
-        if type != .bool && type != .integer {
+        if type != .bool, type != .integer {
             diagnositics.add(.init(
                 "WHERE clause should return a 'BOOL' or 'INTEGER', got '\(type)'",
                 at: expr.range
@@ -344,7 +344,7 @@ struct QueryCompiler {
         
         for resultColumn in resultColumns {
             switch resultColumn {
-            case .expr(let expr, let alias):
+            case let .expr(expr, alias):
                 var typeInferrer = TypeInferrer(env: environment, schema: schema)
                 var (solution, diag) = typeInferrer.check(expr)
                 inputs.append(contentsOf: solution.allNames.map { CompiledQuery.Input(name: $0.0, type: $0.1) })
@@ -356,7 +356,7 @@ struct QueryCompiler {
                 if name == nil {
                     diagnositics.add(.nameRequired(at: expr.range))
                 }
-            case .all(let tableName):
+            case let .all(tableName):
                 if let tableName {
                     if let table = environment[tableName.value]?.type {
                         guard case let .row(.named(tableColumns)) = table else {
@@ -394,19 +394,19 @@ struct QueryCompiler {
     
     private mutating func compile(join: JoinClause.Join) {
         switch join.constraint {
-        case .on(let expression):
+        case let .on(expression):
             compile(join.tableOrSubquery, joinOp: join.op)
             
             let type = check(expression: expression)
             
-            if type != .bool && type != .integer {
+            if type != .bool, type != .integer {
                 diagnositics.add(.init(
                     "JOIN clause should return a 'BOOL' or 'INTEGER', got '\(type)'",
                     at: expression.range
                 ))
             }
-        case .using(let columns):
-            compile(join.tableOrSubquery, joinOp: join.op, columns: columns.reduce(into: [], { $0.insert($1.value) }))
+        case let .using(columns):
+            compile(join.tableOrSubquery, joinOp: join.op, columns: columns.reduce(into: []) { $0.insert($1.value) })
         case .none:
             compile(join.tableOrSubquery, joinOp: join.op)
         }

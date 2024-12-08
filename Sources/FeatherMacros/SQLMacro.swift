@@ -1,9 +1,9 @@
+import Compiler
 import SwiftCompilerPlugin
+import SwiftDiagnostics
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
-import Compiler
-import SwiftDiagnostics
 
 struct GenError: Error, CustomStringConvertible {
     let description: String
@@ -27,14 +27,13 @@ struct MyMessage: DiagnosticMessage {
     var severity: DiagnosticSeverity {
         return .error
     }
-    
 }
 
 public struct DatabaseMacro: MemberMacro {
     public static func expansion(
-      of node: AttributeSyntax,
-      providingMembersOf declaration: some DeclGroupSyntax,
-      in context: some MacroExpansionContext
+        of node: AttributeSyntax,
+        providingMembersOf declaration: some DeclGroupSyntax,
+        in context: some MacroExpansionContext
     ) throws -> [DeclSyntax] {
         guard let s = declaration.as(StructDeclSyntax.self) else {
             context.addDiagnostics(from: GenError("@Database can only be applied to a struct"), node: declaration)
@@ -42,11 +41,11 @@ public struct DatabaseMacro: MemberMacro {
         }
         
         guard let (queriesDict, migrationsSyntax) = findQueriesAndMigrations(from: s.memberBlock, in: context),
-                let queriesSyntax = queriesDict.content.as(DictionaryElementListSyntax.self) else {
+              let queriesSyntax = queriesDict.content.as(DictionaryElementListSyntax.self)
+        else {
             context.addDiagnostics(from: GenError("Unable to resolve migrations and queries"), node: node)
             return []
         }
-        
         
         let migrations = try migrationsSyntax.elements
             .map {
@@ -61,7 +60,8 @@ public struct DatabaseMacro: MemberMacro {
         let queries: [(name: String, source: String, syntax: StringLiteralExprSyntax)] = try queriesSyntax
             .map {
                 guard let name = $0.key.as(StringLiteralExprSyntax.self),
-                      let source = $0.value.as(StringLiteralExprSyntax.self) else {
+                      let source = $0.value.as(StringLiteralExprSyntax.self)
+                else {
                     throw GenError("Key/value must be string literals")
                 }
                 
@@ -203,8 +203,7 @@ public struct SchemaMacro: DeclarationMacro {
 
 public struct QueryMacro: ExpressionMacro {
     public static func expansion(
-        of node: some FreestandingMacroExpansionSyntax, in
-        context: some MacroExpansionContext
+        of node: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext
     ) throws -> ExprSyntax {
         let value = """
         {
@@ -239,7 +238,7 @@ struct LogError: Error, CustomStringConvertible {
 extension Ty {
     var swiftType: String {
         switch self {
-        case .nominal(let name):
+        case let .nominal(name):
             return switch name.uppercased() {
             case "REAL": "Double"
             case "INT": "Int"
@@ -247,7 +246,7 @@ extension Ty {
             case "TEXT": "String"
             default: "Any"
             }
-        case .optional(let ty):
+        case let .optional(ty):
             return "\(ty.swiftType)?"
         case .var, .fn, .row, .error:
             return "Any"

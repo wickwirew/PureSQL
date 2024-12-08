@@ -5,8 +5,8 @@
 //  Created by Wes Wickwire on 11/9/24.
 //
 
-import SQLite3
 import Collections
+import SQLite3
 
 public struct Transaction: ~Copyable {
     private let connection: Connection
@@ -53,6 +53,7 @@ public enum FeatherError: Error {
     case queryReturnedNoValue
     case sqlite(SQLiteCode)
 }
+
 public protocol RowDecodable {
     init(cursor: borrowing Cursor) throws(FeatherError)
 }
@@ -117,10 +118,10 @@ public struct Cursor: ~Copyable {
     }
 }
 
-extension Cursor {
+public extension Cursor {
     /// A method of decoding columns. The fastest way
     /// to read the columns out of a select is in order.
-    public struct IndexedColumns: ~Copyable {
+    struct IndexedColumns: ~Copyable {
         @usableFromInline var raw: OpaquePointer
         @usableFromInline var column: Int32 = 0
         @usableFromInline let count: Int32

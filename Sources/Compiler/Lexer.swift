@@ -126,7 +126,7 @@ struct Lexer {
     private mutating func parseWord() -> Token {
         let start = currentIndex
         
-        while let current, (current.isLetter || current.isNumber || current == "_") {
+        while let current, current.isLetter || current.isNumber || current == "_" {
             advance()
         }
         
@@ -213,7 +213,7 @@ struct Lexer {
     }
     
     private mutating func consumeDigits() {
-        while let current, (current.isNumber || current == "_") {
+        while let current, current.isNumber || current == "_" {
             advance()
         }
     }
@@ -226,7 +226,7 @@ struct Lexer {
         
         let numberStart = currentIndex
         
-        while let current, (Lexer.hexDigits.contains(current) || current == "_") {
+        while let current, Lexer.hexDigits.contains(current) || current == "_" {
             advance()
         }
         

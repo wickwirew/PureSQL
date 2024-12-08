@@ -380,11 +380,11 @@ struct Token {
         
         var description: String {
             switch self {
-            case .symbol(let value): String(value)
-            case .string(let value): String(value)
-            case .double(let value): value.description
-            case .int(let value): value.description
-            case .hex(let value): value.description
+            case let .symbol(value): String(value)
+            case let .string(value): String(value)
+            case let .double(value): value.description
+            case let .int(value): value.description
+            case let .hex(value): value.description
             case .abort: "ABORT"
             case .action: "ACTION"
             case .add: "ADD"

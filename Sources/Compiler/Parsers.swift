@@ -181,11 +181,10 @@ enum Parsers {
         
         let sets = delimited(by: .comma, state: &state, element: setAction)
         
-        let whereExpr: Expression?
-        if state.take(if: .where) {
-            whereExpr = expr(state: &state)
+        let whereExpr: Expression? = if state.take(if: .where) {
+            expr(state: &state)
         } else {
-            whereExpr = nil
+            nil
         }
         
         return UpsertClause(
@@ -225,11 +224,10 @@ enum Parsers {
             delimited(by: .comma, state: &state, element: indexedColumn)
         }
         
-        let condition: Expression?
-        if state.take(if: .where) {
-            condition = expr(state: &state)
+        let condition: Expression? = if state.take(if: .where) {
+            expr(state: &state)
         } else {
-            condition = nil
+            nil
         }
         
         return UpsertClause.ConflictTarget(columns: columns, condition: condition)
@@ -313,11 +311,10 @@ enum Parsers {
     ) -> IndexedColumn {
         let expr = expr(state: &state)
         
-        let collation: Identifier?
-        if state.take(if: .collate) {
-            collation = identifier(state: &state)
+        let collation: Identifier? = if state.take(if: .collate) {
+            identifier(state: &state)
         } else {
-            collation = nil
+            nil
         }
         
         let order = order(state: &state)
@@ -451,8 +448,8 @@ enum Parsers {
         }
         
         return switch output {
-        case .join(let joinClause): .join(joinClause)
-        case .tableOrSubqueries(let tableOrSubqueries): .tableOrSubqueries(tableOrSubqueries)
+        case let .join(joinClause): .join(joinClause)
+        case let .tableOrSubqueries(tableOrSubqueries): .tableOrSubqueries(tableOrSubqueries)
         case nil: nil
         }
     }
@@ -667,7 +664,7 @@ enum Parsers {
         case .star:
             state.skip()
             return .all(table: nil)
-        case .symbol(let table) where state.peek.kind == .dot && state.peek2.kind == .star:
+        case let .symbol(table) where state.peek.kind == .dot && state.peek2.kind == .star:
             let table = Identifier(value: table, range: state.current.range)
             state.skip()
             state.consume(.dot)
@@ -733,9 +730,9 @@ enum Parsers {
                 let result = try parens(state: &state, value: joinClauseOrTableOrSubqueries)
                 
                 switch result {
-                case .join(let joinClause):
+                case let .join(joinClause):
                     return .join(joinClause)
-                case .tableOrSubqueries(let table):
+                case let .tableOrSubqueries(table):
                     let alias = maybeAlias(state: &state, asRequired: false)
                     return .subTableOrSubqueries(table, alias: alias)
                 }
@@ -902,7 +899,7 @@ enum Parsers {
             
             let columns: OrderedDictionary<Identifier, ColumnDef> = parens(state: &state) { state in
                 commaDelimited(state: &state, element: columnDef)
-                    .reduce(into: [:], { $0[$1.name] = $1 })
+                    .reduce(into: [:]) { $0[$1.name] = $1 }
             }
             
             let options = tableOptions(state: &state)
@@ -925,10 +922,10 @@ enum Parsers {
         let type = typeName(state: &state)
         var constraints: [ColumnConstraint] = []
         
-        while state.current.kind != .comma
-             && state.current.kind != .closeParen
-             && state.current.kind != .eof
-             && state.current.kind != .semiColon
+        while state.current.kind != .comma,
+              state.current.kind != .closeParen,
+              state.current.kind != .eof,
+              state.current.kind != .semiColon
         {
             guard let c = columnConstraint(state: &state) else { continue }
             constraints.append(c)
@@ -1060,21 +1057,21 @@ enum Parsers {
         )
     }
     
-    static private func foreignKeyClauseActions(
+    private static func foreignKeyClauseActions(
         state: inout ParserState
     ) -> [ForeignKeyClause.Action] {
         guard let action = foreignKeyClauseAction(state: &state) else { return [] }
         
         switch action {
         case .onDo, .match:
-            return [action] + (foreignKeyClauseActions(state: &state))
+            return [action] + foreignKeyClauseActions(state: &state)
         case .deferrable, .notDeferrable:
             // These cannot have a secondary action
             return [action]
         }
     }
     
-    static private func foreignKeyClauseAction(
+    private static func foreignKeyClauseAction(
         state: inout ParserState
     ) -> ForeignKeyClause.Action? {
         switch state.current.kind {
@@ -1183,7 +1180,8 @@ enum Parsers {
             }
             
             guard let op = Operator.guess(for: state.current.kind, after: state.peek.kind),
-                  op.precedence(usage: .infix) >= precedence else {
+                  op.precedence(usage: .infix) >= precedence
+            else {
                 return expr
             }
             
@@ -1386,7 +1384,7 @@ enum Parsers {
              .lt, .gt, .lte, .gte, .eq, .eq2, .neq, .neq2, .match, .like, .regexp,
              .glob, .or, .and, .between, .not, .in, .isnull, .notnull, .notNull, .isDistinctFrom:
             return OperatorSyntax(operator: op, range: start)
-        case .`is`:
+        case .is:
             if state.take(if: .distinct) {
                 let from = state.take(.from)
                 return OperatorSyntax(operator: .isDistinctFrom, range: start.lowerBound..<from.range.upperBound)
@@ -1496,11 +1494,11 @@ enum Parsers {
         let token = state.take()
         
         switch token.kind {
-        case .double(let value):
+        case let .double(value):
             return value
-        case .int(let value):
+        case let .int(value):
             return Double(value)
-        case .hex(let value):
+        case let .hex(value):
             return Double(value)
         default:
             state.diagnostics.add(.init("Expected numeric", at: token.range))
@@ -1513,11 +1511,11 @@ enum Parsers {
         let token = state.take()
         
         switch token.kind {
-        case .double(let value):
+        case let .double(value):
             return value
-        case .int(let value):
+        case let .int(value):
             return SignedNumber(value)
-        case .hex(let value):
+        case let .hex(value):
             return SignedNumber(value)
         case .plus:
             return numericLiteral(state: &state)
@@ -1534,13 +1532,13 @@ enum Parsers {
         
         let kind: LiteralExpr.Kind
         switch token.kind {
-        case .double(let value):
+        case let .double(value):
             kind = .numeric(value, isInt: false)
-        case .int(let value):
+        case let .int(value):
             kind = .numeric(Double(value), isInt: true)
-        case .hex(let value):
+        case let .hex(value):
             kind = .numeric(Double(value), isInt: true)
-        case .string(let value):
+        case let .string(value):
             kind = .string(value)
         case .true:
             kind = .true
@@ -1576,7 +1574,7 @@ enum Parsers {
     ///
     /// This just attempts to skip to the end of the current statement
     static func recover(state: inout ParserState, toNext kind: Token.Kind = .semiColon) {
-        while state.current.kind != kind && state.current.kind != .eof {
+        while state.current.kind != kind, state.current.kind != .eof {
             state.skip()
         }
     }

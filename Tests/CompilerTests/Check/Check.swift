@@ -77,14 +77,14 @@ func assertChecks(
 ) {
     var checks = checks.makeIterator()
     // The hop to String then split again is to allow multiline inputs
-    var input = input.split(separator: "\n").map{ $0.trimmingCharacters(in: .whitespaces) }.makeIterator()
-    var index: Int = 0
+    var input = input.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.makeIterator()
+    var index = 0
     
     while true {
         let check = checks.next()
         let input = input.next()
         
-        if check == nil && input == nil {
+        if check == nil, input == nil {
             return // At the end
         }
         
@@ -142,7 +142,7 @@ struct CheckParser {
     private mutating func take(
         until predicate: (Character) -> Bool
     ) -> String {
-        var result: String = ""
+        var result = ""
         
         while let current, !predicate(current) {
             result.append(current)
@@ -169,7 +169,7 @@ struct CheckParser {
     }
 }
 
-fileprivate protocol CheckOptional {
+private protocol CheckOptional {
     var innerValue: Any? { get }
 }
 
@@ -209,7 +209,7 @@ struct CheckEmitter {
         } else {
             let mirror = Mirror(reflecting: value)
             
-            if mirror.displayStyle == .enum && mirror.children.isEmpty {
+            if mirror.displayStyle == .enum, mirror.children.isEmpty {
                 // Enum with no payload so just use the value
                 if let key {
                     write(value, for: key, typeAsBackupKey: typeAsBackupKey, indent: indent)
@@ -266,10 +266,10 @@ struct CheckEmitter {
     private func isPrimitive(_ value: Any) -> Bool {
         return switch value {
         case is Bool, is Int, is Int8, is Int16, is Int32, is Int64,
-                is UInt, is UInt8, is UInt16, is UInt32, is UInt64,
-                is Float, is Double, is String, is Any.Type, is Identifier,
-                is LiteralExpr, is TableOptions, is TypeName, is BindParameter,
-                is OperatorSyntax: true
+             is UInt, is UInt8, is UInt16, is UInt32, is UInt64,
+             is Float, is Double, is String, is Any.Type, is Identifier,
+             is LiteralExpr, is TableOptions, is TypeName, is BindParameter,
+             is OperatorSyntax: true
         default: false
         }
     }
@@ -304,7 +304,7 @@ struct CheckEmitter {
         var result = ""
         
         for c in value {
-            if c.isUppercase && !result.isEmpty {
+            if c.isUppercase, !result.isEmpty {
                 result += "_"
             }
             
@@ -320,6 +320,7 @@ class TestIt: XCTestCase {
         case bar(meow: Int)
         case baz
     }
+
     func testIt() {
         var emitter = CheckEmitter()
         emitter.emit(Foo.bar(meow: 123), indent: 0)

@@ -28,7 +28,7 @@ class LexerTests: XCTestCase {
     
     func testNumbers() throws {
         let tokens = try tokens(of: "100 20.2 1_2_3 1_2_3.4 1e2 3.2E-3 0xFF")
-        XCTAssertEqual(tokens, [.int(100), .double(20.2), .int(123), .double(123.4), .double(1e2), .double(3.2E-3), .hex(0xFF), .eof])
+        XCTAssertEqual(tokens, [.int(100), .double(20.2), .int(123), .double(123.4), .double(1e2), .double(3.2e-3), .hex(0xFF), .eof])
     }
     
     func testOperators() throws {
@@ -62,7 +62,7 @@ class LexerTests: XCTestCase {
             .pipe,
             .carrot,
             .tilde,
-            .eof
+            .eof,
         ])
     }
     

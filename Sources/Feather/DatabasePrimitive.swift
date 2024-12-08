@@ -19,10 +19,10 @@ extension String: DatabasePrimitive {
         guard let ptr = sqlite3_column_text(cursor, index) else {
             throw FeatherError.columnIsNil(index)
         }
-        
+
         self = String(cString: ptr)
     }
-    
+
     @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(FeatherError) {
         sqlite3_bind_text(statement, index, self, -1, SQLITE_TRANSIENT)
     }
@@ -32,7 +32,7 @@ extension Int: DatabasePrimitive {
     @inlinable public init(from cursor: OpaquePointer, at index: Int32) throws(FeatherError) {
         self = Int(sqlite3_column_int64(cursor, index))
     }
-    
+
     @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(FeatherError) {
         sqlite3_bind_int(statement, index, Int32(self))
     }
@@ -40,9 +40,9 @@ extension Int: DatabasePrimitive {
 
 extension UInt: DatabasePrimitive {
     @inlinable public init(from cursor: OpaquePointer, at index: Int32) throws(FeatherError) {
-        self = UInt(bitPattern: try Int(from: cursor, at: index))
+        self = try UInt(bitPattern: Int(from: cursor, at: index))
     }
-    
+
     @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(FeatherError) {
         sqlite3_bind_int(statement, index, Int32(bitPattern: UInt32(self)))
     }
@@ -52,7 +52,7 @@ extension Double: DatabasePrimitive {
     @inlinable public init(from cursor: OpaquePointer, at index: Int32) throws(FeatherError) {
         self = sqlite3_column_double(cursor, index)
     }
-    
+
     @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(FeatherError) {
         sqlite3_bind_double(statement, index, self)
     }
@@ -62,7 +62,7 @@ extension Float: DatabasePrimitive {
     @inlinable public init(from cursor: OpaquePointer, at index: Int32) throws(FeatherError) {
         self = Float(sqlite3_column_double(cursor, index))
     }
-    
+
     @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(FeatherError) {
         sqlite3_bind_double(statement, index, Double(self))
     }
@@ -76,7 +76,7 @@ extension Optional: DatabasePrimitive where Wrapped: DatabasePrimitive {
             self = try Wrapped(from: cursor, at: index)
         }
     }
-    
+
     @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(FeatherError) {
         if let value = self {
             try value.bind(to: statement, at: index)

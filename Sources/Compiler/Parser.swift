@@ -66,7 +66,7 @@ extension ParserState {
     
     /// Consumes the next token and validates it is of the input kind
     mutating func take(if kind: Token.Kind, and other: Token.Kind) -> Bool {
-        guard current.kind == kind && peek.kind == other else {
+        guard current.kind == kind, peek.kind == other else {
             return false
         }
         

@@ -13,7 +13,7 @@ struct Environment {
     private var identifiers: OrderedDictionary<Substring, TyContainer> = [:]
     
     private var functions: OrderedDictionary<Substring, TypeScheme> = [
-        "MAX": Builtins.max
+        "MAX": Builtins.max,
     ]
     
     struct TyContainer {
@@ -51,7 +51,7 @@ struct Environment {
     subscript(function name: Substring, argCount argCount: Int) -> TypeScheme? {
         // TODO: Move this out of the env
         guard let scheme = self.functions[name],
-                case let .fn(params, ret) = scheme.type else { return nil }
+              case let .fn(params, ret) = scheme.type else { return nil }
         
         // This is how variadics are handled. If a variadic function is called
         // we extend the signature to match the input count. It is always
@@ -82,11 +82,11 @@ struct Environment {
     subscript(infix op: Operator) -> TypeScheme? {
         return switch op {
         case .plus, .minus, .multiply, .divide, .bitwuseOr,
-                .bitwiseAnd, .shl, .shr, .mod:
+             .bitwiseAnd, .shl, .shr, .mod:
             Builtins.arithmetic
         case .eq, .eq2, .neq, .neq2, .lt, .gt, .lte, .gte, .is,
-                .notNull, .notnull, .like, .isNot, .isDistinctFrom,
-                .isNotDistinctFrom, .between, .and, .or, .isnull, .not:
+             .notNull, .notnull, .like, .isNot, .isDistinctFrom,
+             .isNotDistinctFrom, .between, .and, .or, .isnull, .not:
             Builtins.comparison
         case .in: Builtins.in
         case .concat: Builtins.concat
@@ -122,7 +122,7 @@ extension Environment: Sequence {
     }
 }
 
-struct Builtins {
+enum Builtins {
     /// Operators
     static let negate = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)))
     static let bitwiseNot = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)))

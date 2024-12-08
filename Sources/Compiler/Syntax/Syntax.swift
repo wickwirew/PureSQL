@@ -5,8 +5,6 @@
 //  Created by Wes Wickwire on 11/12/24.
 //
 
-
-
 protocol Syntax {
     var range: Range<Substring.Index> { get }
 }
@@ -21,17 +19,17 @@ struct InsertStmt: Stmt, Syntax {
     let values: Values? // if nil, default values
     let returningClause: ReturningClause?
     let range: Range<Substring.Index>
-    
+
     struct Values {
         let select: SelectStmt
         let upsertClause: UpsertClause?
     }
-    
+
     enum Action: Equatable, Encodable {
         case replace
         case insert(Or?)
     }
-    
+
     func accept<V>(visitor: inout V) -> V.Output where V : StmtVisitor {
         visitor.visit(self)
     }
@@ -59,12 +57,12 @@ struct UpsertClause: Syntax {
     let confictTarget: ConflictTarget?
     let doAction: Do
     let range: Range<Substring.Index>
-    
+
     struct ConflictTarget {
         let columns: [IndexedColumn]
         let condition: Expression?
     }
-    
+
     enum Do {
         case nothing
         case updateSet(sets: [SetAction], where: Expression?)
@@ -74,7 +72,7 @@ struct UpsertClause: Syntax {
 struct SetAction {
     let column: Column
     let expr: Expression
-    
+
     enum Column {
         case single(Identifier)
         case list([Identifier])
@@ -98,7 +96,7 @@ struct QualifiedTableName: Syntax {
     let alias: Identifier?
     let indexed: Indexed?
     let range: Range<Substring.Index>
-    
+
     enum Indexed {
         case not
         case by(Identifier)
@@ -110,7 +108,7 @@ struct QualifiedTableName: Syntax {
 enum From {
     case tableOrSubqueries([TableOrSubquery])
     case join(JoinClause)
-    
+
     init(table: Identifier) {
         self = .join(JoinClause(table: table))
     }

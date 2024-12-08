@@ -28,12 +28,12 @@ struct CreateTableStmt: Stmt {
     let kind: Kind
     let constraints: [TableConstraint]
     let options: TableOptions
-    
+
     enum Kind {
         case select(SelectStmt)
         case columns(OrderedDictionary<Identifier, ColumnDef>)
     }
-    
+
     init(
         name: Identifier,
         schemaName: Identifier?,
@@ -51,7 +51,7 @@ struct CreateTableStmt: Stmt {
         self.constraints = constraints
         self.options = options
     }
-    
+
     func accept<V>(visitor: inout V) -> V.Output where V : StmtVisitor {
         visitor.visit(self)
     }
@@ -61,14 +61,14 @@ struct AlterTableStmt: Stmt {
     let name: Identifier
     let schemaName: Identifier?
     let kind: Kind
-    
+
     enum Kind {
         case rename(Identifier)
         case renameColumn(Identifier, Identifier)
         case addColumn(ColumnDef)
         case dropColumn(Identifier)
     }
-    
+
     func accept<V>(visitor: inout V) -> V.Output where V : StmtVisitor {
         visitor.visit(self)
     }
@@ -76,7 +76,7 @@ struct AlterTableStmt: Stmt {
 
 struct EmptyStmt: Equatable, Stmt {
     init() {}
-    
+
     func accept<V>(visitor: inout V) -> V.Output where V : StmtVisitor {
         visitor.visit(self)
     }

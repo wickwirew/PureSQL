@@ -6,9 +6,9 @@
 //
 
 public struct Identifier: Sendable {
-    private(set) public var value: Substring
-    private(set) public var range: Range<String.Index>
-    
+    public private(set) var value: Substring
+    public private(set) var range: Range<String.Index>
+
     public init(value: Substring, range: Range<String.Index>) {
         self.value = value
         self.range = range
@@ -47,13 +47,13 @@ extension Identifier: ExpressibleByStringInterpolation {
     }
 }
 
-extension Identifier {
-    public mutating func append(_ identifier: Identifier) {
+public extension Identifier {
+    mutating func append(_ identifier: Identifier) {
         value += identifier.value
         range = range.lowerBound..<identifier.range.upperBound
     }
-    
-    public mutating func append(_ string: String, upperBound: String.Index) {
+
+    mutating func append(_ string: String, upperBound: String.Index) {
         value += string
         range = range.lowerBound..<upperBound
     }

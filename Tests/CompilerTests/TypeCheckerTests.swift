@@ -183,7 +183,7 @@ class TypeCheckerTests: XCTestCase {
         let (expr, d1) = Parsers.parse(source: source, parser: { Parsers.expr(state: &$0) })
         var typeInferrer = TypeInferrer(env: scope, schema: [:])
         let (solution, d2) = typeInferrer.check(expr)
-        for d in (d1.diagnostics + d2.diagnostics) {
+        for d in d1.diagnostics + d2.diagnostics {
             print(d.message)
         }
         return solution

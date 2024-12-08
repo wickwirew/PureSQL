@@ -5,7 +5,4 @@
 //  Created by Wes Wickwire on 11/30/24.
 //
 
-
-struct StmtChecker {
-    
-}
+struct StmtChecker {}

@@ -17,14 +17,14 @@ public protocol Query<Input, Output, Context> {
     func execute(with input: Input, in context: Context) async throws -> Output
 }
 
-extension Query where Input == () {
-    public func execute(in context: Context) async throws -> Output {
+public extension Query where Input == () {
+    func execute(in context: Context) async throws -> Output {
         try await self.execute(with: (), in: context)
     }
 }
 
-extension Query {
-    public func with(input: Input) -> Queries.WithInput<Self> {
+public extension Query {
+    func with(input: Input) -> Queries.WithInput<Self> {
         return Queries.WithInput(base: self, input: input)
     }
 }
@@ -61,8 +61,8 @@ public protocol DatabaseQuery<Input, Output>: Query {
     func statement(in connection: borrowing Connection, with input: Input) throws(FeatherError) -> Statement
 }
 
-extension DatabaseQuery where Output: RangeReplaceableCollection, Output.Element: RowDecodable {
-    public func execute(
+public extension DatabaseQuery where Output: RangeReplaceableCollection, Output.Element: RowDecodable {
+    func execute(
         with input: Input,
         in context: borrowing Connection
     ) async throws -> Output {
@@ -78,8 +78,8 @@ extension DatabaseQuery where Output: RangeReplaceableCollection, Output.Element
     }
 }
 
-extension DatabaseQuery where Output: RowDecodable {
-    public func execute(
+public extension DatabaseQuery where Output: RowDecodable {
+    func execute(
         with input: Input,
         in context: borrowing Connection
     ) async throws -> Output {
