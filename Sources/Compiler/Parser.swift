@@ -78,7 +78,8 @@ extension ParserState {
     /// Consumes the next token and validates it is of the input kind
     mutating func consume(_ kind: Token.Kind) {
         guard current.kind == kind else {
-            return diagnostics.add(.unexpectedToken(of: current.kind, expected: kind, at: range))
+            diagnostics.add(.unexpectedToken(of: current.kind, expected: kind, at: range))
+            return
         }
         
         skip()

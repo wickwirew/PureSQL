@@ -22,6 +22,7 @@ protocol ExprVisitor {
     mutating func visit(_ expr: borrowing CaseWhenThenExpr) -> Output
     mutating func visit(_ expr: borrowing GroupedExpr) -> Output
     mutating func visit(_ expr: borrowing SelectExpr) -> Output
+    mutating func visit(_ expr: borrowing InvalidExpr) -> Output
 }
 
 extension ExprVisitor {
@@ -50,6 +51,8 @@ extension ExprVisitor {
         case .caseWhenThen(let expr):
             return expr.accept(visitor: &self)
         case .select(let expr):
+            return expr.accept(visitor: &self)
+        case .invalid(let expr):
             return expr.accept(visitor: &self)
         }
     }
@@ -91,6 +94,7 @@ struct LiteralExpr: Expr {
         case currentTime
         case currentDate
         case currentTimestamp
+        case invalid
     }
     
     init(kind: Kind, range: Range<String.Index>) {
@@ -124,6 +128,8 @@ extension LiteralExpr: CustomStringConvertible {
             return "CURRENT_DATE"
         case .currentTimestamp:
             return "CURRENT_TIMESTAMP"
+        case .invalid:
+            return "<<invalid>>"
         }
     }
 }
@@ -149,6 +155,7 @@ indirect enum Expression: Expr {
     case grouped(GroupedExpr)
     case caseWhenThen(CaseWhenThenExpr)
     case select(SelectExpr)
+    case invalid(InvalidExpr)
     
     var range: Range<String.Index> {
         return switch self {
@@ -164,6 +171,7 @@ indirect enum Expression: Expr {
         case .grouped(let expr): expr.range
         case .caseWhenThen(let expr): expr.range
         case .select(let expr): expr.range
+        case .invalid(let expr): expr.range
         }
     }
     
@@ -204,6 +212,8 @@ extension Expression: CustomStringConvertible {
             return expr.description
         case .select(let expr):
             return "\(expr)"
+        case .invalid(let expr):
+            return expr.description
         }
     }
 }
@@ -473,9 +483,9 @@ enum Operator: Equatable {
     }
     
     /// Advances the parser past this operator
-    func skip(state: inout ParserState) throws {
+    func skip(state: inout ParserState) {
         for _ in 0..<words {
-            try state.skip()
+            state.skip()
         }
     }
     
@@ -739,6 +749,18 @@ struct SelectExpr: Expr {
     init(select: SelectStmt, range: Range<String.Index>) {
         self.select = select
         self.range = range
+    }
+    
+    func accept<V>(visitor: inout V) -> V.Output where V : ExprVisitor {
+        return visitor.visit(self)
+    }
+}
+
+struct InvalidExpr: Expr, CustomStringConvertible {
+    let range: Range<String.Index>
+    
+    var description: String {
+        return "<<invalid>>"
     }
     
     func accept<V>(visitor: inout V) -> V.Output where V : ExprVisitor {

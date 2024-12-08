@@ -61,8 +61,8 @@ struct Compiler {
         }
     }
     
-    mutating func compile(_ source: String) throws {
-        try compile(Parsers.parse(source: source))
+    mutating func compile(_ source: String) {
+        compile(Parsers.parse(source: source))
     }
 }
 
@@ -106,14 +106,14 @@ extension Compiler: StmtVisitor {
     
     mutating func visit(_ stmt: borrowing SelectStmt) -> CompiledStmt? {
         var queryCompiler = QueryCompiler(schema: schema)
-        let (query, diags) = try queryCompiler.compile(select: stmt)
+        let (query, diags) = queryCompiler.compile(select: stmt)
         diagnostics.add(contentsOf: diags)
         return .query(query)
     }
     
     mutating func visit(_ stmt: borrowing InsertStmt) -> CompiledStmt? {
         var queryCompiler = QueryCompiler(schema: schema)
-        let (query, diags) = try queryCompiler.compile(insert: stmt)
+        let (query, diags) = queryCompiler.compile(insert: stmt)
         diagnostics.add(contentsOf: diags)
         return .query(query)
     }
@@ -214,7 +214,7 @@ struct QueryCompiler {
         for value in returningClause.values {
             switch value {
             case let .expr(expr, alias):
-                let (ty, inferredName) = try checkWithName(expression: expr)
+                let (ty, inferredName) = checkWithName(expression: expr)
                 
                 guard let name = alias?.value ?? inferredName else {
                     diagnositics.add(.nameRequired(at: expr.range))
@@ -232,12 +232,12 @@ struct QueryCompiler {
     }
     
     private mutating func check(expression: Expression) -> Ty {
-        let solution = try solution(of: expression)
+        let solution = solution(of: expression)
         return solution.type
     }
     
     private mutating func checkWithName(expression: Expression) -> (Ty, Substring?) {
-        let solution = try solution(of: expression)
+        let solution = solution(of: expression)
         return (solution.type, solution.lastName)
     }
     
@@ -299,11 +299,11 @@ struct QueryCompiler {
         
         if let groupBy = select.groupBy {
             for expression in groupBy.expressions {
-                _ = try check(expression: expression)
+                _ = check(expression: expression)
             }
             
             if let having = groupBy.having {
-                let type = try check(expression: having)
+                let type = check(expression: having)
                 
                 if type != .bool && type != .integer {
                     diagnositics.add(.init(
@@ -329,7 +329,7 @@ struct QueryCompiler {
     }
     
     private mutating func compile(where expr: Expression) {
-        let type = try check(expression: expr)
+        let type = check(expression: expr)
         
         if type != .bool && type != .integer {
             diagnositics.add(.init(
@@ -397,7 +397,7 @@ struct QueryCompiler {
         case .on(let expression):
             compile(join.tableOrSubquery, joinOp: join.op)
             
-            let type = try check(expression: expression)
+            let type = check(expression: expression)
             
             if type != .bool && type != .integer {
                 diagnositics.add(.init(

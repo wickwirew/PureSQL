@@ -98,10 +98,37 @@ extension Diagnostic {
     
     static func unexpectedToken(
         of kind: Token.Kind,
-        expected: Token.Kind,
+        expected: Token.Kind? = nil,
         at range: Range<Substring.Index>
     ) -> Diagnostic {
-        return Diagnostic("Unexpected token \(kind), expected '\(expected)'", at: range)
+        if let expected {
+            return Diagnostic("Unexpected token \(kind), expected '\(expected)'", at: range)
+        } else {
+            return Diagnostic("Unexpected token \(kind)", at: range)
+        }
+    }
+    
+    static func unexpected(token: Token) -> Diagnostic {
+        return unexpectedToken(of: token.kind, at: token.range)
+    }
+    
+    static func unexpectedToken(
+        of kind: Token.Kind,
+        expectedAnyOf expected: Token.Kind...,
+        at range: Range<Substring.Index>
+    ) -> Diagnostic {
+        var expectedMessage = ""
+        for (index, kind) in expected.enumerated() {
+            if index == expected.count {
+                expectedMessage += "or "
+            } else if index > 0 {
+                expectedMessage += ", "
+            }
+            
+            expectedMessage += "'\(kind)'"
+        }
+        
+        return Diagnostic("Unexpected token \(kind), expected any of \(expected)", at: range)
     }
 }
 
@@ -112,8 +139,10 @@ public struct Diagnostics {
         self.diagnostics = diagnostics
     }
     
-    public mutating func add(_ diagnostic: Diagnostic) {
+    @discardableResult
+    public mutating func add(_ diagnostic: Diagnostic) -> Diagnostic {
         diagnostics.append(diagnostic)
+        return diagnostic
     }
     
     // TODO: Rename to `merge`

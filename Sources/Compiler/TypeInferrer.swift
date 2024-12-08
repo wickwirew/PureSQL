@@ -482,7 +482,7 @@ struct TypeInferrer {
     
     mutating func check(_ stmt: SelectStmt) -> (Solution, Diagnostics) {
 //        var compiler = QueryCompiler(schema: schema)
-//        let (query, diags) = try? compiler.compile(select: stmt)
+//        let (query, diags) = compiler.compile(select: stmt)
         fatalError("TODO")
 //        let (ty, sub, names) = stmt.accept(visitor: &self)
 //        return finalize(ty: ty, sub: sub, names: names)
@@ -571,6 +571,7 @@ extension TypeInferrer: ExprVisitor {
         case .null: return (.any, [:], .none)
         case .true, .false: return (.bool, [:], .none)
         case .currentTime, .currentDate, .currentTimestamp: return (.text, [:], .none)
+        case .invalid: return (.error, [:], .none)
         }
     }
     
@@ -747,7 +748,15 @@ extension TypeInferrer: ExprVisitor {
     }
     
     mutating func visit(_ expr: borrowing SelectExpr) -> (Ty, Substitution, Names) {
-        fatalError()
+        var compiler = QueryCompiler(schema: schema)
+        let (query, diags) = compiler.compile(select: expr.select)
+        diagnostics.add(contentsOf: diags)
+        // TODO: Add inputs of query
+        return (query.output, [:], .none)
+    }
+    
+    func visit(_ expr: borrowing InvalidExpr) -> (Ty, Substitution, Names) {
+        return (.error, [:], .none)
     }
     
     private mutating func visit(many exprs: [Expression]) -> ([Ty], Substitution, Names) {
