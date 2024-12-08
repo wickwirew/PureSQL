@@ -95,6 +95,14 @@ extension Diagnostic {
             suggestion: .append("AS \(Diagnostic.placeholder(name: "name"))")
         )
     }
+    
+    static func unexpectedToken(
+        of kind: Token.Kind,
+        expected: Token.Kind,
+        at range: Range<Substring.Index>
+    ) -> Diagnostic {
+        return Diagnostic("Unexpected token \(kind), expected '\(expected)'", at: range)
+    }
 }
 
 public struct Diagnostics {

@@ -5,18 +5,6 @@
 //  Created by Wes Wickwire on 10/9/24.
 //
 
-protocol Parser {
-    associatedtype Output
-    func parse(state: inout ParserState) throws -> Output
-}
-
-extension Parser {
-    func parse(_ source: String) throws -> Output {
-        var state = try ParserState(Lexer(source: source))
-        return try parse(state: &state)
-    }
-}
-
 struct ParserState {
     private var lexer: Lexer
     private(set) var current: Token
@@ -25,11 +13,11 @@ struct ParserState {
     private(set) var parameterIndex: Int = 1
     var diagnostics = Diagnostics()
     	
-    init(_ lexer: Lexer) throws {
+    init(_ lexer: Lexer) {
         self.lexer = lexer
-        self.current = try self.lexer.next()
-        self.peek = try self.lexer.next()
-        self.peek2 = try self.lexer.next()
+        self.current = self.lexer.next()
+        self.peek = self.lexer.next()
+        self.peek2 = self.lexer.next()
     }
 }
 
@@ -46,69 +34,70 @@ extension ParserState {
         return token.range.lowerBound..<current.range.upperBound
     }
     
-    func skippingOne() throws -> ParserState {
+    func skippingOne() -> ParserState {
         var copy = self
-        try copy.skip()
+        copy.skip()
         return copy
     }
     
     /// Gets the next token in the source stream
-    mutating func take() throws -> Token {
+    mutating func take() -> Token {
         let result = current
-        try skip()
+        skip()
         return result
     }
     
     /// Gets the next token if it is of the input kind
-    mutating func take(if kind: Token.Kind) throws -> Bool {
+    mutating func take(if kind: Token.Kind) -> Bool {
         guard current.kind == kind else { return false }
-        try skip()
+        skip()
         return true
     }
     
     /// Consumes the next token and validates it is of the input kind
-    mutating func take(if kind: Token.Kind, or other: Token.Kind) throws -> Bool {
+    mutating func take(if kind: Token.Kind, or other: Token.Kind) -> Bool {
         guard current.kind == kind || current.kind == other else {
             return false
         }
         
-        try skip()
+        skip()
         return true
     }
     
     /// Consumes the next token and validates it is of the input kind
-    mutating func take(if kind: Token.Kind, and other: Token.Kind) throws -> Bool {
+    mutating func take(if kind: Token.Kind, and other: Token.Kind) -> Bool {
         guard current.kind == kind && peek.kind == other else {
             return false
         }
         
-        try skip()
-        try skip()
+        skip()
+        skip()
         return true
     }
     
     /// Consumes the next token and validates it is of the input kind
-    mutating func consume(_ kind: Token.Kind) throws {
+    mutating func consume(_ kind: Token.Kind) {
         guard current.kind == kind else {
-            throw ParsingError.unexpectedToken(of: current.kind, at: current.range)
+            return diagnostics.add(.unexpectedToken(of: current.kind, expected: kind, at: range))
         }
         
-        try skip()
+        skip()
     }
     
     /// Consumes the next token and validates it is of the input kind
-    mutating func take(_ kind: Token.Kind) throws -> Token {
+    mutating func take(_ kind: Token.Kind) -> Token {
         guard current.kind == kind else {
-            throw ParsingError.unexpectedToken(of: current.kind, at: current.range)
+            diagnostics.add(.unexpectedToken(of: current.kind, expected: kind, at: range))
+            return Token(kind: kind, range: current.range)
         }
         
-        return try take()
+        return take()
     }
     
-    mutating func skip() throws {
+    mutating func skip() {
         current = peek
         peek = peek2
-        peek2 = try lexer.next()
+        peek2 = lexer.next()
     }
     
     func `is`(of kind: Token.Kind) -> Bool {
