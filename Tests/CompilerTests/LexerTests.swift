@@ -12,27 +12,27 @@ import XCTest
 
 class LexerTests: XCTestCase {
     func testParseKeywordsIsCaseInsensitive() throws {
-        let tokens = try tokens(of: "SELECT select Select sElEcT")
+        let tokens = tokens(of: "SELECT select Select sElEcT")
         XCTAssertEqual(tokens, [.select, .select, .select, .select, .eof])
     }
     
     func testSymbol() throws {
-        let tokens = try tokens(of: "some words select")
+        let tokens = tokens(of: "some words select")
         XCTAssertEqual(tokens, [.symbol("some"), .symbol("words"), .select, .eof])
     }
     
     func testString() throws {
-        let tokens = try tokens(of: "'some words' 'select'")
+        let tokens = tokens(of: "'some words' 'select'")
         XCTAssertEqual(tokens, [.string("some words"), .string("select"), .eof])
     }
     
     func testNumbers() throws {
-        let tokens = try tokens(of: "100 20.2 1_2_3 1_2_3.4 1e2 3.2E-3 0xFF")
+        let tokens = tokens(of: "100 20.2 1_2_3 1_2_3.4 1e2 3.2E-3 0xFF")
         XCTAssertEqual(tokens, [.int(100), .double(20.2), .int(123), .double(123.4), .double(1e2), .double(3.2e-3), .hex(0xFF), .eof])
     }
     
     func testOperators() throws {
-        let tokens = try tokens(of: "*/ /* << <= >> >= || == != <> -> ->> * . ( ) , + - / % < > & | ^ ~")
+        let tokens = tokens(of: "*/ /* << <= >> >= || == != <> -> ->> * . ( ) , + - / % < > & | ^ ~")
         
         XCTAssertEqual(tokens, [
             .starForwardSlash,
@@ -66,12 +66,12 @@ class LexerTests: XCTestCase {
         ])
     }
     
-    private func tokens(of source: String) throws -> [Token.Kind] {
+    private func tokens(of source: String) -> [Token.Kind] {
         var lexer = Lexer(source: source)
         var tokens = [Token.Kind]()
         
         while true {
-            let token = try lexer.next()
+            let token = lexer.next()
             tokens.append(token.kind)
             
             if token.kind == .eof {

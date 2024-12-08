@@ -25,7 +25,7 @@ func check<Output>(
     
     let contents = try String(contentsOf: url)
     
-    var state = try ParserState(Lexer(source: contents))
+    var state = ParserState(Lexer(source: contents))
     var lines: [String] = []
     
     while state.current.kind != .eof {
@@ -39,7 +39,7 @@ func check<Output>(
                 emitter.emit(output, indent: 0)
                 lines.append(contentsOf: emitter.lines)
             }
-        } while try state.take(if: .semiColon) && state.current.kind != .eof
+        } while state.take(if: .semiColon) && state.current.kind != .eof
     }
     
     if dump {

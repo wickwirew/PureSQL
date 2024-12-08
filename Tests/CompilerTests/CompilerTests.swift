@@ -54,7 +54,7 @@ func checkQueries(
     
     let contents = try String(contentsOf: url)
     
-    var state = try ParserState(Lexer(source: contents))
+    var state = ParserState(Lexer(source: contents))
     var output: [Stmt] = []
     
     var schemaCompiler = Compiler()
@@ -63,7 +63,7 @@ func checkQueries(
         try output.append(Parsers.stmt(state: &state))
     }
     
-    try schemaCompiler.compile(output)
+    schemaCompiler.compile(output)
     
     var checkTexts: [String] = []
     
@@ -71,7 +71,7 @@ func checkQueries(
         switch stmt {
         case let stmt as SelectStmt:
             var compiler = QueryCompiler(schema: schemaCompiler.schema)
-            let (query, diags) = try compiler.compile(select: stmt)
+            let (query, diags) = compiler.compile(select: stmt)
             guard case let .row(.named(columns)) = query.output else { fatalError() }
             let values = query.inputs.map { "IN \($0)" } + columns.map { "OUT \($0.key): \($0.value)" }
             checkTexts.append(values.joined(separator: "\n"))
