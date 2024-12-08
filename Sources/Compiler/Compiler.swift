@@ -48,9 +48,9 @@ struct Compiler {
         self.diagnostics = diagnostics
     }
     
-    mutating func compile(_ stmts: [Stmt]) throws {
+    mutating func compile(_ stmts: [Stmt]) {
         for stmt in stmts {
-            switch try stmt.accept(visitor: &self) {
+            switch stmt.accept(visitor: &self) {
             case .table(let table):
                 schema[table.name] = table
             case .query(let query):
@@ -104,14 +104,14 @@ extension Compiler: StmtVisitor {
         return .table(table)
     }
     
-    mutating func visit(_ stmt: borrowing SelectStmt) throws -> CompiledStmt? {
+    mutating func visit(_ stmt: borrowing SelectStmt) -> CompiledStmt? {
         var queryCompiler = QueryCompiler(schema: schema)
         let (query, diags) = try queryCompiler.compile(select: stmt)
         diagnostics.add(contentsOf: diags)
         return .query(query)
     }
     
-    mutating func visit(_ stmt: borrowing InsertStmt) throws -> CompiledStmt? {
+    mutating func visit(_ stmt: borrowing InsertStmt) -> CompiledStmt? {
         var queryCompiler = QueryCompiler(schema: schema)
         let (query, diags) = try queryCompiler.compile(insert: stmt)
         diagnostics.add(contentsOf: diags)
@@ -147,23 +147,23 @@ struct QueryCompiler {
         self.schema = schema
     }
     
-    mutating func compile(select: SelectStmt) throws -> (CompiledQuery, Diagnostics) {
+    mutating func compile(select: SelectStmt) -> (CompiledQuery, Diagnostics) {
         if let cte = select.cte?.value {
-            try compile(cte: cte)
+            compile(cte: cte)
         }
         
         switch select.selects.value {
         case .single(let select):
-            let result = try compile(select)
+            let result = compile(select)
             return (result, diagnositics)
         case .compound:
             fatalError()
         }
     }
     
-    mutating func compile(insert: InsertStmt) throws -> (CompiledQuery, Diagnostics) {
+    mutating func compile(insert: InsertStmt) -> (CompiledQuery, Diagnostics) {
         if let cte = insert.cte {
-            try compile(cte: cte)
+            compile(cte: cte)
         }
         
         guard let table = schema[insert.tableName.name.value] else {
@@ -189,7 +189,7 @@ struct QueryCompiler {
         }
         
         if let values = insert.values {
-            let (query, _) = try compile(select: values.select)
+            let (query, _) = compile(select: values.select)
             _ = inputType.unify(with: query.output, at: insert.range, diagnostics: &diagnositics)
         } else {
             // TODO: Using 'DEFALUT VALUES' make sure all columns
@@ -197,7 +197,7 @@ struct QueryCompiler {
         }
         
         let ty: Ty = if let returningClause = insert.returningClause {
-            try compile(returningClause: returningClause, sourceTable: table)
+            compile(returningClause: returningClause, sourceTable: table)
         } else {
             .row(.empty)
         }
@@ -208,7 +208,7 @@ struct QueryCompiler {
     private mutating func compile(
         returningClause: ReturningClause,
         sourceTable: CompiledTable
-    ) throws -> Ty {
+    ) -> Ty {
         var resultColumns: Columns = [:]
         
         for value in returningClause.values {
@@ -231,17 +231,17 @@ struct QueryCompiler {
         return .row(.named(resultColumns))
     }
     
-    private mutating func check(expression: Expression) throws -> Ty {
+    private mutating func check(expression: Expression) -> Ty {
         let solution = try solution(of: expression)
         return solution.type
     }
     
-    private mutating func checkWithName(expression: Expression) throws -> (Ty, Substring?) {
+    private mutating func checkWithName(expression: Expression) -> (Ty, Substring?) {
         let solution = try solution(of: expression)
         return (solution.type, solution.lastName)
     }
     
-    private mutating func solution(of expression: Expression) throws -> Solution {
+    private mutating func solution(of expression: Expression) -> Solution {
         var typeInferrer = TypeInferrer(env: environment, schema: schema)
         var (solution, diagnostics) = typeInferrer.check(expression)
         diagnositics.add(contentsOf: diagnostics)
@@ -249,8 +249,8 @@ struct QueryCompiler {
         return solution
     }
     
-    private mutating func compile(cte: CommonTableExpression) throws {
-        let (query, _) = try compile(select: cte.select)
+    private mutating func compile(cte: CommonTableExpression) {
+        let (query, _) = compile(select: cte.select)
 
         let tableTy: Ty
         if cte.columns.isEmpty {
@@ -277,24 +277,24 @@ struct QueryCompiler {
         environment.insert(cte.table.value, ty: tableTy)
     }
     
-    private mutating func compile(_ select: SelectCore) throws -> CompiledQuery {
+    private mutating func compile(_ select: SelectCore) -> CompiledQuery {
         switch select {
         case .select(let select):
-            return try compile(select: select)
+            return compile(select: select)
         case .values:
             fatalError()
         }
     }
     
-    private mutating func compile(select: SelectCore.Select) throws -> CompiledQuery {
+    private mutating func compile(select: SelectCore.Select) -> CompiledQuery {
         if let from = select.from {
-            try compile(from: from)
+            compile(from: from)
         }
         
-        let output = try compile(resultColumns: select.columns)
+        let output = compile(resultColumns: select.columns)
         
         if let whereExpr = select.where {
-            try compile(where: whereExpr)
+            compile(where: whereExpr)
         }
         
         if let groupBy = select.groupBy {
@@ -317,18 +317,18 @@ struct QueryCompiler {
         return CompiledQuery(inputs: inputs, output: output)
     }
     
-    private mutating func compile(from: From) throws {
+    private mutating func compile(from: From) {
         switch from {
         case .tableOrSubqueries(let t):
             for table in t {
-                try compile(table)
+                compile(table)
             }
         case .join(let joinClause):
-            try compile(joinClause: joinClause)
+            compile(joinClause: joinClause)
         }
     }
     
-    private mutating func compile(where expr: Expression) throws {
+    private mutating func compile(where expr: Expression) {
         let type = try check(expression: expr)
         
         if type != .bool && type != .integer {
@@ -339,7 +339,7 @@ struct QueryCompiler {
         }
     }
     
-    private mutating func compile(resultColumns: [ResultColumn]) throws -> Ty {
+    private mutating func compile(resultColumns: [ResultColumn]) -> Ty {
         var columns: OrderedDictionary<Substring, Ty> = [:]
         
         for resultColumn in resultColumns {
@@ -384,18 +384,18 @@ struct QueryCompiler {
         return .row(.named(columns))
     }
     
-    private mutating func compile(joinClause: JoinClause) throws {
-        try compile(joinClause.tableOrSubquery)
+    private mutating func compile(joinClause: JoinClause) {
+        compile(joinClause.tableOrSubquery)
         
         for join in joinClause.joins {
-            try compile(join: join)
+            compile(join: join)
         }
     }
     
-    private mutating func compile(join: JoinClause.Join) throws {
+    private mutating func compile(join: JoinClause.Join) {
         switch join.constraint {
         case .on(let expression):
-            try compile(join.tableOrSubquery, joinOp: join.op)
+            compile(join.tableOrSubquery, joinOp: join.op)
             
             let type = try check(expression: expression)
             
@@ -406,9 +406,9 @@ struct QueryCompiler {
                 ))
             }
         case .using(let columns):
-            try compile(join.tableOrSubquery, joinOp: join.op, columns: columns.reduce(into: [], { $0.insert($1.value) }))
+            compile(join.tableOrSubquery, joinOp: join.op, columns: columns.reduce(into: [], { $0.insert($1.value) }))
         case .none:
-            try compile(join.tableOrSubquery, joinOp: join.op)
+            compile(join.tableOrSubquery, joinOp: join.op)
         }
     }
     
@@ -416,7 +416,7 @@ struct QueryCompiler {
         _ tableOrSubquery: TableOrSubquery,
         joinOp: JoinOperator? = nil,
         columns usedColumns: Set<Substring> = []
-    ) throws {
+    ) {
         switch tableOrSubquery {
         case let .table(table):
             let tableName = TableName(schema: table.schema, name: table.name)
@@ -444,7 +444,7 @@ struct QueryCompiler {
             fatalError()
         case let .subquery(selectStmt, alias):
             var compiler = QueryCompiler(schema: schema)
-            let (result, diags) = try compiler.compile(select: selectStmt)
+            let (result, diags) = compiler.compile(select: selectStmt)
             
             diagnositics.add(contentsOf: diags)
             
@@ -462,7 +462,7 @@ struct QueryCompiler {
                 environment.insert(name, ty: type)
             }
         case let .join(joinClause):
-            try compile(joinClause: joinClause)
+            compile(joinClause: joinClause)
         case .subTableOrSubqueries:
             fatalError()
         }

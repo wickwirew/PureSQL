@@ -242,8 +242,8 @@ struct SelectStmt: Stmt {
         }
     }
     
-    func accept<V>(visitor: inout V) throws -> V.Output where V : StmtVisitor {
-        try visitor.visit(self)
+    func accept<V>(visitor: inout V) -> V.Output where V : StmtVisitor {
+        visitor.visit(self)
     }
 }
 
