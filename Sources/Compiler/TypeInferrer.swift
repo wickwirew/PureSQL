@@ -440,13 +440,19 @@ struct Names {
 
 struct TypeInferrer {
     private let env: Environment
+    private let schema: Schema
     private var diagnostics: Diagnostics
     private var tyVars = 0
     private var tyVarLookup: [BindParameter.Kind: TypeVariable] = [:]
     private var constraints: Constraints = [:]
     
-    init(env: Environment, diagnostics: Diagnostics = Diagnostics()) {
+    init(
+        env: Environment,
+        schema: Schema,
+        diagnostics: Diagnostics = Diagnostics()
+    ) {
         self.env = env
+        self.schema = schema
         self.diagnostics = diagnostics
     }
     
@@ -475,6 +481,8 @@ struct TypeInferrer {
     }
     
     mutating func check(_ stmt: SelectStmt) -> (Solution, Diagnostics) {
+//        var compiler = QueryCompiler(schema: schema)
+//        let (query, diags) = try? compiler.compile(select: stmt)
         fatalError("TODO")
 //        let (ty, sub, names) = stmt.accept(visitor: &self)
 //        return finalize(ty: ty, sub: sub, names: names)

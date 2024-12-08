@@ -70,7 +70,7 @@ extension Compiler: StmtVisitor {
     mutating func visit(_ stmt: borrowing CreateTableStmt) -> CompiledStmt? {
         switch stmt.kind {
         case .select(let selectStmt):
-            var typeInferrer = TypeInferrer(env: Environment())
+            var typeInferrer = TypeInferrer(env: Environment(), schema: schema)
             let (solution, diag) = typeInferrer.check(selectStmt)
             diagnostics.add(contentsOf: diag)
             guard case let .row(.named(columns)) = solution.type else { return nil }
@@ -242,7 +242,7 @@ struct QueryCompiler {
     }
     
     private mutating func solution(of expression: Expression) throws -> Solution {
-        var typeInferrer = TypeInferrer(env: environment)
+        var typeInferrer = TypeInferrer(env: environment, schema: schema)
         var (solution, diagnostics) = typeInferrer.check(expression)
         diagnositics.add(contentsOf: diagnostics)
         inputs.append(contentsOf: solution.allNames.map { CompiledQuery.Input(name: $0.0, type: $0.1) })
@@ -345,7 +345,7 @@ struct QueryCompiler {
         for resultColumn in resultColumns {
             switch resultColumn {
             case .expr(let expr, let alias):
-                var typeInferrer = TypeInferrer(env: environment)
+                var typeInferrer = TypeInferrer(env: environment, schema: schema)
                 var (solution, diag) = typeInferrer.check(expr)
                 inputs.append(contentsOf: solution.allNames.map { CompiledQuery.Input(name: $0.0, type: $0.1) })
                 diagnositics.add(contentsOf: diag)

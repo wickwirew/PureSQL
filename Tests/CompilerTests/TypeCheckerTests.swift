@@ -181,7 +181,7 @@ class TypeCheckerTests: XCTestCase {
     
     private func solution(for source: String, in scope: Environment = Environment()) throws -> Solution {
         let (expr, d1) = try Parsers.parse(source: source, parser: { try Parsers.expr(state: &$0) })
-        var typeInferrer = TypeInferrer(env: scope)
+        var typeInferrer = TypeInferrer(env: scope, schema: [:])
         let (solution, d2) = typeInferrer.check(expr)
         for d in (d1.diagnostics + d2.diagnostics) {
             print(d.message)
