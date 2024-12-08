@@ -11,16 +11,21 @@ struct Lexer {
     let source: String
     var currentIndex: String.Index
     var peekIndex: String.Index
+    var diagnostics: Diagnostics
     
     static let hexDigits: Set<Character> = ["0","1","2","3","4","5","6","7","8","9","a","b",
                                             "c","d","e","f","A","B","C","D","E","F"]
     
-    init(source: String) {
+    init(
+        source: String,
+        diagnostics: Diagnostics = Diagnostics()
+    ) {
         self.source = source
         self.currentIndex = source.startIndex
         self.peekIndex = currentIndex < source.endIndex
             ? source.index(after: currentIndex)
             : currentIndex
+        self.diagnostics = diagnostics
     }
     
     private var current: Character? {
@@ -37,7 +42,7 @@ struct Lexer {
         return Token(kind: .eof, range: source.endIndex..<source.endIndex)
     }
     
-    mutating func next() throws -> Token {
+    mutating func next() -> Token {
         skipWhitespace()
         
         guard let current else {
@@ -51,11 +56,11 @@ struct Lexer {
         }
         
         if current == "0", peek == "x" || peek == "X" {
-            return try hexLiteral()
+            return hexLiteral()
         }
         
         if current.isNumber || (current == "." && peek?.isNumber == true) {
-            return try parseNumber()
+            return parseNumber()
         }
         
         switch (current, peek) {
@@ -68,7 +73,7 @@ struct Lexer {
         case ("|", "|"): return consumeDouble(of: .concat)
         case ("-", "-"):
             skipSingleLineComment()
-            return try next()
+            return next()
         case ("=", "="): return consumeDouble(of: .doubleEqual)
         case ("!", "="): return consumeDouble(of: .notEqual)
         case ("<", ">"): return consumeDouble(of: .notEqual2)
@@ -102,12 +107,11 @@ struct Lexer {
         case ("|", _): return consumeSingle(of: .pipe)
         case ("^", _): return consumeSingle(of: .carrot)
         case ("~", _): return consumeSingle(of: .tilde)
-        case ("'", _): return try parseString()
+        case ("'", _): return parseString()
         default:
-            throw ParsingError(
-                description: "Unexpected character: '\(current)'",
-                sourceRange: currentIndex..<currentIndex
-            )
+            diagnostics.add(.init("Unexpected character: '\(current)'", at: currentIndex..<peekIndex))
+            advance()
+            return next()
         }
     }
     
@@ -130,7 +134,7 @@ struct Lexer {
         return Token(kind: Token.Kind(word: source[range]), range: range)
     }
     
-    private mutating func parseNumber() throws -> Token {
+    private mutating func parseNumber() -> Token {
         let start = currentIndex
         var hasSeenDecimal = current == "."
         
@@ -145,16 +149,16 @@ struct Lexer {
         
         // Check if its in scientific notation
         if let maybeE = current, maybeE == "e" || maybeE == "E" {
-            return try scientificNotation(mantissa: start..<currentIndex)
+            return scientificNotation(mantissa: start..<currentIndex)
         }
         
         let range = start..<currentIndex
         let string = source[range]
         
         let kind: Token.Kind = if hasSeenDecimal {
-            .double(try double(from: string, at: range))
+            .double(double(from: string, at: range))
         } else {
-            .int(try integer(from: string, at: range))
+            .int(integer(from: string, at: range))
         }
         
         return Token(kind: kind, range: range)
@@ -162,13 +166,13 @@ struct Lexer {
     
     private mutating func scientificNotation(
         mantissa mantissaRange: Range<String.Index>
-    ) throws -> Token {
+    ) -> Token {
         advance() // E or e
         
         if current?.isNumber == true {
             let exponentStart = currentIndex
             consumeDigits()
-            return try scientificNotation(
+            return scientificNotation(
                 mantissa: mantissaRange,
                 exponent: exponentStart..<currentIndex,
                 isExpoinentPositive: true
@@ -188,7 +192,7 @@ struct Lexer {
             let exponentStart = currentIndex
             consumeDigits()
             
-            return try scientificNotation(
+            return scientificNotation(
                 mantissa: mantissaRange,
                 exponent: exponentStart..<currentIndex,
                 isExpoinentPositive: isPositive
@@ -196,13 +200,13 @@ struct Lexer {
         }
     }
     
-    private func scientificNotation(
+    private mutating func scientificNotation(
         mantissa mantissaRange: Range<String.Index>,
         exponent exponentRange: Range<String.Index>,
         isExpoinentPositive: Bool
-    ) throws -> Token {
-        let mantissa = try double(from: source[mantissaRange], at: mantissaRange)
-        let exponentUnsigned = try double(from: source[exponentRange], at: exponentRange)
+    ) -> Token {
+        let mantissa = double(from: source[mantissaRange], at: mantissaRange)
+        let exponentUnsigned = double(from: source[exponentRange], at: exponentRange)
         let exponent = isExpoinentPositive ? exponentUnsigned : -exponentUnsigned
         let value = mantissa * pow(10, exponent)
         return Token(kind: .double(value), range: mantissaRange.lowerBound..<exponentRange.upperBound)
@@ -214,7 +218,7 @@ struct Lexer {
         }
     }
     
-    private mutating func hexLiteral() throws -> Token {
+    private mutating func hexLiteral() -> Token {
         let tokenStart = currentIndex
         
         advance() // 0
@@ -229,16 +233,14 @@ struct Lexer {
         let numberRange = numberStart..<currentIndex
         
         guard let value = Int(source[numberRange], radix: 16) else {
-            throw ParsingError(
-                description: "Invalid hex number",
-                sourceRange: tokenStart..<currentIndex
-            )
+            diagnostics.add(.init("Invalid hex number", at: tokenStart..<currentIndex))
+            return Token(kind: .hex(0), range: tokenStart..<currentIndex)
         }
         
         return Token(kind: .hex(value), range: tokenStart..<currentIndex)
     }
     
-    private mutating func parseString() throws -> Token {
+    private mutating func parseString() -> Token {
         let tokenStart = currentIndex
         advance()
         let start = currentIndex
@@ -249,14 +251,12 @@ struct Lexer {
         
         let stringRange = start..<currentIndex
         
-        guard current == "'" else {
-            throw ParsingError(
-                description: "Unterminated string",
-                sourceRange: start..<currentIndex
-            )
+        if current == "'" {
+            advance()
+        } else {
+            diagnostics.add(.init("Unterminated string", at: start..<currentIndex))
         }
         
-        advance()
         return Token(kind: .string(source[stringRange]), range: tokenStart..<currentIndex)
     }
     
@@ -279,29 +279,25 @@ struct Lexer {
         return Token(kind: kind, range: start..<currentIndex)
     }
     
-    private func integer<S: StringProtocol>(
+    private mutating func integer<S: StringProtocol>(
         from source: S,
         at range: Range<String.Index>
-    ) throws -> Int {
+    ) -> Int {
         guard let int = Int(source.replacingOccurrences(of: "_", with: "")) else {
-            throw ParsingError(
-                description: "Invalid integer '\(source)'",
-                sourceRange: range
-            )
+            diagnostics.add(.init("Invalid integer '\(source)'", at: range))
+            return 0
         }
         
         return int
     }
     
-    private func double<S: StringProtocol>(
+    private mutating func double<S: StringProtocol>(
         from source: S,
         at range: Range<String.Index>
-    ) throws -> Double {
+    ) -> Double {
         guard let double = Double(source.replacingOccurrences(of: "_", with: "")) else {
-            throw ParsingError(
-                description: "Invalid double '\(source)'",
-                sourceRange: range
-            )
+            diagnostics.add(.init("Invalid double '\(source)'", at: range))
+            return 0
         }
         
         return double
