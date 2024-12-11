@@ -1,4 +1,4 @@
--- CHECK: ?1
+-- CHECK: ?
 ?;
 
 -- CHECK: :variable

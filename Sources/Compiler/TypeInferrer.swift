@@ -13,7 +13,7 @@ struct Solution: CustomStringConvertible {
     private let names: Names
     private let substitution: Substitution
     private let contraints: [TypeVariable: TypeConstraints]
-    private let tyVarLookup: [BindParameter.Kind: TypeVariable]
+    private let tyVarLookup: [BindParameter.Index: TypeVariable]
     
     init(
         diagnostics: Diagnostics,
@@ -21,7 +21,7 @@ struct Solution: CustomStringConvertible {
         names: Names,
         substitution: Substitution,
         constraints: [TypeVariable: TypeConstraints],
-        tyVarLookup: [BindParameter.Kind : TypeVariable]
+        tyVarLookup: [BindParameter.Index: TypeVariable]
     ) {
         self.diagnostics = diagnostics
         self.resultType = resultType
@@ -43,30 +43,28 @@ struct Solution: CustomStringConvertible {
         return "\(substitution.map { "\($0) ~> \($1)" }.joined(separator: "\n"))"
     }
     
-    var allNames: [(Substring, Ty)] {
-        mutating get {
-            tyVarLookup.map { kind, tv in
-                switch kind {
-                case let .named(name):
-                    return (name.value, type(for: .var(tv)))
-                case let .unnamed(index):
-                    return (name(for: index), type(for: .var(tv)))
-                }
-            }
+    var parameters: [Int: Parameter] {
+        return tyVarLookup.reduce(into: [:]) { params, value in
+            params[value.key] = Parameter(
+                type: type(for: .var(value.value)),
+                index: value.key,
+                name: name(for: value.key)
+            )
         }
     }
     
-    func type(for param: BindParameter.Kind) -> Ty {
-        guard let tv = tyVarLookup[param] else { fatalError("TODO: Throw real error") }
+    func type(for named: Substring) -> Ty {
+        guard let value = names.map.first(where: { $0.value == named }) else { fatalError() }
+        return type(for: value.key)
+    }
+    
+    func type(for index: Int) -> Ty {
+        guard let tv = tyVarLookup[index] else { fatalError("TODO: Throw real error") }
         return type(for: .var(tv))
     }
     
-    mutating func name(for index: Int) -> Substring {
-        if let name = names.map[index] {
-            return name
-        }
-        
-        return index == 0 ? "value" : "value\(index)"
+    func name(for index: Int) -> Substring? {
+        return names.map[index]
     }
     
     private func type(for ty: Ty) -> Ty {
@@ -422,7 +420,7 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
 struct Names {
     /// The last expressions possible name.
     let last: Name
-    /// A map of all unnamed params `?` to their new name.
+    /// A map of all params names. Including explicit and inferred
     let map: [Int: Substring]
     
     enum Name {
@@ -439,6 +437,10 @@ struct Names {
     
     static func needed(index: Int) -> Names {
         return Names(last: .needed(index: index), map: [:])
+    }
+    
+    static func defined(_ name: Substring, for index: Int) -> Names {
+        return Names(last: .none, map: [index: name])
     }
     
     var lastName: Substring? {
@@ -471,7 +473,7 @@ struct TypeInferrer {
     private let schema: Schema
     private var diagnostics: Diagnostics
     private var tyVars = 0
-    private var tyVarLookup: [BindParameter.Kind: TypeVariable] = [:]
+    private var tyVarLookup: [BindParameter.Index: TypeVariable] = [:]
     private var constraints: Constraints = [:]
     
     init(
@@ -494,7 +496,7 @@ struct TypeInferrer {
         defer { tyVars += 1 }
         let ty = TypeVariable(tyVars)
         if let param {
-            tyVarLookup[param.kind] = ty
+            tyVarLookup[param.index] = ty
         }
         return ty
     }
@@ -608,9 +610,10 @@ extension TypeInferrer: ExprVisitor {
         // to keep track of naming and type info.
         let expr = copy expr
         let names: Names = switch expr.kind {
-        case .named: .none
-        case let .unnamed(index): .needed(index: index)
+        case .named(let name): .defined(name.value, for: expr.index)
+        case .unnamed: .needed(index: expr.index)
         }
+        
         return (.var(freshTyVar(for: expr)), [:], names)
     }
     

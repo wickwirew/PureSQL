@@ -12,16 +12,27 @@ CREATE TABLE pet (
     name TEXT NOT NULL
 );
 
--- CHECK: IN id: INTEGER
--- CHECK: OUT id: INTEGER
--- CHECK: OUT fullName: TEXT
--- CHECK: OUT name: TEXT?
+
+
+
+-- CHECK: COMPILED_QUERY
+-- CHECK:   PARAMETERS
+-- CHECK:     PARAMETER
+-- CHECK:       TYPE INTEGER
+-- CHECK:       INDEX 1
+-- CHECK:       NAME
+-- CHECK:   OUTPUT
+-- CHECK:     id INTEGER
+-- CHECK:     fullName TEXT
+-- CHECK:     name TEXT?
 SELECT user.id, fullName, pet.name FROM user
 JOIN pet ON user.id = pet.ownerId
 WHERE user.id = ?;
 
--- CHECK: OUT id: INTEGER
--- CHECK: OUT petName: TEXT
--- CHECK: ERROR 'id' is ambigious in the current context
+-- CHECK: COMPILED_QUERY
+-- CHECK:   OUTPUT
+-- CHECK:     id INTEGER
+-- CHECK:     petName TEXT
+-- CHECK-ERROR: 'id' is ambigious in the current context
 SELECT id, pet.name AS petName FROM user
 INNER JOIN pet ON user.id = pet.ownerId;

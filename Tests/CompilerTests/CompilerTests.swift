@@ -11,80 +11,41 @@ import XCTest
 
 class CompilerTests: XCTestCase {
     func testCheckSimpleSelects() throws {
-        try checkQueries(sqlFile: "SimpleSelects")
+        try check(compile: "SimpleSelects")
     }
     
     func testSelectWithJoins() throws {
-        try checkQueries(sqlFile: "SelectWithJoins")
+        try check(compile: "SelectWithJoins")
     }
-    
-//    func compile(state: inout ParserState) throws -> ([CompiledQuery], Diagnostics) {
-//        var stmts: [Statement] = []
-//        
-//        while state.current.kind != .eof {
-//            try stmts.append(Parsers.stmt(state: &state))
-//        }
-//        
-//        let schemaCompiler = SchemaCompiler()
-//        var (schema, diags) = schemaCompiler.compile(stmts)
-//        
-//
-//        var queries: [CompiledQuery] = []
-//        
-//        for stmt in stmts {
-//            var compiler = QueryCompiler(schema: schema)
-//            let (query, queryDiags) = try compiler.compile(stmt)
-//            
-//        }
-//        
-//        
-//    }
 }
 
-func checkQueries(
-    sqlFile: String,
-    prefix: String = "CHECK",
+func check(
+    compile sqlFile: String,
+    dump: Bool = false,
     file: StaticString = #filePath,
     line: UInt = #line
 ) throws {
-    guard let url = Bundle.module.url(forResource: sqlFile, withExtension: "sql") else {
-        XCTFail("Could not find SQL file named \(sqlFile)", file: file, line: line)
-        return
-    }
-    
-    let contents = try String(contentsOf: url)
-    
-    var state = ParserState(Lexer(source: contents))
-    var output: [Stmt] = []
-    
-    var schemaCompiler = Compiler()
-    
-    while state.current.kind != .eof {
-        try output.append(Parsers.stmt(state: &state))
-    }
-    
-    schemaCompiler.compile(output)
-    
-    var checkTexts: [String] = []
-    
-    for stmt in output {
-        switch stmt {
-        case let stmt as SelectStmt:
-            var compiler = QueryCompiler(schema: schemaCompiler.schema)
-            let (query, diags) = compiler.compile(select: stmt)
-            guard case let .row(.named(columns)) = query.output else { fatalError() }
-            let values = query.inputs.map { "IN \($0)" } + columns.map { "OUT \($0.key): \($0.value)" }
-            checkTexts.append(values.joined(separator: "\n"))
-            checkTexts.append(contentsOf: diags.diagnostics.map { "ERROR \($0.message)" })
-        default:
-            break
-        }
-    }
+    var diagnostics: [Diagnostic] = []
     
     try check(
-        contents: contents,
-        equalTo: checkTexts.joined(separator: "\n"),
-        prefix: prefix,
+        sqlFile: sqlFile,
+        parse: { contents in
+            var compiler = Compiler()
+            compiler.compile(contents)
+            diagnostics = compiler.diagnostics.diagnostics
+            return compiler.queries
+        },
+        prefix: "CHECK",
+        dump: dump,
+        file: file,
+        line: line
+    )
+    
+    try check(
+        sqlFile: sqlFile,
+        parse: { _ in diagnostics.map(\.message) },
+        prefix: "CHECK-ERROR",
+        dump: dump,
         file: file,
         line: line
     )

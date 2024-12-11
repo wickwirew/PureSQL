@@ -384,22 +384,20 @@ struct CastExpr: Expr, CustomStringConvertible {
 
 struct BindParameter: Expr, Hashable, CustomStringConvertible {
     let kind: Kind
+    let index: Index
     let range: Range<String.Index>
+    
+    typealias Index = Int
     
     enum Kind: Hashable {
         case named(Identifier)
-        case unnamed(Int)
-    }
-    
-    init(kind: Kind, range: Range<String.Index>) {
-        self.kind = kind
-        self.range = range
+        case unnamed
     }
     
     var description: String {
         return switch kind {
         case let .named(name): name.description
-        case let .unnamed(index): "?\(index)"
+        case .unnamed: "?"
         }
     }
     

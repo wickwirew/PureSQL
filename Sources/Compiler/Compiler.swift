@@ -21,18 +21,31 @@ public enum CompiledStmt {
     case table(CompiledTable)
 }
 
-public struct CompiledQuery {
-    public var inputs: [Input]
+public struct CompiledQuery: CustomReflectable {
+    public var parameters: [Int: Parameter]
     public var output: Ty
     
-    public struct Input: Equatable, CustomStringConvertible, Sendable {
-        public var name: Substring
-        public var type: Ty
-        
-        public var description: String {
-            return "\(name): \(type)"
+    public var customMirror: Mirror {
+        let outputTypes: [String] = if case let .row(.named(columns)) = output {
+            columns.elements.map { "\($0) \($1)" }
+        } else {
+            []
         }
+        
+        return Mirror(
+            self,
+            children: [
+                "parameters": parameters.values.map(\.self),
+                "output": outputTypes
+            ]
+        )
     }
+}
+
+public struct Parameter {
+    public let type: Ty
+    public let index: Int
+    public let name: Substring?
 }
 
 struct Compiler {
@@ -141,7 +154,7 @@ struct QueryCompiler {
     private(set) var diagnositics = Diagnostics()
     private(set) var schema: Schema
     
-    private(set) var inputs: [CompiledQuery.Input] = []
+    private(set) var inputs: [Int: Parameter] = [:]
     
     init(schema: Schema) {
         self.schema = schema
@@ -168,7 +181,7 @@ struct QueryCompiler {
         
         guard let table = schema[insert.tableName.name.value] else {
             diagnositics.add(.tableDoesNotExist(insert.tableName.name))
-            return (CompiledQuery(inputs: [], output: .error), diagnositics)
+            return (CompiledQuery(parameters: [:], output: .error), diagnositics)
         }
         
         let inputType: Ty
@@ -202,7 +215,7 @@ struct QueryCompiler {
             .row(.empty)
         }
         
-        return (CompiledQuery(inputs: inputs, output: ty), diagnositics)
+        return (CompiledQuery(parameters: inputs, output: ty), diagnositics)
     }
     
     private mutating func compile(
@@ -243,9 +256,9 @@ struct QueryCompiler {
     
     private mutating func solution(of expression: Expression) -> Solution {
         var typeInferrer = TypeInferrer(env: environment, schema: schema)
-        var (solution, diagnostics) = typeInferrer.check(expression)
+        let (solution, diagnostics) = typeInferrer.check(expression)
         diagnositics.add(contentsOf: diagnostics)
-        inputs.append(contentsOf: solution.allNames.map { CompiledQuery.Input(name: $0.0, type: $0.1) })
+        inputs.merge(solution.parameters, uniquingKeysWith: {$1})
         return solution
     }
     
@@ -314,7 +327,7 @@ struct QueryCompiler {
             }
         }
         
-        return CompiledQuery(inputs: inputs, output: output)
+        return CompiledQuery(parameters: inputs, output: output)
     }
     
     private mutating func compile(from: From) {
@@ -346,8 +359,8 @@ struct QueryCompiler {
             switch resultColumn {
             case let .expr(expr, alias):
                 var typeInferrer = TypeInferrer(env: environment, schema: schema)
-                var (solution, diag) = typeInferrer.check(expr)
-                inputs.append(contentsOf: solution.allNames.map { CompiledQuery.Input(name: $0.0, type: $0.1) })
+                let (solution, diag) = typeInferrer.check(expr)
+                inputs.merge(solution.parameters, uniquingKeysWith: {$1})
                 diagnositics.add(contentsOf: diag)
                 
                 let name = alias?.value ?? solution.lastName
@@ -448,7 +461,7 @@ struct QueryCompiler {
             
             diagnositics.add(contentsOf: diags)
             
-            inputs.append(contentsOf: result.inputs)
+            inputs.merge(result.parameters, uniquingKeysWith: {$1})
             
             if let alias {
                 environment.insert(alias.value, ty: result.output)

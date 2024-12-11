@@ -11,9 +11,8 @@ import XCTest
 
 func check<Output>(
     sqlFile: String,
-    parse: (inout ParserState) throws -> Output,
+    parse: (String) throws -> [Output],
     prefix: String = "CHECK",
-    emit: ((Output) -> [String])? = nil,
     dump: Bool = false,
     file: StaticString = #filePath,
     line: UInt = #line
@@ -24,22 +23,12 @@ func check<Output>(
     }
     
     let contents = try String(contentsOf: url)
-    
-    var state = ParserState(Lexer(source: contents))
     var lines: [String] = []
     
-    while state.current.kind != .eof {
-        repeat {
-            let output = try parse(&state)
-            
-            if let emit {
-                lines.append(contentsOf: emit(output))
-            } else {
-                var emitter = CheckEmitter()
-                emitter.emit(output, indent: 0)
-                lines.append(contentsOf: emitter.lines)
-            }
-        } while state.take(if: .semiColon) && state.current.kind != .eof
+    for line in try parse(contents) {
+        var emitter = CheckEmitter()
+        emitter.emit(line, indent: 0)
+        lines.append(contentsOf: emitter.lines)
     }
     
     if dump {
@@ -269,7 +258,7 @@ struct CheckEmitter {
              is UInt, is UInt8, is UInt16, is UInt32, is UInt64,
              is Float, is Double, is String, is Any.Type, is Identifier,
              is LiteralExpr, is TableOptions, is TypeName, is BindParameter,
-             is OperatorSyntax: true
+             is OperatorSyntax, is Ty: true
         default: false
         }
     }

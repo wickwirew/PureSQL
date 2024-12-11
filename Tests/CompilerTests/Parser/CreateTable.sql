@@ -175,7 +175,7 @@ CREATE TABLE user (
 -- CHECK:             COLUMN_CONSTRAINT
 -- CHECK:               KIND
 -- CHECK:                 GENERATED
--- CHECK:                     BIND_PARAMETER ?1
+-- CHECK:                     BIND_PARAMETER ?
 -- CHECK:                   virtual
 -- CHECK:         KEY countryId
 -- CHECK:         VALUE

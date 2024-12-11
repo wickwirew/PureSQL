@@ -10,7 +10,8 @@ struct ParserState {
     private(set) var current: Token
     private(set) var peek: Token
     private(set) var peek2: Token
-    private(set) var parameterIndex: Int = 1
+    private var parameterIndex = 1
+    private var namedParamIndices: [Substring: Int] = [:]
     var diagnostics = Diagnostics()
     	
     init(_ lexer: Lexer) {
@@ -19,9 +20,7 @@ struct ParserState {
         self.peek = self.lexer.next()
         self.peek2 = self.lexer.next()
     }
-}
 
-extension ParserState {
     var range: Range<String.Index> {
         return current.range
     }
@@ -105,8 +104,18 @@ extension ParserState {
         return current.kind == kind
     }
     
-    mutating func nextParameterIndex() -> Int {
+    mutating func indexForParam(named name: Substring) -> Int {
+        if let existing = namedParamIndices[name] { return existing }
+        return indexForUnnamedParam()
+    }
+    
+    mutating func indexForUnnamedParam() -> Int {
         defer { parameterIndex += 1 }
         return parameterIndex
+    }
+    
+    mutating func resetParameterIndex() {
+        parameterIndex = 1
+        namedParamIndices.removeAll(keepingCapacity: true)
     }
 }

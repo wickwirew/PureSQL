@@ -28,6 +28,7 @@ enum Parsers {
         repeat {
             do {
                 try stmts.append(stmt(state: &state))
+                state.resetParameterIndex()
             } catch {
                 recover(state: &state)
             }
@@ -1334,15 +1335,19 @@ enum Parsers {
         
         switch token.kind {
         case .questionMark:
-            return BindParameter(kind: .unnamed(state.nextParameterIndex()), range: token.range)
+            return BindParameter(kind: .unnamed, index: state.indexForUnnamedParam(), range: token.range)
         case .colon:
             let symbol = identifier(state: &state)
             let range = token.range.lowerBound..<symbol.range.upperBound
-            return BindParameter(kind: .named(.init(value: ":\(symbol)", range: range)), range: range)
+            let name = Identifier(value: ":\(symbol)", range: range)
+            let index = state.indexForParam(named: name.value)
+            return BindParameter(kind: .named(name), index: index, range: range)
         case .at:
             let symbol = identifier(state: &state)
             let range = token.range.lowerBound..<symbol.range.upperBound
-            return BindParameter(kind: .named(.init(value: "@\(symbol)", range: range)), range: range)
+            let name = Identifier(value: "@\(symbol)", range: range)
+            let index = state.indexForParam(named: name.value)
+            return BindParameter(kind: .named(name), index: index, range: range)
         case .dollarSign:
             let segments = delimited(by: .colon, and: .colon, state: &state, element: identifier)
             let nameRange = token.range.lowerBound..<(segments.last?.range.upperBound ?? state.current.range.upperBound)
@@ -1354,15 +1359,17 @@ enum Parsers {
             
             if let suffix {
                 let range = token.range.lowerBound..<suffix.range.upperBound
-                let ident = Identifier(value: "$\(fullName)(\(suffix))", range: range)
-                return BindParameter(kind: .named(ident), range: range)
+                let name = Identifier(value: "$\(fullName)(\(suffix))", range: range)
+                let index = state.indexForParam(named: name.value)
+                return BindParameter(kind: .named(name), index: index, range: range)
             } else {
-                let ident = Identifier(value: "$\(fullName)", range: nameRange)
-                return BindParameter(kind: .named(ident), range: nameRange)
+                let name = Identifier(value: "$\(fullName)", range: nameRange)
+                let index = state.indexForParam(named: name.value)
+                return BindParameter(kind: .named(name), index: index, range: nameRange)
             }
         default:
             state.diagnostics.add(.init("Invalid bind parameter", at: token.range))
-            return BindParameter(kind: .unnamed(state.nextParameterIndex()), range: token.range)
+            return BindParameter(kind: .unnamed, index: state.indexForUnnamedParam(), range: token.range)
         }
     }
     
