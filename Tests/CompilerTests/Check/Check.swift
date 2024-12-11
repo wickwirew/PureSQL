@@ -259,6 +259,8 @@ struct CheckEmitter {
              is Float, is Double, is String, is Any.Type, is Identifier,
              is LiteralExpr, is TableOptions, is TypeName, is BindParameter,
              is OperatorSyntax, is Ty: true
+        case _ as Substring:
+            true
         default: false
         }
     }

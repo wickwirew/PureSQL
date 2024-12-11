@@ -12,15 +12,12 @@ CREATE TABLE pet (
     name TEXT NOT NULL
 );
 
-
-
-
 -- CHECK: COMPILED_QUERY
 -- CHECK:   PARAMETERS
 -- CHECK:     PARAMETER
 -- CHECK:       TYPE INTEGER
 -- CHECK:       INDEX 1
--- CHECK:       NAME
+-- CHECK:       NAME id
 -- CHECK:   OUTPUT
 -- CHECK:     id INTEGER
 -- CHECK:     fullName TEXT

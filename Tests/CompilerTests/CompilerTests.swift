@@ -41,6 +41,8 @@ func check(
         line: line
     )
     
+    guard !diagnostics.isEmpty else { return }
+    
     try check(
         sqlFile: sqlFile,
         parse: { _ in diagnostics.map(\.message) },

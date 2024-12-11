@@ -35,7 +35,7 @@ public struct CompiledQuery: CustomReflectable {
         return Mirror(
             self,
             children: [
-                "parameters": parameters.values.map(\.self),
+                "parameters": parameters.values.map(\.self).sorted(by: { $0.index < $1.index }),
                 "output": outputTypes
             ]
         )

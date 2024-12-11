@@ -106,7 +106,9 @@ struct ParserState {
     
     mutating func indexForParam(named name: Substring) -> Int {
         if let existing = namedParamIndices[name] { return existing }
-        return indexForUnnamedParam()
+        let index = indexForUnnamedParam()
+        namedParamIndices[name] = index
+        return index
     }
     
     mutating func indexForUnnamedParam() -> Int {
