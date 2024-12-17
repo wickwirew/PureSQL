@@ -56,7 +56,7 @@ class TypeCheckerTests: XCTestCase {
         CREATE TABLE foo(bar INTEGER);
         """)
         
-        var solution = solution(for: "bar = ?", in: scope)
+        let solution = solution(for: "bar = ?", in: scope)
         XCTAssertEqual(.bool, solution.type)
         XCTAssertEqual(.optional(.integer), solution.type(for: 1))
         XCTAssertEqual("bar", solution.name(for: 1))
@@ -67,7 +67,7 @@ class TypeCheckerTests: XCTestCase {
         CREATE TABLE foo(bar INTEGER NOT NULL);
         """)
         
-        var solution = solution(for: "bar + 1 = ?", in: scope)
+        let solution = solution(for: "bar + 1 = ?", in: scope)
         XCTAssertEqual(.bool, solution.type)
         XCTAssertEqual(.integer, solution.type(for: 1))
         XCTAssertEqual("bar", solution.name(for: 1))
@@ -78,7 +78,7 @@ class TypeCheckerTests: XCTestCase {
         CREATE TABLE foo(bar INTEGER NOT NULL);
         """)
         
-        var solution = solution(for: "1 + bar = ?", in: scope)
+        let solution = solution(for: "1 + bar = ?", in: scope)
         XCTAssertEqual(.bool, solution.type)
         XCTAssertEqual(.integer, solution.type(for: 1))
         XCTAssertEqual("bar", solution.name(for: 1))

@@ -17,11 +17,11 @@ public struct CompiledTable {
 }
 
 public enum CompiledStmt {
-    case query(CompiledQuery)
+    case query(Signature)
     case table(CompiledTable)
 }
 
-public struct CompiledQuery: CustomReflectable {
+public struct Signature: CustomReflectable {
     public var parameters: [Int: Parameter]
     public var output: Ty
     
@@ -35,7 +35,9 @@ public struct CompiledQuery: CustomReflectable {
         return Mirror(
             self,
             children: [
-                "parameters": parameters.values.map(\.self).sorted(by: { $0.index < $1.index }),
+                "parameters": parameters.values
+                    .map(\.self)
+                    .sorted(by: { $0.index < $1.index }),
                 "output": outputTypes
             ]
         )
@@ -51,7 +53,7 @@ public struct Parameter {
 struct Compiler {
     private(set) var schema: Schema
     private(set) var diagnostics = Diagnostics()
-    private(set) var queries: [CompiledQuery] = []
+    private(set) var queries: [Signature] = []
     
     public init(
         schema: Schema = Schema(),
@@ -84,9 +86,9 @@ extension Compiler: StmtVisitor {
         switch stmt.kind {
         case let .select(selectStmt):
             var typeInferrer = TypeInferrer(env: Environment(), schema: schema)
-            let (solution, diag) = typeInferrer.check(selectStmt)
-            diagnostics.add(contentsOf: diag)
-            guard case let .row(.named(columns)) = solution.type else { return nil }
+            let solution = typeInferrer.check(selectStmt)
+            diagnostics.add(contentsOf: solution.diagnostics)
+            guard case let .row(.named(columns)) = solution.signature.output else { return nil }
             return .table(CompiledTable(name: stmt.name.value, columns: columns))
         case let .columns(columns):
             return .table(CompiledTable(
@@ -160,7 +162,7 @@ struct QueryCompiler {
         self.schema = schema
     }
     
-    mutating func compile(select: SelectStmt) -> (CompiledQuery, Diagnostics) {
+    mutating func compile(select: SelectStmt) -> (Signature, Diagnostics) {
         if let cte = select.cte?.value {
             compile(cte: cte)
         }
@@ -174,14 +176,14 @@ struct QueryCompiler {
         }
     }
     
-    mutating func compile(insert: InsertStmt) -> (CompiledQuery, Diagnostics) {
+    mutating func compile(insert: InsertStmt) -> (Signature, Diagnostics) {
         if let cte = insert.cte {
             compile(cte: cte)
         }
         
         guard let table = schema[insert.tableName.name.value] else {
             diagnositics.add(.tableDoesNotExist(insert.tableName.name))
-            return (CompiledQuery(parameters: [:], output: .error), diagnositics)
+            return (Signature(parameters: [:], output: .error), diagnositics)
         }
         
         let inputType: Ty
@@ -215,7 +217,7 @@ struct QueryCompiler {
             .row(.empty)
         }
         
-        return (CompiledQuery(parameters: inputs, output: ty), diagnositics)
+        return (Signature(parameters: inputs, output: ty), diagnositics)
     }
     
     private mutating func compile(
@@ -227,14 +229,14 @@ struct QueryCompiler {
         for value in returningClause.values {
             switch value {
             case let .expr(expr, alias):
-                let (ty, inferredName) = checkWithName(expression: expr)
+                let solution = check(expression: expr)
                 
-                guard let name = alias?.value ?? inferredName else {
+                guard let name = alias?.value ?? solution.lastName else {
                     diagnositics.add(.nameRequired(at: expr.range))
                     continue
                 }
                 
-                resultColumns[name] = ty
+                resultColumns[name] = solution.signature.output
             case .all:
                 // TODO: See TODO on `Columns` typealias
                 resultColumns.merge(resultColumns, uniquingKeysWith: { $1 })
@@ -243,22 +245,13 @@ struct QueryCompiler {
         
         return .row(.named(resultColumns))
     }
-    
-    private mutating func check(expression: Expression) -> Ty {
-        let solution = solution(of: expression)
-        return solution.type
-    }
-    
-    private mutating func checkWithName(expression: Expression) -> (Ty, Substring?) {
-        let solution = solution(of: expression)
-        return (solution.type, solution.lastName)
-    }
-    
-    private mutating func solution(of expression: Expression) -> Solution {
+
+    @discardableResult
+    private mutating func check(expression: Expression) -> Solution {
         var typeInferrer = TypeInferrer(env: environment, schema: schema)
-        let (solution, diagnostics) = typeInferrer.check(expression)
-        diagnositics.add(contentsOf: diagnostics)
-        inputs.merge(solution.parameters, uniquingKeysWith: {$1})
+        let solution = typeInferrer.check(expression)
+        diagnositics.add(contentsOf: solution.diagnostics)
+        inputs.merge(solution.signature.parameters, uniquingKeysWith: {$1})
         return solution
     }
     
@@ -290,7 +283,7 @@ struct QueryCompiler {
         environment.insert(cte.table.value, ty: tableTy)
     }
     
-    private mutating func compile(_ select: SelectCore) -> CompiledQuery {
+    private mutating func compile(_ select: SelectCore) -> Signature {
         switch select {
         case let .select(select):
             return compile(select: select)
@@ -299,7 +292,7 @@ struct QueryCompiler {
         }
     }
     
-    private mutating func compile(select: SelectCore.Select) -> CompiledQuery {
+    private mutating func compile(select: SelectCore.Select) -> Signature {
         if let from = select.from {
             compile(from: from)
         }
@@ -316,18 +309,18 @@ struct QueryCompiler {
             }
             
             if let having = groupBy.having {
-                let type = check(expression: having)
+                let solution = check(expression: having)
                 
-                if type != .bool, type != .integer {
+                if solution.type != .bool, solution.type != .integer {
                     diagnositics.add(.init(
-                        "HAVING clause should return a 'BOOL' or 'INTEGER', got '\(type)'",
+                        "HAVING clause should return a 'BOOL' or 'INTEGER', got '\(solution.type)'",
                         at: having.range
                     ))
                 }
             }
         }
         
-        return CompiledQuery(parameters: inputs, output: output)
+        return Signature(parameters: inputs, output: output)
     }
     
     private mutating func compile(from: From) {
@@ -342,11 +335,11 @@ struct QueryCompiler {
     }
     
     private mutating func compile(where expr: Expression) {
-        let type = check(expression: expr)
+        let solution = check(expression: expr)
         
-        if type != .bool, type != .integer {
+        if solution.type != .bool, solution.type != .integer {
             diagnositics.add(.init(
-                "WHERE clause should return a 'BOOL' or 'INTEGER', got '\(type)'",
+                "WHERE clause should return a 'BOOL' or 'INTEGER', got '\(solution.type)'",
                 at: expr.range
             ))
         }
@@ -358,13 +351,10 @@ struct QueryCompiler {
         for resultColumn in resultColumns {
             switch resultColumn {
             case let .expr(expr, alias):
-                var typeInferrer = TypeInferrer(env: environment, schema: schema)
-                let (solution, diag) = typeInferrer.check(expr)
-                inputs.merge(solution.parameters, uniquingKeysWith: {$1})
-                diagnositics.add(contentsOf: diag)
+                let solution = check(expression: expr)
                 
                 let name = alias?.value ?? solution.lastName
-                columns[name ?? "__name_required__"] = solution.type
+                columns[name ?? "__name_required__"] = solution.signature.output
                 
                 if name == nil {
                     diagnositics.add(.nameRequired(at: expr.range))
@@ -410,11 +400,11 @@ struct QueryCompiler {
         case let .on(expression):
             compile(join.tableOrSubquery, joinOp: join.op)
             
-            let type = check(expression: expression)
+            let solution = check(expression: expression)
             
-            if type != .bool, type != .integer {
+            if solution.type != .bool, solution.type != .integer {
                 diagnositics.add(.init(
-                    "JOIN clause should return a 'BOOL' or 'INTEGER', got '\(type)'",
+                    "JOIN clause should return a 'BOOL' or 'INTEGER', got '\(solution.type)'",
                     at: expression.range
                 ))
             }

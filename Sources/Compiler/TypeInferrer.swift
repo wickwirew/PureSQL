@@ -7,84 +7,28 @@
 
 import OrderedCollections
 
-struct Solution: CustomStringConvertible {
+struct Solution {
     let diagnostics: Diagnostics
-    private let resultType: Ty
-    private let names: Names
-    private let substitution: Substitution
-    private let contraints: [TypeVariable: TypeConstraints]
-    private let tyVarLookup: [BindParameter.Index: TypeVariable]
-    
-    init(
-        diagnostics: Diagnostics,
-        resultType: Ty,
-        names: Names,
-        substitution: Substitution,
-        constraints: [TypeVariable: TypeConstraints],
-        tyVarLookup: [BindParameter.Index: TypeVariable]
-    ) {
-        self.diagnostics = diagnostics
-        self.resultType = resultType
-        self.names = names
-        self.substitution = substitution
-        self.tyVarLookup = tyVarLookup
-        self.contraints = constraints
-    }
+    let signature: Signature
+    let lastName: Substring?
     
     var type: Ty {
-        return type(for: resultType)
+        return signature.output
     }
     
-    var lastName: Substring? {
-        return names.lastName
+    func type(for index: Int) -> Ty? {
+        return signature.parameters[index]?.type
     }
     
-    var description: String {
-        return "\(substitution.map { "\($0) ~> \($1)" }.joined(separator: "\n"))"
-    }
-    
-    var parameters: [Int: Parameter] {
-        return tyVarLookup.reduce(into: [:]) { params, value in
-            params[value.key] = Parameter(
-                type: type(for: .var(value.value)),
-                index: value.key,
-                name: name(for: value.key)
-            )
-        }
-    }
-    
-    func type(for named: Substring) -> Ty {
-        guard let value = names.map.first(where: { $0.value == named }) else { fatalError() }
-        return type(for: value.key)
-    }
-    
-    func type(for index: Int) -> Ty {
-        guard let tv = tyVarLookup[index] else { fatalError("TODO: Throw real error") }
-        return type(for: .var(tv))
+    func type(for name: Substring) -> Ty? {
+        guard let (index, _) = signature.parameters
+            .first(where: { $1.name == name }) else { return nil }
+        
+        return type(for: index)
     }
     
     func name(for index: Int) -> Substring? {
-        return names.map[index]
-    }
-    
-    private func type(for ty: Ty) -> Ty {
-        let ty = ty.apply(substitution)
-        
-        switch ty.apply(substitution) {
-        case let .var(tv):
-            // The type variable was never bound to a concrete type.
-            // Check if the constraints gives any clues about a default type
-            // if none just assume `ANY`
-            if let constraints = self.contraints[tv], constraints.contains(.numeric) {
-                return .integer
-            }
-            return .any
-        case let .row(tys):
-            // TODO: Clean this up
-            return .row(.unnamed(tys.types.map { type(for: $0) }))
-        default:
-            return ty
-        }
+        return signature.parameters[index]?.name
     }
 }
 
@@ -320,7 +264,6 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
         at range: Range<String.Index>,
         diagnostics: inout Diagnostics
     ) -> Substitution {
-        print("Unifying", self, "with", other)
         // If they are the same, no need to unify
         guard self != other else { return [:] }
         
@@ -473,7 +416,7 @@ struct TypeInferrer {
     private let schema: Schema
     private var diagnostics: Diagnostics
     private var tyVars = 0
-    private var tyVarLookup: [BindParameter.Index: TypeVariable] = [:]
+    private var parameterTypes: [BindParameter.Index: Ty] = [:]
     private var constraints: Constraints = [:]
     
     init(
@@ -496,7 +439,7 @@ struct TypeInferrer {
         defer { tyVars += 1 }
         let ty = TypeVariable(tyVars)
         if let param {
-            tyVarLookup[param.index] = ty
+            parameterTypes[param.index] = .var(ty)
         }
         return ty
     }
@@ -510,7 +453,7 @@ struct TypeInferrer {
         return typeScheme.type.apply(sub)
     }
     
-    mutating func check(_ stmt: SelectStmt) -> (Solution, Diagnostics) {
+    mutating func check(_ stmt: SelectStmt) -> Solution {
 //        var compiler = QueryCompiler(schema: schema)
 //        let (query, diags) = compiler.compile(select: stmt)
         fatalError("TODO")
@@ -518,23 +461,64 @@ struct TypeInferrer {
 //        return finalize(ty: ty, sub: sub, names: names)
     }
     
-    mutating func check<E: Expr>(_ expr: E) -> (Solution, Diagnostics) {
+    mutating func check<E: Expr>(_ expr: E) -> Solution {
         let (ty, sub, names) = expr.accept(visitor: &self)
-        return (finalize(ty: ty, sub: sub, names: names), diagnostics)
+        return finalize(ty: ty, sub: sub, names: names)
     }
     
     private mutating func finalize(ty: Ty, sub: Substitution, names: Names) -> Solution {
-        let result = ty.apply(sub)
-        let resultCon = finalizeConstraints(with: sub)
+        let constraints = finalizeConstraints(with: sub)
+        
+        let signature = Signature(
+            parameters: parameterTypes.reduce(into: [:]) { params, value in
+                params[value.key] = Parameter(
+                    type: finalType(
+                        for: value.value,
+                        substitution: sub,
+                        constraints: constraints
+                    ),
+                    index: value.key,
+                    name: names.map[value.key]
+                )
+            },
+            output: finalType(
+                for: ty.apply(sub),
+                substitution: sub,
+                constraints: constraints
+            )
+        )
         
         return Solution(
             diagnostics: diagnostics,
-            resultType: result,
-            names: names,
-            substitution: sub,
-            constraints: resultCon,
-            tyVarLookup: tyVarLookup
+            signature: signature,
+            lastName: names.lastName
         )
+    }
+    
+    private func finalType(
+        for ty: Ty,
+        substitution: Substitution,
+        constraints: Constraints
+    ) -> Ty {
+        let ty = ty.apply(substitution)
+        
+        switch ty.apply(substitution) {
+        case let .var(tv):
+            // The type variable was never bound to a concrete type.
+            // Check if the constraints gives any clues about a default type
+            // if none just assume `ANY`
+            if let constraints = constraints[tv], constraints.contains(.numeric) {
+                return .integer
+            }
+            return .any
+        case let .row(tys):
+            // TODO: Clean this up
+            return .row(.unnamed(
+                tys.types.map { finalType(for: $0, substitution: substitution, constraints: constraints) }
+            ))
+        default:
+            return ty
+        }
     }
     
     private mutating func finalizeConstraints(
@@ -782,6 +766,7 @@ extension TypeInferrer: ExprVisitor {
         var compiler = QueryCompiler(schema: schema)
         let (query, diags) = compiler.compile(select: expr.select)
         diagnostics.add(contentsOf: diags)
+        
         // TODO: Add inputs of query
         return (query.output, [:], .none)
     }

@@ -12,7 +12,7 @@ CREATE TABLE pet (
     name TEXT NOT NULL
 );
 
--- CHECK: COMPILED_QUERY
+-- CHECK: SIGNATURE
 -- CHECK:   PARAMETERS
 -- CHECK:     PARAMETER
 -- CHECK:       TYPE INTEGER
@@ -26,7 +26,7 @@ SELECT user.id, fullName, pet.name FROM user
 JOIN pet ON user.id = pet.ownerId
 WHERE user.id = ?;
 
--- CHECK: COMPILED_QUERY
+-- CHECK: SIGNATURE
 -- CHECK:   OUTPUT
 -- CHECK:     id INTEGER
 -- CHECK:     petName TEXT
