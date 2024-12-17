@@ -86,9 +86,8 @@ extension Compiler: StmtVisitor {
         switch stmt.kind {
         case let .select(selectStmt):
             var typeInferrer = TypeInferrer(env: Environment(), schema: schema)
-            let solution = typeInferrer.check(selectStmt)
-            diagnostics.add(contentsOf: solution.diagnostics)
-            guard case let .row(.named(columns)) = solution.signature.output else { return nil }
+            let signature = compile(select: selectStmt)
+            guard  case let .row(.named(columns)) = signature.output else { return nil }
             return .table(CompiledTable(name: stmt.name.value, columns: columns))
         case let .columns(columns):
             return .table(CompiledTable(
@@ -120,10 +119,7 @@ extension Compiler: StmtVisitor {
     }
     
     mutating func visit(_ stmt: borrowing SelectStmt) -> CompiledStmt? {
-        var queryCompiler = QueryCompiler(schema: schema)
-        let (query, diags) = queryCompiler.compile(select: stmt)
-        diagnostics.add(contentsOf: diags)
-        return .query(query)
+        return .query(compile(select: stmt))
     }
     
     mutating func visit(_ stmt: borrowing InsertStmt) -> CompiledStmt? {
@@ -148,6 +144,13 @@ extension Compiler: StmtVisitor {
         } else {
             return .optional(.nominal(column.type.name.value))
         }
+    }
+    
+    private mutating func compile(select: borrowing SelectStmt) -> Signature {
+        var queryCompiler = QueryCompiler(schema: schema)
+        let (query, diags) = queryCompiler.compile(select: select)
+        diagnostics.add(contentsOf: diags)
+        return query
     }
 }
 

@@ -453,14 +453,6 @@ struct TypeInferrer {
         return typeScheme.type.apply(sub)
     }
     
-    mutating func check(_ stmt: SelectStmt) -> Solution {
-//        var compiler = QueryCompiler(schema: schema)
-//        let (query, diags) = compiler.compile(select: stmt)
-        fatalError("TODO")
-//        let (ty, sub, names) = stmt.accept(visitor: &self)
-//        return finalize(ty: ty, sub: sub, names: names)
-    }
-    
     mutating func check<E: Expr>(_ expr: E) -> Solution {
         let (ty, sub, names) = expr.accept(visitor: &self)
         return finalize(ty: ty, sub: sub, names: names)
@@ -766,9 +758,9 @@ extension TypeInferrer: ExprVisitor {
         var compiler = QueryCompiler(schema: schema)
         let (query, diags) = compiler.compile(select: expr.select)
         diagnostics.add(contentsOf: diags)
-        
-        // TODO: Add inputs of query
-        return (query.output, [:], .none)
+        parameterTypes.merge(query.parameters.map { ($0, $1.type) }, uniquingKeysWith: {$1})
+        let names = Names(last: .none, map: query.parameters.reduce(into: [:], { $0[$1.key] = $1.value.name }))
+        return (query.output, [:], names)
     }
     
     func visit(_ expr: borrowing InvalidExpr) -> (Ty, Substitution, Names) {
