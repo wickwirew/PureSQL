@@ -32,13 +32,21 @@ struct Solution {
     }
 }
 
+struct InferenceState {
+    let type: Ty
+    let substitution: Substitution
+    let names: Names
+}
+
 struct TypeInferrer {
-    private let env: Environment
+    private var env: Environment
     private let schema: Schema
     private var diagnostics: Diagnostics
     private var tyVars = 0
     private var parameterTypes: [BindParameter.Index: Ty] = [:]
     private var constraints: Constraints = [:]
+    
+    private static let missingNameDefault: Substring = "__name_required__"
     
     init(
         env: Environment,
@@ -50,36 +58,21 @@ struct TypeInferrer {
         self.diagnostics = diagnostics
     }
     
-    func dumpDiagnostics(in source: String) {
-        for diagnostic in diagnostics.diagnostics {
-            print(diagnostic.message, "   Expression:", source[diagnostic.range])
-        }
-    }
-    
-    private mutating func freshTyVar(for param: BindParameter? = nil) -> TypeVariable {
-        defer { tyVars += 1 }
-        let ty = TypeVariable(tyVars)
-        if let param {
-            parameterTypes[param.index] = .var(ty)
-        }
-        return ty
-    }
-    
-    private mutating func instantiate(_ typeScheme: TypeScheme) -> Ty {
-        guard !typeScheme.typeVariables.isEmpty else { return typeScheme.type }
-        let sub = Substitution(
-            typeScheme.typeVariables.map { ($0, .var(freshTyVar())) },
-            uniquingKeysWith: { $1 }
-        )
-        return typeScheme.type.apply(sub)
-    }
-    
     mutating func check<E: Expr>(_ expr: E) -> Solution {
         let (ty, sub, names) = expr.accept(visitor: &self)
         return finalize(ty: ty, sub: sub, names: names)
     }
     
-    private mutating func finalize(ty: Ty, sub: Substitution, names: Names) -> Solution {
+//    mutating func solution<S: Stmt>(for stmt: S) -> Solution {
+//        let (ty, sub, names) = stmt.accept(visitor: &self)
+//        return finalize(ty: ty, sub: sub, names: names)
+//    }
+    
+    private mutating func finalize(
+        ty: Ty,
+        sub: Substitution,
+        names: Names
+    ) -> Solution {
         let constraints = finalizeConstraints(with: sub)
         
         let signature = Signature(
@@ -153,6 +146,24 @@ struct TypeInferrer {
         return result
     }
     
+    private mutating func freshTyVar(for param: BindParameter? = nil) -> TypeVariable {
+        defer { tyVars += 1 }
+        let ty = TypeVariable(tyVars)
+        if let param {
+            parameterTypes[param.index] = .var(ty)
+        }
+        return ty
+    }
+    
+    private mutating func instantiate(_ typeScheme: TypeScheme) -> Ty {
+        guard !typeScheme.typeVariables.isEmpty else { return typeScheme.type }
+        let sub = Substitution(
+            typeScheme.typeVariables.map { ($0, .var(freshTyVar())) },
+            uniquingKeysWith: { $1 }
+        )
+        return typeScheme.type.apply(sub)
+    }
+    
     /// Unifies the two types together. Will produce a substitution if one
     /// is a type variable. If there are two nominal types they and
     /// they can be coerced en empty substitution will be returned
@@ -179,6 +190,19 @@ struct TypeInferrer {
         }
         
         return sub
+    }
+    
+    private mutating func inNewEnvironment<Output>(
+        _ action: (inout TypeInferrer) -> Output
+    ) -> Output {
+        var inferrer = self
+        inferrer.env = Environment()
+        let result = action(&inferrer)
+        diagnostics = inferrer.diagnostics
+        tyVars = inferrer.tyVars
+        parameterTypes = inferrer.parameterTypes
+        constraints = inferrer.constraints
+        return result
     }
 }
 
@@ -414,3 +438,377 @@ extension TypeInferrer: ExprVisitor {
 }
 
 
+//extension TypeInferrer: StmtVisitor {
+//    mutating func visit(_ stmt: borrowing CreateTableStmt) -> CompiledStmt? {
+//        fatalError()
+//    }
+//    
+//    mutating func visit(_ stmt: borrowing AlterTableStmt) -> CompiledStmt? {
+//        fatalError()
+//    }
+//    
+//    mutating func visit(_ stmt: borrowing SelectStmt) -> CompiledStmt? {
+//        return .query(compile(select: stmt))
+//    }
+//    
+//    mutating func visit(_ stmt: borrowing InsertStmt) -> CompiledStmt? {
+//        fatalError()
+//    }
+//    
+//    mutating func visit(_ stmt: borrowing EmptyStmt) -> CompiledStmt? {
+//        fatalError()
+//    }
+//}
+
+extension TypeInferrer {
+    mutating func compile(select: SelectStmt) -> (Ty, Substitution) {
+        var sub: Substitution = [:]
+        
+        if let cte = select.cte?.value {
+            sub.merge(compile(cte: cte))
+        }
+        
+        switch select.selects.value {
+        case let .single(select):
+            let (type, selectSub) = compile(select: select)
+            sub.merge(selectSub)
+            return (type, sub)
+        case .compound:
+            fatalError()
+        }
+    }
+    
+    mutating func compile(insert: InsertStmt) -> (Ty, Substitution) {
+        var sub: Substitution = [:]
+        
+        if let cte = insert.cte {
+            sub.merge(compile(cte: cte))
+        }
+        
+        guard let table = schema[insert.tableName.name.value] else {
+            diagnostics.add(.tableDoesNotExist(insert.tableName.name))
+            return (.error, sub)
+        }
+        
+        let inputType: Ty
+        if let columns = insert.columns {
+            var columnTypes: [Ty] = []
+            for column in columns {
+                guard let def = table.columns[column.value] else {
+                    diagnostics.add(.columnDoesNotExist(column))
+                    columnTypes.append(.error)
+                    continue
+                }
+                
+                columnTypes.append(def)
+            }
+            inputType = .row(.unnamed(columnTypes))
+        } else {
+            inputType = table.type
+        }
+        
+        if let values = insert.values {
+            let (type, selectSub) = compile(select: values.select)
+            sub.merge(selectSub)
+            _ = inputType.unify(with: type, at: insert.range, diagnostics: &diagnostics)
+        } else {
+            // TODO: Using 'DEFALUT VALUES' make sure all columns
+            // TODO: actually have default values or null
+        }
+        
+        let (ty, retSub): (Ty, Substitution) = if let returningClause = insert.returningClause {
+            compile(returningClause: returningClause, sourceTable: table)
+        } else {
+            (.row(.empty), [:])
+        }
+        
+        sub.merge(retSub)
+        return (ty, sub)
+    }
+    
+    private mutating func compile(
+        returningClause: ReturningClause,
+        sourceTable: CompiledTable
+    ) -> (Ty, Substitution) {
+        var resultColumns: Columns = [:]
+        var sub: Substitution = [:]
+        
+        for value in returningClause.values {
+            switch value {
+            case let .expr(expr, alias):
+                let (type, exprSub, names) = expr.accept(visitor: &self)
+                sub.merge(exprSub)
+                
+                guard let name = alias?.value ?? names.lastName else {
+                    diagnostics.add(.nameRequired(at: expr.range))
+                    continue
+                }
+                
+                resultColumns[name] = type
+            case .all:
+                // TODO: See TODO on `Columns` typealias
+                resultColumns.merge(resultColumns, uniquingKeysWith: { $1 })
+            }
+        }
+        
+        return (.row(.named(resultColumns)), sub)
+    }
+    
+    private mutating func compile(cte: CommonTableExpression) -> Substitution {
+        let (type, sub) = compile(select: cte.select)
+
+        let tableTy: Ty
+        if cte.columns.isEmpty {
+            tableTy = type
+        } else {
+            guard case let .row(row) = type else {
+                assertionFailure("Select is not a row?")
+                return sub
+            }
+            
+            let columnTypes = row.types
+            if columnTypes.count != cte.columns.count {
+                diagnostics.add(.init(
+                    "CTE expected \(cte.columns.count) columns, but got \(row.count)",
+                    at: cte.range
+                ))
+            }
+            
+            tableTy = .row(.named(
+                (0..<min(columnTypes.count, cte.columns.count))
+                    .reduce(into: [:]) { $0[cte.columns[$1].value] = columnTypes[$1] }
+            ))
+        }
+        
+        env.insert(cte.table.value, ty: tableTy)
+        
+        return sub
+    }
+    
+    private mutating func compile(select: SelectCore) -> (Ty, Substitution) {
+        switch select {
+        case let .select(select):
+            return compile(select: select)
+        case let .values(values):
+            var sub: Substitution = [:]
+            var types: [Ty] = []
+            
+            for value in values {
+                let (type, s, _) = value.accept(visitor: &self)
+                sub.merge(s, uniquingKeysWith: {$1})
+                types.append(type)
+            }
+            
+            return (.row(.unnamed(types)), sub)
+        }
+    }
+    
+    private mutating func compile(select: SelectCore.Select) -> (Ty, Substitution) {
+        var sub: Substitution = [:]
+        
+        if let from = select.from {
+            sub.merge(compile(from: from), uniquingKeysWith: {$1})
+        }
+        
+        let (output, colSub) = compile(resultColumns: select.columns)
+        sub.merge(colSub)
+        
+        if let whereExpr = select.where {
+            sub.merge(compile(where: whereExpr), uniquingKeysWith: {$1})
+        }
+        
+        if let groupBy = select.groupBy {
+            for expression in groupBy.expressions {
+                _ = expression.accept(visitor: &self)
+            }
+            
+            if let having = groupBy.having {
+                let (type, _, _) = having.accept(visitor: &self)
+                
+                if type != .bool, type != .integer {
+                    diagnostics.add(.init(
+                        "HAVING clause should return a 'BOOL' or 'INTEGER', got '\(type)'",
+                        at: having.range
+                    ))
+                }
+            }
+        }
+        
+        return (output, sub)
+    }
+    
+    private mutating func compile(from: From) -> Substitution {
+        switch from {
+        case let .tableOrSubqueries(t):
+            var sub: Substitution = [:]
+            for table in t {
+                sub.merge(compile(table), uniquingKeysWith: {$1})
+            }
+            return sub
+        case let .join(joinClause):
+            return compile(joinClause: joinClause)
+        }
+    }
+    
+    private mutating func compile(where expr: Expression) -> Substitution {
+        let (type, sub, _) = expr.accept(visitor: &self)
+        
+        if type != .bool, type != .integer {
+            diagnostics.add(.init(
+                "WHERE clause should return a 'BOOL' or 'INTEGER', got '\(type)'",
+                at: expr.range
+            ))
+        }
+        
+        return sub
+    }
+    
+    private mutating func compile(resultColumns: [ResultColumn]) -> (Ty, Substitution) {
+        var columns: OrderedDictionary<Substring, Ty> = [:]
+        var sub: Substitution = [:]
+        
+        for resultColumn in resultColumns {
+            switch resultColumn {
+            case let .expr(expr, alias):
+                let (type, columnSub, names) = expr.accept(visitor: &self)
+                sub.merge(columnSub)
+                
+                let name = alias?.value ?? names.lastName
+                columns[name ?? TypeInferrer.missingNameDefault] = type
+                
+                if name == nil {
+                    diagnostics.add(.nameRequired(at: expr.range))
+                }
+            case let .all(tableName):
+                if let tableName {
+                    if let table = env[tableName.value]?.type {
+                        guard case let .row(.named(tableColumns)) = table else {
+                            diagnostics.add(.init("'\(tableName)' is not a table", at: tableName.range))
+                            continue
+                        }
+                        
+                        for (name, type) in tableColumns {
+                            columns[name] = type
+                        }
+                    } else {
+                        diagnostics.add(.init("Table '\(tableName)' does not exist", at: tableName.range))
+                    }
+                } else {
+                    for (name, type) in env {
+                        switch type.type {
+                        case .row: continue // Ignore tables
+                        default: columns[name] = type.type
+                        }
+                    }
+                }
+            }
+        }
+        
+        return (.row(.named(columns)), sub)
+    }
+    
+    private mutating func compile(joinClause: JoinClause) -> Substitution {
+        var sub = compile(joinClause.tableOrSubquery)
+        
+        for join in joinClause.joins {
+            sub.merge(compile(join: join), uniquingKeysWith: {$1})
+        }
+        
+        return sub
+    }
+    
+    private mutating func compile(join: JoinClause.Join) -> Substitution {
+        switch join.constraint {
+        case let .on(expression):
+            let joinSub = compile(join.tableOrSubquery, joinOp: join.op)
+            
+            let (type, exprSub, _) = expression.accept(visitor: &self)
+            
+            if type != .bool, type != .integer {
+                diagnostics.add(.init(
+                    "JOIN clause should return a 'BOOL' or 'INTEGER', got '\(type)'",
+                    at: expression.range
+                ))
+            }
+            
+            return joinSub.merging(exprSub)
+        case let .using(columns):
+            return compile(
+                join.tableOrSubquery,
+                joinOp: join.op,
+                columns: columns.reduce(into: []) { $0.insert($1.value) }
+            )
+        case .none:
+            return compile(join.tableOrSubquery, joinOp: join.op)
+        }
+    }
+    
+    private mutating func compile(
+        _ tableOrSubquery: TableOrSubquery,
+        joinOp: JoinOperator? = nil,
+        columns usedColumns: Set<Substring> = []
+    ) -> Substitution {
+        switch tableOrSubquery {
+        case let .table(table):
+            let tableName = TableName(schema: table.schema, name: table.name)
+            
+            guard let envTable = schema[tableName.name.value] else {
+                // TODO: Add diag
+                env.insert(table.name.value, ty: .error)
+                return [:]
+            }
+            
+            let isOptional = switch joinOp {
+            case nil, .inner: false
+            default: true
+            }
+
+            env.insert(
+                table.alias?.value ?? table.name.value,
+                ty: isOptional ? .optional(envTable.type) : envTable.type
+            )
+            
+            for column in envTable.columns where usedColumns.isEmpty || usedColumns.contains(column.key) {
+                env.insert(column.key, ty: isOptional ? .optional(column.value) : column.value)
+            }
+            
+            return [:]
+        case .tableFunction:
+            fatalError()
+        case let .subquery(selectStmt, alias):
+            let (type, sub) = inNewEnvironment { inferrer in
+                inferrer.compile(select: selectStmt)
+            }
+            
+            // Insert the result of the subquery into the environment
+            if let alias {
+                env.insert(alias.value, ty: type)
+            }
+            
+            guard case let .row(.named(columns)) = type else {
+                fatalError("SELECT did not result a row type")
+            }
+            
+            // Also insert each column into the env. So you dont
+            // have to do `alias.column`
+            for (name, type) in columns {
+                env.insert(name, ty: type)
+            }
+            
+            return sub
+        case let .join(joinClause):
+            return compile(joinClause: joinClause)
+        case .subTableOrSubqueries:
+            fatalError()
+        }
+    }
+    
+    private func assumeRow(_ ty: Ty) -> Ty.RowTy {
+        guard case let .row(rowTy) = ty else {
+            assertionFailure("This cannot happen")
+            return .unnamed([])
+        }
+
+        return rowTy
+    }
+}

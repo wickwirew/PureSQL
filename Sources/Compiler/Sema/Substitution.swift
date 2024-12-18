@@ -13,6 +13,11 @@ extension Substitution {
         return merging(other, uniquingKeysWith: { $1 })
     }
     
+    mutating func merge(_ other: Substitution) {
+        guard !other.isEmpty else { return }
+        return merge(other, uniquingKeysWith: { $1 })
+    }
+    
     func merging(_ a: Substitution, _ b: Substitution) -> Substitution {
         var output = self
         for (k, v) in a {

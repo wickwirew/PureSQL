@@ -85,7 +85,6 @@ extension Compiler: StmtVisitor {
     mutating func visit(_ stmt: borrowing CreateTableStmt) -> CompiledStmt? {
         switch stmt.kind {
         case let .select(selectStmt):
-            let typeInferrer = TypeInferrer(env: Environment(), schema: schema)
             let signature = compile(select: selectStmt)
             guard  case let .row(.named(columns)) = signature.output else { return nil }
             return .table(CompiledTable(name: stmt.name.value, columns: columns))
