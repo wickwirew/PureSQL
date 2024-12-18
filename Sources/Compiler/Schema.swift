@@ -7,6 +7,14 @@
 
 import OrderedCollections
 
+public typealias Schema = OrderedDictionary<Substring, CompiledTable>
+
+// TODO: An ordered dictionary may not be the best representation of the
+// TODO: columns. Since this is used even in selects, the user could
+// TODO: technically do `SELECT foo, foo FROM bar;` which have the same
+// TODO: name which the ordered dictionary wouldnt catch. Or just error?
+public typealias Columns = OrderedDictionary<Substring, Ty>
+
 struct TypeName: Equatable, CustomStringConvertible, Sendable {
     let name: Identifier
     let args: Args?
