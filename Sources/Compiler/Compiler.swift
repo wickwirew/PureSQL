@@ -85,7 +85,7 @@ extension Compiler: StmtVisitor {
     mutating func visit(_ stmt: borrowing CreateTableStmt) -> CompiledStmt? {
         switch stmt.kind {
         case let .select(selectStmt):
-            var typeInferrer = TypeInferrer(env: Environment(), schema: schema)
+            let typeInferrer = TypeInferrer(env: Environment(), schema: schema)
             let signature = compile(select: selectStmt)
             guard  case let .row(.named(columns)) = signature.output else { return nil }
             return .table(CompiledTable(name: stmt.name.value, columns: columns))
@@ -161,6 +161,8 @@ struct QueryCompiler {
     
     private(set) var inputs: [Int: Parameter] = [:]
     
+    private static let missingNameDefault: Substring = "__name_required__"
+    
     init(schema: Schema) {
         self.schema = schema
     }
@@ -172,7 +174,7 @@ struct QueryCompiler {
         
         switch select.selects.value {
         case let .single(select):
-            let result = compile(select)
+            let result = Signature(parameters: inputs, output: compile(select: select))
             return (result, diagnositics)
         case .compound:
             fatalError()
@@ -286,16 +288,16 @@ struct QueryCompiler {
         environment.insert(cte.table.value, ty: tableTy)
     }
     
-    private mutating func compile(_ select: SelectCore) -> Signature {
+    private mutating func compile(select: SelectCore) -> Ty {
         switch select {
         case let .select(select):
             return compile(select: select)
-        case .values:
-            fatalError()
+        case let .values(values):
+            return .row(.unnamed(values.map { check(expression: $0).type }))
         }
     }
     
-    private mutating func compile(select: SelectCore.Select) -> Signature {
+    private mutating func compile(select: SelectCore.Select) -> Ty {
         if let from = select.from {
             compile(from: from)
         }
@@ -323,7 +325,7 @@ struct QueryCompiler {
             }
         }
         
-        return Signature(parameters: inputs, output: output)
+        return output
     }
     
     private mutating func compile(from: From) {
@@ -357,7 +359,7 @@ struct QueryCompiler {
                 let solution = check(expression: expr)
                 
                 let name = alias?.value ?? solution.lastName
-                columns[name ?? "__name_required__"] = solution.signature.output
+                columns[name ?? QueryCompiler.missingNameDefault] = solution.signature.output
                 
                 if name == nil {
                     diagnositics.add(.nameRequired(at: expr.range))

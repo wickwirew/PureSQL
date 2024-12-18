@@ -17,6 +17,10 @@ class CompilerTests: XCTestCase {
     func testSelectWithJoins() throws {
         try check(compile: "SelectWithJoins")
     }
+    
+    func testInsert() throws {
+        try check(compile: "Insert", dump: true)
+    }
 }
 
 func check(
@@ -40,8 +44,6 @@ func check(
         file: file,
         line: line
     )
-    
-    guard !diagnostics.isEmpty else { return }
     
     try check(
         sqlFile: sqlFile,

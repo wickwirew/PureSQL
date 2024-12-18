@@ -45,6 +45,8 @@ enum Parsers {
             return try alterStmt(state: &state)
         case (.select, _):
             return try selectStmt(state: &state)
+        case (.insert, _):
+            return try insertStmt(state: &state)
         case (.with, _):
             let start = state.current
             let cte = try withCte(state: &state)
