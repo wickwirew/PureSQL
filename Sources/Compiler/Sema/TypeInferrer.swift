@@ -12,7 +12,7 @@ struct Solution {
     let signature: Signature
     let lastName: Substring?
     
-    var type: Ty {
+    var type: Ty? {
         return signature.output
     }
     
@@ -39,6 +39,8 @@ struct InferenceState {
 }
 
 struct TypeInferrer {
+    /// The environment in which the query executes. Any joined in tables
+    /// will be added to this.
     private var env: Environment
     private let schema: Schema
     private var diagnostics: Diagnostics
@@ -66,13 +68,13 @@ struct TypeInferrer {
         return finalize(ty: ty, sub: sub, names: names)
     }
     
-    //    mutating func solution<S: Stmt>(for stmt: S) -> Solution {
-    //        let (ty, sub, names) = stmt.accept(visitor: &self)
-    //        return finalize(ty: ty, sub: sub, names: names)
-    //    }
+    mutating func solution<S: Stmt>(for stmt: S) -> Solution {
+        let (ty, sub) = stmt.accept(visitor: &self)
+        return finalize(ty: ty, sub: sub, names: .none)
+    }
     
     private mutating func finalize(
-        ty: Ty,
+        ty: Ty?,
         sub: Substitution,
         names: Names
     ) -> Solution {
@@ -90,11 +92,13 @@ struct TypeInferrer {
                     name: parameterNames[value.key]
                 )
             },
-            output: finalType(
-                for: ty.apply(sub),
-                substitution: sub,
-                constraints: constraints
-            )
+            output: ty.map { ty in
+                finalType(
+                    for: ty.apply(sub),
+                    substitution: sub,
+                    constraints: constraints
+                )
+            }
         )
         
         return Solution(
@@ -121,10 +125,14 @@ struct TypeInferrer {
             }
             return .any
         case let .row(tys):
-            // TODO: Clean this up
-            return .row(.unnamed(
-                tys.types.map { finalType(for: $0, substitution: substitution, constraints: constraints) }
-            ))
+            // Finalize all of the inner types in the row.
+            return .row(tys.mapTypes {
+                finalType(
+                    for: $0,
+                    substitution: substitution,
+                    constraints: constraints
+                )
+            })
         default:
             return ty
         }
@@ -447,17 +455,18 @@ extension TypeInferrer: ExprVisitor {
     }
     
     mutating func visit(_ expr: borrowing SelectExpr) -> (Ty, Substitution, Names) {
-        var compiler = QueryCompiler(schema: schema)
-        let (query, diags) = compiler.compile(select: expr.select)
-        diagnostics.add(contentsOf: diags)
-        parameterTypes.merge(query.parameters.map { ($0, $1.type) }, uniquingKeysWith: {$1})
+//        var compiler = QueryCompiler(schema: schema)
+//        let (query, diags) = compiler.compile(select: expr.select)
+//        diagnostics.add(contentsOf: diags)
+//        parameterTypes.merge(query.parameters.map { ($0, $1.type) }, uniquingKeysWith: {$1})
+//        
+//        // TODO: Merging the solution seems weird here.
+//        for (index, param) in query.parameters {
+//            parameterNames[index] = param.name
+//        }
         
-        // TODO: Merging the solution seems weird here.
-        for (index, param) in query.parameters {
-            parameterNames[index] = param.name
-        }
-        
-        return (query.output, [:], .none)
+        fatalError()
+//        return (query.output, [:], .none)
     }
     
     func visit(_ expr: borrowing InvalidExpr) -> (Ty, Substitution, Names) {
@@ -481,27 +490,27 @@ extension TypeInferrer: ExprVisitor {
 }
 
 
-//extension TypeInferrer: StmtVisitor {
-//    mutating func visit(_ stmt: borrowing CreateTableStmt) -> CompiledStmt? {
-//        fatalError()
-//    }
-//    
-//    mutating func visit(_ stmt: borrowing AlterTableStmt) -> CompiledStmt? {
-//        fatalError()
-//    }
-//    
-//    mutating func visit(_ stmt: borrowing SelectStmt) -> CompiledStmt? {
-//        return .query(compile(select: stmt))
-//    }
-//    
-//    mutating func visit(_ stmt: borrowing InsertStmt) -> CompiledStmt? {
-//        fatalError()
-//    }
-//    
-//    mutating func visit(_ stmt: borrowing EmptyStmt) -> CompiledStmt? {
-//        fatalError()
-//    }
-//}
+extension TypeInferrer: StmtVisitor {
+    mutating func visit(_ stmt: borrowing CreateTableStmt) -> (Ty?, Substitution) {
+        fatalError()
+    }
+    
+    mutating func visit(_ stmt: borrowing AlterTableStmt) -> (Ty?, Substitution) {
+        fatalError()
+    }
+    
+    mutating func visit(_ stmt: borrowing SelectStmt) -> (Ty?, Substitution) {
+        return compile(select: stmt)
+    }
+    
+    mutating func visit(_ stmt: borrowing InsertStmt) -> (Ty?, Substitution) {
+        return compile(insert: stmt)
+    }
+    
+    mutating func visit(_ stmt: borrowing EmptyStmt) -> (Ty?, Substitution) {
+        return (nil, [:])
+    }
+}
 
 extension TypeInferrer {
     mutating func compile(select: SelectStmt) -> (Ty, Substitution) {

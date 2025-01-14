@@ -250,7 +250,7 @@ struct SelectStmt: Stmt {
         }
     }
     
-    func accept<V>(visitor: inout V) -> V.Output where V : StmtVisitor {
+    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtVisitor {
         visitor.visit(self)
     }
 }

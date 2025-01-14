@@ -1,4 +1,11 @@
-
 CREATE TABLE user (id INTEGER, name TEXT);
 
+-- CHECK: SIGNATURE
+-- CHECK:   PARAMETERS
+-- CHECK:     PARAMETER
+-- CHECK:       TYPE ANY
+-- CHECK:       INDEX 1
+-- CHECK:     PARAMETER
+-- CHECK:       TYPE ANY
+-- CHECK:       INDEX 2
 INSERT INTO user (id, name) VALUES (?, ?);

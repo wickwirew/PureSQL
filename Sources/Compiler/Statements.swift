@@ -8,16 +8,16 @@
 import OrderedCollections
 
 protocol StmtVisitor {
-    associatedtype Output
-    mutating func visit(_ stmt: borrowing CreateTableStmt) -> Output
-    mutating func visit(_ stmt: borrowing AlterTableStmt) -> Output
-    mutating func visit(_ stmt: borrowing EmptyStmt) -> Output
-    mutating func visit(_ stmt: borrowing SelectStmt) -> Output
-    mutating func visit(_ stmt: borrowing InsertStmt) -> Output
+    associatedtype StmtOutput
+    mutating func visit(_ stmt: borrowing CreateTableStmt) -> StmtOutput
+    mutating func visit(_ stmt: borrowing AlterTableStmt) -> StmtOutput
+    mutating func visit(_ stmt: borrowing EmptyStmt) -> StmtOutput
+    mutating func visit(_ stmt: borrowing SelectStmt) -> StmtOutput
+    mutating func visit(_ stmt: borrowing InsertStmt) -> StmtOutput
 }
 
 protocol Stmt {
-    func accept<V: StmtVisitor>(visitor: inout V) -> V.Output
+    func accept<V: StmtVisitor>(visitor: inout V) -> V.StmtOutput
 }
 
 struct CreateTableStmt: Stmt {
@@ -52,7 +52,7 @@ struct CreateTableStmt: Stmt {
         self.options = options
     }
 
-    func accept<V>(visitor: inout V) -> V.Output where V : StmtVisitor {
+    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtVisitor {
         visitor.visit(self)
     }
 }
@@ -69,7 +69,7 @@ struct AlterTableStmt: Stmt {
         case dropColumn(Identifier)
     }
 
-    func accept<V>(visitor: inout V) -> V.Output where V : StmtVisitor {
+    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtVisitor {
         visitor.visit(self)
     }
 }
@@ -77,7 +77,7 @@ struct AlterTableStmt: Stmt {
 struct EmptyStmt: Equatable, Stmt {
     init() {}
 
-    func accept<V>(visitor: inout V) -> V.Output where V : StmtVisitor {
+    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtVisitor {
         visitor.visit(self)
     }
 }

@@ -75,6 +75,17 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
             case let .unknown(t): .unknown(t.apply(s))
             }
         }
+        
+        func mapTypes(_ transform: (Ty) -> Ty) -> RowTy {
+            switch self {
+            case .named(let values):
+                return .named(values.mapValues(transform))
+            case .unnamed(let values):
+                return .unnamed(values.map(transform))
+            case .unknown(let value):
+                return .unknown(transform(value))
+            }
+        }
     }
     
     static let text: Ty = .nominal("TEXT")

@@ -166,7 +166,7 @@ class TypeCheckerTests: XCTestCase {
     func testInRowInferInputAsRow() throws {
         let solution = solution(for: "1 IN :bar")
         XCTAssertEqual(.bool, solution.type)
-        XCTAssertEqual(.row([.integer]), solution.type(for: ":bar"))
+        XCTAssertEqual(.row(.unknown(.integer)), solution.type(for: ":bar"))
     }
     
     func scope(table: String, schema: String) throws -> Environment {
@@ -189,7 +189,7 @@ class TypeCheckerTests: XCTestCase {
         return solution
     }
     
-    private func check(_ source: String, in scope: Environment = Environment()) throws -> Ty {
+    private func check(_ source: String, in scope: Environment = Environment()) throws -> Ty? {
         return solution(for: source, in: scope).type
     }
 }
