@@ -455,18 +455,8 @@ extension TypeInferrer: ExprVisitor {
     }
     
     mutating func visit(_ expr: borrowing SelectExpr) -> (Ty, Substitution, Names) {
-//        var compiler = QueryCompiler(schema: schema)
-//        let (query, diags) = compiler.compile(select: expr.select)
-//        diagnostics.add(contentsOf: diags)
-//        parameterTypes.merge(query.parameters.map { ($0, $1.type) }, uniquingKeysWith: {$1})
-//        
-//        // TODO: Merging the solution seems weird here.
-//        for (index, param) in query.parameters {
-//            parameterNames[index] = param.name
-//        }
-        
-        fatalError()
-//        return (query.output, [:], .none)
+        let (ty, sub) = compile(select: expr.select)
+        return (ty, sub, .none)
     }
     
     func visit(_ expr: borrowing InvalidExpr) -> (Ty, Substitution, Names) {
