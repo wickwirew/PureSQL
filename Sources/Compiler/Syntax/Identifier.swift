@@ -1,53 +1,46 @@
 //
-//  IdentifierSyntax.swift
+//  Identifier.swift
 //
 //
 //  Created by Wes Wickwire on 10/19/24.
 //
 
-public struct Identifier: Sendable {
-    public private(set) var value: Substring
-    public private(set) var range: Range<String.Index>
+struct Identifier: Sendable {
+    private(set) var value: Substring
+    private(set) var range: Range<String.Index>
 
-    public init(value: Substring, range: Range<String.Index>) {
+    init(value: Substring, range: Range<String.Index>) {
         self.value = value
         self.range = range
     }
 }
 
 extension Identifier: Equatable {
-    public static func ==(lhs: Identifier, rhs: Identifier) -> Bool {
+    static func ==(lhs: Identifier, rhs: Identifier) -> Bool {
         return lhs.value == rhs.value
     }
 }
 
 extension Identifier: Hashable {
-    public func hash(into hasher: inout Hasher) {
+    func hash(into hasher: inout Hasher) {
         hasher.combine(value)
     }
 }
 
 extension Identifier: CustomStringConvertible {
-    public var description: String {
+    var description: String {
         return value.description
     }
 }
 
 extension Identifier: ExpressibleByStringLiteral {
-    public init(stringLiteral value: String) {
+    init(stringLiteral value: String) {
         self.value = value[...]
         self.range = value.startIndex..<value.endIndex
     }
 }
 
-extension Identifier: ExpressibleByStringInterpolation {
-    public init(stringInterpolation: DefaultStringInterpolation) {
-        self.value = stringInterpolation.description[...]
-        self.range = value.startIndex..<value.endIndex
-    }
-}
-
-public extension Identifier {
+extension Identifier {
     mutating func append(_ identifier: Identifier) {
         value += identifier.value
         range = range.lowerBound..<identifier.range.upperBound

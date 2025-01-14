@@ -235,7 +235,7 @@ struct LogError: Error, CustomStringConvertible {
     let description: String
 }
 
-extension Ty {
+extension Type {
     var swiftType: String {
         switch self {
         case let .nominal(name):

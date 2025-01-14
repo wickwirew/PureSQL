@@ -7,12 +7,12 @@
 
 import OrderedCollections
 
-public enum Ty: Equatable, CustomStringConvertible, Sendable {
+public enum Type: Equatable, CustomStringConvertible, Sendable {
     case nominal(Substring)
     case `var`(TypeVariable)
-    indirect case fn(params: [Ty], ret: Ty)
-    case row(RowTy)
-    indirect case optional(Ty)
+    indirect case fn(params: [Type], ret: Type)
+    case row(Row)
+    indirect case optional(Type)
     /// There was an error somewhere in the analysis. We can just return
     /// an `error` type and continue the analysis. So if the user makes up
     /// 3 columns, they can get all 3 errors at once.
@@ -29,22 +29,22 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
     /// Named and unnamed. Named is obviously a table from
     /// a FROM or JOIN. Unnamed would be from a subquery or
     /// a row expression `(?, ?, ?)`.
-    public enum RowTy: Equatable, Sendable, ExpressibleByArrayLiteral {
-        case named(OrderedDictionary<Substring, Ty>)
-        case unnamed([Ty])
+    public enum Row: Equatable, Sendable, ExpressibleByArrayLiteral {
+        case named(OrderedDictionary<Substring, Type>)
+        case unnamed([Type])
         /// This is a special row that we don't know the inner types of.
         /// It assumes that all types in it are the same type and of an
         /// unbounded length. Allows us to define functions like `IN` that
         /// take a row as an input but we are unsure of what the inner values are.
-        indirect case unknown(Ty)
+        indirect case unknown(Type)
         
-        public static let empty: RowTy = .unnamed([])
+        public static let empty: Row = .unnamed([])
         
-        public init(arrayLiteral elements: Ty...) {
+        public init(arrayLiteral elements: Type...) {
             self = .unnamed(elements)
         }
         
-        var first: Ty? {
+        var first: Type? {
             return switch self {
             case let .named(v): v.values.first
             case let .unnamed(v): v.first
@@ -60,7 +60,7 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
             }
         }
         
-        var types: [Ty] {
+        var types: [Type] {
             return switch self {
             case let .named(v): Array(v.values)
             case let .unnamed(v): v
@@ -68,7 +68,7 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
             }
         }
         
-        func apply(_ s: Substitution) -> RowTy {
+        func apply(_ s: Substitution) -> Row {
             return switch self {
             case let .named(v): .named(v.mapValues { $0.apply(s) })
             case let .unnamed(v): .unnamed(v.map { $0.apply(s) })
@@ -76,25 +76,25 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
             }
         }
         
-        func mapTypes(_ transform: (Ty) -> Ty) -> RowTy {
+        func mapTypes(_ transform: (Type) -> Type) -> Row {
             switch self {
-            case .named(let values):
+            case let .named(values):
                 return .named(values.mapValues(transform))
-            case .unnamed(let values):
+            case let .unnamed(values):
                 return .unnamed(values.map(transform))
-            case .unknown(let value):
+            case let .unknown(value):
                 return .unknown(transform(value))
             }
         }
     }
     
-    static let text: Ty = .nominal("TEXT")
-    static let int: Ty = .nominal("INT")
-    static let integer: Ty = .nominal("INTEGER")
-    static let real: Ty = .nominal("REAL")
-    static let blob: Ty = .nominal("BLOB")
-    static let any: Ty = .nominal("ANY")
-    static let bool: Ty = .nominal("BOOL")
+    static let text: Type = .nominal("TEXT")
+    static let int: Type = .nominal("INT")
+    static let integer: Type = .nominal("INTEGER")
+    static let real: Type = .nominal("REAL")
+    static let blob: Type = .nominal("BLOB")
+    static let any: Type = .nominal("ANY")
+    static let bool: Type = .nominal("BOOL")
     
     public var description: String {
         return switch self {
@@ -111,7 +111,7 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
         }
     }
     
-    func apply(_ s : Substitution) -> Ty {
+    func apply(_ s : Substitution) -> Type {
         // To apply a substitution to a type:
         switch self {
         case let .var(n):
@@ -142,7 +142,7 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
     }
     
     func unify(
-        with other: Ty,
+        with other: Type,
         at range: Range<String.Index>,
         diagnostics: inout Diagnostics
     ) -> Substitution {
@@ -150,6 +150,9 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
         guard self != other else { return [:] }
         
         switch (self, other) {
+        case (.error, _), (_, .error):
+            // Already had an upstream error so no need to emit any more diagnostics
+            return [:]
         case let (.var(tv), ty):
             return [tv: ty]
         case let (ty, .var(tv)):
@@ -190,9 +193,6 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
                 diagnostics.add(.init("Unable to unify types '\(self)' and '\(other)'", at: range))
                 return [:]
             }
-        case (.error, _), (_, .error):
-            // Already had an upstream error so no need to emit any more diagnostics
-            return [:]
         default:
             diagnostics.add(.init("Unable to unify types '\(self)' and '\(other)'", at: range))
             return [:]
@@ -205,7 +205,7 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
         at range: Range<String.Index>,
         diagnostics: inout Diagnostics
     ) -> Substitution
-        where T1.Element == Ty, T2.Element == Ty
+        where T1.Element == Type, T2.Element == Type
     {
         assert(tys.count == others.count)
         
@@ -222,11 +222,11 @@ public enum Ty: Equatable, CustomStringConvertible, Sendable {
     
     private func unify<T1: Collection>(
         all tys: T1,
-        with ty1: Ty,
+        with ty1: Type,
         at range: Range<String.Index>,
         diagnostics: inout Diagnostics
     ) -> Substitution
-        where T1.Element == Ty
+        where T1.Element == Type
     {
         var sub: Substitution = [:]
         
@@ -257,7 +257,7 @@ public struct TypeVariable: Hashable, CustomStringConvertible, ExpressibleByInte
     }
 }
 
-/// TODO: Need a better name for this. TypeConstraints vs Constraints is confusing
+// TODO: Need a better name for this. TypeConstraints vs Constraints is confusing
 typealias Constraints = [TypeVariable: TypeConstraints]
 
 /// Any type constraints that may exist on the type variable.
@@ -269,7 +269,6 @@ struct TypeConstraints: OptionSet, Hashable {
     
     static let numeric = TypeConstraints(rawValue: 1 << 0)
 }
-
 
 extension Constraints {
     func merging(_ other: Constraints) -> Constraints {

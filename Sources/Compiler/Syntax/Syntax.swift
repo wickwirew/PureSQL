@@ -108,8 +108,4 @@ struct QualifiedTableName: Syntax {
 enum From {
     case tableOrSubqueries([TableOrSubquery])
     case join(JoinClause)
-
-    init(table: Identifier) {
-        self = .join(JoinClause(table: table))
-    }
 }

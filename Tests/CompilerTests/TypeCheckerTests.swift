@@ -189,7 +189,7 @@ class TypeCheckerTests: XCTestCase {
         return solution
     }
     
-    private func check(_ source: String, in scope: Environment = Environment()) throws -> Ty? {
+    private func check(_ source: String, in scope: Environment = Environment()) throws -> Type? {
         return solution(for: source, in: scope).type
     }
 }

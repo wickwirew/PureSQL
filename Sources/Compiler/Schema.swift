@@ -1,0 +1,16 @@
+//
+//  Schema.swift
+//  Feather
+//
+//  Created by Wes Wickwire on 1/13/25.
+//
+
+import OrderedCollections
+
+public typealias Schema = OrderedDictionary<Substring, CompiledTable>
+
+// TODO: An ordered dictionary may not be the best representation of the
+// TODO: columns. Since this is used even in selects, the user could
+// TODO: technically do `SELECT foo, foo FROM bar;` which have the same
+// TODO: name which the ordered dictionary wouldnt catch. Or just error?
+public typealias Columns = OrderedDictionary<Substring, Type>

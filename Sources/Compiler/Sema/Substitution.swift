@@ -5,7 +5,7 @@
 //  Created by Wes Wickwire on 12/17/24.
 //
 
-typealias Substitution = [TypeVariable: Ty]
+typealias Substitution = [TypeVariable: Type]
 
 extension Substitution {
     func merging(_ other: Substitution) -> Substitution {

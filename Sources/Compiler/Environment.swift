@@ -21,20 +21,20 @@ struct Environment {
     /// each as an array but that seems like a bad idea.
     /// This just allows us to store the flag right with the type.
     struct TyContainer {
-        let type: Ty
+        let type: Type
         let isAmbiguous: Bool
     }
     
     init() {}
 
     /// Inserts or updates the type for the given name
-    mutating func upsert(_ name: Substring, ty: Ty) {
+    mutating func upsert(_ name: Substring, ty: Type) {
         identifiers[name] = TyContainer(type: ty, isAmbiguous: false)
     }
     
     /// Inserts the type for the given name. If the name
     /// already exists it will be marked as ambiguous
-    mutating func insert(_ name: Substring, ty: Ty) {
+    mutating func insert(_ name: Substring, ty: Type) {
         if let existing = identifiers[name] {
             identifiers[name] = TyContainer(type: existing.type, isAmbiguous: true)
         } else {
@@ -150,12 +150,12 @@ enum Builtins {
 
 struct TypeScheme: CustomStringConvertible, Sendable {
     let typeVariables: [TypeVariable]
-    let type: Ty
+    let type: Type
     let variadic: Bool
     
     init(
         typeVariables: [TypeVariable],
-        type: Ty,
+        type: Type,
         variadic: Bool = false
     ) {
         self.typeVariables = typeVariables
@@ -163,7 +163,7 @@ struct TypeScheme: CustomStringConvertible, Sendable {
         self.variadic = variadic
     }
     
-    init(_ type: Ty) {
+    init(_ type: Type) {
         self.typeVariables = []
         self.type = type
         self.variadic = false

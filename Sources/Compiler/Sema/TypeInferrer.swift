@@ -12,15 +12,15 @@ struct Solution {
     let signature: Signature
     let lastName: Substring?
     
-    var type: Ty? {
+    var type: Type? {
         return signature.output
     }
     
-    func type(for index: Int) -> Ty? {
+    func type(for index: Int) -> Type? {
         return signature.parameters[index]?.type
     }
     
-    func type(for name: Substring) -> Ty? {
+    func type(for name: Substring) -> Type? {
         guard let (index, _) = signature.parameters
             .first(where: { $1.name == name }) else { return nil }
         
@@ -46,7 +46,7 @@ struct TypeInferrer {
     /// The type of the bind parameter. Note: This will not be
     /// the final type. The overall substitution will have to be applied
     /// to the type.
-    private var parameterTypes: [BindParameter.Index: Ty] = [:]
+    private var parameterTypes: [BindParameter.Index: Type] = [:]
     /// Any constraints over a type. These are not constraints as in a
     /// constraint based inference algorithm but rather constraints on a type
     /// like type classes, protocols, or interfaces.
@@ -78,7 +78,7 @@ struct TypeInferrer {
     }
     
     private mutating func finalize(
-        ty: Ty?,
+        ty: Type?,
         sub: Substitution,
         names: Names
     ) -> Solution {
@@ -116,10 +116,10 @@ struct TypeInferrer {
     /// and validates the constraints. If no type is
     /// found one will be guessed from the constraints.
     private func finalType(
-        for ty: Ty,
+        for ty: Type,
         substitution: Substitution,
         constraints: Constraints
-    ) -> Ty {
+    ) -> Type {
         let ty = ty.apply(substitution)
         
         switch ty.apply(substitution) {
@@ -153,7 +153,7 @@ struct TypeInferrer {
         var result: [TypeVariable: TypeConstraints] = [:]
         
         for (tv, constraints) in constraints {
-            let ty = Ty.var(tv).apply(substitution)
+            let ty = Type.var(tv).apply(substitution)
             
             if case let .var(tv) = ty {
                 result[tv] = constraints
@@ -176,7 +176,7 @@ struct TypeInferrer {
         return ty
     }
     
-    private mutating func instantiate(_ typeScheme: TypeScheme) -> Ty {
+    private mutating func instantiate(_ typeScheme: TypeScheme) -> Type {
         guard !typeScheme.typeVariables.isEmpty else { return typeScheme.type }
         let sub = Substitution(
             typeScheme.typeVariables.map { ($0, .var(freshTyVar())) },
@@ -189,15 +189,15 @@ struct TypeInferrer {
     /// is a type variable. If there are two nominal types they and
     /// they can be coerced en empty substitution will be returned
     private mutating func unify(
-        _ ty: Ty,
-        with other: Ty,
+        _ ty: Type,
+        with other: Type,
         at range: Range<String.Index>
     ) -> Substitution {
         ty.unify(with: other, at: range, diagnostics: &diagnostics)
     }
     
     private mutating func unify(
-        all tys: [Ty],
+        all tys: [Type],
         at range: Range<String.Index>
     ) -> Substitution {
         var tys = tys.makeIterator()
@@ -261,7 +261,7 @@ struct TypeInferrer {
 }
 
 extension TypeInferrer: ExprVisitor {
-    mutating func visit(_ expr: borrowing LiteralExpr) -> (Ty, Substitution, Names) {
+    mutating func visit(_ expr: borrowing LiteralExpr) -> (Type, Substitution, Names) {
         switch expr.kind {
         case let .numeric(_, isInt):
             if isInt {
@@ -280,11 +280,11 @@ extension TypeInferrer: ExprVisitor {
         }
     }
     
-    mutating func visit(_ expr: borrowing BindParameter) -> (Ty, Substitution, Names) {
+    mutating func visit(_ expr: borrowing BindParameter) -> (Type, Substitution, Names) {
         let expr = copy expr
         let names: Names
         switch expr.kind {
-        case .named(let name):
+        case let .named(name):
             track(name: name.value, for: expr.index)
             names = .none
         case .unnamed:
@@ -294,7 +294,7 @@ extension TypeInferrer: ExprVisitor {
         return (.var(freshTyVar(for: expr)), [:], names)
     }
     
-    mutating func visit(_ expr: borrowing ColumnExpr) -> (Ty, Substitution, Names) {
+    mutating func visit(_ expr: borrowing ColumnExpr) -> (Type, Substitution, Names) {
         if let tableName = expr.table {
             guard let result = env[tableName.value] else {
                 diagnostics.add(.init(
@@ -351,7 +351,7 @@ extension TypeInferrer: ExprVisitor {
         }
     }
     
-    mutating func visit(_ expr: borrowing PrefixExpr) -> (Ty, Substitution, Names) {
+    mutating func visit(_ expr: borrowing PrefixExpr) -> (Type, Substitution, Names) {
         let (t, s, n) = expr.rhs.accept(visitor: &self)
         
         guard let scheme = env[prefix: expr.operator.operator] else {
@@ -362,13 +362,13 @@ extension TypeInferrer: ExprVisitor {
             return (.error, s, n)
         }
         
-        let tv: Ty = .var(freshTyVar())
+        let tv: Type = .var(freshTyVar())
         let fnType = instantiate(scheme)
         let sub = unify(fnType, with: .fn(params: [t], ret: tv), at: expr.range)
         return (tv.apply(sub), sub.merging(s), n)
     }
     
-    mutating func visit(_ expr: borrowing InfixExpr) -> (Ty, Substitution, Names) {
+    mutating func visit(_ expr: borrowing InfixExpr) -> (Type, Substitution, Names) {
         let (lTy, lSub, lNames) = expr.lhs.accept(visitor: &self)
         let (rTy, rSub, rNames) = expr.rhs.accept(visitor: &self)
         let names = merge(names: lNames, with: rNames)
@@ -381,13 +381,13 @@ extension TypeInferrer: ExprVisitor {
             return (.error, rSub.merging(lSub), names)
         }
         
-        let tv: Ty = .var(freshTyVar())
+        let tv: Type = .var(freshTyVar())
         let fnType = instantiate(scheme)
         let sub = unify(fnType, with: .fn(params: [lTy.apply(rSub), rTy], ret: tv), at: expr.range)
         return (tv.apply(sub), sub.merging(rSub, lSub), names)
     }
     
-    mutating func visit(_ expr: borrowing PostfixExpr) -> (Ty, Substitution, Names) {
+    mutating func visit(_ expr: borrowing PostfixExpr) -> (Type, Substitution, Names) {
         let (t, s, n) = expr.lhs.accept(visitor: &self)
         
         guard let scheme = env[postfix: expr.operator.operator] else {
@@ -398,19 +398,19 @@ extension TypeInferrer: ExprVisitor {
             return (.error, s, n)
         }
         
-        let tv: Ty = .var(freshTyVar())
+        let tv: Type = .var(freshTyVar())
         let fnType = instantiate(scheme)
         let sub = unify(fnType, with: .fn(params: [t], ret: tv), at: expr.range)
         return (tv.apply(sub), sub.merging(s), n)
     }
     
-    mutating func visit(_ expr: borrowing BetweenExpr) -> (Ty, Substitution, Names) {
+    mutating func visit(_ expr: borrowing BetweenExpr) -> (Type, Substitution, Names) {
         let (tys, sub, names) = visit(many: [expr.value, expr.lower, expr.upper])
         let betSub = unify(instantiate(Builtins.between), with: .fn(params: tys, ret: .bool), at: expr.range)
         return (.bool, betSub.merging(sub), names)
     }
     
-    mutating func visit(_ expr: borrowing FunctionExpr) -> (Ty, Substitution, Names) {
+    mutating func visit(_ expr: borrowing FunctionExpr) -> (Type, Substitution, Names) {
         let (argTys, argSub, argNames) = visit(many: expr.args)
         
         guard let scheme = env[function: expr.name.value, argCount: argTys.count] else {
@@ -418,22 +418,22 @@ extension TypeInferrer: ExprVisitor {
             return (.error, argSub, argNames)
         }
         
-        let tv: Ty = .var(freshTyVar())
+        let tv: Type = .var(freshTyVar())
         let sub = unify(instantiate(scheme), with: .fn(params: argTys, ret: tv), at: expr.range)
         return (tv, sub.merging(argSub), argNames)
     }
     
-    mutating func visit(_ expr: borrowing CastExpr) -> (Ty, Substitution, Names) {
+    mutating func visit(_ expr: borrowing CastExpr) -> (Type, Substitution, Names) {
         let (_, s, n) = expr.expr.accept(visitor: &self)
         return (.nominal(expr.ty.name.value), s, n)
     }
     
-    mutating func visit(_ expr: borrowing Expression) -> (Ty, Substitution, Names) {
+    mutating func visit(_ expr: borrowing Expression) -> (Type, Substitution, Names) {
         fatalError("TODO: Clean this up. Should never get called. It's `accept` calls the wrapped method, not this")
     }
     
-    mutating func visit(_ expr: borrowing CaseWhenThenExpr) -> (Ty, Substitution, Names) {
-        let ret: Ty = .var(freshTyVar())
+    mutating func visit(_ expr: borrowing CaseWhenThenExpr) -> (Type, Substitution, Names) {
+        let ret: Type = .var(freshTyVar())
         let (whenTys, whenSub, whenNames) = visit(many: expr.whenThen.map(\.when))
         let (thenTys, thenSub, thenNames) = visit(many: expr.whenThen.map(\.then))
         
@@ -459,22 +459,22 @@ extension TypeInferrer: ExprVisitor {
         return (ret, sub, names)
     }
     
-    mutating func visit(_ expr: borrowing GroupedExpr) -> (Ty, Substitution, Names) {
+    mutating func visit(_ expr: borrowing GroupedExpr) -> (Type, Substitution, Names) {
         let (t, s, n) = visit(many: expr.exprs)
         return (.row(.unnamed(t)), s, n)
     }
     
-    mutating func visit(_ expr: borrowing SelectExpr) -> (Ty, Substitution, Names) {
+    mutating func visit(_ expr: borrowing SelectExpr) -> (Type, Substitution, Names) {
         let (ty, sub) = compile(select: expr.select)
         return (ty, sub, .none)
     }
     
-    func visit(_ expr: borrowing InvalidExpr) -> (Ty, Substitution, Names) {
+    func visit(_ expr: borrowing InvalidExpr) -> (Type, Substitution, Names) {
         return (.error, [:], .none)
     }
     
-    private mutating func visit(many exprs: [Expression]) -> ([Ty], Substitution, Names) {
-        var tys: [Ty] = []
+    private mutating func visit(many exprs: [Expression]) -> ([Type], Substitution, Names) {
+        var tys: [Type] = []
         var sub: Substitution = [:]
         var names: Names = .none
         
@@ -489,31 +489,30 @@ extension TypeInferrer: ExprVisitor {
     }
 }
 
-
 extension TypeInferrer: StmtVisitor {
-    mutating func visit(_ stmt: borrowing CreateTableStmt) -> (Ty?, Substitution) {
+    mutating func visit(_ stmt: borrowing CreateTableStmt) -> (Type?, Substitution) {
         fatalError()
     }
     
-    mutating func visit(_ stmt: borrowing AlterTableStmt) -> (Ty?, Substitution) {
+    mutating func visit(_ stmt: borrowing AlterTableStmt) -> (Type?, Substitution) {
         fatalError()
     }
     
-    mutating func visit(_ stmt: borrowing SelectStmt) -> (Ty?, Substitution) {
+    mutating func visit(_ stmt: borrowing SelectStmt) -> (Type?, Substitution) {
         return compile(select: stmt)
     }
     
-    mutating func visit(_ stmt: borrowing InsertStmt) -> (Ty?, Substitution) {
+    mutating func visit(_ stmt: borrowing InsertStmt) -> (Type?, Substitution) {
         return compile(insert: stmt)
     }
     
-    mutating func visit(_ stmt: borrowing EmptyStmt) -> (Ty?, Substitution) {
+    mutating func visit(_ stmt: borrowing EmptyStmt) -> (Type?, Substitution) {
         return (nil, [:])
     }
 }
 
 extension TypeInferrer {
-    mutating func compile(select: SelectStmt) -> (Ty, Substitution) {
+    mutating func compile(select: SelectStmt) -> (Type, Substitution) {
         var sub: Substitution = [:]
         
         if let cte = select.cte?.value {
@@ -530,7 +529,7 @@ extension TypeInferrer {
         }
     }
     
-    mutating func compile(insert: InsertStmt) -> (Ty, Substitution) {
+    mutating func compile(insert: InsertStmt) -> (Type, Substitution) {
         var sub: Substitution = [:]
         
         if let cte = insert.cte {
@@ -542,9 +541,9 @@ extension TypeInferrer {
             return (.error, sub)
         }
         
-        let inputType: Ty
+        let inputType: Type
         if let columns = insert.columns {
-            var columnTypes: [Ty] = []
+            var columnTypes: [Type] = []
             for column in columns {
                 guard let def = table.columns[column.value] else {
                     diagnostics.add(.columnDoesNotExist(column))
@@ -568,7 +567,7 @@ extension TypeInferrer {
             // TODO: actually have default values or null
         }
         
-        let (ty, retSub): (Ty, Substitution) = if let returningClause = insert.returningClause {
+        let (ty, retSub): (Type, Substitution) = if let returningClause = insert.returningClause {
             compile(returningClause: returningClause, sourceTable: table)
         } else {
             (.row(.empty), [:])
@@ -581,7 +580,7 @@ extension TypeInferrer {
     private mutating func compile(
         returningClause: ReturningClause,
         sourceTable: CompiledTable
-    ) -> (Ty, Substitution) {
+    ) -> (Type, Substitution) {
         var resultColumns: Columns = [:]
         var sub: Substitution = [:]
         
@@ -609,7 +608,7 @@ extension TypeInferrer {
     private mutating func compile(cte: CommonTableExpression) -> Substitution {
         let (type, sub) = compile(select: cte.select)
 
-        let tableTy: Ty
+        let tableTy: Type
         if cte.columns.isEmpty {
             tableTy = type
         } else {
@@ -637,17 +636,17 @@ extension TypeInferrer {
         return sub
     }
     
-    private mutating func compile(select: SelectCore) -> (Ty, Substitution) {
+    private mutating func compile(select: SelectCore) -> (Type, Substitution) {
         switch select {
         case let .select(select):
             return compile(select: select)
         case let .values(values):
             var sub: Substitution = [:]
-            var types: [Ty] = []
+            var types: [Type] = []
             
             for value in values {
                 let (type, s, _) = value.accept(visitor: &self)
-                sub.merge(s, uniquingKeysWith: {$1})
+                sub.merge(s, uniquingKeysWith: { $1 })
                 types.append(type)
             }
             
@@ -655,18 +654,18 @@ extension TypeInferrer {
         }
     }
     
-    private mutating func compile(select: SelectCore.Select) -> (Ty, Substitution) {
+    private mutating func compile(select: SelectCore.Select) -> (Type, Substitution) {
         var sub: Substitution = [:]
         
         if let from = select.from {
-            sub.merge(compile(from: from), uniquingKeysWith: {$1})
+            sub.merge(compile(from: from), uniquingKeysWith: { $1 })
         }
         
         let (output, colSub) = compile(resultColumns: select.columns)
         sub.merge(colSub)
         
         if let whereExpr = select.where {
-            sub.merge(compile(where: whereExpr), uniquingKeysWith: {$1})
+            sub.merge(compile(where: whereExpr), uniquingKeysWith: { $1 })
         }
         
         if let groupBy = select.groupBy {
@@ -694,7 +693,7 @@ extension TypeInferrer {
         case let .tableOrSubqueries(t):
             var sub: Substitution = [:]
             for table in t {
-                sub.merge(compile(table), uniquingKeysWith: {$1})
+                sub.merge(compile(table), uniquingKeysWith: { $1 })
             }
             return sub
         case let .join(joinClause):
@@ -715,8 +714,8 @@ extension TypeInferrer {
         return sub
     }
     
-    private mutating func compile(resultColumns: [ResultColumn]) -> (Ty, Substitution) {
-        var columns: OrderedDictionary<Substring, Ty> = [:]
+    private mutating func compile(resultColumns: [ResultColumn]) -> (Type, Substitution) {
+        var columns: OrderedDictionary<Substring, Type> = [:]
         var sub: Substitution = [:]
         
         for resultColumn in resultColumns {
@@ -763,7 +762,7 @@ extension TypeInferrer {
         var sub = compile(joinClause.tableOrSubquery)
         
         for join in joinClause.joins {
-            sub.merge(compile(join: join), uniquingKeysWith: {$1})
+            sub.merge(compile(join: join), uniquingKeysWith: { $1 })
         }
         
         return sub
@@ -855,7 +854,7 @@ extension TypeInferrer {
         }
     }
     
-    private func assumeRow(_ ty: Ty) -> Ty.RowTy {
+    private func assumeRow(_ ty: Type) -> Type.Row {
         guard case let .row(rowTy) = ty else {
             assertionFailure("This cannot happen")
             return .unnamed([])

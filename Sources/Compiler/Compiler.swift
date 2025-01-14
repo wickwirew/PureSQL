@@ -9,9 +9,9 @@ import OrderedCollections
 
 public struct CompiledTable {
     public var name: Substring
-    public var columns: OrderedDictionary<Substring, Ty>
+    public var columns: OrderedDictionary<Substring, Type>
     
-    var type: Ty {
+    var type: Type {
         return .row(.named(columns))
     }
 }
@@ -23,7 +23,7 @@ public enum CompiledStmt {
 
 public struct Signature: CustomReflectable {
     public var parameters: [Int: Parameter]
-    public var output: Ty?
+    public var output: Type?
     
     public var customMirror: Mirror {
         let outputTypes: [String] = if case let .row(.named(columns)) = output {
@@ -38,14 +38,14 @@ public struct Signature: CustomReflectable {
                 "parameters": parameters.values
                     .map(\.self)
                     .sorted(by: { $0.index < $1.index }),
-                "output": outputTypes
+                "output": outputTypes,
             ]
         )
     }
 }
 
 public struct Parameter {
-    public let type: Ty
+    public let type: Type
     public let index: Int
     public let name: Substring?
 }
@@ -86,7 +86,7 @@ extension Compiler: StmtVisitor {
         switch stmt.kind {
         case let .select(selectStmt):
             let signature = compile(select: selectStmt)
-            guard  case let .row(.named(columns)) = signature.output else { return nil }
+            guard case let .row(.named(columns)) = signature.output else { return nil }
             return .table(CompiledTable(name: stmt.name.value, columns: columns))
         case let .columns(columns):
             return .table(CompiledTable(
@@ -132,7 +132,7 @@ extension Compiler: StmtVisitor {
         return nil
     }
     
-    private func typeFor(column: borrowing ColumnDef) -> Ty {
+    private func typeFor(column: borrowing ColumnDef) -> Type {
         // Technically you can have a NULL primary key but I don't
         // think people actually do that...
         let isNotNullable = column.constraints

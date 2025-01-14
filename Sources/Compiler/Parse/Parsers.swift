@@ -832,13 +832,13 @@ enum Parsers {
             if state.take(if: .comma) {
                 let second = signedNumber(state: &state)
                 state.consume(.closeParen)
-                return TypeName(name: name, args: .two(first, second))
+                return TypeName(name: name, arg1: first, arg2: second)
             } else {
                 state.consume(.closeParen)
-                return TypeName(name: name, args: .one(first))
+                return TypeName(name: name, arg1: first, arg2: nil)
             }
         } else {
-            return TypeName(name: name, args: nil)
+            return TypeName(name: name, arg1: nil, arg2: nil)
         }
     }
     

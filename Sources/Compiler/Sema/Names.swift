@@ -15,7 +15,7 @@ enum Names {
     case some(Substring)
     /// No name or any name needed
     case none
-    
+
     /// The proposed name for the parent expression
     var proposedName: Substring? {
         guard case let .some(s) = self else { return nil }

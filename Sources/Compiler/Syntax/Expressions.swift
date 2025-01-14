@@ -62,14 +62,6 @@ struct OperatorSyntax: CustomStringConvertible {
     let `operator`: Operator
     let range: Range<String.Index>
     
-    init(
-        operator: Operator,
-        range: Range<String.Index>
-    ) {
-        self.operator = `operator`
-        self.range = range
-    }
-    
     var description: String {
         return `operator`.description
     }
@@ -95,11 +87,6 @@ struct LiteralExpr: Expr {
         case currentDate
         case currentTimestamp
         case invalid
-    }
-    
-    init(kind: Kind, range: Range<String.Index>) {
-        self.kind = kind
-        self.range = range
     }
     
     func accept<V>(visitor: inout V) -> V.ExprOutput where V : ExprVisitor {
@@ -222,11 +209,6 @@ struct GroupedExpr: Expr, CustomStringConvertible {
     let exprs: [Expression]
     let range: Range<String.Index>
     
-    init(exprs: [Expression], range: Range<String.Index>) {
-        self.exprs = exprs
-        self.range = range
-    }
-    
     var description: String {
         return "(\(exprs.map(\.description).joined(separator: ", ")))"
     }
@@ -239,11 +221,6 @@ struct GroupedExpr: Expr, CustomStringConvertible {
 struct PrefixExpr: Expr, CustomStringConvertible {
     let `operator`: OperatorSyntax
     let rhs: Expression
-    
-    init(operator: OperatorSyntax, rhs: Expression) {
-        self.operator = `operator`
-        self.rhs = rhs
-    }
     
     var description: String {
         return "(\(`operator`)\(rhs))"
@@ -261,11 +238,6 @@ struct PrefixExpr: Expr, CustomStringConvertible {
 struct PostfixExpr: Expr, CustomStringConvertible {
     let lhs: Expression
     let `operator`: OperatorSyntax
-    
-    init(lhs: Expression, operator: OperatorSyntax) {
-        self.lhs = lhs
-        self.operator = `operator`
-    }
     
     var description: String {
         return "(\(lhs) \(`operator`))"
@@ -289,12 +261,6 @@ struct InfixExpr: Expr, CustomStringConvertible {
         return lhs.range.lowerBound..<rhs.range.upperBound
     }
     
-    init(lhs: Expression, operator: OperatorSyntax, rhs: Expression) {
-        self.lhs = lhs
-        self.operator = `operator`
-        self.rhs = rhs
-    }
-    
     var description: String {
         return "(\(lhs) \(`operator`) \(rhs))"
     }
@@ -309,18 +275,6 @@ struct BetweenExpr: Expr, CustomStringConvertible {
     let value: Expression
     let lower: Expression
     let upper: Expression
-    
-    init(
-        not: Bool,
-        value: Expression,
-        lower: Expression,
-        upper: Expression
-    ) {
-        self.not = not
-        self.value = value
-        self.lower = lower
-        self.upper = upper
-    }
     
     var range: Range<String.Index> {
         return value.range.lowerBound..<upper.range.upperBound
@@ -341,18 +295,6 @@ struct FunctionExpr: Expr, CustomStringConvertible {
     let args: [Expression]
     let range: Range<String.Index>
     
-    init(
-        table: Identifier?,
-        name: Identifier,
-        args: [Expression],
-        range: Range<String.Index>
-    ) {
-        self.table = table
-        self.name = name
-        self.args = args
-        self.range = range
-    }
-    
     var description: String {
         return "\(table.map { "\($0)." } ?? "")\(name)(\(args.map(\.description).joined(separator: ", ")))"
     }
@@ -366,12 +308,6 @@ struct CastExpr: Expr, CustomStringConvertible {
     let expr: Expression
     let ty: TypeName
     let range: Range<String.Index>
-    
-    init(expr: Expression, ty: TypeName, range: Range<String.Index>) {
-        self.expr = expr
-        self.ty = ty
-        self.range = range
-    }
     
     var description: String {
         return "CAST(\(expr) AS \(ty))"
@@ -664,16 +600,6 @@ struct ColumnExpr: Expr, CustomStringConvertible {
     let table: Identifier?
     let column: Identifier // TODO: Support *
     
-    init(
-        schema: Identifier?,
-        table: Identifier?,
-        column: Identifier
-    ) {
-        self.schema = schema
-        self.table = table
-        self.column = column
-    }
-    
     var description: String {
         return [schema, table, column]
             .compactMap { $0?.value }
@@ -696,26 +622,9 @@ struct CaseWhenThenExpr: Expr {
     let `else`: Expression?
     let range: Range<String.Index>
     
-    init(
-        case: Expression?,
-        whenThen: [WhenThen],
-        else: Expression?,
-        range: Range<String.Index>
-    ) {
-        self.case = `case`
-        self.whenThen = whenThen
-        self.else = `else`
-        self.range = range
-    }
-    
     struct WhenThen {
         let when: Expression
         let then: Expression
-        
-        init(when: Expression, then: Expression) {
-            self.when = when
-            self.then = then
-        }
     }
     
     func accept<V: ExprVisitor>(visitor: inout V) -> V.ExprOutput {
@@ -743,11 +652,6 @@ extension CaseWhenThenExpr: CustomStringConvertible {
 struct SelectExpr: Expr {
     let select: SelectStmt
     let range: Range<String.Index>
-    
-    init(select: SelectStmt, range: Range<String.Index>) {
-        self.select = select
-        self.range = range
-    }
     
     func accept<V>(visitor: inout V) -> V.ExprOutput where V : ExprVisitor {
         return visitor.visit(self)

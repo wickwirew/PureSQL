@@ -13,11 +13,11 @@ class CompilerTests: XCTestCase {
     func testCheckSimpleSelects() throws {
         try check(compile: "SimpleSelects")
     }
-    
+
     func testSelectWithJoins() throws {
         try check(compile: "SelectWithJoins")
     }
-    
+
     func testInsert() throws {
         try check(compile: "Insert")
     }
@@ -30,7 +30,7 @@ func check(
     line: UInt = #line
 ) throws {
     var diagnostics: [Diagnostic] = []
-    
+
     try check(
         sqlFile: sqlFile,
         parse: { contents in
@@ -44,7 +44,7 @@ func check(
         file: file,
         line: line
     )
-    
+
     try check(
         sqlFile: sqlFile,
         parse: { _ in diagnostics.map(\.message) },
