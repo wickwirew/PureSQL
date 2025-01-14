@@ -32,20 +32,24 @@ struct Solution {
     }
 }
 
-struct InferenceState {
-    let type: Ty
-    let substitution: Substitution
-    let names: Names
-}
-
 struct TypeInferrer {
     /// The environment in which the query executes. Any joined in tables
     /// will be added to this.
     private var env: Environment
+    /// The entire database schema
     private let schema: Schema
+    /// Any diagnostics that are emitted during compilation
     private var diagnostics: Diagnostics
-    private var tyVars = 0
+    /// Number of type variables. Incremented each time a new
+    /// fresh type var is created so all are unique
+    private var tyVarCounter = 0
+    /// The type of the bind parameter. Note: This will not be
+    /// the final type. The overall substitution will have to be applied
+    /// to the type.
     private var parameterTypes: [BindParameter.Index: Ty] = [:]
+    /// Any constraints over a type. These are not constraints as in a
+    /// constraint based inference algorithm but rather constraints on a type
+    /// like type classes, protocols, or interfaces.
     private var constraints: Constraints = [:]
     /// We are not only inferring types but potential names for the parameters.
     /// Any result will be added here
@@ -108,6 +112,9 @@ struct TypeInferrer {
         )
     }
     
+    /// Applies the substitution to the type
+    /// and validates the constraints. If no type is
+    /// found one will be guessed from the constraints.
     private func finalType(
         for ty: Ty,
         substitution: Substitution,
@@ -138,6 +145,8 @@ struct TypeInferrer {
         }
     }
     
+    /// Applies the substitution to the overall constraints
+    /// so it is the final type to in the map
     private mutating func finalizeConstraints(
         with substitution: Substitution
     ) -> Constraints {
@@ -157,9 +166,10 @@ struct TypeInferrer {
         return result
     }
     
+    /// Creates a fresh new unique type variable
     private mutating func freshTyVar(for param: BindParameter? = nil) -> TypeVariable {
-        defer { tyVars += 1 }
-        let ty = TypeVariable(tyVars)
+        defer { tyVarCounter += 1 }
+        let ty = TypeVariable(tyVarCounter)
         if let param {
             parameterTypes[param.index] = .var(ty)
         }
@@ -243,7 +253,7 @@ struct TypeInferrer {
         inferrer.env = Environment()
         let result = action(&inferrer)
         diagnostics = inferrer.diagnostics
-        tyVars = inferrer.tyVars
+        tyVarCounter = inferrer.tyVarCounter
         parameterTypes = inferrer.parameterTypes
         constraints = inferrer.constraints
         return result

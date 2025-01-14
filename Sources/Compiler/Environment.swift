@@ -16,6 +16,10 @@ struct Environment {
         "MAX": Builtins.max,
     ]
     
+    /// Holds the type in the map.
+    /// We need to track ambiguous items. We could store
+    /// each as an array but that seems like a bad idea.
+    /// This just allows us to store the flag right with the type.
     struct TyContainer {
         let type: Ty
         let isAmbiguous: Bool

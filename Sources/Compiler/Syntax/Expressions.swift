@@ -8,25 +8,25 @@
 import Foundation
 
 protocol ExprVisitor {
-    associatedtype Output
+    associatedtype ExprOutput
     
-    mutating func visit(_ expr: borrowing LiteralExpr) -> Output
-    mutating func visit(_ expr: borrowing BindParameter) -> Output
-    mutating func visit(_ expr: borrowing ColumnExpr) -> Output
-    mutating func visit(_ expr: borrowing PrefixExpr) -> Output
-    mutating func visit(_ expr: borrowing InfixExpr) -> Output
-    mutating func visit(_ expr: borrowing PostfixExpr) -> Output
-    mutating func visit(_ expr: borrowing BetweenExpr) -> Output
-    mutating func visit(_ expr: borrowing FunctionExpr) -> Output
-    mutating func visit(_ expr: borrowing CastExpr) -> Output
-    mutating func visit(_ expr: borrowing CaseWhenThenExpr) -> Output
-    mutating func visit(_ expr: borrowing GroupedExpr) -> Output
-    mutating func visit(_ expr: borrowing SelectExpr) -> Output
-    mutating func visit(_ expr: borrowing InvalidExpr) -> Output
+    mutating func visit(_ expr: borrowing LiteralExpr) -> ExprOutput
+    mutating func visit(_ expr: borrowing BindParameter) -> ExprOutput
+    mutating func visit(_ expr: borrowing ColumnExpr) -> ExprOutput
+    mutating func visit(_ expr: borrowing PrefixExpr) -> ExprOutput
+    mutating func visit(_ expr: borrowing InfixExpr) -> ExprOutput
+    mutating func visit(_ expr: borrowing PostfixExpr) -> ExprOutput
+    mutating func visit(_ expr: borrowing BetweenExpr) -> ExprOutput
+    mutating func visit(_ expr: borrowing FunctionExpr) -> ExprOutput
+    mutating func visit(_ expr: borrowing CastExpr) -> ExprOutput
+    mutating func visit(_ expr: borrowing CaseWhenThenExpr) -> ExprOutput
+    mutating func visit(_ expr: borrowing GroupedExpr) -> ExprOutput
+    mutating func visit(_ expr: borrowing SelectExpr) -> ExprOutput
+    mutating func visit(_ expr: borrowing InvalidExpr) -> ExprOutput
 }
 
 extension ExprVisitor {
-    mutating func visit(_ expr: Expression) -> Output {
+    mutating func visit(_ expr: Expression) -> ExprOutput {
         switch expr {
         case let .literal(expr):
             return expr.accept(visitor: &self)
@@ -77,7 +77,7 @@ struct OperatorSyntax: CustomStringConvertible {
 
 protocol Expr {
     var range: Range<String.Index> { get }
-    func accept<V: ExprVisitor>(visitor: inout V) -> V.Output
+    func accept<V: ExprVisitor>(visitor: inout V) -> V.ExprOutput
 }
 
 struct LiteralExpr: Expr {
@@ -102,7 +102,7 @@ struct LiteralExpr: Expr {
         self.range = range
     }
     
-    func accept<V>(visitor: inout V) -> V.Output where V : ExprVisitor {
+    func accept<V>(visitor: inout V) -> V.ExprOutput where V : ExprVisitor {
         return visitor.visit(self)
     }
 }
@@ -180,7 +180,7 @@ indirect enum Expression: Expr {
         return nil
     }
     
-    func accept<V>(visitor: inout V) -> V.Output where V : ExprVisitor {
+    func accept<V>(visitor: inout V) -> V.ExprOutput where V : ExprVisitor {
         return visitor.visit(self)
     }
 }
@@ -231,7 +231,7 @@ struct GroupedExpr: Expr, CustomStringConvertible {
         return "(\(exprs.map(\.description).joined(separator: ", ")))"
     }
     
-    func accept<V>(visitor: inout V) -> V.Output where V : ExprVisitor {
+    func accept<V>(visitor: inout V) -> V.ExprOutput where V : ExprVisitor {
         return visitor.visit(self)
     }
 }
@@ -253,7 +253,7 @@ struct PrefixExpr: Expr, CustomStringConvertible {
         return `operator`.range.lowerBound..<rhs.range.upperBound
     }
     
-    func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
+    func accept<V: ExprVisitor>(visitor: inout V) -> V.ExprOutput {
         return visitor.visit(self)
     }
 }
@@ -275,7 +275,7 @@ struct PostfixExpr: Expr, CustomStringConvertible {
         return lhs.range.lowerBound..<`operator`.range.upperBound
     }
     
-    func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
+    func accept<V: ExprVisitor>(visitor: inout V) -> V.ExprOutput {
         return visitor.visit(self)
     }
 }
@@ -299,7 +299,7 @@ struct InfixExpr: Expr, CustomStringConvertible {
         return "(\(lhs) \(`operator`) \(rhs))"
     }
     
-    func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
+    func accept<V: ExprVisitor>(visitor: inout V) -> V.ExprOutput {
         return visitor.visit(self)
     }
 }
@@ -330,7 +330,7 @@ struct BetweenExpr: Expr, CustomStringConvertible {
         return "(\(value)\(not ? " NOT" : "") BETWEEN \(lower) AND \(upper))"
     }
     
-    func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
+    func accept<V: ExprVisitor>(visitor: inout V) -> V.ExprOutput {
         return visitor.visit(self)
     }
 }
@@ -357,7 +357,7 @@ struct FunctionExpr: Expr, CustomStringConvertible {
         return "\(table.map { "\($0)." } ?? "")\(name)(\(args.map(\.description).joined(separator: ", ")))"
     }
     
-    func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
+    func accept<V: ExprVisitor>(visitor: inout V) -> V.ExprOutput {
         return visitor.visit(self)
     }
 }
@@ -377,7 +377,7 @@ struct CastExpr: Expr, CustomStringConvertible {
         return "CAST(\(expr) AS \(ty))"
     }
     
-    func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
+    func accept<V: ExprVisitor>(visitor: inout V) -> V.ExprOutput {
         return visitor.visit(self)
     }
 }
@@ -401,7 +401,7 @@ struct BindParameter: Expr, Hashable, CustomStringConvertible {
         }
     }
     
-    func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
+    func accept<V: ExprVisitor>(visitor: inout V) -> V.ExprOutput {
         return visitor.visit(self)
     }
 }
@@ -685,7 +685,7 @@ struct ColumnExpr: Expr, CustomStringConvertible {
         return first.range.lowerBound..<column.range.upperBound
     }
     
-    func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
+    func accept<V: ExprVisitor>(visitor: inout V) -> V.ExprOutput {
         return visitor.visit(self)
     }
 }
@@ -718,7 +718,7 @@ struct CaseWhenThenExpr: Expr {
         }
     }
     
-    func accept<V: ExprVisitor>(visitor: inout V) -> V.Output {
+    func accept<V: ExprVisitor>(visitor: inout V) -> V.ExprOutput {
         return visitor.visit(self)
     }
 }
@@ -749,7 +749,7 @@ struct SelectExpr: Expr {
         self.range = range
     }
     
-    func accept<V>(visitor: inout V) -> V.Output where V : ExprVisitor {
+    func accept<V>(visitor: inout V) -> V.ExprOutput where V : ExprVisitor {
         return visitor.visit(self)
     }
 }
@@ -761,7 +761,7 @@ struct InvalidExpr: Expr, CustomStringConvertible {
         return "<<invalid>>"
     }
     
-    func accept<V>(visitor: inout V) -> V.Output where V : ExprVisitor {
+    func accept<V>(visitor: inout V) -> V.ExprOutput where V : ExprVisitor {
         return visitor.visit(self)
     }
 }
