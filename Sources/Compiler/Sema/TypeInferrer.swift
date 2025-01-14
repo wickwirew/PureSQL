@@ -45,6 +45,9 @@ struct TypeInferrer {
     private var tyVars = 0
     private var parameterTypes: [BindParameter.Index: Ty] = [:]
     private var constraints: Constraints = [:]
+    /// We are not only inferring types but potential names for the parameters.
+    /// Any result will be added here
+    private var parameterNames: [BindParameter.Index: Substring] = [:]
     
     private static let missingNameDefault: Substring = "__name_required__"
     
@@ -63,10 +66,10 @@ struct TypeInferrer {
         return finalize(ty: ty, sub: sub, names: names)
     }
     
-//    mutating func solution<S: Stmt>(for stmt: S) -> Solution {
-//        let (ty, sub, names) = stmt.accept(visitor: &self)
-//        return finalize(ty: ty, sub: sub, names: names)
-//    }
+    //    mutating func solution<S: Stmt>(for stmt: S) -> Solution {
+    //        let (ty, sub, names) = stmt.accept(visitor: &self)
+    //        return finalize(ty: ty, sub: sub, names: names)
+    //    }
     
     private mutating func finalize(
         ty: Ty,
@@ -84,7 +87,7 @@ struct TypeInferrer {
                         constraints: constraints
                     ),
                     index: value.key,
-                    name: names.map[value.key]
+                    name: parameterNames[value.key]
                 )
             },
             output: finalType(
@@ -97,7 +100,7 @@ struct TypeInferrer {
         return Solution(
             diagnostics: diagnostics,
             signature: signature,
-            lastName: names.lastName
+            lastName: names.proposedName
         )
     }
     
@@ -183,7 +186,7 @@ struct TypeInferrer {
         var sub: Substitution = [:]
         
         guard var lastTy = tys.next() else { return sub }
-
+        
         while let ty = tys.next() {
             sub.merge(unify(lastTy, with: ty.apply(sub), at: range), uniquingKeysWith: { $1 })
             lastTy = ty
@@ -192,6 +195,39 @@ struct TypeInferrer {
         return sub
     }
     
+    /// Merges the new name results. If a name is inferred
+    /// it is recorded and a empty result is returned so nothign
+    /// else gets that new name.
+    private mutating func merge(
+        names lhs: Names,
+        with rhs: Names
+    ) -> Names {
+        switch (lhs, rhs) {
+        case let (.needed(index), .some(name)):
+            track(name: name, for: index)
+            return .none
+        case let (.some(name), .needed(index)):
+            track(name: name, for: index)
+            return .none
+        case (.none, _):
+            return rhs
+        case (_, .none):
+            return lhs
+        default:
+            return rhs
+        }
+    }
+    
+    /// Records the parameter name for the bind index
+    private mutating func track(
+        name: Substring,
+        for index: BindParameter.Index
+    ) {
+        parameterNames[index] = name
+    }
+    
+    /// Performs the inference in a new environment.
+    /// Useful for subqueries that don't inhereit our current joins.
     private mutating func inNewEnvironment<Output>(
         _ action: (inout TypeInferrer) -> Output
     ) -> Output {
@@ -227,12 +263,14 @@ extension TypeInferrer: ExprVisitor {
     }
     
     mutating func visit(_ expr: borrowing BindParameter) -> (Ty, Substitution, Names) {
-        // This is the only expr that needs to be consumed. We hold on to these
-        // to keep track of naming and type info.
         let expr = copy expr
-        let names: Names = switch expr.kind {
-        case .named(let name): .defined(name.value, for: expr.index)
-        case .unnamed: .needed(index: expr.index)
+        let names: Names
+        switch expr.kind {
+        case .named(let name):
+            track(name: name.value, for: expr.index)
+            names = .none
+        case .unnamed:
+            names = .needed(index: expr.index)
         }
         
         return (.var(freshTyVar(for: expr)), [:], names)
@@ -315,7 +353,7 @@ extension TypeInferrer: ExprVisitor {
     mutating func visit(_ expr: borrowing InfixExpr) -> (Ty, Substitution, Names) {
         let (lTy, lSub, lNames) = expr.lhs.accept(visitor: &self)
         let (rTy, rSub, rNames) = expr.rhs.accept(visitor: &self)
-        let names = lNames.merging(rNames)
+        let names = merge(names: lNames, with: rNames)
         
         guard let scheme = env[infix: expr.operator.operator] else {
             diagnostics.add(.init(
@@ -382,12 +420,12 @@ extension TypeInferrer: ExprVisitor {
         let (thenTys, thenSub, thenNames) = visit(many: expr.whenThen.map(\.then))
         
         var sub = whenSub.merging(thenSub)
-        var names = whenNames.merging(thenNames)
+        var names = merge(names: whenNames, with: thenNames)
         
         if let (t, s, n) = expr.case?.accept(visitor: &self) {
             // Each when should have same type as case
             sub = sub.merging(unify(all: [t] + whenTys, at: expr.range), s)
-            names = names.merging(n)
+            names = merge(names: names, with: n)
         } else {
             // No case expr, so each when should be a bool
             sub = sub.merging(unify(all: [.bool] + whenTys, at: expr.range))
@@ -395,7 +433,7 @@ extension TypeInferrer: ExprVisitor {
         
         if let (t, s, n) = expr.else?.accept(visitor: &self) {
             sub = sub.merging(unify(all: [t, ret] + thenTys, at: expr.range), s)
-            names = names.merging(n)
+            names = merge(names: names, with: n)
         } else {
             sub = sub.merging(unify(all: [ret] + thenTys, at: expr.range))
         }
@@ -413,8 +451,13 @@ extension TypeInferrer: ExprVisitor {
         let (query, diags) = compiler.compile(select: expr.select)
         diagnostics.add(contentsOf: diags)
         parameterTypes.merge(query.parameters.map { ($0, $1.type) }, uniquingKeysWith: {$1})
-        let names = Names(last: .none, map: query.parameters.reduce(into: [:], { $0[$1.key] = $1.value.name }))
-        return (query.output, [:], names)
+        
+        // TODO: Merging the solution seems weird here.
+        for (index, param) in query.parameters {
+            parameterNames[index] = param.name
+        }
+        
+        return (query.output, [:], .none)
     }
     
     func visit(_ expr: borrowing InvalidExpr) -> (Ty, Substitution, Names) {
@@ -430,7 +473,7 @@ extension TypeInferrer: ExprVisitor {
             let (t, s, n) = expr.accept(visitor: &self)
             tys.append(t.apply(sub))
             sub.merge(s, uniquingKeysWith: { $1 })
-            names = names.merging(n)
+            names = merge(names: names, with: n)
         }
         
         return (tys, sub, names)
@@ -539,7 +582,7 @@ extension TypeInferrer {
                 let (type, exprSub, names) = expr.accept(visitor: &self)
                 sub.merge(exprSub)
                 
-                guard let name = alias?.value ?? names.lastName else {
+                guard let name = alias?.value ?? names.proposedName else {
                     diagnostics.add(.nameRequired(at: expr.range))
                     continue
                 }
@@ -673,7 +716,7 @@ extension TypeInferrer {
                 let (type, columnSub, names) = expr.accept(visitor: &self)
                 sub.merge(columnSub)
                 
-                let name = alias?.value ?? names.lastName
+                let name = alias?.value ?? names.proposedName
                 columns[name ?? TypeInferrer.missingNameDefault] = type
                 
                 if name == nil {
