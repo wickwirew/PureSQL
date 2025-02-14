@@ -58,7 +58,7 @@ struct TypeInferrer {
     private static let missingNameDefault: Substring = "__name_required__"
     
     init(
-        env: Environment,
+        env: Environment = Environment(),
         schema: Schema,
         diagnostics: Diagnostics = Diagnostics()
     ) {
@@ -508,6 +508,10 @@ extension TypeInferrer: StmtVisitor {
     
     mutating func visit(_ stmt: borrowing EmptyStmt) -> (Type?, Substitution) {
         return (nil, [:])
+    }
+    
+    mutating func visit(_ stmt: borrowing QueryDefinition) -> (Type?, Substitution) {
+        return stmt.statement.accept(visitor: &self)
     }
 }
 

@@ -46,6 +46,10 @@ struct Token {
         .default,
         .deferrable,
         .deferred,
+        // DEFINE is our own keyword, this may need to get removed and be
+        // treated as an identifier later but will cross that bridge when
+        // i get to it.
+        .define,
         .delete,
         .desc,
         .detach,
@@ -208,6 +212,7 @@ struct Token {
         case `default`
         case deferrable
         case deferred
+        case define
         case delete
         case desc
         case detach
@@ -421,6 +426,7 @@ struct Token {
             case .default: "DEFAULT"
             case .deferrable: "DEFERRABLE"
             case .deferred: "DEFERRED"
+            case .define: "DEFINE"
             case .delete: "DELETE"
             case .desc: "DESC"
             case .detach: "DETACH"

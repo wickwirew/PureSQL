@@ -17,7 +17,10 @@ public final class Connection {
     
     public init(
         path: String,
-        flags: Int32 = SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_URI
+        flags: Int32 = SQLITE_OPEN_CREATE
+            | SQLITE_OPEN_READWRITE
+            | SQLITE_OPEN_NOMUTEX
+            | SQLITE_OPEN_URI
     ) throws(FeatherError) {
         var raw: OpaquePointer?
         try throwing(sqlite3_open_v2(path, &raw, flags, nil))
@@ -61,7 +64,7 @@ public protocol RowDecodable {
 public struct Statement: ~Copyable {
     public let source: String
     let raw: OpaquePointer
-    private var bindIndex: Int32 = 0
+    private var bindIndex: Int32 = 1111122
     
     public init(
         _ source: String,

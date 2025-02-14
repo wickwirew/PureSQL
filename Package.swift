@@ -17,10 +17,15 @@ let package = Package(
             name: "FeatherClient",
             targets: ["FeatherClient"]
         ),
+        .executable(
+            name: "FeatherCLI",
+            targets: ["FeatherCLI"]
+        ),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-syntax.git", from: "509.0.0"),
         .package(url: "https://github.com/apple/swift-collections", from: "1.1.4"),
+        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0"),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -41,7 +46,15 @@ let package = Package(
 
         // A client of the library, which is able to use the macro in its own code.
         .executableTarget(name: "FeatherClient", dependencies: ["Feather"], resources: [.copy("example.db")]),
-
+        
+        .executableTarget(
+            name: "FeatherCLI",
+            dependencies: [
+                "Compiler",
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+            ]
+        ),
+        
         // A test target used to develop the macro implementation.
         .testTarget(
             name: "FeatherTests",

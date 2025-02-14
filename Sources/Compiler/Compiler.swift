@@ -16,14 +16,38 @@ public struct CompiledTable {
     }
 }
 
+public struct CompiledQuery {
+    public var name: Substring
+    public var signature: Signature
+}
+
 public enum CompiledStmt {
-    case query(Signature)
-    case table(CompiledTable)
+    case select(Signature)
+    case insert(Signature)
+    case update(Signature)
+    case delete(Signature)
+    case query(CompiledQuery)
+    case createTable(CompiledTable)
+    case alterTable(CompiledTable)
+    
+    var signature: Signature? {
+        return switch self {
+        case .select(let signature), .insert(let signature),
+                .update(let signature), .delete(let signature):
+            signature
+        default:
+            nil
+        }
+    }
 }
 
 public struct Signature: CustomReflectable {
     public var parameters: [Int: Parameter]
     public var output: Type?
+    
+    static var empty: Signature {
+        return Signature(parameters: [:])
+    }
     
     public var customMirror: Mirror {
         let outputTypes: [String] = if case let .row(.named(columns)) = output {
@@ -53,7 +77,7 @@ public struct Parameter {
 struct Compiler {
     private(set) var schema: Schema
     private(set) var diagnostics = Diagnostics()
-    private(set) var queries: [Signature] = []
+    private(set) var queries: [CompiledQuery] = []
     
     public init(
         schema: Schema = Schema(),
@@ -66,9 +90,12 @@ struct Compiler {
     mutating func compile(_ stmts: [Stmt]) {
         for stmt in stmts {
             switch stmt.accept(visitor: &self) {
-            case let .table(table):
+            case .createTable(let table), .alterTable(let table):
                 schema[table.name] = table
-            case let .query(query):
+            case .select, .insert, .update, .delete:
+                // TODO: Throw error, these are queries without a name
+                break
+            case .query(let query):
                 queries.append(query)
             case nil:
                 break
@@ -87,9 +114,9 @@ extension Compiler: StmtVisitor {
         case let .select(selectStmt):
             let signature = compile(select: selectStmt)
             guard case let .row(.named(columns)) = signature.output else { return nil }
-            return .table(CompiledTable(name: stmt.name.value, columns: columns))
+            return .createTable(CompiledTable(name: stmt.name.value, columns: columns))
         case let .columns(columns):
-            return .table(CompiledTable(
+            return .createTable(CompiledTable(
                 name: stmt.name.value,
                 columns: columns.reduce(into: [:]) { $0[$1.value.name.value] = typeFor(column: $1.value) }
             ))
@@ -114,18 +141,25 @@ extension Compiler: StmtVisitor {
             table.columns[column.value] = nil
         }
         
-        return .table(table)
+        return .alterTable(table)
     }
     
     mutating func visit(_ stmt: borrowing SelectStmt) -> CompiledStmt? {
-        return .query(compile(select: stmt))
+        return .select(compile(select: stmt))
     }
     
     mutating func visit(_ stmt: borrowing InsertStmt) -> CompiledStmt? {
         var queryCompiler = TypeInferrer(env: Environment(), schema: schema)
         let solution = queryCompiler.solution(for: stmt)
         diagnostics.add(contentsOf: solution.diagnostics)
-        return .query(solution.signature)
+        return .insert(solution.signature)
+    }
+    
+    mutating func visit(_ stmt: borrowing QueryDefinition) -> CompiledStmt? {
+        // TODO: Should we throw an error? Is there a valid use case for anything
+        // that is not a select, insert, delete or update?
+        let signature = stmt.statement.accept(visitor: &self)?.signature ?? .empty
+        return .query(CompiledQuery(name: stmt.name.value, signature: signature))
     }
     
     mutating func visit(_ stmt: borrowing EmptyStmt) -> CompiledStmt? {

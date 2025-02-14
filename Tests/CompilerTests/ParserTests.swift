@@ -102,6 +102,10 @@ final class ParserTests: XCTestCase {
     func testUpdateStmt() throws {
         try check(sqlFile: "UpdateStmt", parser: Parsers.updateStmt)
     }
+    
+    func testDefinition() throws {
+        try check(sqlFile: "Definition", parser: Parsers.definition, dump: true)
+    }
 }
 
 func check<Output>(

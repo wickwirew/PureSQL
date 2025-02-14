@@ -69,8 +69,15 @@ func assertChecks(
     var input = input.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.makeIterator()
     var index = 0
     
+    var check = checks.next()
+    var checkPeek = checks.next()
+    
+    let advanceChecks = {
+        check = checkPeek
+        checkPeek = checks.next()
+    }
+    
     while true {
-        let check = checks.next()
         let input = input.next()
         
         if check == nil, input == nil {
@@ -82,13 +89,23 @@ func assertChecks(
             return
         }
         
+        let ignoreNotEqual = check == "..."
+        
         guard let input else {
-            XCTFail("'\(check)' does not exist in input", file: file, line: line)
+            if !ignoreNotEqual {
+                XCTFail("'\(check)' does not exist in input", file: file, line: line)
+            }
             return
         }
         
-        XCTAssertEqual(check, input, "Check #\(index + 1)", file: file, line: line)
-        index += 1
+        if !ignoreNotEqual {
+            XCTAssertEqual(check, input, "Check #\(index + 1)", file: file, line: line)
+            index += 1
+            advanceChecks()
+        } else if input == checkPeek {
+            advanceChecks()
+            advanceChecks()
+        }
     }
 }
 

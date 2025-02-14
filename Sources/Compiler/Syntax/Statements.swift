@@ -14,9 +14,11 @@ protocol StmtVisitor {
     mutating func visit(_ stmt: borrowing EmptyStmt) -> StmtOutput
     mutating func visit(_ stmt: borrowing SelectStmt) -> StmtOutput
     mutating func visit(_ stmt: borrowing InsertStmt) -> StmtOutput
+    mutating func visit(_ stmt: borrowing QueryDefinition) -> StmtOutput
 }
 
 protocol Stmt {
+    var range: Range<String.Index> { get }
     func accept<V: StmtVisitor>(visitor: inout V) -> V.StmtOutput
 }
 
@@ -28,6 +30,7 @@ struct CreateTableStmt: Stmt {
     let kind: Kind
     let constraints: [TableConstraint]
     let options: TableOptions
+    let range: Range<String.Index>
 
     enum Kind {
         case select(SelectStmt)
@@ -43,6 +46,7 @@ struct AlterTableStmt: Stmt {
     let name: Identifier
     let schemaName: Identifier?
     let kind: Kind
+    let range: Range<String.Index>
 
     enum Kind {
         case rename(Identifier)
@@ -58,8 +62,8 @@ struct AlterTableStmt: Stmt {
 
 /// Just an empty `;` statement. Silly but useful in the parser.
 struct EmptyStmt: Equatable, Stmt {
-    init() {}
-
+    let range: Range<String.Index>
+    
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtVisitor {
         visitor.visit(self)
     }

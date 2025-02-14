@@ -68,14 +68,14 @@ enum Parsers {
                 )
             default:
                 state.diagnostics.add(.unexpectedToken(of: state.current.kind, at: state.range))
-                return EmptyStmt()
+                return EmptyStmt(range: state.current.range)
             }
         case (.semiColon, _), (.eof, _):
             state.skip()
-            return EmptyStmt()
+            return EmptyStmt(range: state.current.range)
         default:
             state.diagnostics.add(.unexpectedToken(of: state.current.kind, at: state.range))
-            return EmptyStmt()
+            return EmptyStmt(range: state.current.range)
         }
     }
     
@@ -843,11 +843,16 @@ enum Parsers {
     }
     
     static func alterStmt(state: inout ParserState) throws -> AlterTableStmt {
-        state.consume(.alter)
+        let alter = state.take(.alter)
         state.consume(.table)
         let names = tableAndSchemaName(state: &state)
         let kind = try alterKind(state: &state)
-        return AlterTableStmt(name: names.table, schemaName: names.schema, kind: kind)
+        return AlterTableStmt(
+            name: names.table,
+            schemaName: names.schema,
+            kind: kind,
+            range: alter.range.lowerBound..<state.current.range.lowerBound
+        )
     }
     
     static func alterKind(state: inout ParserState) throws -> AlterTableStmt.Kind {
@@ -885,7 +890,7 @@ enum Parsers {
     }
     
     static func createTableStmt(state: inout ParserState) -> CreateTableStmt {
-        state.consume(.create)
+        let create = state.take(.create)
         let isTemporary = state.take(if: .temp, or: .temporary)
         state.consume(.table)
         
@@ -914,7 +919,8 @@ enum Parsers {
                 onlyIfExists: ifNotExists,
                 kind: .columns(columns),
                 constraints: [],
-                options: options
+                options: options,
+                range: create.range.lowerBound..<state.current.range.lowerBound
             )
         }
     }
@@ -1410,6 +1416,19 @@ enum Parsers {
         case .isNotDistinctFrom:
             fatalError("guess will not return these since the look ahead is only 2")
         }
+    }
+    
+    static func definition(state: inout ParserState) throws -> Stmt {
+        let define = state.take(.define)
+        state.skip(.query)
+        let name = identifier(state: &state)
+        state.skip(.as)
+        let stmt = try stmt(state: &state)
+        return QueryDefinition(
+            name: name,
+            statement: stmt,
+            range: define.range.lowerBound..<state.current.range.lowerBound
+        )
     }
     
     static func take<Output>(

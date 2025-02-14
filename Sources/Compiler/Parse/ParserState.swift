@@ -94,6 +94,14 @@ struct ParserState {
         return take()
     }
     
+    mutating func skip(_ kind: Token.Kind) {
+        if current.kind != kind {
+            diagnostics.add(.unexpectedToken(of: current.kind, expected: kind, at: range))
+        }
+        
+        skip()
+    }
+    
     mutating func skip() {
         current = peek
         peek = peek2
