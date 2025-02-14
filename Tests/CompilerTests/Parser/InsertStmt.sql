@@ -1,4 +1,4 @@
--- CHECK: INSERT_STMT
+-- CHECK: INSERT_STMT_SYNTAX
 -- CHECK:   CTE_RECURSIVE false
 -- CHECK:   ACTION
 -- CHECK:     INSERT
@@ -15,13 +15,13 @@
 -- CHECK:         VALUE
 -- CHECK:           SINGLE
 -- CHECK:             VALUES
--- CHECK:               EXPRESSION
+-- CHECK:               EXPRESSION_SYNTAX
 -- CHECK:                 LITERAL 1.0
--- CHECK:               EXPRESSION
+-- CHECK:               EXPRESSION_SYNTAX
 -- CHECK:                 LITERAL 'two'
 INSERT INTO foo (bar, baz) VALUES (1, 'two');
 
--- CHECK: INSERT_STMT
+-- CHECK: INSERT_STMT_SYNTAX
 -- CHECK:   CTE_RECURSIVE false
 -- CHECK:   ACTION replace
 -- CHECK:   TABLE_NAME
@@ -38,7 +38,7 @@ INSERT INTO foo (bar, baz) VALUES (1, 'two');
 -- CHECK:             SELECT
 -- CHECK:               DISTINCT false
 -- CHECK:               COLUMNS
--- CHECK:                 RESULT_COLUMN
+-- CHECK:                 RESULT_COLUMN_SYNTAX
 -- CHECK:                   EXPR
 -- CHECK:                       COLUMN
 -- CHECK:                         COLUMN baz
@@ -56,7 +56,7 @@ INSERT INTO foo (bar, baz) VALUES (1, 'two');
 -- CHECK:               COLUMN bar
 REPLACE INTO foo (bar) SELECT baz FROM qux RETURNING bar;
 
--- CHECK: INSERT_STMT
+-- CHECK: INSERT_STMT_SYNTAX
 -- CHECK:   CTE
 -- CHECK:     TABLE foo
 -- CHECK:     MATERIALIZED false
@@ -68,7 +68,7 @@ REPLACE INTO foo (bar) SELECT baz FROM qux RETURNING bar;
 -- CHECK:             SELECT
 -- CHECK:               DISTINCT false
 -- CHECK:               COLUMNS
--- CHECK:                 RESULT_COLUMN
+-- CHECK:                 RESULT_COLUMN_SYNTAX
 -- CHECK:                   EXPR
 -- CHECK:                       COLUMN
 -- CHECK:                         COLUMN bar

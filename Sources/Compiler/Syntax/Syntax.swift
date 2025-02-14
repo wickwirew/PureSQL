@@ -9,25 +9,25 @@ protocol Syntax {
     var range: Range<Substring.Index> { get }
 }
 
-struct InsertStmt: Stmt, Syntax {
-    let cte: CommonTableExpression?
+struct InsertStmtSyntax: Stmt, Syntax {
+    let cte: CommonTableExpressionSyntax?
     let cteRecursive: Bool
     let action: Action
-    let tableName: TableName
-    let tableAlias: Identifier?
-    let columns: [Identifier]?
+    let tableName: TableNameSyntax
+    let tableAlias: IdentifierSyntax?
+    let columns: [IdentifierSyntax]?
     let values: Values? // if nil, default values
-    let returningClause: ReturningClause?
+    let returningClause: ReturningClauseSyntax?
     let range: Range<Substring.Index>
 
     struct Values {
-        let select: SelectStmt
-        let upsertClause: UpsertClause?
+        let select: SelectStmtSyntax
+        let upsertClause: UpsertClauseSyntax?
     }
 
     enum Action: Equatable, Encodable {
         case replace
-        case insert(Or?)
+        case insert(OrSyntax?)
     }
 
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtVisitor {
@@ -35,7 +35,7 @@ struct InsertStmt: Stmt, Syntax {
     }
 }
 
-enum Or: Equatable, Encodable {
+enum OrSyntax: Equatable, Encodable {
     case abort
     case fail
     case ignore
@@ -43,69 +43,69 @@ enum Or: Equatable, Encodable {
     case rollback
 }
 
-struct ReturningClause: Syntax {
+struct ReturningClauseSyntax: Syntax {
     let values: [Value]
     let range: Range<Substring.Index>
 
     enum Value {
-        case expr(expr: Expression, alias: Identifier?)
+        case expr(expr: ExpressionSyntax, alias: IdentifierSyntax?)
         case all
     }
 }
 
-struct UpsertClause: Syntax {
+struct UpsertClauseSyntax: Syntax {
     let confictTarget: ConflictTarget?
     let doAction: Do
     let range: Range<Substring.Index>
 
     struct ConflictTarget {
-        let columns: [IndexedColumn]
-        let condition: Expression?
+        let columns: [IndexedColumnSyntax]
+        let condition: ExpressionSyntax?
     }
 
     enum Do {
         case nothing
-        case updateSet(sets: [SetAction], where: Expression?)
+        case updateSet(sets: [SetActionSyntax], where: ExpressionSyntax?)
     }
 }
 
-struct SetAction {
+struct SetActionSyntax {
     let column: Column
-    let expr: Expression
+    let expr: ExpressionSyntax
 
     enum Column {
-        case single(Identifier)
-        case list([Identifier])
+        case single(IdentifierSyntax)
+        case list([IdentifierSyntax])
     }
 }
 
-struct UpdateStmt: Syntax {
-    let cte: CommonTableExpression?
+struct UpdateStmtSyntax: Syntax {
+    let cte: CommonTableExpressionSyntax?
     let cteRecursive: Bool
-    let or: Or?
-    let tableName: QualifiedTableName
-    let sets: [SetAction]
-    let from: From?
-    let whereExpr: Expression?
-    let returningClause: ReturningClause?
+    let or: OrSyntax?
+    let tableName: QualifiedTableNameSyntax
+    let sets: [SetActionSyntax]
+    let from: FromSyntax?
+    let whereExpr: ExpressionSyntax?
+    let returningClause: ReturningClauseSyntax?
     let range: Range<Substring.Index>
 }
 
-struct QualifiedTableName: Syntax {
-    let tableName: TableName
-    let alias: Identifier?
+struct QualifiedTableNameSyntax: Syntax {
+    let tableName: TableNameSyntax
+    let alias: IdentifierSyntax?
     let indexed: Indexed?
     let range: Range<Substring.Index>
 
     enum Indexed {
         case not
-        case by(Identifier)
+        case by(IdentifierSyntax)
     }
 }
 
 /// Used in a select and update. Not a centralized thing in
 /// there docs but it shows up in both.
-enum From {
-    case tableOrSubqueries([TableOrSubquery])
-    case join(JoinClause)
+enum FromSyntax {
+    case tableOrSubqueries([TableOrSubquerySyntax])
+    case join(JoinClauseSyntax)
 }

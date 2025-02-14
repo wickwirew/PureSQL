@@ -6,7 +6,7 @@
 //
 
 struct QueryDefinition: Stmt {
-    let name: Identifier
+    let name: IdentifierSyntax
     let statement: any Stmt
     let range: Range<String.Index>
     

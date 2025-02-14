@@ -69,10 +69,10 @@ foo INNER JOIN bar ON 1;
 -- CHECK:             NATURAL false
 -- CHECK:         TABLE_OR_SUBQUERY
 -- CHECK:           SUB_TABLE_OR_SUBQUERIES
--- CHECK:               TABLE_OR_SUBQUERY
+-- CHECK:               TABLE_OR_SUBQUERY_SYNTAX
 -- CHECK:                 TABLE
 -- CHECK:                   NAME bar
--- CHECK:               TABLE_OR_SUBQUERY
+-- CHECK:               TABLE_OR_SUBQUERY_SYNTAX
 -- CHECK:                 TABLE
 -- CHECK:                   NAME baz
 -- CHECK:         CONSTRAINT none

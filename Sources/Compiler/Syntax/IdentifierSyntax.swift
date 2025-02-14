@@ -1,11 +1,11 @@
 //
-//  Identifier.swift
+//  IdentifierSyntax.swift
 //
 //
 //  Created by Wes Wickwire on 10/19/24.
 //
 
-struct Identifier: Sendable {
+struct IdentifierSyntax: Sendable {
     private(set) var value: Substring
     private(set) var range: Range<String.Index>
 
@@ -15,33 +15,33 @@ struct Identifier: Sendable {
     }
 }
 
-extension Identifier: Equatable {
-    static func ==(lhs: Identifier, rhs: Identifier) -> Bool {
+extension IdentifierSyntax: Equatable {
+    static func ==(lhs: IdentifierSyntax, rhs: IdentifierSyntax) -> Bool {
         return lhs.value == rhs.value
     }
 }
 
-extension Identifier: Hashable {
+extension IdentifierSyntax: Hashable {
     func hash(into hasher: inout Hasher) {
         hasher.combine(value)
     }
 }
 
-extension Identifier: CustomStringConvertible {
+extension IdentifierSyntax: CustomStringConvertible {
     var description: String {
         return value.description
     }
 }
 
-extension Identifier: ExpressibleByStringLiteral {
+extension IdentifierSyntax: ExpressibleByStringLiteral {
     init(stringLiteral value: String) {
         self.value = value[...]
         self.range = value.startIndex..<value.endIndex
     }
 }
 
-extension Identifier {
-    mutating func append(_ identifier: Identifier) {
+extension IdentifierSyntax {
+    mutating func append(_ identifier: IdentifierSyntax) {
         value += identifier.value
         range = range.lowerBound..<identifier.range.upperBound
     }

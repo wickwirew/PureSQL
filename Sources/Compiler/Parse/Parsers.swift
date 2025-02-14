@@ -68,18 +68,18 @@ enum Parsers {
                 )
             default:
                 state.diagnostics.add(.unexpectedToken(of: state.current.kind, at: state.range))
-                return EmptyStmt(range: state.current.range)
+                return EmptyStmtSyntax(range: state.current.range)
             }
         case (.semiColon, _), (.eof, _):
             state.skip()
-            return EmptyStmt(range: state.current.range)
+            return EmptyStmtSyntax(range: state.current.range)
         default:
             state.diagnostics.add(.unexpectedToken(of: state.current.kind, at: state.range))
-            return EmptyStmt(range: state.current.range)
+            return EmptyStmtSyntax(range: state.current.range)
         }
     }
     
-    static func insertStmt(state: inout ParserState) throws -> InsertStmt {
+    static func insertStmt(state: inout ParserState) throws -> InsertStmtSyntax {
         let start = state.current
         let cte = try withCte(state: &state)
         return try insertStmt(
@@ -95,8 +95,8 @@ enum Parsers {
         state: inout ParserState,
         start: Token,
         cteRecursive: Bool,
-        cte: CommonTableExpression?
-    ) throws -> InsertStmt {
+        cte: CommonTableExpressionSyntax?
+    ) throws -> InsertStmtSyntax {
         let action = insertAction(state: &state)
         state.consume(.into)
         let tableName = tableName(state: &state)
@@ -105,7 +105,7 @@ enum Parsers {
         let values = try insertValues(state: &state)
         let returningClause = take(if: .returning, state: &state, parse: returningClause)
         
-        return InsertStmt(
+        return InsertStmtSyntax(
             cte: cte,
             cteRecursive: cteRecursive,
             action: action,
@@ -120,7 +120,7 @@ enum Parsers {
     
     static func insertValues(
         state: inout ParserState
-    ) throws -> InsertStmt.Values? {
+    ) throws -> InsertStmtSyntax.Values? {
         if state.take(if: .default) {
             state.consume(.values)
             return nil
@@ -133,7 +133,7 @@ enum Parsers {
     
     static func insertAction(
         state: inout ParserState
-    ) -> InsertStmt.Action {
+    ) -> InsertStmtSyntax.Action {
         let token = state.take()
         
         switch token.kind {
@@ -145,7 +145,7 @@ enum Parsers {
         }
     }
     
-    static func or(state: inout ParserState) -> Or {
+    static func or(state: inout ParserState) -> OrSyntax {
         state.consume(.or)
         let token = state.take()
         switch token.kind {
@@ -163,7 +163,7 @@ enum Parsers {
     /// https://www.sqlite.org/syntax/upsert-clause.html
     static func upsertClause(
         state: inout ParserState
-    ) -> UpsertClause {
+    ) -> UpsertClauseSyntax {
         let on = state.take(.on)
         state.consume(.conflict)
         
@@ -184,13 +184,13 @@ enum Parsers {
         
         let sets = delimited(by: .comma, state: &state, element: setAction)
         
-        let whereExpr: Expression? = if state.take(if: .where) {
+        let whereExpr: ExpressionSyntax? = if state.take(if: .where) {
             expr(state: &state)
         } else {
             nil
         }
         
-        return UpsertClause(
+        return UpsertClauseSyntax(
             confictTarget: conflictTarget,
             doAction: .updateSet(sets: sets, where: whereExpr),
             range: on.range.lowerBound ..< state.current.range.lowerBound
@@ -199,8 +199,8 @@ enum Parsers {
     
     static func setAction(
         state: inout ParserState
-    ) -> SetAction {
-        let column: SetAction.Column
+    ) -> SetActionSyntax {
+        let column: SetActionSyntax.Column
         if state.current.kind == .openParen {
             let columns = parens(state: &state) { state in
                 delimited(by: .comma, state: &state, element: identifier)
@@ -215,32 +215,32 @@ enum Parsers {
         
         let expr = expr(state: &state)
         
-        return SetAction(column: column, expr: expr)
+        return SetActionSyntax(column: column, expr: expr)
     }
     
     static func conflictTarget(
         state: inout ParserState
-    ) -> UpsertClause.ConflictTarget? {
+    ) -> UpsertClauseSyntax.ConflictTarget? {
         guard state.current.kind == .openParen else { return nil }
         
         let columns = parens(state: &state) { state in
             delimited(by: .comma, state: &state, element: indexedColumn)
         }
         
-        let condition: Expression? = if state.take(if: .where) {
+        let condition: ExpressionSyntax? = if state.take(if: .where) {
             expr(state: &state)
         } else {
             nil
         }
         
-        return UpsertClause.ConflictTarget(columns: columns, condition: condition)
+        return UpsertClauseSyntax.ConflictTarget(columns: columns, condition: condition)
     }
     
     /// https://www.sqlite.org/syntax/returning-clause.html
-    static func returningClause(state: inout ParserState) -> ReturningClause {
+    static func returningClause(state: inout ParserState) -> ReturningClauseSyntax {
         let start = state.take(.returning)
         
-        let values: [ReturningClause.Value] = delimited(
+        let values: [ReturningClauseSyntax.Value] = delimited(
             by: .comma,
             state: &state
         ) { state in
@@ -253,10 +253,10 @@ enum Parsers {
             }
         }
         
-        return ReturningClause(values: values, range: state.range(from: start))
+        return ReturningClauseSyntax(values: values, range: state.range(from: start))
     }
     
-    static func updateStmt(state: inout ParserState) throws -> UpdateStmt {
+    static func updateStmt(state: inout ParserState) throws -> UpdateStmtSyntax {
         let start = state.range
         let cte = try withCte(state: &state)
         state.consume(.update)
@@ -270,7 +270,7 @@ enum Parsers {
             return expr(state: &state)
         }
         let returningClause = take(if: .returning, state: &state, parse: returningClause)
-        return UpdateStmt(
+        return UpdateStmtSyntax(
             cte: cte.cte,
             cteRecursive: cte.recursive,
             or: or,
@@ -285,11 +285,11 @@ enum Parsers {
     
     static func qualifiedTableName(
         state: inout ParserState
-    ) -> QualifiedTableName {
+    ) -> QualifiedTableNameSyntax {
         let tableName = tableName(state: &state)
         let alias = maybeAlias(state: &state)
         
-        let indexed: QualifiedTableName.Indexed?
+        let indexed: QualifiedTableNameSyntax.Indexed?
         if state.take(if: .indexed) {
             state.consume(.by)
             indexed = .by(identifier(state: &state))
@@ -300,7 +300,7 @@ enum Parsers {
             indexed = nil
         }
         
-        return QualifiedTableName(
+        return QualifiedTableNameSyntax(
             tableName: tableName,
             alias: alias,
             indexed: indexed,
@@ -311,22 +311,22 @@ enum Parsers {
     /// https://www.sqlite.org/syntax/indexed-column.html
     static func indexedColumn(
         state: inout ParserState
-    ) -> IndexedColumn {
+    ) -> IndexedColumnSyntax {
         let expr = expr(state: &state)
         
-        let collation: Identifier? = if state.take(if: .collate) {
+        let collation: IdentifierSyntax? = if state.take(if: .collate) {
             identifier(state: &state)
         } else {
             nil
         }
         
         let order = order(state: &state)
-        return IndexedColumn(expr: expr, collation: collation, order: order)
+        return IndexedColumnSyntax(expr: expr, collation: collation, order: order)
     }
     
     static func withCte(
         state: inout ParserState
-    ) throws -> (cte: CommonTableExpression?, recursive: Bool) {
+    ) throws -> (cte: CommonTableExpressionSyntax?, recursive: Bool) {
         if state.take(if: .with) {
             let cteRecursive = state.take(if: .recursive)
             return try (cte(state: &state), cteRecursive)
@@ -338,7 +338,7 @@ enum Parsers {
     /// https://www.sqlite.org/syntax/common-table-expression.html
     static func cte(
         state: inout ParserState
-    ) throws -> CommonTableExpression {
+    ) throws -> CommonTableExpressionSyntax {
         let start = state.current
         let table = identifier(state: &state)
         
@@ -362,7 +362,7 @@ enum Parsers {
         
         let select = try parens(state: &state, value: selectStmt)
         
-        return CommonTableExpression(
+        return CommonTableExpressionSyntax(
             table: table,
             columns: columns ?? [],
             materialized: materialized,
@@ -371,7 +371,7 @@ enum Parsers {
         )
     }
     
-    static func joinConstraint(state: inout ParserState) -> JoinConstraint {
+    static func joinConstraint(state: inout ParserState) -> JoinConstraintSyntax {
         if state.take(if: .on) {
             return .on(
                 expr(state: &state)
@@ -387,7 +387,7 @@ enum Parsers {
         }
     }
     
-    static func joinOperator(state: inout ParserState) -> JoinOperator {
+    static func joinOperator(state: inout ParserState) -> JoinOperatorSyntax {
         let token = state.take()
         
         switch token.kind {
@@ -444,7 +444,7 @@ enum Parsers {
         }
     }
     
-    static func from(state: inout ParserState) throws -> From? {
+    static func from(state: inout ParserState) throws -> FromSyntax? {
         let output = try take(if: .from, state: &state) { state in
             state.consume(.from)
             return try joinClauseOrTableOrSubqueries(state: &state)
@@ -458,18 +458,18 @@ enum Parsers {
     }
     
     /// https://www.sqlite.org/syntax/column-name-list.html
-    static func columnNameList(state: inout ParserState) -> [Identifier] {
+    static func columnNameList(state: inout ParserState) -> [IdentifierSyntax] {
         return parens(state: &state) { state in
             delimited(by: .comma, state: &state, element: identifier)
         }
     }
     
-    static func tableName(state: inout ParserState) -> TableName {
+    static func tableName(state: inout ParserState) -> TableNameSyntax {
         let names = tableAndSchemaName(state: &state)
-        return TableName(schema: names.schema, name: names.table)
+        return TableNameSyntax(schema: names.schema, name: names.table)
     }
     
-    static func tableAndSchemaName(state: inout ParserState) -> (schema: Identifier?, table: Identifier) {
+    static func tableAndSchemaName(state: inout ParserState) -> (schema: IdentifierSyntax?, table: IdentifierSyntax) {
         let first = identifier(state: &state)
         if state.take(if: .dot) {
             return (first, identifier(state: &state))
@@ -478,7 +478,7 @@ enum Parsers {
         }
     }
     
-    static func selectStmt(state: inout ParserState) throws -> SelectStmt {
+    static func selectStmt(state: inout ParserState) throws -> SelectStmtSyntax {
         let start = state.current
         let cte = try withCte(state: &state)
         return try selectStmt(state: &state, start: start, cteRecursive: cte.recursive, cte: cte.cte)
@@ -488,16 +488,16 @@ enum Parsers {
         state: inout ParserState,
         start: Token,
         cteRecursive: Bool,
-        cte: CommonTableExpression?
-    ) throws -> SelectStmt {
-        let selects: [SelectCore]? = state.current.kind == .select || state.current.kind == .values
+        cte: CommonTableExpressionSyntax?
+    ) throws -> SelectStmtSyntax {
+        let selects: [SelectCoreSyntax]? = state.current.kind == .select || state.current.kind == .values
             ? try commaDelimited(state: &state, element: selectCore)
             : nil
         
         let orderBy = orderingTerms(state: &state)
         let limit = limit(state: &state)
         
-        return SelectStmt(
+        return SelectStmtSyntax(
             cte: cte.map(Indirect.init),
             cteRecursive: cteRecursive,
             selects: .init(.single(selects!.first!)), // TODO: Fix this and do it properly
@@ -507,13 +507,13 @@ enum Parsers {
         )
     }
     
-    static func orderingTerms(state: inout ParserState) -> [OrderingTerm] {
+    static func orderingTerms(state: inout ParserState) -> [OrderingTermSyntax] {
         guard state.take(if: .order) else { return [] }
         state.consume(.by)
         return commaDelimited(state: &state, element: orderingTerm)
     }
     
-    static func limit(state: inout ParserState) -> SelectStmt.Limit? {
+    static func limit(state: inout ParserState) -> SelectStmtSyntax.Limit? {
         guard state.take(if: .limit) else { return nil }
         let first = expr(state: &state)
         
@@ -521,20 +521,20 @@ enum Parsers {
         case .comma:
             state.skip()
             let second = expr(state: &state)
-            return SelectStmt.Limit(expr: second, offset: first)
+            return SelectStmtSyntax.Limit(expr: second, offset: first)
         case .offset:
             state.skip()
             let offset = expr(state: &state)
-            return SelectStmt.Limit(expr: first, offset: offset)
+            return SelectStmtSyntax.Limit(expr: first, offset: offset)
         default:
-            return SelectStmt.Limit(expr: first, offset: nil)
+            return SelectStmtSyntax.Limit(expr: first, offset: nil)
         }
     }
     
-    static func orderingTerm(state: inout ParserState) -> OrderingTerm {
+    static func orderingTerm(state: inout ParserState) -> OrderingTermSyntax {
         let expr = expr(state: &state)
         
-        let order: Order = if state.take(if: .asc) {
+        let order: OrderSyntax = if state.take(if: .asc) {
             .asc
         } else if state.take(if: .desc) {
             .desc
@@ -542,7 +542,7 @@ enum Parsers {
             .asc
         }
         
-        let nulls: OrderingTerm.Nulls?
+        let nulls: OrderingTermSyntax.Nulls?
         if state.take(if: .nulls) {
             if state.take(if: .first) {
                 nulls = .first
@@ -560,10 +560,10 @@ enum Parsers {
             nulls = nil
         }
         
-        return OrderingTerm(expr: expr, order: order, nulls: nulls)
+        return OrderingTermSyntax(expr: expr, order: order, nulls: nulls)
     }
     
-    static func selectCore(state: inout ParserState) throws -> SelectCore {
+    static func selectCore(state: inout ParserState) throws -> SelectCoreSyntax {
         // Check if its values and to just get it out of the way
         if state.take(if: .values) {
             return .values(
@@ -597,7 +597,7 @@ enum Parsers {
             return commaDelimited(state: &state, element: window)
         }
         
-        let select = SelectCore.Select(
+        let select = SelectCoreSyntax.Select(
             distinct: distinct,
             columns: columns,
             from: from,
@@ -609,7 +609,7 @@ enum Parsers {
         return .select(select)
     }
     
-    static func groupBy(state: inout ParserState) -> SelectCore.GroupBy? {
+    static func groupBy(state: inout ParserState) -> SelectCoreSyntax.GroupBy? {
         guard state.take(if: .group) else { return nil }
         state.consume(.by)
         
@@ -620,23 +620,23 @@ enum Parsers {
             return expr(state: &state)
         }
         
-        return SelectCore.GroupBy(expressions: exprs, having: having)
+        return SelectCoreSyntax.GroupBy(expressions: exprs, having: having)
     }
     
-    static func window(state: inout ParserState) -> SelectCore.Window {
+    static func window(state: inout ParserState) -> SelectCoreSyntax.Window {
         let name = identifier(state: &state)
         state.consume(.as)
         let window = windowDef(state: &state)
-        return SelectCore.Window(name: name, window: window)
+        return SelectCoreSyntax.Window(name: name, window: window)
     }
     
-    static func windowDef(state: inout ParserState) -> WindowDefinition {
+    static func windowDef(state: inout ParserState) -> WindowDefinitionSyntax {
         fatalError("TODO")
     }
     
     enum JoinClauseOrTableOrSubqueries {
-        case join(JoinClause)
-        case tableOrSubqueries([TableOrSubquery])
+        case join(JoinClauseSyntax)
+        case tableOrSubqueries([TableOrSubquerySyntax])
     }
     
     /// This isnt necessarily a part of the grammar, but there is abiguity when starting
@@ -662,13 +662,13 @@ enum Parsers {
         }
     }
     
-    static func resultColumn(state: inout ParserState) -> ResultColumn {
+    static func resultColumn(state: inout ParserState) -> ResultColumnSyntax {
         switch state.current.kind {
         case .star:
             state.skip()
             return .all(table: nil)
         case let .symbol(table) where state.peek.kind == .dot && state.peek2.kind == .star:
-            let table = Identifier(value: table, range: state.current.range)
+            let table = IdentifierSyntax(value: table, range: state.current.range)
             state.skip()
             state.consume(.dot)
             state.consume(.star)
@@ -680,7 +680,7 @@ enum Parsers {
                 let alias = identifier(state: &state)
                 return .expr(expr, as: alias)
             } else if case let .symbol(alias) = state.current.kind {
-                let alias = Identifier(value: alias, range: state.current.range)
+                let alias = IdentifierSyntax(value: alias, range: state.current.range)
                 state.skip()
                 return .expr(expr, as: alias)
             } else {
@@ -689,7 +689,7 @@ enum Parsers {
         }
     }
     
-    static func tableOrSubquery(state: inout ParserState) throws -> TableOrSubquery {
+    static func tableOrSubquery(state: inout ParserState) throws -> TableOrSubquerySyntax {
         switch state.current.kind {
         case .symbol:
             let (schema, table) = tableAndSchemaName(state: &state)
@@ -701,7 +701,7 @@ enum Parsers {
             } else {
                 let alias = maybeAlias(state: &state, asRequired: false)
                 
-                let indexedBy: Identifier?
+                let indexedBy: IdentifierSyntax?
                 switch state.current.kind {
                 case .indexed:
                     state.skip()
@@ -715,7 +715,7 @@ enum Parsers {
                     indexedBy = nil
                 }
                 
-                let table = TableOrSubquery.Table(
+                let table = TableOrSubquerySyntax.Table(
                     schema: schema,
                     name: table,
                     alias: alias,
@@ -747,25 +747,25 @@ enum Parsers {
     
     static func joinClause(
         state: inout ParserState,
-        tableOrSubquery: TableOrSubquery
-    ) throws -> JoinClause {
+        tableOrSubquery: TableOrSubquerySyntax
+    ) throws -> JoinClauseSyntax {
         let joinOperatorStarts: Set<Token.Kind> = [.natural, .comma, .left, .right, .full, .inner, .cross, .join]
         
-        var joins: [JoinClause.Join] = []
+        var joins: [JoinClauseSyntax.Join] = []
         while joinOperatorStarts.contains(state.current.kind) {
             try joins.append(join(state: &state))
         }
-        return JoinClause(tableOrSubquery: tableOrSubquery, joins: joins)
+        return JoinClauseSyntax(tableOrSubquery: tableOrSubquery, joins: joins)
     }
     
-    static func join(state: inout ParserState) throws -> JoinClause.Join {
+    static func join(state: inout ParserState) throws -> JoinClauseSyntax.Join {
         let op = joinOperator(state: &state)
         
         let tableOrSubquery = try tableOrSubquery(state: &state)
         
         let constraint = joinConstraint(state: &state)
         
-        return JoinClause.Join(
+        return JoinClauseSyntax.Join(
             op: op,
             tableOrSubquery: tableOrSubquery,
             constraint: constraint
@@ -777,20 +777,20 @@ enum Parsers {
     static func maybeAlias(
         state: inout ParserState,
         asRequired: Bool = true
-    ) -> Identifier? {
+    ) -> IdentifierSyntax? {
         if state.take(if: .as) {
             return identifier(state: &state)
         } else if !asRequired, case let .symbol(ident) = state.current.kind {
             let tok = state.take()
-            return Identifier(value: ident, range: tok.range)
+            return IdentifierSyntax(value: ident, range: tok.range)
         } else {
             return nil
         }
     }
     
     /// https://www.sqlite.org/syntax/table-options.html
-    static func tableOptions(state: inout ParserState) -> TableOptions {
-        var options: TableOptions = []
+    static func tableOptions(state: inout ParserState) -> TableOptionsSyntax {
+        var options: TableOptionsSyntax = []
         
         repeat {
             switch state.current.kind {
@@ -817,7 +817,7 @@ enum Parsers {
     }
     
     /// https://www.sqlite.org/syntax/type-name.html
-    static func typeName(state: inout ParserState) -> TypeName {
+    static func typeName(state: inout ParserState) -> TypeNameSyntax {
         var name = identifier(state: &state)
         
         while case let .symbol(s) = state.current.kind {
@@ -832,22 +832,22 @@ enum Parsers {
             if state.take(if: .comma) {
                 let second = signedNumber(state: &state)
                 state.consume(.closeParen)
-                return TypeName(name: name, arg1: first, arg2: second)
+                return TypeNameSyntax(name: name, arg1: first, arg2: second)
             } else {
                 state.consume(.closeParen)
-                return TypeName(name: name, arg1: first, arg2: nil)
+                return TypeNameSyntax(name: name, arg1: first, arg2: nil)
             }
         } else {
-            return TypeName(name: name, arg1: nil, arg2: nil)
+            return TypeNameSyntax(name: name, arg1: nil, arg2: nil)
         }
     }
     
-    static func alterStmt(state: inout ParserState) throws -> AlterTableStmt {
+    static func alterStmt(state: inout ParserState) throws -> AlterTableStmtSyntax {
         let alter = state.take(.alter)
         state.consume(.table)
         let names = tableAndSchemaName(state: &state)
         let kind = try alterKind(state: &state)
-        return AlterTableStmt(
+        return AlterTableStmtSyntax(
             name: names.table,
             schemaName: names.schema,
             kind: kind,
@@ -855,7 +855,7 @@ enum Parsers {
         )
     }
     
-    static func alterKind(state: inout ParserState) throws -> AlterTableStmt.Kind {
+    static func alterKind(state: inout ParserState) throws -> AlterTableStmtSyntax.Kind {
         let token = state.take()
         
         switch token.kind {
@@ -889,7 +889,7 @@ enum Parsers {
         }
     }
     
-    static func createTableStmt(state: inout ParserState) -> CreateTableStmt {
+    static func createTableStmt(state: inout ParserState) -> CreateTableStmtSyntax {
         let create = state.take(.create)
         let isTemporary = state.take(if: .temp, or: .temporary)
         state.consume(.table)
@@ -905,14 +905,14 @@ enum Parsers {
         } else {
             let (schema, table) = tableAndSchemaName(state: &state)
             
-            let columns: OrderedDictionary<Identifier, ColumnDef> = parens(state: &state) { state in
+            let columns: OrderedDictionary<IdentifierSyntax, ColumnDefSyntax> = parens(state: &state) { state in
                 commaDelimited(state: &state, element: columnDef)
                     .reduce(into: [:]) { $0[$1.name] = $1 }
             }
             
             let options = tableOptions(state: &state)
             
-            return CreateTableStmt(
+            return CreateTableStmtSyntax(
                 name: table,
                 schemaName: schema,
                 isTemporary: isTemporary,
@@ -926,10 +926,10 @@ enum Parsers {
     }
     
     /// https://www.sqlite.org/syntax/column-def.html
-    static func columnDef(state: inout ParserState) -> ColumnDef {
+    static func columnDef(state: inout ParserState) -> ColumnDefSyntax {
         let name = identifier(state: &state)
         let type = typeName(state: &state)
-        var constraints: [ColumnConstraint] = []
+        var constraints: [ColumnConstraintSyntax] = []
         
         while state.current.kind != .comma,
               state.current.kind != .closeParen,
@@ -940,13 +940,13 @@ enum Parsers {
             constraints.append(c)
         }
         
-        return ColumnDef(name: name, type: type, constraints: constraints)
+        return ColumnDefSyntax(name: name, type: type, constraints: constraints)
     }
     
     static func columnConstraint(
         state: inout ParserState,
-        name: Identifier? = nil
-    ) -> ColumnConstraint? {
+        name: IdentifierSyntax? = nil
+    ) -> ColumnConstraintSyntax? {
         switch state.current.kind {
         case .constraint:
             state.skip()
@@ -958,30 +958,30 @@ enum Parsers {
             state.skip()
             state.consume(.null)
             let conflictClause = conflictClause(state: &state)
-            return ColumnConstraint(name: name, kind: .notNull(conflictClause))
+            return ColumnConstraintSyntax(name: name, kind: .notNull(conflictClause))
         case .unique:
             state.skip()
             let conflictClause = conflictClause(state: &state)
-            return ColumnConstraint(name: name, kind: .unique(conflictClause))
+            return ColumnConstraintSyntax(name: name, kind: .unique(conflictClause))
         case .check:
             state.skip()
             let expr = parens(state: &state) { Parsers.expr(state: &$0) }
-            return ColumnConstraint(name: name, kind: .check(expr))
+            return ColumnConstraintSyntax(name: name, kind: .check(expr))
         case .default:
             state.skip()
             if state.current.kind == .openParen {
                 let expr = parens(state: &state) { Parsers.expr(state: &$0) }
-                return ColumnConstraint(name: name, kind: .default(expr))
+                return ColumnConstraintSyntax(name: name, kind: .default(expr))
             } else {
-                return ColumnConstraint(name: name, kind: .default(expr(state: &state)))
+                return ColumnConstraintSyntax(name: name, kind: .default(expr(state: &state)))
             }
         case .collate:
             state.skip()
             let collation = identifier(state: &state)
-            return ColumnConstraint(name: name, kind: .collate(collation))
+            return ColumnConstraintSyntax(name: name, kind: .collate(collation))
         case .references:
             let fk = foreignKeyClause(state: &state)
-            return ColumnConstraint(name: name, kind: .foreignKey(fk))
+            return ColumnConstraintSyntax(name: name, kind: .foreignKey(fk))
         case .generated:
             state.skip()
             state.consume(.always)
@@ -989,11 +989,11 @@ enum Parsers {
             let expr = parens(state: &state) { Parsers.expr(state: &$0) }
             let generated = parseGeneratedKind(state: &state)
             
-            return ColumnConstraint(name: name, kind: .generated(expr, generated))
+            return ColumnConstraintSyntax(name: name, kind: .generated(expr, generated))
         case .as:
             let expr = parens(state: &state) { Parsers.expr(state: &$0) }
             let generated = parseGeneratedKind(state: &state)
-            return ColumnConstraint(name: name, kind: .generated(expr, generated))
+            return ColumnConstraintSyntax(name: name, kind: .generated(expr, generated))
         default:
             state.diagnostics.add(.unexpectedToken(of: state.current.kind, at: state.range))
             return nil
@@ -1002,7 +1002,7 @@ enum Parsers {
     
     private static func parseGeneratedKind(
         state: inout ParserState
-    ) -> ColumnConstraint.GeneratedKind? {
+    ) -> ColumnConstraintSyntax.GeneratedKind? {
         return if state.take(if: .stored) {
             .stored
         } else if state.take(if: .virtual) {
@@ -1014,22 +1014,22 @@ enum Parsers {
     
     private static func parsePrimaryKey(
         state: inout ParserState,
-        name: Identifier?
-    ) -> ColumnConstraint {
+        name: IdentifierSyntax?
+    ) -> ColumnConstraintSyntax {
         state.consume(.primary)
         state.consume(.key)
         let order = order(state: &state)
         let conflictClause = conflictClause(state: &state)
         let autoincrement = state.take(if: .autoincrement)
         
-        return ColumnConstraint(
+        return ColumnConstraintSyntax(
             name: name,
             kind: .primaryKey(order: order, conflictClause, autoincrement: autoincrement)
         )
     }
     
     /// https://www.sqlite.org/syntax/conflict-clause.html
-    static func conflictClause(state: inout ParserState) -> ConfictClause {
+    static func conflictClause(state: inout ParserState) -> ConfictClauseSyntax {
         guard state.current.kind == .on else { return .none }
         
         state.consume(.on)
@@ -1048,7 +1048,7 @@ enum Parsers {
         }
     }
     
-    static func foreignKeyClause(state: inout ParserState) -> ForeignKeyClause {
+    static func foreignKeyClause(state: inout ParserState) -> ForeignKeyClauseSyntax {
         state.consume(.references)
         
         let table = identifier(state: &state)
@@ -1059,7 +1059,7 @@ enum Parsers {
         
         let actions = foreignKeyClauseActions(state: &state)
         
-        return ForeignKeyClause(
+        return ForeignKeyClauseSyntax(
             foreignTable: table,
             foreignColumns: columns ?? [],
             actions: actions
@@ -1068,7 +1068,7 @@ enum Parsers {
     
     private static func foreignKeyClauseActions(
         state: inout ParserState
-    ) -> [ForeignKeyClause.Action] {
+    ) -> [ForeignKeyClauseSyntax.Action] {
         guard let action = foreignKeyClauseAction(state: &state) else { return [] }
         
         switch action {
@@ -1082,11 +1082,11 @@ enum Parsers {
     
     private static func foreignKeyClauseAction(
         state: inout ParserState
-    ) -> ForeignKeyClause.Action? {
+    ) -> ForeignKeyClauseSyntax.Action? {
         switch state.current.kind {
         case .on:
             state.skip()
-            let on: ForeignKeyClause.On
+            let on: ForeignKeyClauseSyntax.On
             if state.take(if: .delete) {
                 on = .delete
             } else if state.take(if: .update) {
@@ -1116,7 +1116,7 @@ enum Parsers {
     /// Parses out the action to be performed on an `ON` clause
     private static func foreignKeyClauseOnDeleteOrUpdateAction(
         state: inout ParserState
-    ) -> ForeignKeyClause.Do {
+    ) -> ForeignKeyClauseSyntax.Do {
         let token = state.take()
         
         switch token.kind {
@@ -1152,7 +1152,7 @@ enum Parsers {
     
     private static func foreignKeyClauseDeferrable(
         state: inout ParserState
-    ) -> ForeignKeyClause.Deferrable? {
+    ) -> ForeignKeyClauseSyntax.Deferrable? {
         switch state.current.kind {
         case .initially:
             state.skip()
@@ -1177,7 +1177,7 @@ enum Parsers {
     static func expr(
         state: inout ParserState,
         precedence: Operator.Precedence = 0
-    ) -> Expression {
+    ) -> ExpressionSyntax {
         var expr = primaryExpr(state: &state, precedence: precedence)
         
         while true {
@@ -1185,7 +1185,7 @@ enum Parsers {
             // at an open paren treat as a function call.
             if state.is(of: .openParen), case let .column(column) = expr, column.schema == nil {
                 let args = commaDelimitedInParens(state: &state) { Parsers.expr(state: &$0) }
-                return .fn(FunctionExpr(table: column.table, name: column.column, args: args, range: state.range(from: expr.range)))
+                return .fn(FunctionExprSyntax(table: column.table, name: column.column, args: args, range: state.range(from: expr.range)))
             }
             
             guard let op = Operator.guess(for: state.current.kind, after: state.peek.kind),
@@ -1210,7 +1210,7 @@ enum Parsers {
                 let lowerBound = Parsers.expr(state: &state, precedence: precAboveAnd)
                 state.consume(.and)
                 let upperBound = Parsers.expr(state: &state, precedence: precAboveAnd)
-                expr = .between(BetweenExpr(not: op.operator == .not(.between), value: expr, lower: lowerBound, upper: upperBound))
+                expr = .between(BetweenExprSyntax(not: op.operator == .not(.between), value: expr, lower: lowerBound, upper: upperBound))
             } else {
                 expr = infixExpr(state: &state, lhs: expr)
             }
@@ -1223,7 +1223,7 @@ enum Parsers {
     static func primaryExpr(
         state: inout ParserState,
         precedence: Operator.Precedence
-    ) -> Expression {
+    ) -> ExpressionSyntax {
         switch state.current.kind {
         case .double, .string, .int, .hex, .currentDate, .currentTime, .currentTimestamp, .true, .false:
             return .literal(literal(state: &state))
@@ -1235,24 +1235,24 @@ enum Parsers {
         case .plus:
             let token = state.take()
             let op = OperatorSyntax(operator: .plus, range: token.range)
-            return .prefix(PrefixExpr(operator: op, rhs: expr(state: &state, precedence: precedence)))
+            return .prefix(PrefixExprSyntax(operator: op, rhs: expr(state: &state, precedence: precedence)))
         case .tilde:
             let token = state.take()
             let op = OperatorSyntax(operator: .tilde, range: token.range)
-            return .prefix(PrefixExpr(operator: op, rhs: expr(state: &state, precedence: precedence)))
+            return .prefix(PrefixExprSyntax(operator: op, rhs: expr(state: &state, precedence: precedence)))
         case .minus:
             let token = state.take()
             let op = OperatorSyntax(operator: .minus, range: token.range)
-            return .prefix(PrefixExpr(operator: op, rhs: expr(state: &state, precedence: precedence)))
+            return .prefix(PrefixExprSyntax(operator: op, rhs: expr(state: &state, precedence: precedence)))
         case .null:
             let token = state.take()
-            return .literal(LiteralExpr(kind: .null, range: token.range))
+            return .literal(LiteralExprSyntax(kind: .null, range: token.range))
         case .openParen:
             let start = state.current.range
             let expr = parens(state: &state) { state in
                 commaDelimited(state: &state) { Parsers.expr(state: &$0) }
             }
-            return .grouped(GroupedExpr(exprs: expr, range: state.range(from: start)))
+            return .grouped(GroupedExprSyntax(exprs: expr, range: state.range(from: start)))
         case .cast:
             let start = state.take()
             state.consume(.openParen)
@@ -1260,7 +1260,7 @@ enum Parsers {
             state.consume(.as)
             let type = typeName(state: &state)
             state.consume(.closeParen)
-            return .cast(CastExpr(expr: expr, ty: type, range: state.range(from: start.range)))
+            return .cast(CastExprSyntax(expr: expr, ty: type, range: state.range(from: start.range)))
         case .select:
             fatalError("TODO: Not yet implemented")
         case .exists:
@@ -1269,12 +1269,12 @@ enum Parsers {
             let start = state.take()
             let `case` = take(ifNot: .when, state: &state) { expr(state: &$0) }
             
-            var whenThens: [CaseWhenThenExpr.WhenThen] = []
+            var whenThens: [CaseWhenThenExprSyntax.WhenThen] = []
             while state.current.kind == .when {
                 whenThens.append(whenThen(state: &state))
             }
             
-            let el: Expression? = if state.take(if: .else) {
+            let el: ExpressionSyntax? = if state.take(if: .else) {
                 expr(state: &state)
             } else {
                 nil
@@ -1289,19 +1289,19 @@ enum Parsers {
                 "Expected expression, but got '\(tok.kind)' instead",
                 at: state.range
             ))
-            return .invalid(InvalidExpr(range: tok.range))
+            return .invalid(InvalidExprSyntax(range: tok.range))
         }
     }
     
     static func infixExpr(
         state: inout ParserState,
-        lhs: Expression
-    ) -> Expression {
+        lhs: ExpressionSyntax
+    ) -> ExpressionSyntax {
         let op = Parsers.operator(state: &state)
         
         switch op.operator {
         case .isnull, .notnull, .notNull, .collate:
-            return .postfix(PostfixExpr(lhs: lhs, operator: op))
+            return .postfix(PostfixExprSyntax(lhs: lhs, operator: op))
         default: break
         }
         
@@ -1310,52 +1310,52 @@ enum Parsers {
             precedence: op.operator.precedence(usage: .infix) + 1
         )
         
-        return .infix(InfixExpr(lhs: lhs, operator: op, rhs: rhs))
+        return .infix(InfixExprSyntax(lhs: lhs, operator: op, rhs: rhs))
     }
     
-    static func columnExpr(state: inout ParserState) -> ColumnExpr {
+    static func columnExpr(state: inout ParserState) -> ColumnExprSyntax {
         let first = identifier(state: &state)
         
         if state.take(if: .dot) {
             let second = identifier(state: &state)
             
             if state.take(if: .dot) {
-                return ColumnExpr(schema: first, table: second, column: identifier(state: &state))
+                return ColumnExprSyntax(schema: first, table: second, column: identifier(state: &state))
             } else {
-                return ColumnExpr(schema: nil, table: first, column: second)
+                return ColumnExprSyntax(schema: nil, table: first, column: second)
             }
         } else {
-            return ColumnExpr(schema: nil, table: nil, column: first)
+            return ColumnExprSyntax(schema: nil, table: nil, column: first)
         }
     }
     
-    static func whenThen(state: inout ParserState) -> CaseWhenThenExpr.WhenThen {
+    static func whenThen(state: inout ParserState) -> CaseWhenThenExprSyntax.WhenThen {
         state.consume(.when)
         let when = expr(state: &state)
         state.consume(.then)
         let then = expr(state: &state)
-        return CaseWhenThenExpr.WhenThen(when: when, then: then)
+        return CaseWhenThenExprSyntax.WhenThen(when: when, then: then)
     }
     
     /// https://www.sqlite.org/c3ref/bind_blob.html
-    static func bindParameter(state: inout ParserState) -> BindParameter {
+    static func bindParameter(state: inout ParserState) -> BindParameterSyntax {
         let token = state.take()
         
         switch token.kind {
         case .questionMark:
-            return BindParameter(kind: .unnamed, index: state.indexForUnnamedParam(), range: token.range)
+            return BindParameterSyntax(kind: .unnamed, index: state.indexForUnnamedParam(), range: token.range)
         case .colon:
             let symbol = identifier(state: &state)
             let range = token.range.lowerBound..<symbol.range.upperBound
-            let name = Identifier(value: ":\(symbol)", range: range)
+            let name = IdentifierSyntax(value: ":\(symbol)", range: range)
             let index = state.indexForParam(named: name.value)
-            return BindParameter(kind: .named(name), index: index, range: range)
+            return BindParameterSyntax(kind: .named(name), index: index, range: range)
         case .at:
             let symbol = identifier(state: &state)
             let range = token.range.lowerBound..<symbol.range.upperBound
-            let name = Identifier(value: "@\(symbol)", range: range)
+            let name = IdentifierSyntax(value: "@\(symbol)", range: range)
             let index = state.indexForParam(named: name.value)
-            return BindParameter(kind: .named(name), index: index, range: range)
+            return BindParameterSyntax(kind: .named(name), index: index, range: range)
         case .dollarSign:
             let segments = delimited(by: .colon, and: .colon, state: &state, element: identifier)
             let nameRange = token.range.lowerBound..<(segments.last?.range.upperBound ?? state.current.range.upperBound)
@@ -1367,17 +1367,17 @@ enum Parsers {
             
             if let suffix {
                 let range = token.range.lowerBound..<suffix.range.upperBound
-                let name = Identifier(value: "$\(fullName)(\(suffix))", range: range)
+                let name = IdentifierSyntax(value: "$\(fullName)(\(suffix))", range: range)
                 let index = state.indexForParam(named: name.value)
-                return BindParameter(kind: .named(name), index: index, range: range)
+                return BindParameterSyntax(kind: .named(name), index: index, range: range)
             } else {
-                let name = Identifier(value: "$\(fullName)", range: nameRange)
+                let name = IdentifierSyntax(value: "$\(fullName)", range: nameRange)
                 let index = state.indexForParam(named: name.value)
-                return BindParameter(kind: .named(name), index: index, range: nameRange)
+                return BindParameterSyntax(kind: .named(name), index: index, range: nameRange)
             }
         default:
             state.diagnostics.add(.init("Invalid bind parameter", at: token.range))
-            return BindParameter(kind: .unnamed, index: state.indexForUnnamedParam(), range: token.range)
+            return BindParameterSyntax(kind: .unnamed, index: state.indexForUnnamedParam(), range: token.range)
         }
     }
     
@@ -1506,19 +1506,19 @@ enum Parsers {
     
     static func identifier(
         state: inout ParserState
-    ) -> Identifier {
+    ) -> IdentifierSyntax {
         let token = state.take()
         
         guard case let .symbol(ident) = token.kind else {
             state.diagnostics.add(.init("Expected identifier", at: token.range))
-            return Identifier(value: "<<error>>", range: token.range)
+            return IdentifierSyntax(value: "<<error>>", range: token.range)
         }
         
-        return Identifier(value: ident, range: token.range)
+        return IdentifierSyntax(value: ident, range: token.range)
     }
     
     /// https://www.sqlite.org/syntax/numeric-literal.html
-    static func numericLiteral(state: inout ParserState) -> Numeric {
+    static func numericLiteral(state: inout ParserState) -> NumericSyntax {
         let token = state.take()
         
         switch token.kind {
@@ -1535,16 +1535,16 @@ enum Parsers {
     }
     
     /// https://www.sqlite.org/syntax/signed-number.html
-    static func signedNumber(state: inout ParserState) -> SignedNumber {
+    static func signedNumber(state: inout ParserState) -> SignedNumberSyntax {
         let token = state.take()
         
         switch token.kind {
         case let .double(value):
             return value
         case let .int(value):
-            return SignedNumber(value)
+            return SignedNumberSyntax(value)
         case let .hex(value):
-            return SignedNumber(value)
+            return SignedNumberSyntax(value)
         case .plus:
             return numericLiteral(state: &state)
         case .minus:
@@ -1555,10 +1555,10 @@ enum Parsers {
         }
     }
     
-    static func literal(state: inout ParserState) -> LiteralExpr {
+    static func literal(state: inout ParserState) -> LiteralExprSyntax {
         let token = state.take()
         
-        let kind: LiteralExpr.Kind
+        let kind: LiteralExprSyntax.Kind
         switch token.kind {
         case let .double(value):
             kind = .numeric(value, isInt: false)
@@ -1583,10 +1583,10 @@ enum Parsers {
             kind = .invalid
         }
         
-        return LiteralExpr(kind: kind, range: token.range)
+        return LiteralExprSyntax(kind: kind, range: token.range)
     }
     
-    static func order(state: inout ParserState) -> Order {
+    static func order(state: inout ParserState) -> OrderSyntax {
         if state.take(if: .asc) {
             return .asc
         } else if state.take(if: .desc) {

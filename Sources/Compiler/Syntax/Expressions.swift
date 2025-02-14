@@ -10,23 +10,23 @@ import Foundation
 protocol ExprVisitor {
     associatedtype ExprOutput
     
-    mutating func visit(_ expr: borrowing LiteralExpr) -> ExprOutput
-    mutating func visit(_ expr: borrowing BindParameter) -> ExprOutput
-    mutating func visit(_ expr: borrowing ColumnExpr) -> ExprOutput
-    mutating func visit(_ expr: borrowing PrefixExpr) -> ExprOutput
-    mutating func visit(_ expr: borrowing InfixExpr) -> ExprOutput
-    mutating func visit(_ expr: borrowing PostfixExpr) -> ExprOutput
-    mutating func visit(_ expr: borrowing BetweenExpr) -> ExprOutput
-    mutating func visit(_ expr: borrowing FunctionExpr) -> ExprOutput
-    mutating func visit(_ expr: borrowing CastExpr) -> ExprOutput
-    mutating func visit(_ expr: borrowing CaseWhenThenExpr) -> ExprOutput
-    mutating func visit(_ expr: borrowing GroupedExpr) -> ExprOutput
-    mutating func visit(_ expr: borrowing SelectExpr) -> ExprOutput
-    mutating func visit(_ expr: borrowing InvalidExpr) -> ExprOutput
+    mutating func visit(_ expr: borrowing LiteralExprSyntax) -> ExprOutput
+    mutating func visit(_ expr: borrowing BindParameterSyntax) -> ExprOutput
+    mutating func visit(_ expr: borrowing ColumnExprSyntax) -> ExprOutput
+    mutating func visit(_ expr: borrowing PrefixExprSyntax) -> ExprOutput
+    mutating func visit(_ expr: borrowing InfixExprSyntax) -> ExprOutput
+    mutating func visit(_ expr: borrowing PostfixExprSyntax) -> ExprOutput
+    mutating func visit(_ expr: borrowing BetweenExprSyntax) -> ExprOutput
+    mutating func visit(_ expr: borrowing FunctionExprSyntax) -> ExprOutput
+    mutating func visit(_ expr: borrowing CastExprSyntax) -> ExprOutput
+    mutating func visit(_ expr: borrowing CaseWhenThenExprSyntax) -> ExprOutput
+    mutating func visit(_ expr: borrowing GroupedExprSyntax) -> ExprOutput
+    mutating func visit(_ expr: borrowing SelectExprSyntax) -> ExprOutput
+    mutating func visit(_ expr: borrowing InvalidExprSyntax) -> ExprOutput
 }
 
 extension ExprVisitor {
-    mutating func visit(_ expr: Expression) -> ExprOutput {
+    mutating func visit(_ expr: ExpressionSyntax) -> ExprOutput {
         switch expr {
         case let .literal(expr):
             return expr.accept(visitor: &self)
@@ -72,12 +72,12 @@ protocol Expr {
     func accept<V: ExprVisitor>(visitor: inout V) -> V.ExprOutput
 }
 
-struct LiteralExpr: Expr {
+struct LiteralExprSyntax: Expr {
     let kind: Kind
     let range: Range<String.Index>
     
     enum Kind {
-        case numeric(Numeric, isInt: Bool)
+        case numeric(NumericSyntax, isInt: Bool)
         case string(Substring)
         case blob(Substring)
         case null
@@ -94,7 +94,7 @@ struct LiteralExpr: Expr {
     }
 }
 
-extension LiteralExpr: CustomStringConvertible {
+extension LiteralExprSyntax: CustomStringConvertible {
     var description: String {
         switch self.kind {
         case let .numeric(numeric, _):
@@ -121,16 +121,16 @@ extension LiteralExpr: CustomStringConvertible {
     }
 }
 
-indirect enum Expression: Expr {
-    case literal(LiteralExpr)
-    case bindParameter(BindParameter)
-    case column(ColumnExpr)
-    case prefix(PrefixExpr)
-    case infix(InfixExpr)
-    case postfix(PostfixExpr)
-    case between(BetweenExpr)
-    case fn(FunctionExpr)
-    case cast(CastExpr)
+indirect enum ExpressionSyntax: Expr {
+    case literal(LiteralExprSyntax)
+    case bindParameter(BindParameterSyntax)
+    case column(ColumnExprSyntax)
+    case prefix(PrefixExprSyntax)
+    case infix(InfixExprSyntax)
+    case postfix(PostfixExprSyntax)
+    case between(BetweenExprSyntax)
+    case fn(FunctionExprSyntax)
+    case cast(CastExprSyntax)
     // These are expressions in parentheses.
     // These can mean multiple things. It can be used to
     // estabilish precedence in arithmetic operations, or
@@ -139,10 +139,10 @@ indirect enum Expression: Expr {
     // Examples:
     // (1 + 2)
     // foo IN (1, 2)
-    case grouped(GroupedExpr)
-    case caseWhenThen(CaseWhenThenExpr)
-    case select(SelectExpr)
-    case invalid(InvalidExpr)
+    case grouped(GroupedExprSyntax)
+    case caseWhenThen(CaseWhenThenExprSyntax)
+    case select(SelectExprSyntax)
+    case invalid(InvalidExprSyntax)
     
     var range: Range<String.Index> {
         return switch self {
@@ -162,7 +162,7 @@ indirect enum Expression: Expr {
         }
     }
     
-    var literal: LiteralExpr? {
+    var literal: LiteralExprSyntax? {
         if case let .literal(l) = self { return l }
         return nil
     }
@@ -172,7 +172,7 @@ indirect enum Expression: Expr {
     }
 }
 
-extension Expression: CustomStringConvertible {
+extension ExpressionSyntax: CustomStringConvertible {
     var description: String {
         switch self {
         case let .literal(literal):
@@ -205,8 +205,8 @@ extension Expression: CustomStringConvertible {
     }
 }
 
-struct GroupedExpr: Expr, CustomStringConvertible {
-    let exprs: [Expression]
+struct GroupedExprSyntax: Expr, CustomStringConvertible {
+    let exprs: [ExpressionSyntax]
     let range: Range<String.Index>
     
     var description: String {
@@ -218,9 +218,9 @@ struct GroupedExpr: Expr, CustomStringConvertible {
     }
 }
 
-struct PrefixExpr: Expr, CustomStringConvertible {
+struct PrefixExprSyntax: Expr, CustomStringConvertible {
     let `operator`: OperatorSyntax
-    let rhs: Expression
+    let rhs: ExpressionSyntax
     
     var description: String {
         return "(\(`operator`)\(rhs))"
@@ -235,8 +235,8 @@ struct PrefixExpr: Expr, CustomStringConvertible {
     }
 }
 
-struct PostfixExpr: Expr, CustomStringConvertible {
-    let lhs: Expression
+struct PostfixExprSyntax: Expr, CustomStringConvertible {
+    let lhs: ExpressionSyntax
     let `operator`: OperatorSyntax
     
     var description: String {
@@ -252,10 +252,10 @@ struct PostfixExpr: Expr, CustomStringConvertible {
     }
 }
 
-struct InfixExpr: Expr, CustomStringConvertible {
-    let lhs: Expression
+struct InfixExprSyntax: Expr, CustomStringConvertible {
+    let lhs: ExpressionSyntax
     let `operator`: OperatorSyntax
-    let rhs: Expression
+    let rhs: ExpressionSyntax
     
     var range: Range<String.Index> {
         return lhs.range.lowerBound..<rhs.range.upperBound
@@ -270,11 +270,11 @@ struct InfixExpr: Expr, CustomStringConvertible {
     }
 }
 
-struct BetweenExpr: Expr, CustomStringConvertible {
+struct BetweenExprSyntax: Expr, CustomStringConvertible {
     let not: Bool
-    let value: Expression
-    let lower: Expression
-    let upper: Expression
+    let value: ExpressionSyntax
+    let lower: ExpressionSyntax
+    let upper: ExpressionSyntax
     
     var range: Range<String.Index> {
         return value.range.lowerBound..<upper.range.upperBound
@@ -289,10 +289,10 @@ struct BetweenExpr: Expr, CustomStringConvertible {
     }
 }
 
-struct FunctionExpr: Expr, CustomStringConvertible {
-    let table: Identifier?
-    let name: Identifier
-    let args: [Expression]
+struct FunctionExprSyntax: Expr, CustomStringConvertible {
+    let table: IdentifierSyntax?
+    let name: IdentifierSyntax
+    let args: [ExpressionSyntax]
     let range: Range<String.Index>
     
     var description: String {
@@ -304,9 +304,9 @@ struct FunctionExpr: Expr, CustomStringConvertible {
     }
 }
 
-struct CastExpr: Expr, CustomStringConvertible {
-    let expr: Expression
-    let ty: TypeName
+struct CastExprSyntax: Expr, CustomStringConvertible {
+    let expr: ExpressionSyntax
+    let ty: TypeNameSyntax
     let range: Range<String.Index>
     
     var description: String {
@@ -318,7 +318,7 @@ struct CastExpr: Expr, CustomStringConvertible {
     }
 }
 
-struct BindParameter: Expr, Hashable, CustomStringConvertible {
+struct BindParameterSyntax: Expr, Hashable, CustomStringConvertible {
     let kind: Kind
     let index: Index
     let range: Range<String.Index>
@@ -326,7 +326,7 @@ struct BindParameter: Expr, Hashable, CustomStringConvertible {
     typealias Index = Int
     
     enum Kind: Hashable {
-        case named(Identifier)
+        case named(IdentifierSyntax)
         case unnamed
     }
     
@@ -595,10 +595,10 @@ extension Operator: CustomStringConvertible {
     }
 }
 
-struct ColumnExpr: Expr, CustomStringConvertible {
-    let schema: Identifier?
-    let table: Identifier?
-    let column: Identifier // TODO: Support *
+struct ColumnExprSyntax: Expr, CustomStringConvertible {
+    let schema: IdentifierSyntax?
+    let table: IdentifierSyntax?
+    let column: IdentifierSyntax // TODO: Support *
     
     var description: String {
         return [schema, table, column]
@@ -616,15 +616,15 @@ struct ColumnExpr: Expr, CustomStringConvertible {
     }
 }
 
-struct CaseWhenThenExpr: Expr {
-    let `case`: Expression?
+struct CaseWhenThenExprSyntax: Expr {
+    let `case`: ExpressionSyntax?
     let whenThen: [WhenThen]
-    let `else`: Expression?
+    let `else`: ExpressionSyntax?
     let range: Range<String.Index>
     
     struct WhenThen {
-        let when: Expression
-        let then: Expression
+        let when: ExpressionSyntax
+        let then: ExpressionSyntax
     }
     
     func accept<V: ExprVisitor>(visitor: inout V) -> V.ExprOutput {
@@ -632,7 +632,7 @@ struct CaseWhenThenExpr: Expr {
     }
 }
 
-extension CaseWhenThenExpr: CustomStringConvertible {
+extension CaseWhenThenExprSyntax: CustomStringConvertible {
     var description: String {
         var str = "CASE"
         if let `case` {
@@ -649,8 +649,8 @@ extension CaseWhenThenExpr: CustomStringConvertible {
     }
 }
 
-struct SelectExpr: Expr {
-    let select: SelectStmt
+struct SelectExprSyntax: Expr {
+    let select: SelectStmtSyntax
     let range: Range<String.Index>
     
     func accept<V>(visitor: inout V) -> V.ExprOutput where V : ExprVisitor {
@@ -658,7 +658,7 @@ struct SelectExpr: Expr {
     }
 }
 
-struct InvalidExpr: Expr, CustomStringConvertible {
+struct InvalidExprSyntax: Expr, CustomStringConvertible {
     let range: Range<String.Index>
     
     var description: String {

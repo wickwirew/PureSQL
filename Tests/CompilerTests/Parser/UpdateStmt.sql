@@ -1,18 +1,18 @@
--- CHECK: UPDATE_STMT
+-- CHECK: UPDATE_STMT_SYNTAX
 -- CHECK:   CTE_RECURSIVE false
 -- CHECK:   TABLE_NAME
 -- CHECK:     TABLE_NAME
 -- CHECK:       SCHEMA main
 -- CHECK:       NAME foo
 -- CHECK:   SETS
--- CHECK:     SET_ACTION
+-- CHECK:     SET_ACTION_SYNTAX
 -- CHECK:       COLUMN
 -- CHECK:         SINGLE bar
 -- CHECK:       EXPR
 -- CHECK:         LITERAL 1.0
 UPDATE foo SET bar = 1;
 
--- CHECK: UPDATE_STMT
+-- CHECK: UPDATE_STMT_SYNTAX
 -- CHECK:   CTE
 -- CHECK:     TABLE foo
 -- CHECK:     MATERIALIZED false
@@ -24,7 +24,7 @@ UPDATE foo SET bar = 1;
 -- CHECK:             SELECT
 -- CHECK:               DISTINCT false
 -- CHECK:               COLUMNS
--- CHECK:                 RESULT_COLUMN
+-- CHECK:                 RESULT_COLUMN_SYNTAX
 -- CHECK:                   EXPR
 -- CHECK:                       COLUMN
 -- CHECK:                         COLUMN foo
@@ -39,12 +39,12 @@ UPDATE foo SET bar = 1;
 -- CHECK:       SCHEMA main
 -- CHECK:       NAME foo
 -- CHECK:   SETS
--- CHECK:     SET_ACTION
+-- CHECK:     SET_ACTION_SYNTAX
 -- CHECK:       COLUMN
 -- CHECK:         SINGLE bar
 -- CHECK:       EXPR
 -- CHECK:         LITERAL 1.0
--- CHECK:     SET_ACTION
+-- CHECK:     SET_ACTION_SYNTAX
 -- CHECK:       COLUMN
 -- CHECK:         SINGLE baz
 -- CHECK:       EXPR

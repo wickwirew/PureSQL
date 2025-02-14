@@ -26,8 +26,8 @@ public struct Diagnostic: Error {
     }
     
     init(
-        expected: TypeName,
-        got actual: TypeName,
+        expected: TypeNameSyntax,
+        got actual: TypeNameSyntax,
         at range: Range<String.Index>
     ) {
         self.message = "Incorrect type, expected '\(expected.name)' got '\(actual.name)'"
@@ -43,8 +43,8 @@ public struct Diagnostic: Error {
 
 extension Diagnostic {
     static func incorrectType(
-        _ actual: TypeName,
-        expected: TypeName,
+        _ actual: TypeNameSyntax,
+        expected: TypeNameSyntax,
         at range: Range<String.Index>
     ) -> Diagnostic {
         Diagnostic(
@@ -55,7 +55,7 @@ extension Diagnostic {
     }
     
     static func expectedNumber(
-        _ actual: TypeName,
+        _ actual: TypeNameSyntax,
         at range: Range<String.Index>
     ) -> Diagnostic {
         Diagnostic(
@@ -74,14 +74,14 @@ extension Diagnostic {
         )
     }
     
-    static func tableDoesNotExist(_ identifier: Identifier) -> Diagnostic {
+    static func tableDoesNotExist(_ identifier: IdentifierSyntax) -> Diagnostic {
         Diagnostic(
             "Table '\(identifier)' does not exist",
             at: identifier.range
         )
     }
     
-    static func columnDoesNotExist(_ identifier: Identifier) -> Diagnostic {
+    static func columnDoesNotExist(_ identifier: IdentifierSyntax) -> Diagnostic {
         Diagnostic(
             "Column '\(identifier)' does not exist",
             at: identifier.range

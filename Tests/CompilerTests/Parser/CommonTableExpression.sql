@@ -1,4 +1,4 @@
--- CHECK: COMMON_TABLE_EXPRESSION
+-- CHECK: COMMON_TABLE_EXPRESSION_SYNTAX
 -- CHECK:   TABLE foo
 -- CHECK:   COLUMNS
 -- CHECK:     id
@@ -12,7 +12,7 @@
 -- CHECK:           SELECT
 -- CHECK:             DISTINCT false
 -- CHECK:             COLUMNS
--- CHECK:               RESULT_COLUMN
+-- CHECK:               RESULT_COLUMN_SYNTAX
 -- CHECK:                 ALL
 -- CHECK:             FROM
 -- CHECK:               JOIN

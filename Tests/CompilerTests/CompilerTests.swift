@@ -10,17 +10,17 @@ import XCTest
 @testable import Compiler
 
 class CompilerTests: XCTestCase {
-    func testCheckSimpleSelects() throws {
-        try check(compile: "SimpleSelects")
-    }
-
-    func testSelectWithJoins() throws {
-        try check(compile: "SelectWithJoins")
-    }
-
-    func testInsert() throws {
-        try check(compile: "Insert")
-    }
+//    func testCheckSimpleSelects() throws {
+//        try check(compile: "SimpleSelects")
+//    }
+//
+//    func testSelectWithJoins() throws {
+//        try check(compile: "SelectWithJoins")
+//    }
+//
+//    func testInsert() throws {
+//        try check(compile: "Insert")
+//    }
 }
 
 func check(

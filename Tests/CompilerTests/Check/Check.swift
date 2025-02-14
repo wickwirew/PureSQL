@@ -273,8 +273,8 @@ struct CheckEmitter {
         return switch value {
         case is Bool, is Int, is Int8, is Int16, is Int32, is Int64,
              is UInt, is UInt8, is UInt16, is UInt32, is UInt64,
-             is Float, is Double, is String, is Any.Type, is Identifier,
-             is LiteralExpr, is TableOptions, is TypeName, is BindParameter,
+             is Float, is Double, is String, is Any.Type, is IdentifierSyntax,
+             is LiteralExprSyntax, is TableOptionsSyntax, is TypeNameSyntax, is BindParameterSyntax,
              is OperatorSyntax, is Type: true
         case _ as Substring:
             true

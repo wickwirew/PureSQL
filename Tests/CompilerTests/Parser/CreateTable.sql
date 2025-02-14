@@ -1,4 +1,4 @@
--- CHECK: CREATE_TABLE_STMT
+-- CHECK: CREATE_TABLE_STMT_SYNTAX
 -- CHECK:   NAME user
 -- CHECK:   IS_TEMPORARY false
 -- CHECK:   ONLY_IF_EXISTS false
@@ -15,7 +15,7 @@
 -- CHECK:   OPTIONS []
 CREATE TABLE user (id INT, name TEXT);
 
--- CHECK: CREATE_TABLE_STMT
+-- CHECK: CREATE_TABLE_STMT_SYNTAX
 -- CHECK:   NAME user
 -- CHECK:   IS_TEMPORARY false
 -- CHECK:   ONLY_IF_EXISTS false
@@ -26,11 +26,11 @@ CREATE TABLE user (id INT, name TEXT);
 -- CHECK:           NAME id
 -- CHECK:           TYPE INT
 -- CHECK:           CONSTRAINTS
--- CHECK:             COLUMN_CONSTRAINT
+-- CHECK:             COLUMN_CONSTRAINT_SYNTAX
 -- CHECK:               KIND
 -- CHECK:                 PRIMARY_KEY
 -- CHECK:                   ORDER asc
--- CHECK:                   CONFICT_CLAUSE none
+-- CHECK:                   CONFICT_CLAUSE_SYNTAX none
 -- CHECK:                   AUTOINCREMENT false
 -- CHECK:         KEY name
 -- CHECK:         VALUE
@@ -39,7 +39,7 @@ CREATE TABLE user (id INT, name TEXT);
 -- CHECK:   OPTIONS []
 CREATE TABLE user (id INT PRIMARY KEY, name TEXT);
 
--- CHECK: CREATE_TABLE_STMT
+-- CHECK: CREATE_TABLE_STMT_SYNTAX
 -- CHECK:   NAME user
 -- CHECK:   IS_TEMPORARY false
 -- CHECK:   ONLY_IF_EXISTS false
@@ -50,11 +50,11 @@ CREATE TABLE user (id INT PRIMARY KEY, name TEXT);
 -- CHECK:           NAME id
 -- CHECK:           TYPE INT
 -- CHECK:           CONSTRAINTS
--- CHECK:             COLUMN_CONSTRAINT
+-- CHECK:             COLUMN_CONSTRAINT_SYNTAX
 -- CHECK:               KIND
 -- CHECK:                 PRIMARY_KEY
 -- CHECK:                   ORDER asc
--- CHECK:                   CONFICT_CLAUSE replace
+-- CHECK:                   CONFICT_CLAUSE_SYNTAX replace
 -- CHECK:                   AUTOINCREMENT false
 -- CHECK:         KEY name
 -- CHECK:         VALUE
@@ -66,7 +66,7 @@ CREATE TABLE user (
     name TEXT
 );
 
--- CHECK: CREATE_TABLE_STMT
+-- CHECK: CREATE_TABLE_STMT_SYNTAX
 -- CHECK:   NAME user
 -- CHECK:   IS_TEMPORARY false
 -- CHECK:   ONLY_IF_EXISTS false
@@ -77,11 +77,11 @@ CREATE TABLE user (
 -- CHECK:           NAME id
 -- CHECK:           TYPE INT
 -- CHECK:           CONSTRAINTS
--- CHECK:             COLUMN_CONSTRAINT
+-- CHECK:             COLUMN_CONSTRAINT_SYNTAX
 -- CHECK:               KIND
 -- CHECK:                 PRIMARY_KEY
 -- CHECK:                   ORDER asc
--- CHECK:                   CONFICT_CLAUSE replace
+-- CHECK:                   CONFICT_CLAUSE_SYNTAX replace
 -- CHECK:                   AUTOINCREMENT true
 -- CHECK:         KEY name
 -- CHECK:         VALUE
@@ -93,7 +93,7 @@ CREATE TABLE user (
     name TEXT
 );
 
--- CHECK: CREATE_TABLE_STMT
+-- CHECK: CREATE_TABLE_STMT_SYNTAX
 -- CHECK:   NAME user
 -- CHECK:   IS_TEMPORARY false
 -- CHECK:   ONLY_IF_EXISTS false
@@ -104,19 +104,19 @@ CREATE TABLE user (
 -- CHECK:           NAME id
 -- CHECK:           TYPE INTEGER
 -- CHECK:           CONSTRAINTS
--- CHECK:             COLUMN_CONSTRAINT
+-- CHECK:             COLUMN_CONSTRAINT_SYNTAX
 -- CHECK:               KIND
 -- CHECK:                 PRIMARY_KEY
 -- CHECK:                   ORDER desc
--- CHECK:                   CONFICT_CLAUSE replace
+-- CHECK:                   CONFICT_CLAUSE_SYNTAX replace
 -- CHECK:                   AUTOINCREMENT true
--- CHECK:             COLUMN_CONSTRAINT
+-- CHECK:             COLUMN_CONSTRAINT_SYNTAX
 -- CHECK:               KIND
 -- CHECK:                 NOT_NULL none
--- CHECK:             COLUMN_CONSTRAINT
+-- CHECK:             COLUMN_CONSTRAINT_SYNTAX
 -- CHECK:               KIND
 -- CHECK:                 UNIQUE ignore
--- CHECK:             COLUMN_CONSTRAINT
+-- CHECK:             COLUMN_CONSTRAINT_SYNTAX
 -- CHECK:               KIND
 -- CHECK:                 DEFAULT
 -- CHECK:                   LITERAL 100.0
@@ -130,7 +130,7 @@ CREATE TABLE user (
     name TEXT
 );
 
--- CHECK: CREATE_TABLE_STMT
+-- CHECK: CREATE_TABLE_STMT_SYNTAX
 -- CHECK:   NAME user
 -- CHECK:   IS_TEMPORARY false
 -- CHECK:   ONLY_IF_EXISTS false
@@ -141,21 +141,21 @@ CREATE TABLE user (
 -- CHECK:           NAME id
 -- CHECK:           TYPE INT
 -- CHECK:           CONSTRAINTS
--- CHECK:             COLUMN_CONSTRAINT
+-- CHECK:             COLUMN_CONSTRAINT_SYNTAX
 -- CHECK:               KIND
 -- CHECK:                 PRIMARY_KEY
 -- CHECK:                   ORDER asc
--- CHECK:                   CONFICT_CLAUSE replace
+-- CHECK:                   CONFICT_CLAUSE_SYNTAX replace
 -- CHECK:                   AUTOINCREMENT true
 -- CHECK:         KEY name
 -- CHECK:         VALUE
 -- CHECK:           NAME name
 -- CHECK:           TYPE TEXT
 -- CHECK:           CONSTRAINTS
--- CHECK:             COLUMN_CONSTRAINT
+-- CHECK:             COLUMN_CONSTRAINT_SYNTAX
 -- CHECK:               KIND
 -- CHECK:                 UNIQUE ignore
--- CHECK:             COLUMN_CONSTRAINT
+-- CHECK:             COLUMN_CONSTRAINT_SYNTAX
 -- CHECK:               KIND
 -- CHECK:                 DEFAULT
 -- CHECK:                   LITERAL 'Joe'
@@ -164,7 +164,7 @@ CREATE TABLE user (
 -- CHECK:           NAME age
 -- CHECK:           TYPE INT
 -- CHECK:           CONSTRAINTS
--- CHECK:             COLUMN_CONSTRAINT
+-- CHECK:             COLUMN_CONSTRAINT_SYNTAX
 -- CHECK:               KIND
 -- CHECK:                 NOT_NULL none
 -- CHECK:         KEY agePlus1
@@ -172,7 +172,7 @@ CREATE TABLE user (
 -- CHECK:           NAME agePlus1
 -- CHECK:           TYPE INT
 -- CHECK:           CONSTRAINTS
--- CHECK:             COLUMN_CONSTRAINT
+-- CHECK:             COLUMN_CONSTRAINT_SYNTAX
 -- CHECK:               KIND
 -- CHECK:                 GENERATED
 -- CHECK:                     BIND_PARAMETER ?
@@ -182,7 +182,7 @@ CREATE TABLE user (
 -- CHECK:           NAME countryId
 -- CHECK:           TYPE INT
 -- CHECK:           CONSTRAINTS
--- CHECK:             COLUMN_CONSTRAINT
+-- CHECK:             COLUMN_CONSTRAINT_SYNTAX
 -- CHECK:               KIND
 -- CHECK:                 FOREIGN_KEY
 -- CHECK:                   FOREIGN_TABLE country
@@ -202,7 +202,7 @@ CREATE TABLE user (
     countryId INT REFERENCES country(id) ON DELETE CASCADE
 );
 
--- CHECK: CREATE_TABLE_STMT
+-- CHECK: CREATE_TABLE_STMT_SYNTAX
 -- CHECK:   NAME user
 -- CHECK:   IS_TEMPORARY false
 -- CHECK:   ONLY_IF_EXISTS false
@@ -213,18 +213,18 @@ CREATE TABLE user (
 -- CHECK:           NAME id
 -- CHECK:           TYPE INT
 -- CHECK:           CONSTRAINTS
--- CHECK:             COLUMN_CONSTRAINT
+-- CHECK:             COLUMN_CONSTRAINT_SYNTAX
 -- CHECK:               KIND
 -- CHECK:                 PRIMARY_KEY
 -- CHECK:                   ORDER asc
--- CHECK:                   CONFICT_CLAUSE none
+-- CHECK:                   CONFICT_CLAUSE_SYNTAX none
 -- CHECK:                   AUTOINCREMENT false
 -- CHECK:         KEY name
 -- CHECK:         VALUE
 -- CHECK:           NAME name
 -- CHECK:           TYPE TEXT
 -- CHECK:           CONSTRAINTS
--- CHECK:             COLUMN_CONSTRAINT
+-- CHECK:             COLUMN_CONSTRAINT_SYNTAX
 -- CHECK:               NAME name_unique
 -- CHECK:               KIND
 -- CHECK:                 UNIQUE ignore

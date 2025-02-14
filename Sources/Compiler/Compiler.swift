@@ -109,7 +109,7 @@ struct Compiler {
 }
 
 extension Compiler: StmtVisitor {
-    mutating func visit(_ stmt: borrowing CreateTableStmt) -> CompiledStmt? {
+    mutating func visit(_ stmt: borrowing CreateTableStmtSyntax) -> CompiledStmt? {
         switch stmt.kind {
         case let .select(selectStmt):
             let signature = compile(select: selectStmt)
@@ -123,7 +123,7 @@ extension Compiler: StmtVisitor {
         }
     }
     
-    mutating func visit(_ stmt: borrowing AlterTableStmt) -> CompiledStmt? {
+    mutating func visit(_ stmt: borrowing AlterTableStmtSyntax) -> CompiledStmt? {
         guard var table = schema[stmt.name.value] else {
             diagnostics.add(.init("Table '\(stmt.name)' does not exist", at: stmt.name.range))
             return nil
@@ -144,11 +144,11 @@ extension Compiler: StmtVisitor {
         return .alterTable(table)
     }
     
-    mutating func visit(_ stmt: borrowing SelectStmt) -> CompiledStmt? {
+    mutating func visit(_ stmt: borrowing SelectStmtSyntax) -> CompiledStmt? {
         return .select(compile(select: stmt))
     }
     
-    mutating func visit(_ stmt: borrowing InsertStmt) -> CompiledStmt? {
+    mutating func visit(_ stmt: borrowing InsertStmtSyntax) -> CompiledStmt? {
         var queryCompiler = TypeInferrer(env: Environment(), schema: schema)
         let solution = queryCompiler.solution(for: stmt)
         diagnostics.add(contentsOf: solution.diagnostics)
@@ -162,11 +162,11 @@ extension Compiler: StmtVisitor {
         return .query(CompiledQuery(name: stmt.name.value, signature: signature))
     }
     
-    mutating func visit(_ stmt: borrowing EmptyStmt) -> CompiledStmt? {
+    mutating func visit(_ stmt: borrowing EmptyStmtSyntax) -> CompiledStmt? {
         return nil
     }
     
-    private func typeFor(column: borrowing ColumnDef) -> Type {
+    private func typeFor(column: borrowing ColumnDefSyntax) -> Type {
         // Technically you can have a NULL primary key but I don't
         // think people actually do that...
         let isNotNullable = column.constraints
@@ -179,7 +179,7 @@ extension Compiler: StmtVisitor {
         }
     }
     
-    private mutating func compile(select: borrowing SelectStmt) -> Signature {
+    private mutating func compile(select: borrowing SelectStmtSyntax) -> Signature {
         var queryCompiler = TypeInferrer(env: Environment(), schema: schema)
         let solution = queryCompiler.solution(for: select)
         diagnostics.add(contentsOf: solution.diagnostics)

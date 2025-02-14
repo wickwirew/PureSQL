@@ -1,4 +1,4 @@
--- CHECK: SELECT_STMT
+-- CHECK: SELECT_STMT_SYNTAX
 -- CHECK:   CTE_RECURSIVE false
 -- CHECK:   SELECTS
 -- CHECK:     VALUE
@@ -6,7 +6,7 @@
 -- CHECK:         SELECT
 -- CHECK:           DISTINCT false
 -- CHECK:           COLUMNS
--- CHECK:             RESULT_COLUMN
+-- CHECK:             RESULT_COLUMN_SYNTAX
 -- CHECK:               ALL
 -- CHECK:           FROM
 -- CHECK:             JOIN
