@@ -510,7 +510,7 @@ extension TypeInferrer: StmtVisitor {
         return (nil, [:])
     }
     
-    mutating func visit(_ stmt: borrowing QueryDefinition) -> (Type?, Substitution) {
+    mutating func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> (Type?, Substitution) {
         return stmt.statement.accept(visitor: &self)
     }
 }

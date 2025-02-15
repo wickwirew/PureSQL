@@ -1,4 +1,4 @@
--- CHECK: ORDER_SYNTAX asc
+-- CHECK: asc
 ASC
--- CHECK: ORDER_SYNTAX desc
+-- CHECK: desc
 DESC

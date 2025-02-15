@@ -131,33 +131,43 @@ enum Parsers {
         }
     }
     
+    /// Example: INSERT
+    /// Example: REPLACE
+    /// https://www.sqlite.org/lang_insert.html
     static func insertAction(
         state: inout ParserState
     ) -> InsertStmtSyntax.Action {
         let token = state.take()
         
+        let kind: InsertStmtSyntax.Action.Kind
         switch token.kind {
-        case .replace: return .replace
-        case .insert: return .insert(take(if: .or, state: &state, parse: or))
+        case .replace: kind = .replace
+        case .insert: kind = .insert(take(if: .or, state: &state, parse: or))
         default:
             state.diagnostics.add(.unexpectedToken(of: token.kind, at: token.range))
-            return .insert(nil)
+            kind = .insert(nil)
         }
+        
+        return InsertStmtSyntax.Action(kind: kind, range: token.range)
     }
     
+    /// Example: OR ABORT
+    /// https://www.sqlite.org/lang_insert.html
     static func or(state: inout ParserState) -> OrSyntax {
         state.consume(.or)
         let token = state.take()
+        let kind: OrSyntax.Kind
         switch token.kind {
-        case .abort: return .abort
-        case .fail: return .fail
-        case .ignore: return .ignore
-        case .replace: return .replace
-        case .rollback: return .rollback
+        case .abort: kind = .abort
+        case .fail: kind = .fail
+        case .ignore: kind = .ignore
+        case .replace: kind = .replace
+        case .rollback: kind = .rollback
         default:
             state.diagnostics.add(.unexpectedToken(of: token.kind, at: token.range))
-            return .ignore
+            kind = .ignore
         }
+        return OrSyntax(kind: kind, range: token.range)
     }
     
     /// https://www.sqlite.org/syntax/upsert-clause.html
@@ -534,13 +544,7 @@ enum Parsers {
     static func orderingTerm(state: inout ParserState) -> OrderingTermSyntax {
         let expr = expr(state: &state)
         
-        let order: OrderSyntax = if state.take(if: .asc) {
-            .asc
-        } else if state.take(if: .desc) {
-            .desc
-        } else {
-            .asc
-        }
+        let order = order(state: &state)
         
         let nulls: OrderingTermSyntax.Nulls?
         if state.take(if: .nulls) {
@@ -1424,7 +1428,7 @@ enum Parsers {
         let name = identifier(state: &state)
         state.skip(.as)
         let stmt = try stmt(state: &state)
-        return QueryDefinition(
+        return QueryDefinitionStmtSyntax(
             name: name,
             statement: stmt,
             range: define.range.lowerBound..<state.current.range.lowerBound
@@ -1587,12 +1591,16 @@ enum Parsers {
     }
     
     static func order(state: inout ParserState) -> OrderSyntax {
-        if state.take(if: .asc) {
-            return .asc
-        } else if state.take(if: .desc) {
-            return .desc
-        } else {
-            return .asc
+        switch state.current.kind {
+        case .asc:
+            let token = state.take()
+            return OrderSyntax(kind: .asc, range: token.range)
+        case .desc:
+            let token = state.take()
+            return OrderSyntax(kind: .desc, range: token.range)
+        default:
+            // TODO: MAke nil
+            return OrderSyntax(kind: .asc, range: .empty)
         }
     }
     

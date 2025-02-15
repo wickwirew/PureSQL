@@ -24,7 +24,7 @@ final class ParserTests: XCTestCase {
     }
     
     func testOrder() throws {
-        try check(sqlFile: "Order", parser: Parsers.order)
+        try check(sqlFile: "Order", parser: Parsers.order, dump: true)
     }
     
     func testColumnConstraint() throws {

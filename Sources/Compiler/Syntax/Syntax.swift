@@ -20,14 +20,25 @@ struct InsertStmtSyntax: Stmt, Syntax {
     let returningClause: ReturningClauseSyntax?
     let range: Range<Substring.Index>
 
-    struct Values {
+    struct Values: Syntax {
         let select: SelectStmtSyntax
         let upsertClause: UpsertClauseSyntax?
+        
+        var range: Range<Substring.Index> {
+            let lower = select.range.lowerBound
+            let upper = upsertClause?.range.upperBound ?? select.range.upperBound
+            return lower..<upper
+        }
     }
 
-    enum Action: Equatable, Encodable {
-        case replace
-        case insert(OrSyntax?)
+    struct Action: Syntax {
+        let kind: Kind
+        let range: Range<Substring.Index>
+        
+        enum Kind {
+            case replace
+            case insert(OrSyntax?)
+        }
     }
 
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtVisitor {
@@ -35,12 +46,21 @@ struct InsertStmtSyntax: Stmt, Syntax {
     }
 }
 
-enum OrSyntax: Equatable, Encodable {
-    case abort
-    case fail
-    case ignore
-    case replace
-    case rollback
+struct OrSyntax: Syntax, CustomStringConvertible {
+    let kind: Kind
+    let range: Range<Substring.Index>
+    
+    enum Kind: String {
+        case abort
+        case fail
+        case ignore
+        case replace
+        case rollback
+    }
+    
+    var description: String {
+        return kind.rawValue
+    }
 }
 
 struct ReturningClauseSyntax: Syntax {
@@ -69,13 +89,30 @@ struct UpsertClauseSyntax: Syntax {
     }
 }
 
-struct SetActionSyntax {
+struct SetActionSyntax: Syntax {
     let column: Column
     let expr: ExpressionSyntax
+    
+    var range: Range<Substring.Index> {
+        return column.range.lowerBound..<expr.range.upperBound
+    }
 
-    enum Column {
+    enum Column: Syntax {
         case single(IdentifierSyntax)
         case list([IdentifierSyntax])
+        
+        var range: Range<Substring.Index> {
+            switch self {
+            case .single(let i): return i.range
+            case .list(let l):
+                guard let lower = l.first?.range.lowerBound,
+                      let upper = l.last?.range.upperBound else {
+                    return .empty
+                }
+                
+                return lower..<upper
+            }
+        }
     }
 }
 

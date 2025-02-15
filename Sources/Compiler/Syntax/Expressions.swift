@@ -67,8 +67,7 @@ struct OperatorSyntax: CustomStringConvertible {
     }
 }
 
-protocol Expr {
-    var range: Range<String.Index> { get }
+protocol Expr: Syntax {
     func accept<V: ExprVisitor>(visitor: inout V) -> V.ExprOutput
 }
 

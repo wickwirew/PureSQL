@@ -14,11 +14,10 @@ protocol StmtVisitor {
     mutating func visit(_ stmt: borrowing EmptyStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: borrowing SelectStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: borrowing InsertStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: borrowing QueryDefinition) -> StmtOutput
+    mutating func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> StmtOutput
 }
 
-protocol Stmt {
-    var range: Range<String.Index> { get }
+protocol Stmt: Syntax {
     func accept<V: StmtVisitor>(visitor: inout V) -> V.StmtOutput
 }
 
@@ -60,6 +59,16 @@ struct AlterTableStmtSyntax: Stmt {
     }
 }
 
+struct QueryDefinitionStmtSyntax: Stmt {
+    let name: IdentifierSyntax
+    let statement: any Stmt
+    let range: Range<String.Index>
+    
+    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtVisitor {
+        return visitor.visit(self)
+    }
+}
+
 /// Just an empty `;` statement. Silly but useful in the parser.
 struct EmptyStmtSyntax: Equatable, Stmt {
     let range: Range<String.Index>
@@ -98,15 +107,18 @@ enum ConfictClauseSyntax {
     case none
 }
 
-struct PrimaryKeyConstraintSyntax {
-    let columns: [IdentifierSyntax]
-    let confictClause: ConfictClauseSyntax
-    let autoincrement: Bool
-}
-
-enum OrderSyntax {
-    case asc
-    case desc
+struct OrderSyntax: Syntax, CustomStringConvertible {
+    let kind: Kind
+    let range: Range<Substring.Index>
+    
+    enum Kind: String {
+        case asc
+        case desc
+    }
+    
+    var description: String {
+        return kind.rawValue
+    }
 }
 
 struct IndexedColumnSyntax {

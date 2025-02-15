@@ -59,7 +59,7 @@ func check(
 }
 
 func assertChecks(
-    _ checks: [String],
+    _ checks: [(line: Int, text: String)],
     equalTo input: String,
     file: StaticString = #filePath,
     line: UInt = #line
@@ -67,7 +67,6 @@ func assertChecks(
     var checks = checks.makeIterator()
     // The hop to String then split again is to allow multiline inputs
     var input = input.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.makeIterator()
-    var index = 0
     
     var check = checks.next()
     var checkPeek = checks.next()
@@ -89,7 +88,7 @@ func assertChecks(
             return
         }
         
-        let ignoreNotEqual = check == "..."
+        let ignoreNotEqual = check.text == "..."
         
         guard let input else {
             if !ignoreNotEqual {
@@ -99,10 +98,9 @@ func assertChecks(
         }
         
         if !ignoreNotEqual {
-            XCTAssertEqual(check, input, "Check #\(index + 1)", file: file, line: line)
-            index += 1
+            XCTAssertEqual(check.text, input, "Line #\(check.line + 1)", file: file, line: line)
             advanceChecks()
-        } else if input == checkPeek {
+        } else if input == checkPeek?.text {
             advanceChecks()
             advanceChecks()
         }
@@ -113,6 +111,7 @@ struct CheckParser {
     var characters: String.Iterator
     let prefix: String
     var current: Character?
+    var lineNumber = 0
     
     init(contents: String, prefix: String) {
         self.characters = contents.makeIterator()
@@ -120,8 +119,8 @@ struct CheckParser {
         self.current = prefix.first
     }
     
-    mutating func checks() -> [String] {
-        var checks: [String] = []
+    mutating func checks() -> [(line: Int, text: String)] {
+        var checks: [(line: Int, text: String)] = []
         
         while let current {
             if current.isWhitespace {
@@ -138,7 +137,7 @@ struct CheckParser {
             
             if word == prefix {
                 skipWhiteSpace()
-                checks.append(take(until: \.isNewline))
+                checks.append((lineNumber, take(until: \.isNewline)))
             }
         }
         
@@ -160,6 +159,10 @@ struct CheckParser {
     
     private mutating func skipWhiteSpace() {
         while let current, current.isWhitespace {
+            if current.isNewline {
+                lineNumber += 1
+            }
+            
             advance()
         }
     }
@@ -275,7 +278,7 @@ struct CheckEmitter {
              is UInt, is UInt8, is UInt16, is UInt32, is UInt64,
              is Float, is Double, is String, is Any.Type, is IdentifierSyntax,
              is LiteralExprSyntax, is TableOptionsSyntax, is TypeNameSyntax, is BindParameterSyntax,
-             is OperatorSyntax, is Type: true
+             is OperatorSyntax, is OrderSyntax, is Type: true
         case _ as Substring:
             true
         default: false
@@ -320,21 +323,5 @@ struct CheckEmitter {
         }
         
         return result
-    }
-}
-
-class TestIt: XCTestCase {
-    enum Foo {
-        case bar(meow: Int)
-        case baz
-    }
-
-    func testIt() {
-        var emitter = CheckEmitter()
-        emitter.emit(Foo.bar(meow: 123), indent: 0)
-        
-        for line in emitter.lines {
-            print(line)
-        }
     }
 }

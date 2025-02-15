@@ -155,7 +155,7 @@ extension Compiler: StmtVisitor {
         return .insert(solution.signature)
     }
     
-    mutating func visit(_ stmt: borrowing QueryDefinition) -> CompiledStmt? {
+    mutating func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> CompiledStmt? {
         // TODO: Should we throw an error? Is there a valid use case for anything
         // that is not a select, insert, delete or update?
         let signature = stmt.statement.accept(visitor: &self)?.signature ?? .empty

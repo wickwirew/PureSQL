@@ -1,7 +1,8 @@
 -- CHECK: INSERT_STMT_SYNTAX
 -- CHECK:   CTE_RECURSIVE false
 -- CHECK:   ACTION
--- CHECK:     INSERT
+-- CHECK:     KIND
+-- CHECK:       INSERT
 -- CHECK:   TABLE_NAME
 -- CHECK:     SCHEMA main
 -- CHECK:     NAME foo
@@ -23,7 +24,8 @@ INSERT INTO foo (bar, baz) VALUES (1, 'two');
 
 -- CHECK: INSERT_STMT_SYNTAX
 -- CHECK:   CTE_RECURSIVE false
--- CHECK:   ACTION replace
+-- CHECK:   ACTION
+-- CHECK:     KIND replace
 -- CHECK:   TABLE_NAME
 -- CHECK:     SCHEMA main
 -- CHECK:     NAME foo
@@ -79,7 +81,9 @@ REPLACE INTO foo (bar) SELECT baz FROM qux RETURNING bar;
 -- CHECK:                       NAME baz
 -- CHECK:   CTE_RECURSIVE true
 -- CHECK:   ACTION
--- CHECK:     INSERT replace
+-- CHECK:     KIND
+-- CHECK:       INSERT
+-- CHECK:         KIND replace
 -- CHECK:   TABLE_NAME
 -- CHECK:     SCHEMA main
 -- CHECK:     NAME user
