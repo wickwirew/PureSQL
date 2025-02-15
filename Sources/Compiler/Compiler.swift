@@ -5,79 +5,10 @@
 //  Created by Wes Wickwire on 11/1/24.
 //
 
-import OrderedCollections
-
-public struct CompiledTable {
-    public var name: Substring
-    public var columns: OrderedDictionary<Substring, Type>
-    
-    var type: Type {
-        return .row(.named(columns))
-    }
-}
-
-public struct CompiledQuery {
-    public var name: Substring
-    public var signature: Signature
-}
-
-public enum CompiledStmt {
-    case select(Signature)
-    case insert(Signature)
-    case update(Signature)
-    case delete(Signature)
-    case query(CompiledQuery)
-    case createTable(CompiledTable)
-    case alterTable(CompiledTable)
-    
-    var signature: Signature? {
-        return switch self {
-        case .select(let signature), .insert(let signature),
-                .update(let signature), .delete(let signature):
-            signature
-        default:
-            nil
-        }
-    }
-}
-
-public struct Signature: CustomReflectable {
-    public var parameters: [Int: Parameter]
-    public var output: Type?
-    
-    static var empty: Signature {
-        return Signature(parameters: [:])
-    }
-    
-    public var customMirror: Mirror {
-        let outputTypes: [String] = if case let .row(.named(columns)) = output {
-            columns.elements.map { "\($0) \($1)" }
-        } else {
-            []
-        }
-        
-        return Mirror(
-            self,
-            children: [
-                "parameters": parameters.values
-                    .map(\.self)
-                    .sorted(by: { $0.index < $1.index }),
-                "output": outputTypes,
-            ]
-        )
-    }
-}
-
-public struct Parameter {
-    public let type: Type
-    public let index: Int
-    public let name: Substring?
-}
-
 struct Compiler {
     private(set) var schema: Schema
     private(set) var diagnostics = Diagnostics()
-    private(set) var queries: [CompiledQuery] = []
+    private(set) var statements: [Statement] = []
     
     public init(
         schema: Schema = Schema(),
@@ -89,17 +20,7 @@ struct Compiler {
     
     mutating func compile(_ stmts: [Stmt]) {
         for stmt in stmts {
-            switch stmt.accept(visitor: &self) {
-            case .createTable(let table), .alterTable(let table):
-                schema[table.name] = table
-            case .select, .insert, .update, .delete:
-                // TODO: Throw error, these are queries without a name
-                break
-            case .query(let query):
-                queries.append(query)
-            case nil:
-                break
-            }
+            statements.append(stmt.accept(visitor: &self))
         }
     }
     
@@ -109,24 +30,31 @@ struct Compiler {
 }
 
 extension Compiler: StmtVisitor {
-    mutating func visit(_ stmt: borrowing CreateTableStmtSyntax) -> CompiledStmt? {
+    mutating func visit(_ stmt: CreateTableStmtSyntax) -> Statement {
         switch stmt.kind {
         case let .select(selectStmt):
             let signature = compile(select: selectStmt)
-            guard case let .row(.named(columns)) = signature.output else { return nil }
-            return .createTable(CompiledTable(name: stmt.name.value, columns: columns))
+            
+            guard case let .row(.named(columns)) = signature.output else {
+                assertionFailure("Create table did not have named columns")
+                return Statement(name: nil, signature: .empty, syntax: stmt)
+            }
+            
+            schema[stmt.name.value] = Table(name: stmt.name.value, columns: columns)
+            return Statement(name: nil, signature: signature, syntax: stmt)
         case let .columns(columns):
-            return .createTable(CompiledTable(
+            schema[stmt.name.value] = Table(
                 name: stmt.name.value,
                 columns: columns.reduce(into: [:]) { $0[$1.value.name.value] = typeFor(column: $1.value) }
-            ))
+            )
+            return Statement(name: nil, signature: .empty, syntax: stmt)
         }
     }
     
-    mutating func visit(_ stmt: borrowing AlterTableStmtSyntax) -> CompiledStmt? {
+    mutating func visit(_ stmt: AlterTableStmtSyntax) -> Statement {
         guard var table = schema[stmt.name.value] else {
             diagnostics.add(.init("Table '\(stmt.name)' does not exist", at: stmt.name.range))
-            return nil
+            return Statement(name: nil, signature: .empty, syntax: stmt)
         }
         
         switch stmt.kind {
@@ -141,29 +69,28 @@ extension Compiler: StmtVisitor {
             table.columns[column.value] = nil
         }
         
-        return .alterTable(table)
+        schema[stmt.name.value] = table
+        return Statement(name: nil, signature: .empty, syntax: stmt)
     }
     
-    mutating func visit(_ stmt: borrowing SelectStmtSyntax) -> CompiledStmt? {
-        return .select(compile(select: stmt))
+    mutating func visit(_ stmt: SelectStmtSyntax) -> Statement {
+        return Statement(name: nil, signature: compile(select: stmt), syntax: stmt)
     }
     
-    mutating func visit(_ stmt: borrowing InsertStmtSyntax) -> CompiledStmt? {
+    mutating func visit(_ stmt: InsertStmtSyntax) -> Statement {
         var queryCompiler = TypeInferrer(env: Environment(), schema: schema)
         let solution = queryCompiler.solution(for: stmt)
         diagnostics.add(contentsOf: solution.diagnostics)
-        return .insert(solution.signature)
+        return Statement(name: nil, signature: solution.signature, syntax: stmt)
     }
     
-    mutating func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> CompiledStmt? {
-        // TODO: Should we throw an error? Is there a valid use case for anything
-        // that is not a select, insert, delete or update?
-        let signature = stmt.statement.accept(visitor: &self)?.signature ?? .empty
-        return .query(CompiledQuery(name: stmt.name.value, signature: signature))
+    mutating func visit(_ stmt: QueryDefinitionStmtSyntax) -> Statement {
+        let inner = stmt.statement.accept(visitor: &self)
+        return Statement(name: stmt.name.value, signature: inner.signature, syntax: stmt)
     }
     
-    mutating func visit(_ stmt: borrowing EmptyStmtSyntax) -> CompiledStmt? {
-        return nil
+    mutating func visit(_ stmt: EmptyStmtSyntax) -> Statement {
+        return Statement(name: nil, signature: .empty, syntax: stmt)
     }
     
     private func typeFor(column: borrowing ColumnDefSyntax) -> Type {

@@ -7,10 +7,19 @@
 
 import OrderedCollections
 
-public typealias Schema = OrderedDictionary<Substring, CompiledTable>
+public typealias Schema = OrderedDictionary<Substring, Table>
 
 // TODO: An ordered dictionary may not be the best representation of the
 // TODO: columns. Since this is used even in selects, the user could
 // TODO: technically do `SELECT foo, foo FROM bar;` which have the same
 // TODO: name which the ordered dictionary wouldnt catch. Or just error?
 public typealias Columns = OrderedDictionary<Substring, Type>
+
+public struct Table {
+    public var name: Substring
+    public var columns: OrderedDictionary<Substring, Type>
+    
+    var type: Type {
+        return .row(.named(columns))
+    }
+}

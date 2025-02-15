@@ -37,7 +37,7 @@ func check(
             var compiler = Compiler()
             compiler.compile(contents)
             diagnostics = compiler.diagnostics.diagnostics
-            return compiler.queries
+            return compiler.statements
         },
         prefix: "CHECK",
         dump: dump,

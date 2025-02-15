@@ -583,7 +583,7 @@ extension TypeInferrer {
     
     private mutating func compile(
         returningClause: ReturningClauseSyntax,
-        sourceTable: CompiledTable
+        sourceTable: Table
     ) -> (Type, Substitution) {
         var resultColumns: Columns = [:]
         var sub: Substitution = [:]

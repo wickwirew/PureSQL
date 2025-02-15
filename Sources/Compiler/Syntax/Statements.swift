@@ -9,12 +9,12 @@ import OrderedCollections
 
 protocol StmtVisitor {
     associatedtype StmtOutput
-    mutating func visit(_ stmt: borrowing CreateTableStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: borrowing AlterTableStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: borrowing EmptyStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: borrowing SelectStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: borrowing InsertStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: CreateTableStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: AlterTableStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: EmptyStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: SelectStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: InsertStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: QueryDefinitionStmtSyntax) -> StmtOutput
 }
 
 protocol Stmt: Syntax {
