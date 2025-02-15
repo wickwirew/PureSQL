@@ -23,7 +23,7 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-syntax.git", from: "509.0.0"),
+        .package(url: "https://github.com/apple/swift-syntax.git", from: "600.0.1"),
         .package(url: "https://github.com/apple/swift-collections", from: "1.1.4"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0"),
     ],
@@ -42,7 +42,13 @@ let package = Package(
 
         // Library that exposes a macro as part of its API, which is used in client programs.
         .target(name: "Feather", dependencies: ["FeatherMacros", .product(name: "Collections", package: "swift-collections")]),
-        .target(name: "Compiler", dependencies: [.product(name: "OrderedCollections", package: "swift-collections")]),
+        .target(
+            name: "Compiler",
+            dependencies: [
+                .product(name: "OrderedCollections", package: "swift-collections"),
+                .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
+            ]
+        ),
 
         // A client of the library, which is able to use the macro in its own code.
         .executableTarget(name: "FeatherClient", dependencies: ["Feather"], resources: [.copy("example.db")]),

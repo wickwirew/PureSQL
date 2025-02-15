@@ -5,10 +5,12 @@
 //  Created by Wes Wickwire on 11/1/24.
 //
 
-struct Compiler {
-    private(set) var schema: Schema
-    private(set) var diagnostics = Diagnostics()
-    private(set) var statements: [Statement] = []
+import OrderedCollections
+
+public struct Compiler {
+    public private(set) var schema: Schema
+    public private(set) var diagnostics = Diagnostics()
+    public private(set) var statements: [Statement] = []
     
     public init(
         schema: Schema = Schema(),
@@ -18,19 +20,20 @@ struct Compiler {
         self.diagnostics = diagnostics
     }
     
-    mutating func compile(_ stmts: [StmtSyntax]) {
-        for stmt in stmts {
-            statements.append(stmt.accept(visitor: &self))
-        }
+    public mutating func compile(_ source: String) {
+        compile(Parsers.parse(source: source))
     }
     
-    mutating func compile(_ source: String) {
-        compile(Parsers.parse(source: source))
+    mutating func compile(_ stmts: [StmtSyntax]) {
+        for stmt in stmts {
+            guard let stmt = stmt.accept(visitor: &self) else { continue }
+            statements.append(stmt)
+        }
     }
 }
 
 extension Compiler: StmtSyntaxVisitor {
-    mutating func visit(_ stmt: CreateTableStmtSyntax) -> Statement {
+    mutating func visit(_ stmt: CreateTableStmtSyntax) -> Statement? {
         switch stmt.kind {
         case let .select(selectStmt):
             let signature = compile(select: selectStmt)
@@ -51,7 +54,7 @@ extension Compiler: StmtSyntaxVisitor {
         }
     }
     
-    mutating func visit(_ stmt: AlterTableStmtSyntax) -> Statement {
+    mutating func visit(_ stmt: AlterTableStmtSyntax) -> Statement? {
         guard var table = schema[stmt.name.value] else {
             diagnostics.add(.init("Table '\(stmt.name)' does not exist", at: stmt.name.range))
             return Statement(name: nil, signature: .empty, syntax: stmt)
@@ -73,24 +76,28 @@ extension Compiler: StmtSyntaxVisitor {
         return Statement(name: nil, signature: .empty, syntax: stmt)
     }
     
-    mutating func visit(_ stmt: SelectStmtSyntax) -> Statement {
+    mutating func visit(_ stmt: SelectStmtSyntax) -> Statement? {
         return Statement(name: nil, signature: compile(select: stmt), syntax: stmt)
     }
     
-    mutating func visit(_ stmt: InsertStmtSyntax) -> Statement {
+    mutating func visit(_ stmt: InsertStmtSyntax) -> Statement? {
         var queryCompiler = TypeInferrer(env: Environment(), schema: schema)
         let solution = queryCompiler.solution(for: stmt)
         diagnostics.add(contentsOf: solution.diagnostics)
         return Statement(name: nil, signature: solution.signature, syntax: stmt)
     }
     
-    mutating func visit(_ stmt: QueryDefinitionStmtSyntax) -> Statement {
-        let inner = stmt.statement.accept(visitor: &self)
+    mutating func visit(_ stmt: QueryDefinitionStmtSyntax) -> Statement? {
+        guard let inner = stmt.statement.accept(visitor: &self) else {
+            // TODO: Show Error? Really dont know if this can happen.
+            return nil
+        }
+        
         return Statement(name: stmt.name.value, signature: inner.signature, syntax: stmt)
     }
     
-    mutating func visit(_ stmt: EmptyStmtSyntax) -> Statement {
-        return Statement(name: nil, signature: .empty, syntax: stmt)
+    mutating func visit(_ stmt: EmptyStmtSyntax) -> Statement? {
+        return nil
     }
     
     private func typeFor(column: borrowing ColumnDefSyntax) -> Type {

@@ -1,0 +1,15 @@
+//
+//  String+Extensions.swift
+//  Feather
+//
+//  Created by Wes Wickwire on 2/15/25.
+//
+
+extension StringProtocol {
+    var capitalizedFirst: String {
+        guard !isEmpty else { return self.description }
+        let first = self[startIndex]
+        let rest = self[index(after: startIndex)..<endIndex]
+        return "\(first.uppercased())\(rest)"
+    }
+}
