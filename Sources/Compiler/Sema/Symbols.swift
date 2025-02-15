@@ -5,8 +5,8 @@
 //  Created by Wes Wickwire on 2/14/25.
 //
 
-struct Statement {
-    let name: Substring?
-    let signature: Signature
+public struct Statement {
+    public let name: Substring?
+    public let signature: Signature
     let syntax: any StmtSyntax
 }

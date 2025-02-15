@@ -21,6 +21,10 @@ public struct Signature: CustomReflectable {
         return Signature(parameters: [:])
     }
     
+    var isEmpty: Bool {
+        return parameters.isEmpty && output == nil
+    }
+    
     public var customMirror: Mirror {
         // Helps the CHECK statements in the tests since the `Type`
         // structure is fairly complex and has lots of nesting.
