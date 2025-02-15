@@ -9,7 +9,7 @@ protocol Syntax {
     var range: Range<Substring.Index> { get }
 }
 
-struct InsertStmtSyntax: Stmt, Syntax {
+struct InsertStmtSyntax: StmtSyntax, Syntax {
     let cte: CommonTableExpressionSyntax?
     let cteRecursive: Bool
     let action: Action
@@ -41,7 +41,7 @@ struct InsertStmtSyntax: Stmt, Syntax {
         }
     }
 
-    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtVisitor {
+    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
         visitor.visit(self)
     }
 }

@@ -8,5 +8,5 @@
 struct Statement {
     let name: Substring?
     let signature: Signature
-    let syntax: any Stmt
+    let syntax: any StmtSyntax
 }

@@ -18,7 +18,7 @@ struct Compiler {
         self.diagnostics = diagnostics
     }
     
-    mutating func compile(_ stmts: [Stmt]) {
+    mutating func compile(_ stmts: [StmtSyntax]) {
         for stmt in stmts {
             statements.append(stmt.accept(visitor: &self))
         }
@@ -29,7 +29,7 @@ struct Compiler {
     }
 }
 
-extension Compiler: StmtVisitor {
+extension Compiler: StmtSyntaxVisitor {
     mutating func visit(_ stmt: CreateTableStmtSyntax) -> Statement {
         switch stmt.kind {
         case let .select(selectStmt):

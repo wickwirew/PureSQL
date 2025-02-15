@@ -67,12 +67,12 @@ struct TypeInferrer {
         self.diagnostics = diagnostics
     }
     
-    mutating func check<E: Expr>(_ expr: E) -> Solution {
+    mutating func check<E: ExprSyntax>(_ expr: E) -> Solution {
         let (ty, sub, names) = expr.accept(visitor: &self)
         return finalize(ty: ty, sub: sub, names: names)
     }
     
-    mutating func solution<S: Stmt>(for stmt: S) -> Solution {
+    mutating func solution<S: StmtSyntax>(for stmt: S) -> Solution {
         let (ty, sub) = stmt.accept(visitor: &self)
         return finalize(ty: ty, sub: sub, names: .none)
     }
@@ -260,7 +260,7 @@ struct TypeInferrer {
     }
 }
 
-extension TypeInferrer: ExprVisitor {
+extension TypeInferrer: ExprSyntaxVisitor {
     mutating func visit(_ expr: borrowing LiteralExprSyntax) -> (Type, Substitution, Names) {
         switch expr.kind {
         case let .numeric(_, isInt):
@@ -489,7 +489,7 @@ extension TypeInferrer: ExprVisitor {
     }
 }
 
-extension TypeInferrer: StmtVisitor {
+extension TypeInferrer: StmtSyntaxVisitor {
     mutating func visit(_ stmt: borrowing CreateTableStmtSyntax) -> (Type?, Substitution) {
         fatalError()
     }

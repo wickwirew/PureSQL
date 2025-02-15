@@ -5,9 +5,11 @@
 //  Created by Wes Wickwire on 10/11/24.
 //
 
-import Foundation
+protocol ExprSyntax: Syntax {
+    func accept<V: ExprSyntaxVisitor>(visitor: inout V) -> V.ExprOutput
+}
 
-protocol ExprVisitor {
+protocol ExprSyntaxVisitor {
     associatedtype ExprOutput
     
     mutating func visit(_ expr: borrowing LiteralExprSyntax) -> ExprOutput
@@ -25,7 +27,7 @@ protocol ExprVisitor {
     mutating func visit(_ expr: borrowing InvalidExprSyntax) -> ExprOutput
 }
 
-extension ExprVisitor {
+extension ExprSyntaxVisitor {
     mutating func visit(_ expr: ExpressionSyntax) -> ExprOutput {
         switch expr {
         case let .literal(expr):
@@ -67,11 +69,7 @@ struct OperatorSyntax: CustomStringConvertible {
     }
 }
 
-protocol Expr: Syntax {
-    func accept<V: ExprVisitor>(visitor: inout V) -> V.ExprOutput
-}
-
-struct LiteralExprSyntax: Expr {
+struct LiteralExprSyntax: ExprSyntax {
     let kind: Kind
     let range: Range<String.Index>
     
@@ -88,7 +86,7 @@ struct LiteralExprSyntax: Expr {
         case invalid
     }
     
-    func accept<V>(visitor: inout V) -> V.ExprOutput where V : ExprVisitor {
+    func accept<V>(visitor: inout V) -> V.ExprOutput where V : ExprSyntaxVisitor {
         return visitor.visit(self)
     }
 }
@@ -120,7 +118,7 @@ extension LiteralExprSyntax: CustomStringConvertible {
     }
 }
 
-indirect enum ExpressionSyntax: Expr {
+indirect enum ExpressionSyntax: ExprSyntax {
     case literal(LiteralExprSyntax)
     case bindParameter(BindParameterSyntax)
     case column(ColumnExprSyntax)
@@ -166,7 +164,7 @@ indirect enum ExpressionSyntax: Expr {
         return nil
     }
     
-    func accept<V>(visitor: inout V) -> V.ExprOutput where V : ExprVisitor {
+    func accept<V>(visitor: inout V) -> V.ExprOutput where V : ExprSyntaxVisitor {
         return visitor.visit(self)
     }
 }
@@ -204,7 +202,7 @@ extension ExpressionSyntax: CustomStringConvertible {
     }
 }
 
-struct GroupedExprSyntax: Expr, CustomStringConvertible {
+struct GroupedExprSyntax: ExprSyntax, CustomStringConvertible {
     let exprs: [ExpressionSyntax]
     let range: Range<String.Index>
     
@@ -212,12 +210,12 @@ struct GroupedExprSyntax: Expr, CustomStringConvertible {
         return "(\(exprs.map(\.description).joined(separator: ", ")))"
     }
     
-    func accept<V>(visitor: inout V) -> V.ExprOutput where V : ExprVisitor {
+    func accept<V>(visitor: inout V) -> V.ExprOutput where V : ExprSyntaxVisitor {
         return visitor.visit(self)
     }
 }
 
-struct PrefixExprSyntax: Expr, CustomStringConvertible {
+struct PrefixExprSyntax: ExprSyntax, CustomStringConvertible {
     let `operator`: OperatorSyntax
     let rhs: ExpressionSyntax
     
@@ -229,12 +227,12 @@ struct PrefixExprSyntax: Expr, CustomStringConvertible {
         return `operator`.range.lowerBound..<rhs.range.upperBound
     }
     
-    func accept<V: ExprVisitor>(visitor: inout V) -> V.ExprOutput {
+    func accept<V: ExprSyntaxVisitor>(visitor: inout V) -> V.ExprOutput {
         return visitor.visit(self)
     }
 }
 
-struct PostfixExprSyntax: Expr, CustomStringConvertible {
+struct PostfixExprSyntax: ExprSyntax, CustomStringConvertible {
     let lhs: ExpressionSyntax
     let `operator`: OperatorSyntax
     
@@ -246,12 +244,12 @@ struct PostfixExprSyntax: Expr, CustomStringConvertible {
         return lhs.range.lowerBound..<`operator`.range.upperBound
     }
     
-    func accept<V: ExprVisitor>(visitor: inout V) -> V.ExprOutput {
+    func accept<V: ExprSyntaxVisitor>(visitor: inout V) -> V.ExprOutput {
         return visitor.visit(self)
     }
 }
 
-struct InfixExprSyntax: Expr, CustomStringConvertible {
+struct InfixExprSyntax: ExprSyntax, CustomStringConvertible {
     let lhs: ExpressionSyntax
     let `operator`: OperatorSyntax
     let rhs: ExpressionSyntax
@@ -264,12 +262,12 @@ struct InfixExprSyntax: Expr, CustomStringConvertible {
         return "(\(lhs) \(`operator`) \(rhs))"
     }
     
-    func accept<V: ExprVisitor>(visitor: inout V) -> V.ExprOutput {
+    func accept<V: ExprSyntaxVisitor>(visitor: inout V) -> V.ExprOutput {
         return visitor.visit(self)
     }
 }
 
-struct BetweenExprSyntax: Expr, CustomStringConvertible {
+struct BetweenExprSyntax: ExprSyntax, CustomStringConvertible {
     let not: Bool
     let value: ExpressionSyntax
     let lower: ExpressionSyntax
@@ -283,12 +281,12 @@ struct BetweenExprSyntax: Expr, CustomStringConvertible {
         return "(\(value)\(not ? " NOT" : "") BETWEEN \(lower) AND \(upper))"
     }
     
-    func accept<V: ExprVisitor>(visitor: inout V) -> V.ExprOutput {
+    func accept<V: ExprSyntaxVisitor>(visitor: inout V) -> V.ExprOutput {
         return visitor.visit(self)
     }
 }
 
-struct FunctionExprSyntax: Expr, CustomStringConvertible {
+struct FunctionExprSyntax: ExprSyntax, CustomStringConvertible {
     let table: IdentifierSyntax?
     let name: IdentifierSyntax
     let args: [ExpressionSyntax]
@@ -298,12 +296,12 @@ struct FunctionExprSyntax: Expr, CustomStringConvertible {
         return "\(table.map { "\($0)." } ?? "")\(name)(\(args.map(\.description).joined(separator: ", ")))"
     }
     
-    func accept<V: ExprVisitor>(visitor: inout V) -> V.ExprOutput {
+    func accept<V: ExprSyntaxVisitor>(visitor: inout V) -> V.ExprOutput {
         return visitor.visit(self)
     }
 }
 
-struct CastExprSyntax: Expr, CustomStringConvertible {
+struct CastExprSyntax: ExprSyntax, CustomStringConvertible {
     let expr: ExpressionSyntax
     let ty: TypeNameSyntax
     let range: Range<String.Index>
@@ -312,12 +310,12 @@ struct CastExprSyntax: Expr, CustomStringConvertible {
         return "CAST(\(expr) AS \(ty))"
     }
     
-    func accept<V: ExprVisitor>(visitor: inout V) -> V.ExprOutput {
+    func accept<V: ExprSyntaxVisitor>(visitor: inout V) -> V.ExprOutput {
         return visitor.visit(self)
     }
 }
 
-struct BindParameterSyntax: Expr, Hashable, CustomStringConvertible {
+struct BindParameterSyntax: ExprSyntax, Hashable, CustomStringConvertible {
     let kind: Kind
     let index: Index
     let range: Range<String.Index>
@@ -336,7 +334,7 @@ struct BindParameterSyntax: Expr, Hashable, CustomStringConvertible {
         }
     }
     
-    func accept<V: ExprVisitor>(visitor: inout V) -> V.ExprOutput {
+    func accept<V: ExprSyntaxVisitor>(visitor: inout V) -> V.ExprOutput {
         return visitor.visit(self)
     }
 }
@@ -594,7 +592,7 @@ extension Operator: CustomStringConvertible {
     }
 }
 
-struct ColumnExprSyntax: Expr, CustomStringConvertible {
+struct ColumnExprSyntax: ExprSyntax, CustomStringConvertible {
     let schema: IdentifierSyntax?
     let table: IdentifierSyntax?
     let column: IdentifierSyntax // TODO: Support *
@@ -610,12 +608,12 @@ struct ColumnExprSyntax: Expr, CustomStringConvertible {
         return first.range.lowerBound..<column.range.upperBound
     }
     
-    func accept<V: ExprVisitor>(visitor: inout V) -> V.ExprOutput {
+    func accept<V: ExprSyntaxVisitor>(visitor: inout V) -> V.ExprOutput {
         return visitor.visit(self)
     }
 }
 
-struct CaseWhenThenExprSyntax: Expr {
+struct CaseWhenThenExprSyntax: ExprSyntax {
     let `case`: ExpressionSyntax?
     let whenThen: [WhenThen]
     let `else`: ExpressionSyntax?
@@ -626,7 +624,7 @@ struct CaseWhenThenExprSyntax: Expr {
         let then: ExpressionSyntax
     }
     
-    func accept<V: ExprVisitor>(visitor: inout V) -> V.ExprOutput {
+    func accept<V: ExprSyntaxVisitor>(visitor: inout V) -> V.ExprOutput {
         return visitor.visit(self)
     }
 }
@@ -648,23 +646,23 @@ extension CaseWhenThenExprSyntax: CustomStringConvertible {
     }
 }
 
-struct SelectExprSyntax: Expr {
+struct SelectExprSyntax: ExprSyntax {
     let select: SelectStmtSyntax
     let range: Range<String.Index>
     
-    func accept<V>(visitor: inout V) -> V.ExprOutput where V : ExprVisitor {
+    func accept<V>(visitor: inout V) -> V.ExprOutput where V : ExprSyntaxVisitor {
         return visitor.visit(self)
     }
 }
 
-struct InvalidExprSyntax: Expr, CustomStringConvertible {
+struct InvalidExprSyntax: ExprSyntax, CustomStringConvertible {
     let range: Range<String.Index>
     
     var description: String {
         return "<<invalid>>"
     }
     
-    func accept<V>(visitor: inout V) -> V.ExprOutput where V : ExprVisitor {
+    func accept<V>(visitor: inout V) -> V.ExprOutput where V : ExprSyntaxVisitor {
         return visitor.visit(self)
     }
 }

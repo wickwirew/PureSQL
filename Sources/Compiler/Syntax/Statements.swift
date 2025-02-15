@@ -7,7 +7,11 @@
 
 import OrderedCollections
 
-protocol StmtVisitor {
+protocol StmtSyntax: Syntax {
+    func accept<V: StmtSyntaxVisitor>(visitor: inout V) -> V.StmtOutput
+}
+
+protocol StmtSyntaxVisitor {
     associatedtype StmtOutput
     mutating func visit(_ stmt: CreateTableStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: AlterTableStmtSyntax) -> StmtOutput
@@ -17,11 +21,7 @@ protocol StmtVisitor {
     mutating func visit(_ stmt: QueryDefinitionStmtSyntax) -> StmtOutput
 }
 
-protocol Stmt: Syntax {
-    func accept<V: StmtVisitor>(visitor: inout V) -> V.StmtOutput
-}
-
-struct CreateTableStmtSyntax: Stmt {
+struct CreateTableStmtSyntax: StmtSyntax {
     let name: IdentifierSyntax
     let schemaName: IdentifierSyntax?
     let isTemporary: Bool
@@ -36,12 +36,12 @@ struct CreateTableStmtSyntax: Stmt {
         case columns(OrderedDictionary<IdentifierSyntax, ColumnDefSyntax>)
     }
 
-    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtVisitor {
+    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
         visitor.visit(self)
     }
 }
 
-struct AlterTableStmtSyntax: Stmt {
+struct AlterTableStmtSyntax: StmtSyntax {
     let name: IdentifierSyntax
     let schemaName: IdentifierSyntax?
     let kind: Kind
@@ -54,26 +54,26 @@ struct AlterTableStmtSyntax: Stmt {
         case dropColumn(IdentifierSyntax)
     }
 
-    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtVisitor {
+    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
         visitor.visit(self)
     }
 }
 
-struct QueryDefinitionStmtSyntax: Stmt {
+struct QueryDefinitionStmtSyntax: StmtSyntax {
     let name: IdentifierSyntax
-    let statement: any Stmt
+    let statement: any StmtSyntax
     let range: Range<String.Index>
     
-    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtVisitor {
+    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
         return visitor.visit(self)
     }
 }
 
 /// Just an empty `;` statement. Silly but useful in the parser.
-struct EmptyStmtSyntax: Equatable, Stmt {
+struct EmptyStmtSyntax: Equatable, StmtSyntax {
     let range: Range<String.Index>
     
-    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtVisitor {
+    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
         visitor.visit(self)
     }
 }
@@ -209,7 +209,7 @@ enum SelectCoreSyntax {
     }
 }
 
-struct SelectStmtSyntax: Stmt {
+struct SelectStmtSyntax: StmtSyntax {
     let cte: Indirect<CommonTableExpressionSyntax>?
     let cteRecursive: Bool
     let selects: Indirect<Selects>
@@ -227,7 +227,7 @@ struct SelectStmtSyntax: Stmt {
         let offset: ExpressionSyntax?
     }
 
-    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtVisitor {
+    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
         visitor.visit(self)
     }
 }

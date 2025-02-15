@@ -17,13 +17,13 @@ enum Parsers {
         return (stmts, state.diagnostics)
     }
     
-    static func parse(source: String) -> [any Stmt] {
+    static func parse(source: String) -> [any StmtSyntax] {
         var state = ParserState(Lexer(source: source))
         return stmts(state: &state)
     }
     
-    static func stmts(state: inout ParserState) -> [any Stmt] {
-        var stmts: [any Stmt] = []
+    static func stmts(state: inout ParserState) -> [any StmtSyntax] {
+        var stmts: [any StmtSyntax] = []
         
         repeat {
             do {
@@ -37,7 +37,7 @@ enum Parsers {
         return stmts
     }
     
-    static func stmt(state: inout ParserState) throws -> any Stmt {
+    static func stmt(state: inout ParserState) throws -> any StmtSyntax {
         switch (state.current.kind, state.peek.kind) {
         case (.create, .table):
             return createTableStmt(state: &state)
@@ -1422,7 +1422,7 @@ enum Parsers {
         }
     }
     
-    static func definition(state: inout ParserState) throws -> Stmt {
+    static func definition(state: inout ParserState) throws -> StmtSyntax {
         let define = state.take(.define)
         state.skip(.query)
         let name = identifier(state: &state)
