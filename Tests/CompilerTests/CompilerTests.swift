@@ -28,12 +28,10 @@ class CompilerTests: XCTestCase {
             parse: { contents in
                 var compiler = Compiler()
                 compiler.compile(contents)
-                var inferrer = IsSingleResultInferrer(schema: compiler.schema)
                 return compiler.statements
                     .filter{ !($0.syntax is CreateTableStmtSyntax) }
-                    .map { inferrer.infer($0).signature.outputIsSingleElement ? "SINGLE" : "MANY" }
-            },
-            dump: true
+                    .map { $0.signature.outputIsSingleElement ? "SINGLE" : "MANY" }
+            }
         )
     }
 }

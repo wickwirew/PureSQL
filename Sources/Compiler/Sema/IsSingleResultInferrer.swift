@@ -19,6 +19,14 @@ struct IsSingleResultInferrer {
             syntax: statement.syntax
         )
     }
+    
+    mutating func infer<S: StmtSyntax>(
+        _ signature: consuming Signature,
+        syntax: borrowing S
+    ) -> Signature {
+        guard syntax.accept(visitor: &self) else { return signature }
+        return signature.withSingleOutput()
+    }
 }
 
 /// Returns `true` if the query/statement will only return one value.

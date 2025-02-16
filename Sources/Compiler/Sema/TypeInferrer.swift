@@ -65,24 +65,39 @@ struct TypeInferrer {
         self.diagnostics = diagnostics
     }
     
-    mutating func check<E: ExprSyntax>(_ expr: E) -> Solution {
+    /// Calculates the solution for a single expression.
+    mutating func solution<E: ExprSyntax>(for expr: E) -> Solution {
         let (ty, sub, names) = expr.accept(visitor: &self)
-        return finalize(ty: ty, sub: sub, names: names)
+        let signature = signature(ty: ty, sub: sub)
+        return solution(signature: signature, names: names)
     }
     
+    /// Calculates the solution of an entire statement.
     mutating func solution<S: StmtSyntax>(for stmt: S) -> Solution {
         let (ty, sub) = stmt.accept(visitor: &self)
-        return finalize(ty: ty, sub: sub, names: .none)
+        let signature = signature(ty: ty, sub: sub)
+        
+        // Since its a statement we need to also infer whether or not
+        // the exepected result count is a single or many rows
+        var singleOuputInferer = IsSingleResultInferrer(schema: schema)
+        return solution(signature: singleOuputInferer.infer(signature, syntax: stmt), names: .none)
     }
     
-    private mutating func finalize(
-        ty: Type?,
-        sub: Substitution,
+    private mutating func solution(
+        signature: Signature,
         names: Names
     ) -> Solution {
+        return Solution(
+            diagnostics: diagnostics,
+            signature: signature,
+            lastName: names.proposedName
+        )
+    }
+    
+    private mutating func signature(ty: Type?, sub: Substitution) -> Signature {
         let constraints = finalizeConstraints(with: sub)
         
-        let signature = Signature(
+        return Signature(
             parameters: parameterTypes.reduce(into: [:]) { params, value in
                 params[value.key] = Parameter(
                     type: finalType(
@@ -101,14 +116,8 @@ struct TypeInferrer {
                     constraints: constraints
                 )
             },
-            // Will be inferred later in another pass
+            // Will be inferred later in another pass if its a statement.
             outputIsSingleElement: false
-        )
-        
-        return Solution(
-            diagnostics: diagnostics,
-            signature: signature,
-            lastName: names.proposedName
         )
     }
     
