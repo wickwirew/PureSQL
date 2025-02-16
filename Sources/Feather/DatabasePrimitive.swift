@@ -9,9 +9,16 @@ import SQLite3
 
 @usableFromInline let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
 
-public protocol DatabasePrimitive {
+public protocol DatabasePrimitive: RowDecodable {
     init(from cursor: OpaquePointer, at index: Int32) throws(FeatherError)
     func bind(to statement: OpaquePointer, at index: Int32) throws(FeatherError)
+}
+
+extension DatabasePrimitive {
+    public init(cursor: borrowing Cursor) throws(FeatherError) {
+        var columns = cursor.indexedColumns()
+        self = try columns.next()
+    }
 }
 
 extension String: DatabasePrimitive {

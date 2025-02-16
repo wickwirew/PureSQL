@@ -9,7 +9,10 @@ import Collections
 import SQLite3
 import Foundation
 
-public struct Transaction: ~Copyable {
+/// This cannot be a struct that suppresses `Copyable`
+/// unfortunately. Associated types cannot suppress
+/// it which breaks the `Query` API. Maybe a future thing.
+public final class Transaction {
     let connection: Connection
     let kind: Kind
     let signal: Signal?
@@ -48,6 +51,10 @@ public struct Transaction: ~Copyable {
     }
     
     public consuming func commit() async throws(FeatherError) {
+        guard !didCommit else {
+            throw .alreadyCommited
+        }
+        
         didCommit = true
         try connection.execute(sql: "COMMIT;")
         pool.reclaim(connection: connection, signal: signal)
@@ -67,10 +74,8 @@ public struct Transaction: ~Copyable {
 }
 
 /// Holds a raw SQLite database connection.
-///
-/// Rather unfortunate we have to do `@unchecked Sendable` and class.
-/// `class` is required since it cannot be `~Copyable` and be used
-/// in an `AsyncStream`.
+/// `@unchecked Sendable` Thread safety is managed by
+/// the `ConnectionPool`
 class Connection: @unchecked Sendable {
     let raw: OpaquePointer
     
@@ -133,14 +138,27 @@ public actor ConnectionPool: Sendable {
     private let connectionStream: AsyncStream<Connection>
     private let connectionContinuation: AsyncStream<Connection>.Continuation
     
+    public static let defaultLimit = 5
+    
     public enum Begin {
         case read
         case write
     }
     
     public init(
+        name: String,
+        limit: Int = ConnectionPool.defaultLimit
+    ) throws {
+        let url = try FileManager.default
+            .url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+            .appendingPathComponent("\(name).sqlite")
+        
+        try self.init(path: url.absoluteString, limit: limit)
+    }
+    
+    public init(
         path: String,
-        limit: Int = 5
+        limit: Int = ConnectionPool.defaultLimit
     ) throws(FeatherError) {
         guard limit > 0 else {
             throw .poolCannotHaveZeroConnections
@@ -152,10 +170,12 @@ public actor ConnectionPool: Sendable {
         self.connectionContinuation = connectionContinuation
         self.connectionStream = connectionStream
         
-        // Turn on WAL mode
-        let connection = try Connection(path: path)
-        try connection.execute(sql: "PRAGMA journal_mode=WAL;")
-        connectionContinuation.yield(connection)
+        if limit > 1 {
+            // Turn on WAL mode
+            let connection = try Connection(path: path)
+            try connection.execute(sql: "PRAGMA journal_mode=WAL;")
+            connectionContinuation.yield(connection)
+        }
     }
     
     /// Gives the connection back to the pool.
@@ -229,10 +249,18 @@ public enum FeatherError: Error {
     case txNoLongerValid
     case failedToGetConnection
     case poolCannotHaveZeroConnections
+    case alreadyCommited
 }
 
 public protocol RowDecodable {
     init(cursor: borrowing Cursor) throws(FeatherError)
+}
+
+extension Optional: RowDecodable where Wrapped: DatabasePrimitive {
+    public init(cursor: borrowing Cursor) throws(FeatherError) {
+        var columns = cursor.indexedColumns()
+        self = try columns.next()
+    }
 }
 
 public struct Statement: ~Copyable {

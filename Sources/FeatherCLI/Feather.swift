@@ -12,6 +12,7 @@ import SwiftSyntax
 
 enum CLIError: Error {
     case fileIsNotValidUTF8(path: String)
+    case migrationFileNameMustBeNumber(String)
 }
 
 @main
@@ -27,27 +28,44 @@ struct Feather: ParsableCommand {
         let migrations = "\(path)/Migrations"
         let queries = "\(path)/Queries"
         
+        var migrationsGenerator = SwiftMigrationsGenerator()
+        
         var schema = Schema()
 
-        try forEachFile(in: migrations) { file, _ in
+        try forEachFile(in: migrations) { file, fileName in
             var compiler = Compiler(schema: schema)
             compiler.compile(file)
             schema = compiler.schema
+            
+            let numberStr = fileName.split(separator: ".")[0]
+            guard let number = Int(numberStr) else {
+                throw CLIError.migrationFileNameMustBeNumber(fileName)
+            }
+            
+            migrationsGenerator.addMigration(number: number, sql: file)
         }
         
         let outputFiles = try forEachFile(in: queries) { file, fileName in
             var compiler = Compiler(schema: schema)
             compiler.compile(file)
             
-            var codeGen = CodeGen(schema: schema, statements: compiler.statements, source: file)
+            var codeGen = SwiftQueriesGenerator(schema: schema, statements: compiler.statements, source: file)
             return try (codeGen.gen().formatted(), fileName)
         }
         
         if let output {
             // Create the directory if it does not exist
             if !FileManager.default.fileExists(atPath: output) {
-                try FileManager.default.createDirectory(atPath: output, withIntermediateDirectories: true)
+                try FileManager.default.createDirectory(
+                    atPath: output,
+                    withIntermediateDirectories: true
+                )
             }
+            
+            try migrationsGenerator.generate()
+                .formatted()
+                .description
+                .write(toFile: "\(output)/Migrations.swift", atomically: true, encoding: .utf8)
             
             for (file, fileName) in outputFiles {
                 let swiftFileName = "\(fileName.split(separator: ".")[0]).swift"
@@ -55,6 +73,8 @@ struct Feather: ParsableCommand {
             }
         } else {
             // No output directory, just print to stdout
+            try print(migrationsGenerator.generate().formatted())
+            
             for (file, _) in outputFiles {
                 print(file)
             }

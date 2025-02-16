@@ -18,13 +18,13 @@ public protocol Query<Input, Output, Context> {
 }
 
 public extension Query where Input == () {
-    func execute(in context: Context) async throws -> Output {
+    func execute(in context: Context) throws -> Output {
         try self.execute(with: (), in: context)
     }
 }
 
 public extension Query where Context == () {
-    func execute(with input: Input) async throws -> Output {
+    func execute(with input: Input) throws -> Output {
         try self.execute(with: input, in: ())
     }
 }
@@ -65,7 +65,7 @@ public enum Queries {
 
 public protocol DatabaseQuery<Input, Output>: Query {
     func statement(
-        in transaction: borrowing Transaction,
+        in transaction: Transaction,
         with input: Input
     ) throws(FeatherError) -> Statement
 }
@@ -73,7 +73,7 @@ public protocol DatabaseQuery<Input, Output>: Query {
 public extension DatabaseQuery where Output: RangeReplaceableCollection, Output.Element: RowDecodable {
     func execute(
         with input: Input,
-        in context: borrowing Transaction
+        in context: Transaction
     ) throws -> Output {
         let statement = try statement(in: context, with: input)
         var cursor = Cursor(of: statement)
@@ -90,7 +90,7 @@ public extension DatabaseQuery where Output: RangeReplaceableCollection, Output.
 public extension DatabaseQuery where Output: RowDecodable {
     func execute(
         with input: Input,
-        in context: borrowing Transaction
+        in context: Transaction
     ) throws -> Output {
         let statement = try statement(in: context, with: input)
         var cursor = Cursor(of: statement)
@@ -106,7 +106,7 @@ public extension DatabaseQuery where Output: RowDecodable {
 public extension DatabaseQuery where Output == Void {
     func execute(
         with input: Input,
-        in context: borrowing Transaction
+        in context: Transaction
     ) throws {
         let statement = try statement(in: context, with: input)
         var cursor = Cursor(of: statement)

@@ -1,5 +1,5 @@
 //
-//  CodeGen.swift
+//  SwiftQueriesGenerator.swift
 //  Feather
 //
 //  Created by Wes Wickwire on 2/15/25.
@@ -9,7 +9,7 @@ import Foundation
 import SwiftSyntax
 import SwiftSyntaxBuilder
 
-public struct CodeGen {
+public struct SwiftQueriesGenerator {
     public let schema: Schema
     public let statements: [Statement]
     public let source: String
