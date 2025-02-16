@@ -8,17 +8,13 @@ let package = Package(
     name: "Feather",
     platforms: [.macOS(.v10_15), .iOS(.v13), .tvOS(.v13), .watchOS(.v6), .macCatalyst(.v13)],
     products: [
-        // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
             name: "Feather",
             targets: ["Feather"]
         ),
+        
         .executable(
-            name: "FeatherClient",
-            targets: ["FeatherClient"]
-        ),
-        .executable(
-            name: "feather",
+            name: "FeatherCLI",
             targets: ["FeatherCLI"]
         ),
     ],
@@ -28,9 +24,6 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0"),
     ],
     targets: [
-        // Targets are the basic building blocks of a package, defining a module or a test suite.
-        // Targets can depend on other targets in this package and products from dependencies.
-        // Macro implementation that performs the source transformation of a macro.
         .macro(
             name: "FeatherMacros",
             dependencies: [
@@ -40,19 +33,23 @@ let package = Package(
             ]
         ),
 
-        // Library that exposes a macro as part of its API, which is used in client programs.
-        .target(name: "Feather", dependencies: ["FeatherMacros", .product(name: "Collections", package: "swift-collections")]),
+        .target(
+            name: "Feather",
+            dependencies: [
+                "FeatherMacros",
+                .product(name: "Collections", package: "swift-collections")
+            ]
+        ),
+        
         .target(
             name: "Compiler",
             dependencies: [
                 .product(name: "OrderedCollections", package: "swift-collections"),
+                .product(name: "SwiftSyntax", package: "swift-syntax"),
                 .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
             ]
         ),
 
-        // A client of the library, which is able to use the macro in its own code.
-        .executableTarget(name: "FeatherClient", dependencies: ["Feather"], resources: [.copy("example.db")]),
-        
         .executableTarget(
             name: "FeatherCLI",
             dependencies: [
@@ -61,12 +58,9 @@ let package = Package(
             ]
         ),
         
-        // A test target used to develop the macro implementation.
         .testTarget(
             name: "FeatherTests",
-            dependencies: [
-                "Feather",
-            ]
+            dependencies: ["Feather"]
         ),
 
         .testTarget(

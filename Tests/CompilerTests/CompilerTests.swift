@@ -11,7 +11,7 @@ import XCTest
 
 class CompilerTests: XCTestCase {
     func testCheckSimpleSelects() throws {
-        try check(compile: "SimpleSelects", dump: true)
+        try check(compile: "SimpleSelects")
     }
 
     func testSelectWithJoins() throws {

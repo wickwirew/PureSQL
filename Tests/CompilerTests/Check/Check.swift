@@ -195,6 +195,8 @@ struct CheckEmitter {
         typeAsBackupKey: Bool = false,
         indent: Int
     ) {
+        // This is a mess but it beats writing the equality checks by hand. 
+        
         // Skip optionals
         if let opt = value as? CheckOptional {
             guard let inner = opt.innerValue else { return }
@@ -304,7 +306,7 @@ struct CheckEmitter {
     
     private mutating func write(key: String, indent: Int) {
         guard key.first != "." else { return }
-        let key = uppersnakeCase(key)
+        let key = uppersnakeCase(key).split(separator: "<")[0]
         let indent = String(repeating: " ", count: indent * 2)
         lines.append("\(indent)\(key)")
     }
