@@ -55,8 +55,6 @@ struct TypeInferrer {
     /// Any result will be added here
     private var parameterNames: [BindParameterSyntax.Index: Substring] = [:]
     
-    private static let missingNameDefault: Substring = "__name_required__"
-    
     init(
         env: Environment = Environment(),
         schema: Schema,
@@ -728,10 +726,9 @@ extension TypeInferrer {
                 let (type, columnSub, names) = expr.accept(visitor: &self)
                 sub.merge(columnSub)
                 
-                let name = alias?.value ?? names.proposedName
-                columns[name ?? TypeInferrer.missingNameDefault] = type
-                
-                if name == nil {
+                if let name = alias?.value ?? names.proposedName {
+                    columns[name] = type
+                } else {
                     diagnostics.add(.nameRequired(at: expr.range))
                 }
             case let .all(tableName):
