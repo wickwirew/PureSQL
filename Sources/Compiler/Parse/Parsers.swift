@@ -47,6 +47,8 @@ enum Parsers {
             return try selectStmt(state: &state)
         case (.insert, _):
             return try insertStmt(state: &state)
+        case (.update, _):
+            return try updateStmt(state: &state)
         case (.define, _):
             return try definition(state: &state)
         case (.with, _):

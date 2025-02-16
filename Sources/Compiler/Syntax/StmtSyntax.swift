@@ -18,6 +18,7 @@ protocol StmtSyntaxVisitor {
     mutating func visit(_ stmt: borrowing EmptyStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: borrowing SelectStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: borrowing InsertStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: borrowing UpdateStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> StmtOutput
 }
 

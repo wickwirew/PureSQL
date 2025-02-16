@@ -5,6 +5,8 @@
 //  Created by Wes Wickwire on 2/16/25.
 //
 
+import Foundation
+
 public actor ConnectionPool: Sendable {
     private let path: String
     private var count: Int = 1

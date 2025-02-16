@@ -37,6 +37,8 @@ extension IsSingleResultInferrer: StmtSyntaxVisitor {
     
     mutating func visit(_ stmt: borrowing EmptyStmtSyntax) -> Bool { true }
     
+    mutating func visit(_ stmt: borrowing UpdateStmtSyntax) -> Bool { true }
+    
     mutating func visit(_ stmt: borrowing SelectStmtSyntax) -> Bool {
         // See if there is a LIMIT 1 since this will always return a single result regardless
         // of what happens in the query.

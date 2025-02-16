@@ -22,6 +22,10 @@ class CompilerTests: XCTestCase {
         try check(compile: "Insert")
     }
     
+    func testUpdate() throws {
+        try check(compile: "Update", dump: true)
+    }
+    
     func testOutputCountInference() throws {
         try check(
             sqlFile: "IsSingleResult",

@@ -515,6 +515,10 @@ extension TypeInferrer: StmtSyntaxVisitor {
         return compile(insert: stmt)
     }
     
+    mutating func visit(_ stmt: borrowing UpdateStmtSyntax) -> (Type?, Substitution) {
+        return compile(update: stmt)
+    }
+    
     mutating func visit(_ stmt: borrowing EmptyStmtSyntax) -> (Type?, Substitution) {
         return (nil, [:])
     }
@@ -590,6 +594,82 @@ extension TypeInferrer {
         return (ty, sub)
     }
     
+    mutating func compile(update: UpdateStmtSyntax) -> (Type, Substitution) {
+        var sub: Substitution = [:]
+        
+        if let cte = update.cte {
+            sub.merge(compile(cte: cte))
+        }
+        
+        guard let table = schema[update.tableName.tableName.name.value] else {
+            diagnostics.add(.tableDoesNotExist(update.tableName.tableName.name))
+            return (.error, sub)
+        }
+        
+        insertTableAndColumnsIntoEnv(table)
+        
+        for set in update.sets {
+            let (valueType, valueSub, valueName) = set.expr.accept(visitor: &self)
+            sub.merge(valueSub)
+            
+            switch set.column {
+            // SET column = value
+            case .single(let column):
+                _ = merge(names: valueName, with: .some(column.value))
+                
+                guard let column = table.columns[column.value] else {
+                    diagnostics.add(.columnDoesNotExist(column))
+                    return (.error, sub)
+                }
+                
+                sub.merge(unify(column, with: valueType, at: set.range))
+            // SET (column1, column2) = (value1, value2)
+            case .list(let columnNames):
+                // TODO: Names will not be inferred here. Names only handles
+                // TODO: one value at a time. Not an array of values.
+                let columns = columns(for: columnNames, from: table)
+                sub.merge(unify(columns, with: valueType, at: set.range))
+            }
+        }
+        
+        if let from = update.from {
+            sub.merge(compile(from: from))
+        }
+        
+        if let whereExpr = update.whereExpr {
+            sub.merge(compile(where: whereExpr))
+        }
+        
+        let returnType: Type
+        if let returning = update.returningClause {
+            let (t, s) = compile(returningClause: returning, sourceTable: table)
+            returnType = t
+            sub.merge(s)
+        } else {
+            returnType = .row(.empty)
+        }
+        
+        return (returnType, sub)
+    }
+    
+    private mutating func columns(
+        for names: [IdentifierSyntax],
+        from table: Table
+    ) -> Type {
+        var columns: Columns = [:]
+        
+        for name in names {
+            if let column = table.columns[name.value] {
+                columns[name.value] = column
+            } else {
+                diagnostics.add(.columnDoesNotExist(name))
+                columns[name.value] = .error
+            }
+        }
+        
+        return .row(.named(columns))
+    }
+    
     private mutating func compile(
         returningClause: ReturningClauseSyntax,
         sourceTable: Table
@@ -611,7 +691,7 @@ extension TypeInferrer {
                 resultColumns[name] = type
             case .all:
                 // TODO: See TODO on `Columns` typealias
-                resultColumns.merge(resultColumns, uniquingKeysWith: { $1 })
+                resultColumns.merge(sourceTable.columns, uniquingKeysWith: { $1 })
             }
         }
         
@@ -826,14 +906,12 @@ extension TypeInferrer {
             default: true
             }
 
-            env.insert(
-                table.alias?.value ?? table.name.value,
-                ty: isOptional ? .optional(envTable.type) : envTable.type
+            insertTableAndColumnsIntoEnv(
+                envTable,
+                as: table.alias,
+                isOptional: isOptional,
+                onlyColumnsIn: usedColumns
             )
-            
-            for column in envTable.columns where usedColumns.isEmpty || usedColumns.contains(column.key) {
-                env.insert(column.key, ty: isOptional ? .optional(column.value) : column.value)
-            }
             
             return [:]
         case .tableFunction:
@@ -873,5 +951,26 @@ extension TypeInferrer {
         }
 
         return rowTy
+    }
+    
+    /// Will insert the table and all of its columns into the environment.
+    /// Allows queries to access the columns at a top level.
+    ///
+    /// If `isOptional` is true, all of the column types will be made optional
+    /// as well. Useful in joins that may or may not have a match, e.g. Outer
+    private mutating func insertTableAndColumnsIntoEnv(
+        _ table: Table,
+        as alias: IdentifierSyntax? = nil,
+        isOptional: Bool = false,
+        onlyColumnsIn columns: Set<Substring> = []
+    ) {
+        env.insert(
+            alias?.value ?? table.name,
+            ty: isOptional ? .optional(table.type) : table.type
+        )
+        
+        for column in table.columns where columns.isEmpty || columns.contains(column.key) {
+            env.insert(column.key, ty: isOptional ? .optional(column.value) : column.value)
+        }
     }
 }

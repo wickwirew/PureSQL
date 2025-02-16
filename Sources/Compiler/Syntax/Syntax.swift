@@ -116,7 +116,7 @@ struct SetActionSyntax: Syntax {
     }
 }
 
-struct UpdateStmtSyntax: Syntax {
+struct UpdateStmtSyntax: StmtSyntax {
     let cte: CommonTableExpressionSyntax?
     let cteRecursive: Bool
     let or: OrSyntax?
@@ -126,6 +126,10 @@ struct UpdateStmtSyntax: Syntax {
     let whereExpr: ExpressionSyntax?
     let returningClause: ReturningClauseSyntax?
     let range: Range<Substring.Index>
+    
+    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
+        return visitor.visit(self)
+    }
 }
 
 struct QualifiedTableNameSyntax: Syntax {
