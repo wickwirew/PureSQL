@@ -11,8 +11,13 @@
 struct IsSingleResultInferrer {
     let schema: Schema
     
-    mutating func isSingleResult(_ statement: borrowing Statement) -> Bool {
-        return statement.syntax.accept(visitor: &self)
+    mutating func infer(_ statement: consuming Statement) -> Statement {
+        guard statement.syntax.accept(visitor: &self) else { return statement }
+        return Statement(
+            name: statement.name,
+            signature: statement.signature.withSingleOutput(),
+            syntax: statement.syntax
+        )
     }
 }
 

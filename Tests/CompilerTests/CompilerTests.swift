@@ -31,7 +31,7 @@ class CompilerTests: XCTestCase {
                 var inferrer = IsSingleResultInferrer(schema: compiler.schema)
                 return compiler.statements
                     .filter{ !($0.syntax is CreateTableStmtSyntax) }
-                    .map { inferrer.isSingleResult($0) ? "SINGLE" : "MANY" }
+                    .map { inferrer.infer($0).signature.outputIsSingleElement ? "SINGLE" : "MANY" }
             },
             dump: true
         )

@@ -13,15 +13,15 @@ import OrderedCollections
 /// The output type is inferred based of the expression.
 public struct Signature: CustomReflectable {
     /// Any bind parameters for the statement
-    public var parameters: [Int: Parameter<Substring?>]
+    public let parameters: [Int: Parameter<Substring?>]
     /// The return type if any.
-    public var output: Type?
-    /// TODO: Add this logic. Adding temporarily as a constant
-    /// so it can be used in code gen
-    public let outputIsSingleElement = false
+    public let output: Type?
+    /// If `true` the statement will only ever return
+    /// a single value.
+    public let outputIsSingleElement: Bool
     
     static var empty: Signature {
-        return Signature(parameters: [:])
+        return Signature(parameters: [:], output: nil, outputIsSingleElement: false)
     }
     
     public var isEmpty: Bool {
@@ -84,7 +84,15 @@ public struct Signature: CustomReflectable {
         
         return result
     }
-}
+    
+    consuming func withSingleOutput() -> Signature {
+        return Signature(
+            parameters: parameters,
+            output: output,
+            outputIsSingleElement: true
+        )
+    }
+ }
 
 /// An input parameter for a query.
 public struct Parameter<Name> {

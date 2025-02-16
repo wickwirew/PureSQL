@@ -100,7 +100,9 @@ struct TypeInferrer {
                     substitution: sub,
                     constraints: constraints
                 )
-            }
+            },
+            // Will be inferred later in another pass
+            outputIsSingleElement: false
         )
         
         return Solution(
