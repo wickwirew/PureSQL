@@ -1,5 +1,5 @@
 //
-//  Statements.swift
+//  StmtSyntax.swift
 //
 //
 //  Created by Wes Wickwire on 10/8/24.
@@ -13,12 +13,12 @@ protocol StmtSyntax: Syntax {
 
 protocol StmtSyntaxVisitor {
     associatedtype StmtOutput
-    mutating func visit(_ stmt: CreateTableStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: AlterTableStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: EmptyStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: SelectStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: InsertStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: QueryDefinitionStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: borrowing CreateTableStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: borrowing AlterTableStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: borrowing EmptyStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: borrowing SelectStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: borrowing InsertStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> StmtOutput
 }
 
 struct CreateTableStmtSyntax: StmtSyntax {

@@ -18,7 +18,7 @@ public typealias Columns = OrderedDictionary<Substring, Type>
 public struct Table {
     public var name: Substring
     public var columns: OrderedDictionary<Substring, Type>
-    public let primaryKey: [Substring]?
+    public let primaryKey: [Substring]
     
     var type: Type {
         return .row(.named(columns))
