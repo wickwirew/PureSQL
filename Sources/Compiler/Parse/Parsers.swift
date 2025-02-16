@@ -911,11 +911,12 @@ enum Parsers {
         } else {
             let (schema, table) = tableAndSchemaName(state: &state)
             
-            let columns: OrderedDictionary<IdentifierSyntax, ColumnDefSyntax> = parens(state: &state) { state in
-                commaDelimited(state: &state, element: columnDef)
-                    .reduce(into: [:]) { $0[$1.name] = $1 }
+            let (columns, constraints) = parens(state: &state) { state in
+                let columns = createTableStmtColumns(state: &state)
+                let constraints = tableConstraints(state: &state)
+                return (columns, constraints)
             }
-            
+
             let options = tableOptions(state: &state)
             
             return CreateTableStmtSyntax(
@@ -924,11 +925,80 @@ enum Parsers {
                 isTemporary: isTemporary,
                 onlyIfExists: ifNotExists,
                 kind: .columns(columns),
-                constraints: [],
+                constraints: constraints,
                 options: options,
                 range: create.range.lowerBound..<state.current.range.lowerBound
             )
         }
+    }
+    
+    static func createTableStmtColumns(
+        state: inout ParserState
+    ) -> CreateTableStmtSyntax.Columns {
+        var columns: CreateTableStmtSyntax.Columns = [:]
+        
+        repeat {
+            let column = columnDef(state: &state)
+            columns[column.name] = column
+        } while state.take(if: .comma) && state.current.kind.isSymbol
+        
+        return columns
+    }
+    
+    static func tableConstraints(state: inout ParserState) -> [TableConstraintSyntax] {
+        // Make sure there were actually constraints after the columns
+        guard state.current.kind != .closeParen else { return [] }
+        
+        var constraints: [TableConstraintSyntax] = []
+        
+        repeat {
+            guard let constraint = tableConstraint(state: &state) else { continue }
+            constraints.append(constraint)
+        } while state.take(if: .comma)
+        
+        return constraints
+    }
+    
+    static func tableConstraint(state: inout ParserState) -> TableConstraintSyntax? {
+        let start = state.current.range
+        let name: IdentifierSyntax? = if state.take(if: .constraint) {
+            identifier(state: &state)
+        } else {
+            nil
+        }
+        
+        let kind: TableConstraintSyntax.Kind
+        switch state.current.kind {
+        case .primary:
+            state.skip()
+            state.consume(.key)
+            let columns = commaDelimitedInParens(state: &state, element: indexedColumn)
+            let conflictClause = conflictClause(state: &state)
+            kind = .primaryKey(columns, conflictClause)
+        case .unique:
+            state.skip()
+            let columns = commaDelimitedInParens(state: &state, element: indexedColumn)
+            let conflictClause = conflictClause(state: &state)
+            kind = .primaryKey(columns, conflictClause)
+        case .check:
+            state.skip()
+            kind = .check(parens(state: &state, value: { expr(state: &$0) }))
+        case .foreign:
+            state.skip()
+            state.consume(.key)
+            let columns = columnNameList(state: &state)
+            let foreignKeyClause = foreignKeyClause(state: &state)
+            kind = .foreignKey(columns, foreignKeyClause)
+        default:
+            state.diagnostics.add(.unexpected(token: state.current))
+            return nil
+        }
+        
+        return TableConstraintSyntax(
+            name: name,
+            kind: kind,
+            range: state.range(from: start)
+        )
     }
     
     /// https://www.sqlite.org/syntax/column-def.html

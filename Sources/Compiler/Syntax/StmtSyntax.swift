@@ -31,9 +31,11 @@ struct CreateTableStmtSyntax: StmtSyntax {
     let options: TableOptionsSyntax
     let range: Range<String.Index>
 
+    typealias Columns = OrderedDictionary<IdentifierSyntax, ColumnDefSyntax>
+    
     enum Kind {
         case select(SelectStmtSyntax)
-        case columns(OrderedDictionary<IdentifierSyntax, ColumnDefSyntax>)
+        case columns(Columns)
     }
 
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
@@ -333,9 +335,10 @@ struct CommonTableExpressionSyntax {
     let range: Range<Substring.Index>
 }
 
-struct TableConstraintSyntax {
+struct TableConstraintSyntax: Syntax {
     let name: IdentifierSyntax?
     let kind: Kind
+    let range: Range<Substring.Index>
 
     enum Kind {
         case primaryKey([IndexedColumnSyntax], ConfictClauseSyntax)

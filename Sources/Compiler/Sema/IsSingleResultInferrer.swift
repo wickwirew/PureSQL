@@ -63,7 +63,7 @@ extension IsSingleResultInferrer: StmtSyntaxVisitor {
             // If they had filtering on all primary keys we can assume a single
             // result will be returned.
             let filteredPrimaryKeys = filter.accept(visitor: &self)
-            return filteredPrimaryKeys.elementsEqual(t.primaryKey)
+            return !t.primaryKey.contains{ !filteredPrimaryKeys.contains($0) }
         }
         
         return false
@@ -115,14 +115,13 @@ extension IsSingleResultInferrer: ExprSyntaxVisitor {
     mutating func visit(_ expr: borrowing InvalidExprSyntax) -> ExprOutput { [] }
     
     mutating func visit(_ expr: borrowing InfixExprSyntax) -> ExprOutput {
-        if expr.operator.operator == .or {
-            print("AYYEEE")
-        }
-        
-        // Any operator other an an `=` we cannot assume it will return a single value.
+        // Any operator other an an `=` or `AND` we cannot assume it will return a single value.
         // Example: `id = 1 OR id = 2`. Each side of the expr filtered on the pk
         // but it can return multiple values. We might be able to in the future do more.
-        guard expr.operator.operator == .eq || expr.operator.operator == .eq2 else { return [] }
+        guard expr.operator.operator == .eq
+                || expr.operator.operator == .eq2
+                || expr.operator.operator == .and else { return [] }
+        
         // `id = 1 AND parentId = 2` should return [id, parentId]
         return expr.lhs.accept(visitor: &self).union(expr.rhs.accept(visitor: &self))
     }

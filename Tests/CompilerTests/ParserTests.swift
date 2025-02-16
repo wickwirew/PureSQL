@@ -48,7 +48,7 @@ final class ParserTests: XCTestCase {
     }
     
     func testCreateTable() throws {
-        try check(sqlFile: "CreateTable", parser: Parsers.createTableStmt)
+        try check(sqlFile: "CreateTable", parser: Parsers.createTableStmt, dump: true)
     }
     
     func testBindParameter() throws {
@@ -104,7 +104,11 @@ final class ParserTests: XCTestCase {
     }
     
     func testDefinition() throws {
-        try check(sqlFile: "Definition", parser: Parsers.definition, dump: true)
+        try check(sqlFile: "Definition", parser: Parsers.definition)
+    }
+    
+    func testTableConstraints() throws {
+        try check(sqlFile: "TableConstraint", parser: Parsers.tableConstraint)
     }
 }
 

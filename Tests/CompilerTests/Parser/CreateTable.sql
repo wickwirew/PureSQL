@@ -233,3 +233,46 @@ CREATE TABLE user (
     id INT PRIMARY KEY,
     name TEXT CONSTRAINT name_unique UNIQUE ON CONFLICT IGNORE
 );
+
+-- CHECK: CREATE_TABLE_STMT_SYNTAX
+-- CHECK:   NAME user
+-- CHECK:   IS_TEMPORARY false
+-- CHECK:   ONLY_IF_EXISTS false
+-- CHECK:   KIND
+-- CHECK:     COLUMNS
+-- CHECK:         KEY id
+-- CHECK:         VALUE
+-- CHECK:           NAME id
+-- CHECK:           TYPE INT
+-- CHECK:           CONSTRAINTS
+-- CHECK:             COLUMN_CONSTRAINT_SYNTAX
+-- CHECK:               KIND
+-- CHECK:                 PRIMARY_KEY
+-- CHECK:                   ORDER asc
+-- CHECK:                   CONFICT_CLAUSE_SYNTAX replace
+-- CHECK:                   AUTOINCREMENT false
+-- CHECK:         KEY name
+-- CHECK:         VALUE
+-- CHECK:           NAME name
+-- CHECK:           TYPE TEXT
+-- CHECK:   CONSTRAINTS
+-- CHECK:     TABLE_CONSTRAINT_SYNTAX
+-- CHECK:       KIND
+-- CHECK:         PRIMARY_KEY
+-- CHECK:             INDEXED_COLUMN_SYNTAX
+-- CHECK:               EXPR
+-- CHECK:                 COLUMN
+-- CHECK:                   COLUMN id
+-- CHECK:               ORDER asc
+-- CHECK:             INDEXED_COLUMN_SYNTAX
+-- CHECK:               EXPR
+-- CHECK:                 COLUMN
+-- CHECK:                   COLUMN name
+-- CHECK:               ORDER asc
+-- CHECK:           CONFICT_CLAUSE_SYNTAX none
+-- CHECK:   OPTIONS []
+CREATE TABLE user (
+    id INT PRIMARY KEY ON CONFLICT REPLACE,
+    name TEXT,
+    PRIMARY KEY (id, name)
+);
