@@ -102,3 +102,15 @@ public extension DatabaseQuery where Output: RowDecodable {
         return try Output(cursor: cursor)
     }
 }
+
+public extension DatabaseQuery where Output == Void {
+    func execute(
+        with input: Input,
+        in context: borrowing Transaction
+    ) throws {
+        let statement = try statement(in: context, with: input)
+        var cursor = Cursor(of: statement)
+        _ = try cursor.step()
+    }
+}
+

@@ -13,25 +13,33 @@ public struct Transaction: ~Copyable {
     let connection: Connection
     let kind: Kind
     let signal: Signal?
+    let finalize: Finalize
     private var didCommit = false
     private let pool: ConnectionPool
     
-    public enum Kind: String {
+    public enum Kind: String, Sendable {
         case deferred = "DEFERRED"
         case immediate = "IMMEDIATE"
         case exclusive = "EXCLUSIVE"
+    }
+    
+    public enum Finalize: String, Sendable {
+        case commit = "COMMIT"
+        case rollback = "ROLLBACK"
     }
     
     init(
         connection: Connection,
         kind: Kind,
         pool: ConnectionPool,
-        signal: Signal?
+        signal: Signal?,
+        finalize: Finalize
     ) throws(FeatherError) {
         self.connection = connection
         self.kind = kind
         self.pool = pool
         self.signal = signal
+        self.finalize = finalize
         try connection.execute(sql: "BEGIN \(kind.rawValue) TRANSACTION;")
     }
     
@@ -48,13 +56,13 @@ public struct Transaction: ~Copyable {
     deinit {
         if !didCommit {
             do {
-                try connection.execute(sql: "ROLLBACK;")
+                try connection.execute(sql: "\(finalize.rawValue);")
             } catch {
-                assertionFailure("Failed to rollback commit: \(error)")
+                assertionFailure("Failed to \(finalize.rawValue): \(error)")
             }
+            
+            pool.reclaim(connection: connection, signal: signal)
         }
-        
-        pool.reclaim(connection: connection, signal: signal)
     }
 }
 
@@ -163,7 +171,7 @@ public actor ConnectionPool: Sendable {
     public func begin(
         _ begin: Begin,
         transaction: Transaction.Kind = .deferred
-    ) async throws(FeatherError) -> Transaction {
+    ) async throws(FeatherError) -> sending Transaction {
         // Writes must be exclusive, make sure to wait on any pending writes.
         if begin == .write {
             if let writeSignal {
@@ -173,14 +181,15 @@ public actor ConnectionPool: Sendable {
         
         // Helper function to create a transaction and set the
         // write signal if needed
-        func tx(connection: Connection) throws(FeatherError) -> Transaction {
+        func tx(connection: Connection) throws(FeatherError) -> sending Transaction {
             assert(writeSignal == nil)
             writeSignal = begin == .write ? Signal() : nil
             return try Transaction(
                 connection: connection,
                 kind: transaction,
                 pool: self,
-                signal: writeSignal
+                signal: writeSignal,
+                finalize: begin == .write ? .rollback : .commit
             )
         }
         
