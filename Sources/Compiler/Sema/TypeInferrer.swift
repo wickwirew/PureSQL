@@ -529,7 +529,10 @@ extension TypeInferrer: StmtSyntaxVisitor {
 }
 
 extension TypeInferrer {
-    mutating func compile(select: SelectStmtSyntax) -> (Type, Substitution) {
+    mutating func compile(
+        select: SelectStmtSyntax,
+        potentialNames: [IdentifierSyntax]? = nil
+    ) -> (Type, Substitution) {
         var sub: Substitution = [:]
         
         if let cte = select.cte?.value {
@@ -538,7 +541,10 @@ extension TypeInferrer {
         
         switch select.selects.value {
         case let .single(select):
-            let (type, selectSub) = compile(select: select)
+            let (type, selectSub) = compile(
+                select: select,
+                potentialNames: potentialNames
+            )
             sub.merge(selectSub)
             return (type, sub)
         case .compound:
@@ -576,7 +582,7 @@ extension TypeInferrer {
         }
         
         if let values = insert.values {
-            let (type, selectSub) = compile(select: values.select)
+            let (type, selectSub) = compile(select: values.select, potentialNames: insert.columns)
             sub.merge(selectSub)
             _ = inputType.unify(with: type, at: insert.range, diagnostics: &diagnostics)
         } else {
@@ -729,7 +735,18 @@ extension TypeInferrer {
         return sub
     }
     
-    private mutating func compile(select: SelectCoreSyntax) -> (Type, Substitution) {
+    /// Will compile the core part of the select.
+    /// Takes an optional potential names list.
+    ///
+    /// The select core also includes the `VALUES (?, ?, ?)`
+    /// part, and in an insert we want to be able to infer the
+    /// parameter names of those.
+    /// So on `INSERT INTO foo (bar, baz) VALUES (?, ?)` has
+    /// 2 parameters named `bar` and `baz`
+    private mutating func compile(
+        select: SelectCoreSyntax,
+        potentialNames: [IdentifierSyntax]? = nil
+    ) -> (Type, Substitution) {
         switch select {
         case let .select(select):
             return compile(select: select)
@@ -737,10 +754,16 @@ extension TypeInferrer {
             var sub: Substitution = [:]
             var types: [Type] = []
             
-            for value in values {
-                let (type, s, _) = value.accept(visitor: &self)
+            for (index, value) in values.enumerated() {
+                let (type, s, names) = value.accept(visitor: &self)
                 sub.merge(s, uniquingKeysWith: { $1 })
                 types.append(type)
+                
+                // If there are potential names to match with check to
+                // see if there is one at the index of this expression.
+                if let potentialNames, index < potentialNames.count {
+                    _ = merge(names: names, with: .some(potentialNames[index].value))
+                }
             }
             
             return (.row(.unnamed(types)), sub)
