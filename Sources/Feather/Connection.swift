@@ -7,12 +7,54 @@
 
 import Collections
 import SQLite3
+import Foundation
 
 public struct Transaction: ~Copyable {
-    private let connection: Connection
+    let connection: Connection
+    let kind: Kind
+    let signal: Signal?
+    private var didCommit = false
+    private let owner: ConnectionPool
+    
+    public enum Kind: String {
+        case deferred = "DEFERRED"
+        case immediate = "IMMEDIATE"
+        case exclusive = "EXCLUSIVE"
+    }
+    
+    init(
+        connection: Connection,
+        kind: Kind,
+        owner: ConnectionPool,
+        signal: Signal?
+    ) throws(FeatherError) {
+        self.connection = connection
+        self.kind = kind
+        self.owner = owner
+        self.signal = signal
+        try connection.execute(sql: "BEGIN \(kind.rawValue) TRANSACTION;")
+    }
+    
+    public consuming func commit() async throws(FeatherError) {
+        didCommit = true
+        try connection.execute(sql: "COMMIT;")
+        owner.reclaim(connection: connection, signal: signal)
+    }
+    
+    deinit {
+        if !didCommit {
+            do {
+                try connection.execute(sql: "ROLLBACK;")
+            } catch {
+                assertionFailure("Failed to rollback commit: \(error)")
+            }
+        }
+        
+        owner.reclaim(connection: connection, signal: signal)
+    }
 }
 
-public final class Connection {
+public class Connection: @unchecked Sendable {
     let raw: OpaquePointer
     
     public init(
@@ -32,6 +74,10 @@ public final class Connection {
         self.raw = raw
     }
     
+    public func execute(sql: String) throws(FeatherError) {
+        try throwing(sqlite3_exec(raw, sql, nil, nil, nil))
+    }
+    
     deinit {
         do {
             try throwing(sqlite3_close_v2(raw))
@@ -41,11 +87,117 @@ public final class Connection {
     }
 }
 
-public actor ConnectionPool: Sendable {
-    private var count = 0
-    private var connections: Deque<Connection> = []
+final class Signal: Sendable {
+    private let stream: AsyncStream<Void>
+    private let continuation: AsyncStream<Void>.Continuation
+
+    init() {
+        let (stream, continuation) = AsyncStream<Void>.makeStream()
+        self.stream = stream
+        self.continuation = continuation
+    }
+
+    func signal() {
+        continuation.finish()
+    }
     
-    public init() {}
+    func wait() async {
+        for await _ in stream {}
+    }
+}
+
+public actor ConnectionPool: Sendable {
+    private let path: String
+    private var count: Int = 1
+    private let limit: Int
+    
+    private var writeSignal: Signal?
+    
+    private let connectionStream: AsyncStream<Connection>
+    private let connectionContinuation: AsyncStream<Connection>.Continuation
+    
+    public enum Begin {
+        case read
+        case write
+    }
+    
+    public init(
+        path: String,
+        limit: Int = 5
+    ) throws(FeatherError) {
+        guard limit > 0 else {
+            throw .poolCannotHaveZeroConnections
+        }
+        
+        self.path = path
+        self.limit = limit
+        let (connectionStream, connectionContinuation) = AsyncStream<Connection>.makeStream()
+        self.connectionContinuation = connectionContinuation
+        self.connectionStream = connectionStream
+        
+        // Turn on WAL mode
+        let connection = try Connection(path: path)
+        try connection.execute(sql: "PRAGMA journal_mode=WAL;")
+        connectionContinuation.yield(connection)
+    }
+    
+    /// Gives the connection back to the pool.
+    nonisolated func reclaim(
+        connection: Connection,
+        signal: Signal?
+    ) {
+        connectionContinuation.yield(connection)
+        signal?.signal()
+    }
+    
+    /// Starts a transaction.
+    public func begin(
+        _ begin: Begin,
+        transaction: Transaction.Kind = .deferred
+    ) async throws(FeatherError) -> Transaction {
+        // Writes must be exclusive, make sure to wait on any pending writes.
+        if begin == .write {
+            if let writeSignal {
+                await writeSignal.wait()
+            }
+        }
+        
+        // Helper function to create a transaction and set the
+        // write signal if needed
+        func tx(connection: Connection) throws(FeatherError) -> Transaction {
+            writeSignal = begin == .write ? Signal() : nil
+            return try Transaction(
+                connection: connection,
+                kind: transaction,
+                owner: self,
+                signal: writeSignal
+            )
+        }
+        
+        // Check if there is an available connection.
+        // We could recieve a connection from the `for await`
+        // below but we would have to eagerly create connections
+        // even if one is all that is ever needed
+        var connections = connectionStream.makeAsyncIterator()
+        if let connection = await connections.next() {
+            return try tx(connection: connection)
+        }
+        
+        // Check if we have any capacity to create a new connection
+        if count < limit {
+            count += 1
+            return try tx(connection: Connection(path: path))
+        }
+        
+        // Wait for an available connection
+        for await connection in connectionStream {
+            return try tx(connection: connection)
+        }
+        
+        // Can happen if the pool dies and the stream is closed
+        // before the caller gets its transaction.
+        throw .failedToGetConnection
+    }
 }
 
 public enum FeatherError: Error {
@@ -55,6 +207,9 @@ public enum FeatherError: Error {
     case noMoreColumns
     case queryReturnedNoValue
     case sqlite(SQLiteCode)
+    case txNoLongerValid
+    case failedToGetConnection
+    case poolCannotHaveZeroConnections
 }
 
 public protocol RowDecodable {
@@ -64,7 +219,6 @@ public protocol RowDecodable {
 public struct Statement: ~Copyable {
     public let source: String
     let raw: OpaquePointer
-    private var bindIndex: Int32 = 1111122
     
     public init(
         _ source: String,
@@ -81,9 +235,11 @@ public struct Statement: ~Copyable {
         self.raw = raw
     }
     
-    public mutating func bind<Value: DatabasePrimitive>(value: Value) throws(FeatherError) {
-        try value.bind(to: raw, at: bindIndex)
-        bindIndex += 1
+    public mutating func bind<Value: DatabasePrimitive>(
+        value: Value,
+        to index: Int32
+    ) throws(FeatherError) {
+        try value.bind(to: raw, at: index)
     }
     
     deinit {

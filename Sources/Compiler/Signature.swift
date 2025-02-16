@@ -16,6 +16,9 @@ public struct Signature: CustomReflectable {
     public var parameters: [Int: Parameter<Substring?>]
     /// The return type if any.
     public var output: Type?
+    /// TODO: Add this logic. Adding temporarily as a constant
+    /// so it can be used in code gen
+    public let outputIsSingleElement = false
     
     static var empty: Signature {
         return Signature(parameters: [:])

@@ -14,12 +14,12 @@ public protocol Query<Input, Output, Context> {
     associatedtype Output
     associatedtype Context
     
-    func execute(with input: Input, in context: Context) async throws -> Output
+    func execute(with input: Input, in context: Context) throws -> Output
 }
 
 public extension Query where Input == () {
     func execute(in context: Context) async throws -> Output {
-        try await self.execute(with: (), in: context)
+        try self.execute(with: (), in: context)
     }
 }
 
@@ -37,7 +37,7 @@ public enum Queries {
             self.output = output
         }
         
-        public func execute(with input: Input, in context: Context) async throws -> Output {
+        public func execute(with input: Input, in context: Context) throws -> Output {
             output
         }
     }
@@ -51,8 +51,8 @@ public enum Queries {
             self.base = base
         }
         
-        public func execute(with _: (), in context: Base.Context) async throws -> Base.Output {
-            try await base.execute(with: input, in: context)
+        public func execute(with _: (), in context: Base.Context) throws -> Base.Output {
+            try base.execute(with: input, in: context)
         }
     }
 }
@@ -65,7 +65,7 @@ public extension DatabaseQuery where Output: RangeReplaceableCollection, Output.
     func execute(
         with input: Input,
         in context: borrowing Connection
-    ) async throws -> Output {
+    ) throws -> Output {
         let statement = try statement(in: context, with: input)
         var cursor = Cursor(of: statement)
         var result = Output()
@@ -82,7 +82,7 @@ public extension DatabaseQuery where Output: RowDecodable {
     func execute(
         with input: Input,
         in context: borrowing Connection
-    ) async throws -> Output {
+    ) throws -> Output {
         let statement = try statement(in: context, with: input)
         var cursor = Cursor(of: statement)
         

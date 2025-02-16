@@ -27,8 +27,8 @@ public struct CodeGen {
         self.addImports = addImports
     }
     
-    public mutating func gen() -> SourceFileSyntax {
-        return try! SourceFileSyntax {
+    public mutating func gen() throws -> SourceFileSyntax {
+        return try SourceFileSyntax {
             if addImports {
                 try ImportDeclSyntax("import Feather")
             }
@@ -51,7 +51,16 @@ public struct CodeGen {
         let hasInput = !parameters.isEmpty
         
         return try DeclSyntax(StructDeclSyntax(name: "\(raw: name)Query: DatabaseQuery") {
-            try TypeAliasDeclSyntax("typealias Output = [\(raw: name)]")
+            if statement.signature.output != nil {
+                if statement.signature.outputIsSingleElement {
+                    try TypeAliasDeclSyntax("typealias Output = \(raw: name)")
+                } else {
+                    try TypeAliasDeclSyntax("typealias Output = [\(raw: name)]")
+                }
+            } else {
+                try TypeAliasDeclSyntax("typealias Output = ()")
+            }
+            
             try TypeAliasDeclSyntax("typealias Context = Connection")
             
             if !hasInput {
@@ -62,7 +71,7 @@ public struct CodeGen {
                 "\(raw: hasInput ? "var" : "let") statement = try Statement(\"\"\"\n\(raw: querySource)\n\"\"\", \nconnection: connection\n)"
                 
                 for parameter in parameters {
-                    "try statement.bind(value: input.\(raw: parameter.name))"
+                    "try statement.bind(value: input.\(raw: parameter.name), to: \(raw: parameter.index))"
                 }
                 
                 "return statement"
@@ -72,6 +81,22 @@ public struct CodeGen {
                 DeclSyntax(StructDeclSyntax(name: "Input") {
                     for input in parameters {
                         "let \(raw: input.name): \(raw: swiftType(for: input.type))"
+                    }
+                })
+            }
+            
+            if case let .row(.named(columns)) = statement.signature.output {
+                try DeclSyntax(StructDeclSyntax(name: "\(raw: name): RowDecodable") {
+                    for (column, type) in columns {
+                        "let \(raw: column): \(raw: swiftType(for: type))"
+                    }
+                    
+                    try InitializerDeclSyntax("init(cursor: borrowing Cursor) throws(FeatherError)") {
+                        "var columns = cursor.indexedColumns()"
+                        
+                        for (column, _) in columns {
+                            "self.\(raw: column) = try columns.next()"
+                        }
                     }
                 })
             }

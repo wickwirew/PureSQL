@@ -40,7 +40,7 @@ struct Feather: ParsableCommand {
             compiler.compile(file)
             
             var codeGen = CodeGen(schema: schema, statements: compiler.statements, source: file)
-            return (codeGen.gen().formatted(), fileName)
+            return try (codeGen.gen().formatted(), fileName)
         }
         
         if let output {

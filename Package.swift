@@ -18,7 +18,7 @@ let package = Package(
             targets: ["FeatherClient"]
         ),
         .executable(
-            name: "FeatherCLI",
+            name: "feather",
             targets: ["FeatherCLI"]
         ),
     ],
