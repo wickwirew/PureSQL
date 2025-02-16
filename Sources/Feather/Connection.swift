@@ -33,9 +33,9 @@ public final class Transaction {
     
     init(
         connection: Connection,
-        kind: Kind,
+        kind: Kind = .deferred,
         pool: ConnectionPool,
-        signal: Signal?,
+        signal: Signal? = nil,
         finalize: Finalize
     ) throws(FeatherError) {
         self.connection = connection
@@ -147,21 +147,23 @@ public actor ConnectionPool: Sendable {
     
     public init(
         name: String,
-        limit: Int = ConnectionPool.defaultLimit
+        limit: Int = ConnectionPool.defaultLimit,
+        migrations: [Migration]
     ) throws {
         let url = try FileManager.default
             .url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
             .appendingPathComponent("\(name).sqlite")
         
-        try self.init(path: url.absoluteString, limit: limit)
+        try self.init(path: url.absoluteString, limit: limit, migrations: migrations)
     }
     
     public init(
         path: String,
-        limit: Int = ConnectionPool.defaultLimit
-    ) throws(FeatherError) {
+        limit: Int = ConnectionPool.defaultLimit,
+        migrations: [Migration]
+    ) throws {
         guard limit > 0 else {
-            throw .poolCannotHaveZeroConnections
+            throw FeatherError.poolCannotHaveZeroConnections
         }
         
         self.path = path
@@ -170,12 +172,20 @@ public actor ConnectionPool: Sendable {
         self.connectionContinuation = connectionContinuation
         self.connectionStream = connectionStream
         
+        let connection = try Connection(path: path)
+        
         if limit > 1 {
             // Turn on WAL mode
-            let connection = try Connection(path: path)
             try connection.execute(sql: "PRAGMA journal_mode=WAL;")
-            connectionContinuation.yield(connection)
         }
+        
+        let tx = try Transaction(
+            connection: connection,
+            pool: self,
+            finalize: .rollback
+        )
+        
+        try MigrationRunner.execute(migrations: migrations, tx: tx)
     }
     
     /// Gives the connection back to the pool.
