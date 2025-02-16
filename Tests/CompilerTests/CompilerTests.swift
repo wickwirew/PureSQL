@@ -21,6 +21,21 @@ class CompilerTests: XCTestCase {
     func testInsert() throws {
         try check(compile: "Insert")
     }
+    
+    func testOutputCountInference() throws {
+        try check(
+            sqlFile: "IsSingleResult",
+            parse: { contents in
+                var compiler = Compiler()
+                compiler.compile(contents)
+                var inferrer = IsSingleResultInferrer(schema: compiler.schema)
+                return compiler.statements
+                    .filter{ !($0.syntax is CreateTableStmtSyntax) }
+                    .map { inferrer.isSingleResult($0) ? "SINGLE" : "MANY" }
+            },
+            dump: true
+        )
+    }
 }
 
 func check(
