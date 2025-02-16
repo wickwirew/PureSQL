@@ -58,13 +58,16 @@ public enum Queries {
 }
 
 public protocol DatabaseQuery<Input, Output>: Query {
-    func statement(in connection: borrowing Connection, with input: Input) throws(FeatherError) -> Statement
+    func statement(
+        in transaction: borrowing Transaction,
+        with input: Input
+    ) throws(FeatherError) -> Statement
 }
 
 public extension DatabaseQuery where Output: RangeReplaceableCollection, Output.Element: RowDecodable {
     func execute(
         with input: Input,
-        in context: borrowing Connection
+        in context: borrowing Transaction
     ) throws -> Output {
         let statement = try statement(in: context, with: input)
         var cursor = Cursor(of: statement)
@@ -81,7 +84,7 @@ public extension DatabaseQuery where Output: RangeReplaceableCollection, Output.
 public extension DatabaseQuery where Output: RowDecodable {
     func execute(
         with input: Input,
-        in context: borrowing Connection
+        in context: borrowing Transaction
     ) throws -> Output {
         let statement = try statement(in: context, with: input)
         var cursor = Cursor(of: statement)

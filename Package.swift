@@ -65,9 +65,7 @@ let package = Package(
         .testTarget(
             name: "FeatherTests",
             dependencies: [
-                "FeatherMacros",
-                "Compiler",
-                .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
+                "Feather",
             ]
         ),
 

@@ -14,7 +14,7 @@ public struct Transaction: ~Copyable {
     let kind: Kind
     let signal: Signal?
     private var didCommit = false
-    private let owner: ConnectionPool
+    private let pool: ConnectionPool
     
     public enum Kind: String {
         case deferred = "DEFERRED"
@@ -25,20 +25,24 @@ public struct Transaction: ~Copyable {
     init(
         connection: Connection,
         kind: Kind,
-        owner: ConnectionPool,
+        pool: ConnectionPool,
         signal: Signal?
     ) throws(FeatherError) {
         self.connection = connection
         self.kind = kind
-        self.owner = owner
+        self.pool = pool
         self.signal = signal
         try connection.execute(sql: "BEGIN \(kind.rawValue) TRANSACTION;")
+    }
+    
+    public func execute(sql: String) throws(FeatherError) {
+        try connection.execute(sql: sql)
     }
     
     public consuming func commit() async throws(FeatherError) {
         didCommit = true
         try connection.execute(sql: "COMMIT;")
-        owner.reclaim(connection: connection, signal: signal)
+        pool.reclaim(connection: connection, signal: signal)
     }
     
     deinit {
@@ -50,14 +54,19 @@ public struct Transaction: ~Copyable {
             }
         }
         
-        owner.reclaim(connection: connection, signal: signal)
+        pool.reclaim(connection: connection, signal: signal)
     }
 }
 
-public class Connection: @unchecked Sendable {
+/// Holds a raw SQLite database connection.
+///
+/// Rather unfortunate we have to do `@unchecked Sendable` and class.
+/// `class` is required since it cannot be `~Copyable` and be used
+/// in an `AsyncStream`.
+class Connection: @unchecked Sendable {
     let raw: OpaquePointer
     
-    public init(
+    init(
         path: String,
         flags: Int32 = SQLITE_OPEN_CREATE
             | SQLITE_OPEN_READWRITE
@@ -74,7 +83,7 @@ public class Connection: @unchecked Sendable {
         self.raw = raw
     }
     
-    public func execute(sql: String) throws(FeatherError) {
+    func execute(sql: String) throws(FeatherError) {
         try throwing(sqlite3_exec(raw, sql, nil, nil, nil))
     }
     
@@ -165,11 +174,12 @@ public actor ConnectionPool: Sendable {
         // Helper function to create a transaction and set the
         // write signal if needed
         func tx(connection: Connection) throws(FeatherError) -> Transaction {
+            assert(writeSignal == nil)
             writeSignal = begin == .write ? Signal() : nil
             return try Transaction(
                 connection: connection,
                 kind: transaction,
-                owner: self,
+                pool: self,
                 signal: writeSignal
             )
         }
@@ -222,11 +232,11 @@ public struct Statement: ~Copyable {
     
     public init(
         _ source: String,
-        connection: borrowing Connection
+        transaction: borrowing Transaction
     ) throws(FeatherError) {
         self.source = source
         var raw: OpaquePointer?
-        try throwing(sqlite3_prepare_v2(connection.raw, source, -1, &raw, nil))
+        try throwing(sqlite3_prepare_v2(transaction.connection.raw, source, -1, &raw, nil))
         
         guard let raw else {
             throw .failedToInitializeStatement
