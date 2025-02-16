@@ -23,6 +23,12 @@ public extension Query where Input == () {
     }
 }
 
+public extension Query where Context == () {
+    func execute(with input: Input) async throws -> Output {
+        try self.execute(with: input, in: ())
+    }
+}
+
 public extension Query {
     func with(input: Input) -> Queries.WithInput<Self> {
         return Queries.WithInput(base: self, input: input)

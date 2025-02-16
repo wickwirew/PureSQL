@@ -34,6 +34,13 @@ public struct Compiler {
 
 extension Compiler: StmtSyntaxVisitor {
     mutating func visit(_ stmt: CreateTableStmtSyntax) -> Statement? {
+        let tablePrimaryKeyConstraints = stmt.constraints
+            .compactMap { constraint -> [Substring]? in
+                guard case let .primaryKey(columns, _) = constraint.kind else { return nil }
+                return columns.compactMap(\.columnName?.value)
+            }
+            .flatMap(\.self)
+        
         switch stmt.kind {
         case let .select(selectStmt):
             let signature = compile(select: selectStmt)
@@ -43,12 +50,29 @@ extension Compiler: StmtSyntaxVisitor {
                 return Statement(name: nil, signature: .empty, syntax: stmt)
             }
             
-            schema[stmt.name.value] = Table(name: stmt.name.value, columns: columns)
-            return Statement(name: nil, signature: signature, syntax: stmt)
-        case let .columns(columns):
             schema[stmt.name.value] = Table(
                 name: stmt.name.value,
-                columns: columns.reduce(into: [:]) { $0[$1.value.name.value] = typeFor(column: $1.value) }
+                columns: columns,
+                primaryKey: tablePrimaryKeyConstraints
+            )
+            return Statement(name: nil, signature: signature, syntax: stmt)
+        case let .columns(columns):
+            // If there were no primary keys defined in the table constraints
+            // check if any columns have the PRIMARY KEY constraint.
+            let primaryKey: [Substring] = if tablePrimaryKeyConstraints.isEmpty {
+                columns.values
+                    .filter{ $0.constraints.contains(where: \.isPkConstraint) }
+                    .map(\.name.value)
+            } else {
+                tablePrimaryKeyConstraints
+            }
+            
+            schema[stmt.name.value] = Table(
+                name: stmt.name.value,
+                columns: columns.reduce(into: [:]) {
+                    $0[$1.value.name.value] = typeFor(column: $1.value)
+                },
+                primaryKey: primaryKey
             )
             return Statement(name: nil, signature: .empty, syntax: stmt)
         }

@@ -125,6 +125,11 @@ struct IndexedColumnSyntax {
     let expr: ExpressionSyntax
     let collation: IdentifierSyntax?
     let order: OrderSyntax
+    
+    var columnName: IdentifierSyntax? {
+        guard case let .column(column) = expr else { return nil }
+        return column.column
+    }
 }
 
 struct ForeignKeyClauseSyntax {
