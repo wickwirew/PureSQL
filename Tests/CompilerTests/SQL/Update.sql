@@ -29,9 +29,12 @@ UPDATE foo SET bar = ?, baz = :value WHERE :condition = bar;
 -- CHECK:     PARAMETER
 -- CHECK:       TYPE INTEGER?
 -- CHECK:       INDEX 1
+-- CHECK:       NAME value
 -- CHECK:     PARAMETER
 -- CHECK:       TYPE INTEGER?
 -- CHECK:       INDEX 2
+-- CHECK:       NAME value2
+-- NOTE: The names will have to be fixed later
 UPDATE foo SET (bar, baz) = (?, ?);
 
 -- CHECK: SIGNATURE

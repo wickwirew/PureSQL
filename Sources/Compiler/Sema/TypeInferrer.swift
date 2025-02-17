@@ -540,9 +540,10 @@ extension TypeInferrer {
         }
         
         switch select.selects.value {
-        case let .single(select):
+        case let .single(selectCore):
             let (type, selectSub) = compile(
-                select: select,
+                select: selectCore,
+                at: select.range,
                 potentialNames: potentialNames
             )
             sub.merge(selectSub)
@@ -584,7 +585,9 @@ extension TypeInferrer {
         if let values = insert.values {
             let (type, selectSub) = compile(select: values.select, potentialNames: insert.columns)
             sub.merge(selectSub)
-            _ = inputType.unify(with: type, at: insert.range, diagnostics: &diagnostics)
+            
+            // Unify the selected column list with the value types.
+            sub.merge(inputType.unify(with: type, at: insert.range, diagnostics: &diagnostics))
         } else {
             // TODO: Using 'DEFALUT VALUES' make sure all columns
             // TODO: actually have default values or null
@@ -745,28 +748,42 @@ extension TypeInferrer {
     /// 2 parameters named `bar` and `baz`
     private mutating func compile(
         select: SelectCoreSyntax,
+        at range: Range<Substring.Index>,
         potentialNames: [IdentifierSyntax]? = nil
     ) -> (Type, Substitution) {
         switch select {
         case let .select(select):
             return compile(select: select)
-        case let .values(values):
+        case let .values(groups):
             var sub: Substitution = [:]
             var types: [Type] = []
             
-            for (index, value) in values.enumerated() {
-                let (type, s, names) = value.accept(visitor: &self)
-                sub.merge(s, uniquingKeysWith: { $1 })
-                types.append(type)
+            for values in groups {
+                var columns: [Type] = []
                 
-                // If there are potential names to match with check to
-                // see if there is one at the index of this expression.
-                if let potentialNames, index < potentialNames.count {
-                    _ = merge(names: names, with: .some(potentialNames[index].value))
+                for (index, value) in values.enumerated() {
+                    let (type, s, names) = value.accept(visitor: &self)
+                    sub.merge(s)
+                    columns.append(type.apply(sub))
+                    
+                    // If there are potential names to match with check to
+                    // see if there is one at the index of this expression.
+                    if let potentialNames, index < potentialNames.count {
+                        _ = merge(names: names, with: .some(potentialNames[index].value))
+                    }
                 }
+                
+                types.append(.row(.unnamed(columns)))
             }
             
-            return (.row(.unnamed(types)), sub)
+            // All of the different groups, e.g. (1, 2), (3, 4)
+            // need to be unified since they are all going into
+            // the same columns
+            if types.count > 1 {
+                sub.merge(unify(all: types, at: range))
+            }
+            
+            return (types.last?.apply(sub) ?? .row(.empty), sub)
         }
     }
     

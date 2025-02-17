@@ -16,7 +16,7 @@ final class ParserTests: XCTestCase {
     }
     
     func testConflictClause() throws {
-        try check(sqlFile: "ConflictClause", parser: Parsers.conflictClause, dump: true)
+        try check(sqlFile: "ConflictClause", parser: Parsers.conflictClause)
     }
     
     func testForeignKeyClause() throws {
@@ -24,7 +24,7 @@ final class ParserTests: XCTestCase {
     }
     
     func testOrder() throws {
-        try check(sqlFile: "Order", parser: Parsers.order, dump: true)
+        try check(sqlFile: "Order", parser: Parsers.order)
     }
     
     func testColumnConstraint() throws {
@@ -48,7 +48,7 @@ final class ParserTests: XCTestCase {
     }
     
     func testCreateTable() throws {
-        try check(sqlFile: "CreateTable", parser: Parsers.createTableStmt, dump: true)
+        try check(sqlFile: "CreateTable", parser: Parsers.createTableStmt)
     }
     
     func testBindParameter() throws {

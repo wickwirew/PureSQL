@@ -214,7 +214,7 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
         var others = others.makeIterator()
         
         while let ty1 = tys.next(), let ty2 = others.next() {
-            sub.merge(ty1.apply(sub).unify(with: ty2.apply(sub), at: range, diagnostics: &diagnostics), uniquingKeysWith: { $1 })
+            sub.merge(ty1.apply(sub).unify(with: ty2.apply(sub), at: range, diagnostics: &diagnostics))
         }
         
         return sub

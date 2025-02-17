@@ -23,7 +23,7 @@ class CompilerTests: XCTestCase {
     }
     
     func testUpdate() throws {
-        try check(compile: "Update", dump: true)
+        try check(compile: "Update")
     }
     
     func testOutputCountInference() throws {

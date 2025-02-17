@@ -27,17 +27,35 @@ struct IsSingleResultInferrer {
         guard syntax.accept(visitor: &self) else { return signature }
         return signature.withSingleOutput()
     }
+    
+    private mutating func didFilterByPrimaryKey(
+        in expr: ExpressionSyntax,
+        for table: Table
+    ) -> Bool {
+        let filteredPrimaryKeys = expr.accept(visitor: &self)
+        return !table.primaryKey.contains{ !filteredPrimaryKeys.contains($0) }
+    }
 }
 
 /// Returns `true` if the query/statement will only return one value.
 extension IsSingleResultInferrer: StmtSyntaxVisitor {
-    mutating func visit(_ stmt: borrowing CreateTableStmtSyntax) -> Bool { true }
+    mutating func visit(_ stmt: borrowing CreateTableStmtSyntax) -> Bool { false }
     
-    mutating func visit(_ stmt: borrowing AlterTableStmtSyntax) -> Bool { true }
+    mutating func visit(_ stmt: borrowing AlterTableStmtSyntax) -> Bool { false }
     
-    mutating func visit(_ stmt: borrowing EmptyStmtSyntax) -> Bool { true }
+    mutating func visit(_ stmt: borrowing EmptyStmtSyntax) -> Bool { false }
     
-    mutating func visit(_ stmt: borrowing UpdateStmtSyntax) -> Bool { true }
+    mutating func visit(_ stmt: borrowing UpdateStmtSyntax) -> Bool {
+        // No filtering, update is to full table
+        guard let whereExpr = stmt.whereExpr else { return false }
+        
+        guard let table = schema[stmt.tableName.tableName.name.value] else {
+            // Upstream will have emitted diag
+            return false
+        }
+        
+        return didFilterByPrimaryKey(in: whereExpr, for: table)
+    }
     
     mutating func visit(_ stmt: borrowing SelectStmtSyntax) -> Bool {
         // See if there is a LIMIT 1 since this will always return a single result regardless
@@ -52,40 +70,44 @@ extension IsSingleResultInferrer: StmtSyntaxVisitor {
             return false
         }
         
-        // Only other case is `VALUES` which will always return a single result
-        guard case let .select(select) = selectCore else {
-            return true
+        switch selectCore {
+        case .select(let select):
+            // If its not filtered down with a `WHERE` it will always return more
+            guard let filter = select.where else { return false }
+            
+            if case let .join(join) = select.from {
+                // If there are joins just return that it returns many rows.
+                // In the future we could see if the joins are all a 1:1 and maybe
+                // so some better inference but this will do for now. Adding a
+                // `LIMIT 1` to the query will get them the result they want if
+                // it is inferred as a list.
+                guard join.joins.isEmpty else { return false }
+                
+                // If its not against a table we cannot infer it.
+                guard case let .table(table) = join.tableOrSubquery else { return false }
+                
+                // If we cannot find the table something upstream will have already emitted
+                // diagnositic so just exit
+                guard let t = schema[table.name.value] else { return false }
+                
+                // If they had filtering on all primary keys we can assume a single
+                // result will be returned.
+                return didFilterByPrimaryKey(in: filter, for: t)
+            }
+        case .values(let values):
+            // VALUES (1, 2), (3, 4)
+            if values.count > 1 {
+                return false
+            }
         }
 
-        // If its not filtered down with a `WHERE` it will always return more
-        guard let filter = select.where else { return false }
-        
-        if case let .join(join) = select.from {
-            // If there are joins just return that it returns many rows.
-            // In the future we could see if the joins are all a 1:1 and maybe
-            // so some better inference but this will do for now. Adding a
-            // `LIMIT 1` to the query will get them the result they want if
-            // it is inferred as a list.
-            guard join.joins.isEmpty else { return false }
-            
-            // If its not against a table we cannot infer it.
-            guard case let .table(table) = join.tableOrSubquery else { return false }
-            
-            // If we cannot find the table something upstream will have already emitted
-            // diagnositic so just exit
-            guard let t = schema[table.name.value] else { return false }
-            
-            // If they had filtering on all primary keys we can assume a single
-            // result will be returned.
-            let filteredPrimaryKeys = filter.accept(visitor: &self)
-            return !t.primaryKey.contains{ !filteredPrimaryKeys.contains($0) }
-        }
-        
         return false
     }
     
     mutating func visit(_ stmt: borrowing InsertStmtSyntax) -> Bool {
-        return true
+        // If no value, `DEFAULT VALUES` was used, which is one row.
+        guard let values = stmt.values else { return true }
+        return values.select.accept(visitor: &self)
     }
     
     mutating func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> Bool {

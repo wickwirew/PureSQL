@@ -174,7 +174,7 @@ enum SelectCoreSyntax {
     /// SELECT column FROM foo
     case select(Select)
     /// VALUES (foo, bar baz)
-    case values([ExpressionSyntax])
+    case values([[ExpressionSyntax]])
 
     struct Select {
         let distinct: Bool

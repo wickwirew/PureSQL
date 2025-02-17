@@ -575,7 +575,9 @@ enum Parsers {
         // Check if its values and to just get it out of the way
         if state.take(if: .values) {
             return .values(
-                commaDelimitedInParens(state: &state) { expr(state: &$0) }
+                commaDelimited(state: &state) { state in
+                    commaDelimitedInParens(state: &state) { expr(state: &$0) }
+                }
             )
         }
         

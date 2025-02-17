@@ -40,9 +40,7 @@ public struct Signature: CustomReflectable {
         return Mirror(
             self,
             children: [
-                "parameters": parameters.values
-                    .map(\.self)
-                    .sorted(by: { $0.index < $1.index }),
+                "parameters": parametersWithNames,
                 "output": outputTypes,
             ]
         )
@@ -53,32 +51,34 @@ public struct Signature: CustomReflectable {
     /// This will return the parameters with explicit unique names.
     public var parametersWithNames: [Parameter<String>] {
         var seenNames: Set<String> = []
-        var valueIndexStart = 0
         var result: [Parameter<String>] = []
         
-        for parameter in parameters.values {
+        func uniquify(_ name: String) -> String {
+            if !seenNames.contains(name) {
+                return name
+            }
+            
+            // Start at two, so we don't have id and id1, id and id2 makes more sense.
+            for i in 2..<Int.max {
+                let potential = i == 0 ? name : "\(name)\(i)"
+                guard !seenNames.contains(potential) else { continue }
+                return potential
+            }
+            
+            fatalError("You might want to take it easy on the parameters")
+        }
+        
+        for parameter in parameters.values.sorted(by: { $0.index < $1.index }) {
             if let name = parameter.name {
-                let name = name.description
+                // Even inferred names can have collisions.
+                // Example: bar = ? AND bar = ? would have 2 named bar.
+                let name = uniquify(name.description)
                 seenNames.insert(name)
                 result.append(parameter.with(name: name))
             } else {
-                // Technically someone can name a variable
-                // `value32` manually so we cannot assume it
-                // is available.
-                var name: String? = nil
-                for i in valueIndexStart..<Int.max {
-                    let potential = i == 0 ? "value" : "value\(i)"
-                    if !seenNames.contains(potential) {
-                        name = potential
-                        valueIndexStart = i + 1
-                        break
-                    }
-                }
-                
-                if let name {
-                    seenNames.insert(name)
-                    result.append(parameter.with(name: name))
-                }
+                let name = uniquify("value")
+                seenNames.insert(name)
+                result.append(parameter.with(name: name))
             }
         }
         
