@@ -38,17 +38,17 @@ class TypeCheckerTests: XCTestCase {
     }
     
     func testTypeCheckBind() throws {
-        let solution = solution(for: ":foo + 1 > :bar + 2.0 AND :baz")
-        XCTAssertEqual(.bool, solution.type)
-        XCTAssertEqual(.real, solution.type(for: ":foo"))
-        XCTAssertEqual(.real, solution.type(for: ":bar"))
-        XCTAssertEqual(.bool, solution.type(for: ":baz"))
+        let signature = signature(for: ":foo + 1 > :bar + 2.0 AND :baz")
+        XCTAssertEqual(.bool, signature.output)
+        XCTAssertEqual(.real, signature.type(for: ":foo"))
+        XCTAssertEqual(.real, signature.type(for: ":bar"))
+        XCTAssertEqual(.bool, signature.type(for: ":baz"))
     }
     
     func testTypeCheckBind2() throws {
-        let solution = solution(for: "1.0 + 2 * 3 * 4 * ?")
-        XCTAssertEqual(.real, solution.type)
-        XCTAssertEqual(.real, solution.type(for: 1))
+        let signature = signature(for: "1.0 + 2 * 3 * 4 * ?")
+        XCTAssertEqual(.real, signature.output)
+        XCTAssertEqual(.real, signature.type(for: 1))
     }
     
     func testNames() throws {
@@ -56,10 +56,10 @@ class TypeCheckerTests: XCTestCase {
         CREATE TABLE foo(bar INTEGER);
         """)
         
-        let solution = solution(for: "bar = ?", in: scope)
-        XCTAssertEqual(.bool, solution.type)
-        XCTAssertEqual(.optional(.integer), solution.type(for: 1))
-        XCTAssertEqual("bar", solution.name(for: 1))
+        let signature = signature(for: "bar = ?", in: scope)
+        XCTAssertEqual(.bool, signature.output)
+        XCTAssertEqual(.optional(.integer), signature.type(for: 1))
+        XCTAssertEqual("bar", signature.name(for: 1))
     }
     
     func testUnnamedBindParamNameNotRightNextToColumn() throws {
@@ -67,10 +67,10 @@ class TypeCheckerTests: XCTestCase {
         CREATE TABLE foo(bar INTEGER NOT NULL);
         """)
         
-        let solution = solution(for: "bar + 1 = ?", in: scope)
-        XCTAssertEqual(.bool, solution.type)
-        XCTAssertEqual(.integer, solution.type(for: 1))
-        XCTAssertEqual("bar", solution.name(for: 1))
+        let signature = signature(for: "bar + 1 = ?", in: scope)
+        XCTAssertEqual(.bool, signature.output)
+        XCTAssertEqual(.integer, signature.type(for: 1))
+        XCTAssertEqual("bar", signature.name(for: 1))
     }
     
     func testUnnamedBindParamNameNotRightNextToColumn2() throws {
@@ -78,25 +78,25 @@ class TypeCheckerTests: XCTestCase {
         CREATE TABLE foo(bar INTEGER NOT NULL);
         """)
         
-        let solution = solution(for: "1 + bar = ?", in: scope)
-        XCTAssertEqual(.bool, solution.type)
-        XCTAssertEqual(.integer, solution.type(for: 1))
-        XCTAssertEqual("bar", solution.name(for: 1))
+        let signature = signature(for: "1 + bar = ?", in: scope)
+        XCTAssertEqual(.bool, signature.output)
+        XCTAssertEqual(.integer, signature.type(for: 1))
+        XCTAssertEqual("bar", signature.name(for: 1))
     }
     
     func testTypeCheckBetween() throws {
-        let solution = solution(for: "1 BETWEEN 1 AND ?")
-        XCTAssertEqual(.bool, solution.type)
-        XCTAssertEqual(.integer, solution.type(for: 1))
+        let signature = signature(for: "1 BETWEEN 1 AND ?")
+        XCTAssertEqual(.bool, signature.output)
+        XCTAssertEqual(.integer, signature.type(for: 1))
     }
     
     func testTypeFunction() throws {
-        XCTAssertEqual(.integer, solution(for: "MAX(1)").type)
-        XCTAssertEqual(.real, solution(for: "MAX(1.0, 1)").type)
-        XCTAssertEqual(.real, solution(for: "MAX(1, 1.0)").type)
-        XCTAssertEqual(.real, solution(for: "MAX(1, 1, 1.0)").type)
-        XCTAssertEqual(.real, solution(for: "MAX(1, 1, 1.0, 1)").type)
-        XCTAssertEqual(.real, solution(for: "MAX(1, 1, 1, 1.0)").type)
+        XCTAssertEqual(.integer, signature(for: "MAX(1)").output)
+        XCTAssertEqual(.real, signature(for: "MAX(1.0, 1)").output)
+        XCTAssertEqual(.real, signature(for: "MAX(1, 1.0)").output)
+        XCTAssertEqual(.real, signature(for: "MAX(1, 1, 1.0)").output)
+        XCTAssertEqual(.real, signature(for: "MAX(1, 1, 1.0, 1)").output)
+        XCTAssertEqual(.real, signature(for: "MAX(1, 1, 1, 1.0)").output)
     }
     
     func testTypeFunctionComplex() throws {
@@ -104,8 +104,8 @@ class TypeCheckerTests: XCTestCase {
         CREATE TABLE foo(bar REAL NOT NULL);
         """)
         
-        let solution = solution(for: "MAX(1, 1, bar + 1, 1)", in: scope)
-        XCTAssertEqual(.real, solution.type)
+        let signature = signature(for: "MAX(1, 1, bar + 1, 1)", in: scope)
+        XCTAssertEqual(.real, signature.output)
     }
     
     func testTypeFunctionInputGetBound() throws {
@@ -113,60 +113,60 @@ class TypeCheckerTests: XCTestCase {
         CREATE TABLE foo(bar REAL NOT NULL);
         """)
         
-        let solution = solution(for: "MAX(1, 1, bar + ?, 1)", in: scope)
-        XCTAssertEqual(.real, solution.type)
-        XCTAssertEqual(.real, solution.type(for: 1))
+        let signature = signature(for: "MAX(1, 1, bar + ?, 1)", in: scope)
+        XCTAssertEqual(.real, signature.output)
+        XCTAssertEqual(.real, signature.type(for: 1))
     }
     
     func testErrors() throws {
-        let solution = solution(for: "'a' + 'b'")
-        XCTAssertEqual(.text, solution.type)
+        let signature = signature(for: "'a' + 'b'")
+        XCTAssertEqual(.text, signature.output)
     }
     
     func testCast() throws {
-        let solution = solution(for: "CAST(1 AS TEXT)")
-        XCTAssertEqual(.text, solution.type)
+        let signature = signature(for: "CAST(1 AS TEXT)")
+        XCTAssertEqual(.text, signature.output)
     }
     
     func testCaseWhenThenWithCaseExpr() throws {
-        let solution = solution(for: "CASE 1 WHEN ? THEN '' WHEN 3 THEN '' ELSE '' END")
-        XCTAssertEqual(.text, solution.type)
-        XCTAssertEqual(.integer, solution.type(for: 1))
+        let signature = signature(for: "CASE 1 WHEN ? THEN '' WHEN 3 THEN '' ELSE '' END")
+        XCTAssertEqual(.text, signature.output)
+        XCTAssertEqual(.integer, signature.type(for: 1))
     }
     
     func testCaseWhenThenWithNoCaseExpr() throws {
-        let solution = solution(for: "CASE WHEN ? + 1 THEN '' WHEN 3.0 THEN '' ELSE '' END")
-        XCTAssertEqual(.text, solution.type)
-        XCTAssertEqual(.real, solution.type(for: 1))
+        let signature = signature(for: "CASE WHEN ? + 1 THEN '' WHEN 3.0 THEN '' ELSE '' END")
+        XCTAssertEqual(.text, signature.output)
+        XCTAssertEqual(.real, signature.type(for: 1))
     }
     
     func testRow() throws {
-        let solution = solution(for: "(1, 'Foo', 2.0)")
-        XCTAssertEqual(.row([.integer, .text, .real]), solution.type)
+        let signature = signature(for: "(1, 'Foo', 2.0)")
+        XCTAssertEqual(.row([.integer, .text, .real]), signature.output)
     }
     
     func testInRowSingleValue() throws {
-        let solution = solution(for: ":bar IN (1)")
-        XCTAssertEqual(.bool, solution.type)
-        XCTAssertEqual(.integer, solution.type(for: ":bar"))
+        let signature = signature(for: ":bar IN (1)")
+        XCTAssertEqual(.bool, signature.output)
+        XCTAssertEqual(.integer, signature.type(for: ":bar"))
     }
     
     func testInRowMultipleValues() throws {
-        let solution = solution(for: ":bar IN (1, 2.0)")
-        XCTAssertEqual(.bool, solution.type)
-        XCTAssertEqual(.real, solution.type(for: ":bar"))
+        let signature = signature(for: ":bar IN (1, 2.0)")
+        XCTAssertEqual(.bool, signature.output)
+        XCTAssertEqual(.real, signature.type(for: ":bar"))
     }
     
     func testInRowManyTypesUnUnifiable() throws {
-        let solution = solution(for: ":bar IN (1, 'Foo', 2.0)")
-        XCTAssertEqual(.bool, solution.type)
-        XCTAssert(!solution.diagnostics.diagnostics.isEmpty)
+        let (signature, diagnostics) = signature(for: ":bar IN (1, 'Foo', 2.0)")
+        XCTAssertEqual(.bool, signature.output)
+        XCTAssert(!diagnostics.diagnostics.isEmpty)
     }
     
     func testInRowInferInputAsRow() throws {
-        let solution = solution(for: "1 IN :bar")
-        XCTAssertEqual(.bool, solution.type)
-        XCTAssertEqual(.row(.unknown(.integer)), solution.type(for: ":bar"))
+        let signature = signature(for: "1 IN :bar")
+        XCTAssertEqual(.bool, signature.output)
+        XCTAssertEqual(.row(.unknown(.integer)), signature.type(for: ":bar"))
     }
     
     func scope(table: String, schema: String) throws -> Environment {
@@ -179,17 +179,32 @@ class TypeCheckerTests: XCTestCase {
         return env
     }
     
-    private func solution(for source: String, in scope: Environment = Environment()) -> Solution {
-        let (expr, diagnostics) = Parsers.parse(source: source, parser: { Parsers.expr(state: &$0) })
+    private func signature(
+        for source: String,
+        in scope: Environment = Environment()
+    ) -> Signature {
+        let (expr, _) = Parsers.parse(source: source, parser: { Parsers.expr(state: &$0) })
         var typeInferrer = TypeInferrer(env: scope, schema: [:])
-        let solution = typeInferrer.solution(for: expr)
-        for d in diagnostics.diagnostics + solution.diagnostics.diagnostics {
-            print(d.message)
-        }
-        return solution
+        let (signature, _) = typeInferrer.signature(for: expr)
+        return signature
     }
     
-    private func check(_ source: String, in scope: Environment = Environment()) throws -> Type? {
-        return solution(for: source, in: scope).type
+    @_disfavoredOverload
+    private func signature(
+        for source: String,
+        in scope: Environment = Environment()
+    ) -> (Signature, Diagnostics) {
+        let (expr, d1) = Parsers.parse(source: source, parser: { Parsers.expr(state: &$0) })
+        var typeInferrer = TypeInferrer(env: scope, schema: [:])
+        let (signature, d2) = typeInferrer.signature(for: expr)
+        var diagnostics = Diagnostics(diagnostics: d1.diagnostics + d2.diagnostics)
+        return (signature, diagnostics)
+    }
+    
+    private func check(
+        _ source: String,
+        in scope: Environment = Environment()
+    ) throws -> Type? {
+        return signature(for: source, in: scope).output
     }
 }

@@ -92,6 +92,21 @@ public struct Signature: CustomReflectable {
             outputIsSingleElement: true
         )
     }
+    
+    public func type(for index: Int) -> Type? {
+        return parameters[index]?.type
+    }
+    
+    public func type(for name: Substring) -> Type? {
+        guard let (index, _) = parameters
+            .first(where: { $1.name == name }) else { return nil }
+        
+        return type(for: index)
+    }
+    
+    public func name(for index: Int) -> Substring? {
+        return parameters[index]?.name
+    }
  }
 
 /// An input parameter for a query.

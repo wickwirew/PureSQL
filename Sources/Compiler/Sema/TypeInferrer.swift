@@ -7,31 +7,6 @@
 
 import OrderedCollections
 
-struct Solution {
-    let diagnostics: Diagnostics
-    let signature: Signature
-    let lastName: Substring?
-    
-    var type: Type? {
-        return signature.output
-    }
-    
-    func type(for index: Int) -> Type? {
-        return signature.parameters[index]?.type
-    }
-    
-    func type(for name: Substring) -> Type? {
-        guard let (index, _) = signature.parameters
-            .first(where: { $1.name == name }) else { return nil }
-        
-        return type(for: index)
-    }
-    
-    func name(for index: Int) -> Substring? {
-        return signature.parameters[index]?.name
-    }
-}
-
 struct TypeInferrer {
     /// The environment in which the query executes. Any joined in tables
     /// will be added to this.
@@ -65,33 +40,21 @@ struct TypeInferrer {
         self.diagnostics = diagnostics
     }
     
-    /// Calculates the solution for a single expression.
-    mutating func solution<E: ExprSyntax>(for expr: E) -> Solution {
-        let (ty, sub, names) = expr.accept(visitor: &self)
-        let signature = signature(ty: ty, sub: sub)
-        return solution(signature: signature, names: names)
+    /// Calculates the signature for a single expression.
+    mutating func signature<E: ExprSyntax>(for expr: E) -> (Signature, Diagnostics) {
+        let (ty, sub, _) = expr.accept(visitor: &self)
+        return (signature(ty: ty, sub: sub), diagnostics)
     }
     
     /// Calculates the solution of an entire statement.
-    mutating func solution<S: StmtSyntax>(for stmt: S) -> Solution {
+    mutating func signature<S: StmtSyntax>(for stmt: S) -> (Signature, Diagnostics) {
         let (ty, sub) = stmt.accept(visitor: &self)
         let signature = signature(ty: ty, sub: sub)
         
         // Since its a statement we need to also infer whether or not
         // the exepected result count is a single or many rows
         var singleOuputInferer = IsSingleResultInferrer(schema: schema)
-        return solution(signature: singleOuputInferer.infer(signature, syntax: stmt), names: .none)
-    }
-    
-    private mutating func solution(
-        signature: Signature,
-        names: Names
-    ) -> Solution {
-        return Solution(
-            diagnostics: diagnostics,
-            signature: signature,
-            lastName: names.proposedName
-        )
+        return (singleOuputInferer.infer(signature, syntax: stmt), diagnostics)
     }
     
     private mutating func signature(ty: Type?, sub: Substitution) -> Signature {

@@ -106,23 +106,23 @@ extension Compiler: StmtSyntaxVisitor {
     
     mutating func visit(_ stmt: InsertStmtSyntax) -> Statement? {
         var queryCompiler = TypeInferrer(schema: schema)
-        let solution = queryCompiler.solution(for: stmt)
-        diagnostics.add(contentsOf: solution.diagnostics)
-        return Statement(name: nil, signature: solution.signature, syntax: stmt)
+        let (signature, diagnostics) = queryCompiler.signature(for: stmt)
+        self.diagnostics.add(contentsOf: diagnostics)
+        return Statement(name: nil, signature: signature, syntax: stmt)
     }
     
     mutating func visit(_ stmt: UpdateStmtSyntax) -> Statement? {
         var queryCompiler = TypeInferrer(schema: schema)
-        let solution = queryCompiler.solution(for: stmt)
-        diagnostics.add(contentsOf: solution.diagnostics)
-        return Statement(name: nil, signature: solution.signature, syntax: stmt)
+        let (signature, diagnostics) = queryCompiler.signature(for: stmt)
+        self.diagnostics.add(contentsOf: diagnostics)
+        return Statement(name: nil, signature: signature, syntax: stmt)
     }
     
     mutating func visit(_ stmt: DeleteStmtSyntax) -> Statement? {
         var queryCompiler = TypeInferrer(schema: schema)
-        let solution = queryCompiler.solution(for: stmt)
-        diagnostics.add(contentsOf: solution.diagnostics)
-        return Statement(name: nil, signature: solution.signature, syntax: stmt)
+        let (signature, diagnostics) = queryCompiler.signature(for: stmt)
+        self.diagnostics.add(contentsOf: diagnostics)
+        return Statement(name: nil, signature: signature, syntax: stmt)
     }
     
     mutating func visit(_ stmt: QueryDefinitionStmtSyntax) -> Statement? {
@@ -153,8 +153,8 @@ extension Compiler: StmtSyntaxVisitor {
     
     private mutating func compile(select: borrowing SelectStmtSyntax) -> Signature {
         var queryCompiler = TypeInferrer(schema: schema)
-        let solution = queryCompiler.solution(for: select)
-        diagnostics.add(contentsOf: solution.diagnostics)
-        return solution.signature
+        let (signature, diagnostics) = queryCompiler.signature(for: select)
+        self.diagnostics.add(contentsOf: diagnostics)
+        return signature
     }
 }
