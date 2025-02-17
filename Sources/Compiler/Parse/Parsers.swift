@@ -49,6 +49,8 @@ enum Parsers {
             return try insertStmt(state: &state)
         case (.update, _):
             return try updateStmt(state: &state)
+        case (.delete, _):
+            return try deleteStmt(state: &state)
         case (.define, _):
             return try definition(state: &state)
         case (.with, _):
@@ -65,6 +67,13 @@ enum Parsers {
                 )
             case .insert:
                 return try insertStmt(
+                    state: &state,
+                    start: start,
+                    cteRecursive: cte.recursive,
+                    cte: cte.cte
+                )
+            case .delete:
+                return deleteStmt(
                     state: &state,
                     start: start,
                     cteRecursive: cte.recursive,
@@ -291,6 +300,38 @@ enum Parsers {
             tableName: tableName,
             sets: sets,
             from: from,
+            whereExpr: whereExpr,
+            returningClause: returningClause,
+            range: state.range(from: start)
+        )
+    }
+    
+    static func deleteStmt(state: inout ParserState) throws -> DeleteStmtSyntax {
+        let start = state.current
+        let cte = try withCte(state: &state)
+        return deleteStmt(
+            state: &state,
+            start: start,
+            cteRecursive: cte.recursive,
+            cte: cte.cte
+        )
+    }
+    
+    static func deleteStmt(
+        state: inout ParserState,
+        start: Token,
+        cteRecursive: Bool,
+        cte: CommonTableExpressionSyntax?
+    ) -> DeleteStmtSyntax {
+        state.consume(.delete)
+        state.consume(.from)
+        let table = qualifiedTableName(state: &state)
+        let whereExpr = state.take(if: .where) ? expr(state: &state) : nil
+        let returningClause = state.take(if: .returning) ? returningClause(state: &state) : nil
+        return DeleteStmtSyntax(
+            cte: cte,
+            cteRecursive: cteRecursive,
+            table: table,
             whereExpr: whereExpr,
             returningClause: returningClause,
             range: state.range(from: start)

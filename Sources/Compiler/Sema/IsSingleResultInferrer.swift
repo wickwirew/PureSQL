@@ -110,6 +110,17 @@ extension IsSingleResultInferrer: StmtSyntaxVisitor {
         return values.select.accept(visitor: &self)
     }
     
+    mutating func visit(_ stmt: borrowing DeleteStmtSyntax) -> Bool {
+        guard let filter = stmt.whereExpr else { return false }
+        
+        guard let table = schema[stmt.table.tableName.name.value] else {
+            // Upstream will have emitted diag
+            return false
+        }
+        
+        return didFilterByPrimaryKey(in: filter, for: table)
+    }
+    
     mutating func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> Bool {
         return stmt.statement.accept(visitor: &self)
     }

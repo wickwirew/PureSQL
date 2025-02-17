@@ -19,6 +19,7 @@ protocol StmtSyntaxVisitor {
     mutating func visit(_ stmt: borrowing SelectStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: borrowing InsertStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: borrowing UpdateStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: borrowing DeleteStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> StmtOutput
 }
 
@@ -237,6 +238,19 @@ struct SelectStmtSyntax: StmtSyntax {
 
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
         visitor.visit(self)
+    }
+}
+
+struct DeleteStmtSyntax: StmtSyntax {
+    let cte: CommonTableExpressionSyntax?
+    let cteRecursive: Bool
+    let table: QualifiedTableNameSyntax
+    let whereExpr: ExpressionSyntax?
+    let returningClause: ReturningClauseSyntax?
+    let range: Range<Substring.Index>
+    
+    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
+        return visitor.visit(self)
     }
 }
 

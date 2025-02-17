@@ -26,6 +26,10 @@ class CompilerTests: XCTestCase {
         try check(compile: "Update")
     }
     
+    func testDelete() throws {
+        try check(compile: "Delete")
+    }
+    
     func testOutputCountInference() throws {
         try check(
             sqlFile: "IsSingleResult",

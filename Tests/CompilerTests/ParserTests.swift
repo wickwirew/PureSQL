@@ -110,6 +110,10 @@ final class ParserTests: XCTestCase {
     func testTableConstraints() throws {
         try check(sqlFile: "TableConstraint", parser: Parsers.tableConstraint)
     }
+    
+    func testDeleteStmt() throws {
+        try check(sqlFile: "DeleteStmt", parser: Parsers.deleteStmt)
+    }
 }
 
 func check<Output>(

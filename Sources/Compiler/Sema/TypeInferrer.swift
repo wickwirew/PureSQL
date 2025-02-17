@@ -519,6 +519,10 @@ extension TypeInferrer: StmtSyntaxVisitor {
         return compile(update: stmt)
     }
     
+    mutating func visit(_ stmt: borrowing DeleteStmtSyntax) -> (Type?, Substitution) {
+        return compile(delete: stmt)
+    }
+    
     mutating func visit(_ stmt: borrowing EmptyStmtSyntax) -> (Type?, Substitution) {
         return (nil, [:])
     }
@@ -651,6 +655,36 @@ extension TypeInferrer {
         
         let returnType: Type
         if let returning = update.returningClause {
+            let (t, s) = compile(returningClause: returning, sourceTable: table)
+            returnType = t
+            sub.merge(s)
+        } else {
+            returnType = .row(.empty)
+        }
+        
+        return (returnType, sub)
+    }
+    
+    mutating func compile(delete: DeleteStmtSyntax) -> (Type, Substitution) {
+        var sub: Substitution = [:]
+        
+        if let cte = delete.cte {
+            sub.merge(compile(cte: cte))
+        }
+        
+        guard let table = schema[delete.table.tableName.name.value] else {
+            diagnostics.add(.tableDoesNotExist(delete.table.tableName.name))
+            return (.error, sub)
+        }
+        
+        insertTableAndColumnsIntoEnv(table)
+        
+        if let whereExpr = delete.whereExpr {
+            sub.merge(compile(where: whereExpr))
+        }
+        
+        let returnType: Type
+        if let returning = delete.returningClause {
             let (t, s) = compile(returningClause: returning, sourceTable: table)
             returnType = t
             sub.merge(s)

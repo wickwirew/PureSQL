@@ -118,6 +118,13 @@ extension Compiler: StmtSyntaxVisitor {
         return Statement(name: nil, signature: solution.signature, syntax: stmt)
     }
     
+    mutating func visit(_ stmt: DeleteStmtSyntax) -> Statement? {
+        var queryCompiler = TypeInferrer(schema: schema)
+        let solution = queryCompiler.solution(for: stmt)
+        diagnostics.add(contentsOf: solution.diagnostics)
+        return Statement(name: nil, signature: solution.signature, syntax: stmt)
+    }
+    
     mutating func visit(_ stmt: QueryDefinitionStmtSyntax) -> Statement? {
         guard let inner = stmt.statement.accept(visitor: &self) else {
             // TODO: Show Error? Really dont know if this can happen.
