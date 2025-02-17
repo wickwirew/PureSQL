@@ -14,7 +14,7 @@ struct TypeInferrer {
     /// The entire database schema
     private let schema: Schema
     /// Any diagnostics that are emitted during compilation
-    private var diagnostics: Diagnostics
+    private(set) var diagnostics: Diagnostics
     /// Number of type variables. Incremented each time a new
     /// fresh type var is created so all are unique
     private var tyVarCounter = 0
@@ -41,20 +41,20 @@ struct TypeInferrer {
     }
     
     /// Calculates the signature for a single expression.
-    mutating func signature<E: ExprSyntax>(for expr: E) -> (Signature, Diagnostics) {
+    mutating func signature<E: ExprSyntax>(for expr: E) -> Signature {
         let (ty, sub, _) = expr.accept(visitor: &self)
-        return (signature(ty: ty, sub: sub), diagnostics)
+        return signature(ty: ty, sub: sub)
     }
     
     /// Calculates the solution of an entire statement.
-    mutating func signature<S: StmtSyntax>(for stmt: S) -> (Signature, Diagnostics) {
+    mutating func signature<S: StmtSyntax>(for stmt: S) -> Signature {
         let (ty, sub) = stmt.accept(visitor: &self)
         let signature = signature(ty: ty, sub: sub)
         
         // Since its a statement we need to also infer whether or not
         // the exepected result count is a single or many rows
         var singleOuputInferer = IsSingleResultInferrer(schema: schema)
-        return (singleOuputInferer.infer(signature, syntax: stmt), diagnostics)
+        return singleOuputInferer.infer(signature, syntax: stmt)
     }
     
     private mutating func signature(ty: Type?, sub: Substitution) -> Signature {
@@ -437,7 +437,7 @@ extension TypeInferrer: ExprSyntaxVisitor {
     }
     
     mutating func visit(_ expr: borrowing SelectExprSyntax) -> (Type, Substitution, Names) {
-        let (ty, sub) = compile(select: expr.select)
+        let (ty, sub) = infer(select: expr.select)
         return (ty, sub, .none)
     }
     
@@ -471,19 +471,19 @@ extension TypeInferrer: StmtSyntaxVisitor {
     }
     
     mutating func visit(_ stmt: borrowing SelectStmtSyntax) -> (Type?, Substitution) {
-        return compile(select: stmt)
+        return infer(select: stmt)
     }
     
     mutating func visit(_ stmt: borrowing InsertStmtSyntax) -> (Type?, Substitution) {
-        return compile(insert: stmt)
+        return infer(insert: stmt)
     }
     
     mutating func visit(_ stmt: borrowing UpdateStmtSyntax) -> (Type?, Substitution) {
-        return compile(update: stmt)
+        return infer(update: stmt)
     }
     
     mutating func visit(_ stmt: borrowing DeleteStmtSyntax) -> (Type?, Substitution) {
-        return compile(delete: stmt)
+        return infer(delete: stmt)
     }
     
     mutating func visit(_ stmt: borrowing EmptyStmtSyntax) -> (Type?, Substitution) {
@@ -496,19 +496,19 @@ extension TypeInferrer: StmtSyntaxVisitor {
 }
 
 extension TypeInferrer {
-    mutating func compile(
+    mutating func infer(
         select: SelectStmtSyntax,
         potentialNames: [IdentifierSyntax]? = nil
     ) -> (Type, Substitution) {
         var sub: Substitution = [:]
         
         if let cte = select.cte?.value {
-            sub.merge(compile(cte: cte))
+            sub.merge(infer(cte: cte))
         }
         
         switch select.selects.value {
         case let .single(selectCore):
-            let (type, selectSub) = compile(
+            let (type, selectSub) = infer(
                 select: selectCore,
                 at: select.range,
                 potentialNames: potentialNames
@@ -520,11 +520,11 @@ extension TypeInferrer {
         }
     }
     
-    mutating func compile(insert: InsertStmtSyntax) -> (Type, Substitution) {
+    mutating func infer(insert: InsertStmtSyntax) -> (Type, Substitution) {
         var sub: Substitution = [:]
         
         if let cte = insert.cte {
-            sub.merge(compile(cte: cte))
+            sub.merge(infer(cte: cte))
         }
         
         guard let table = schema[insert.tableName.name.value] else {
@@ -550,7 +550,7 @@ extension TypeInferrer {
         }
         
         if let values = insert.values {
-            let (type, selectSub) = compile(select: values.select, potentialNames: insert.columns)
+            let (type, selectSub) = infer(select: values.select, potentialNames: insert.columns)
             sub.merge(selectSub)
             
             // Unify the selected column list with the value types.
@@ -561,7 +561,7 @@ extension TypeInferrer {
         }
         
         let (ty, retSub): (Type, Substitution) = if let returningClause = insert.returningClause {
-            compile(returningClause: returningClause, sourceTable: table)
+            infer(returningClause: returningClause, sourceTable: table)
         } else {
             (.row(.empty), [:])
         }
@@ -570,11 +570,11 @@ extension TypeInferrer {
         return (ty, sub)
     }
     
-    mutating func compile(update: UpdateStmtSyntax) -> (Type, Substitution) {
+    mutating func infer(update: UpdateStmtSyntax) -> (Type, Substitution) {
         var sub: Substitution = [:]
         
         if let cte = update.cte {
-            sub.merge(compile(cte: cte))
+            sub.merge(infer(cte: cte))
         }
         
         guard let table = schema[update.tableName.tableName.name.value] else {
@@ -609,16 +609,16 @@ extension TypeInferrer {
         }
         
         if let from = update.from {
-            sub.merge(compile(from: from))
+            sub.merge(infer(from: from))
         }
         
         if let whereExpr = update.whereExpr {
-            sub.merge(compile(where: whereExpr))
+            sub.merge(infer(where: whereExpr))
         }
         
         let returnType: Type
         if let returning = update.returningClause {
-            let (t, s) = compile(returningClause: returning, sourceTable: table)
+            let (t, s) = infer(returningClause: returning, sourceTable: table)
             returnType = t
             sub.merge(s)
         } else {
@@ -628,11 +628,11 @@ extension TypeInferrer {
         return (returnType, sub)
     }
     
-    mutating func compile(delete: DeleteStmtSyntax) -> (Type, Substitution) {
+    mutating func infer(delete: DeleteStmtSyntax) -> (Type, Substitution) {
         var sub: Substitution = [:]
         
         if let cte = delete.cte {
-            sub.merge(compile(cte: cte))
+            sub.merge(infer(cte: cte))
         }
         
         guard let table = schema[delete.table.tableName.name.value] else {
@@ -643,12 +643,12 @@ extension TypeInferrer {
         insertTableAndColumnsIntoEnv(table)
         
         if let whereExpr = delete.whereExpr {
-            sub.merge(compile(where: whereExpr))
+            sub.merge(infer(where: whereExpr))
         }
         
         let returnType: Type
         if let returning = delete.returningClause {
-            let (t, s) = compile(returningClause: returning, sourceTable: table)
+            let (t, s) = infer(returningClause: returning, sourceTable: table)
             returnType = t
             sub.merge(s)
         } else {
@@ -676,7 +676,7 @@ extension TypeInferrer {
         return .row(.named(columns))
     }
     
-    private mutating func compile(
+    private mutating func infer(
         returningClause: ReturningClauseSyntax,
         sourceTable: Table
     ) -> (Type, Substitution) {
@@ -704,8 +704,8 @@ extension TypeInferrer {
         return (.row(.named(resultColumns)), sub)
     }
     
-    private mutating func compile(cte: CommonTableExpressionSyntax) -> Substitution {
-        let (type, sub) = compile(select: cte.select)
+    private mutating func infer(cte: CommonTableExpressionSyntax) -> Substitution {
+        let (type, sub) = infer(select: cte.select)
 
         let tableTy: Type
         if cte.columns.isEmpty {
@@ -735,7 +735,7 @@ extension TypeInferrer {
         return sub
     }
     
-    /// Will compile the core part of the select.
+    /// Will infer the core part of the select.
     /// Takes an optional potential names list.
     ///
     /// The select core also includes the `VALUES (?, ?, ?)`
@@ -743,14 +743,14 @@ extension TypeInferrer {
     /// parameter names of those.
     /// So on `INSERT INTO foo (bar, baz) VALUES (?, ?)` has
     /// 2 parameters named `bar` and `baz`
-    private mutating func compile(
+    private mutating func infer(
         select: SelectCoreSyntax,
         at range: Range<Substring.Index>,
         potentialNames: [IdentifierSyntax]? = nil
     ) -> (Type, Substitution) {
         switch select {
         case let .select(select):
-            return compile(select: select)
+            return infer(select: select)
         case let .values(groups):
             var sub: Substitution = [:]
             var types: [Type] = []
@@ -784,18 +784,18 @@ extension TypeInferrer {
         }
     }
     
-    private mutating func compile(select: SelectCoreSyntax.Select) -> (Type, Substitution) {
+    private mutating func infer(select: SelectCoreSyntax.Select) -> (Type, Substitution) {
         var sub: Substitution = [:]
         
         if let from = select.from {
-            sub.merge(compile(from: from), uniquingKeysWith: { $1 })
+            sub.merge(infer(from: from), uniquingKeysWith: { $1 })
         }
         
-        let (output, colSub) = compile(resultColumns: select.columns)
+        let (output, colSub) = infer(resultColumns: select.columns)
         sub.merge(colSub)
         
         if let whereExpr = select.where {
-            sub.merge(compile(where: whereExpr), uniquingKeysWith: { $1 })
+            sub.merge(infer(where: whereExpr), uniquingKeysWith: { $1 })
         }
         
         if let groupBy = select.groupBy {
@@ -818,20 +818,20 @@ extension TypeInferrer {
         return (output, sub)
     }
     
-    private mutating func compile(from: FromSyntax) -> Substitution {
+    private mutating func infer(from: FromSyntax) -> Substitution {
         switch from {
         case let .tableOrSubqueries(t):
             var sub: Substitution = [:]
             for table in t {
-                sub.merge(compile(table), uniquingKeysWith: { $1 })
+                sub.merge(infer(table), uniquingKeysWith: { $1 })
             }
             return sub
         case let .join(joinClause):
-            return compile(joinClause: joinClause)
+            return infer(joinClause: joinClause)
         }
     }
     
-    private mutating func compile(where expr: ExpressionSyntax) -> Substitution {
+    private mutating func infer(where expr: ExpressionSyntax) -> Substitution {
         let (type, sub, _) = expr.accept(visitor: &self)
         
         if type != .bool, type != .integer {
@@ -844,7 +844,7 @@ extension TypeInferrer {
         return sub
     }
     
-    private mutating func compile(resultColumns: [ResultColumnSyntax]) -> (Type, Substitution) {
+    private mutating func infer(resultColumns: [ResultColumnSyntax]) -> (Type, Substitution) {
         var columns: OrderedDictionary<Substring, Type> = [:]
         var sub: Substitution = [:]
         
@@ -887,20 +887,20 @@ extension TypeInferrer {
         return (.row(.named(columns)), sub)
     }
     
-    private mutating func compile(joinClause: JoinClauseSyntax) -> Substitution {
-        var sub = compile(joinClause.tableOrSubquery)
+    private mutating func infer(joinClause: JoinClauseSyntax) -> Substitution {
+        var sub = infer(joinClause.tableOrSubquery)
         
         for join in joinClause.joins {
-            sub.merge(compile(join: join), uniquingKeysWith: { $1 })
+            sub.merge(infer(join: join), uniquingKeysWith: { $1 })
         }
         
         return sub
     }
     
-    private mutating func compile(join: JoinClauseSyntax.Join) -> Substitution {
+    private mutating func infer(join: JoinClauseSyntax.Join) -> Substitution {
         switch join.constraint {
         case let .on(expression):
-            let joinSub = compile(join.tableOrSubquery, joinOp: join.op)
+            let joinSub = infer(join.tableOrSubquery, joinOp: join.op)
             
             let (type, exprSub, _) = expression.accept(visitor: &self)
             
@@ -913,17 +913,17 @@ extension TypeInferrer {
             
             return joinSub.merging(exprSub)
         case let .using(columns):
-            return compile(
+            return infer(
                 join.tableOrSubquery,
                 joinOp: join.op,
                 columns: columns.reduce(into: []) { $0.insert($1.value) }
             )
         case .none:
-            return compile(join.tableOrSubquery, joinOp: join.op)
+            return infer(join.tableOrSubquery, joinOp: join.op)
         }
     }
     
-    private mutating func compile(
+    private mutating func infer(
         _ tableOrSubquery: TableOrSubquerySyntax,
         joinOp: JoinOperatorSyntax? = nil,
         columns usedColumns: Set<Substring> = []
@@ -955,7 +955,7 @@ extension TypeInferrer {
             fatalError()
         case let .subquery(selectStmt, alias):
             let (type, sub) = inNewEnvironment { inferrer in
-                inferrer.compile(select: selectStmt)
+                inferrer.infer(select: selectStmt)
             }
             
             // Insert the result of the subquery into the environment
@@ -975,7 +975,7 @@ extension TypeInferrer {
             
             return sub
         case let .join(joinClause):
-            return compile(joinClause: joinClause)
+            return infer(joinClause: joinClause)
         case .subTableOrSubqueries:
             fatalError()
         }

@@ -57,7 +57,7 @@ func check(
         parse: { contents in
             var compiler = Compiler()
             compiler.compile(contents)
-            diagnostics = compiler.diagnostics.diagnostics
+            diagnostics = compiler.diagnostics.elements
             return compiler.statements.map(\.signature).filter{ !$0.isEmpty }
         },
         prefix: "CHECK",

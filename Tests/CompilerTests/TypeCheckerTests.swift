@@ -160,7 +160,7 @@ class TypeCheckerTests: XCTestCase {
     func testInRowManyTypesUnUnifiable() throws {
         let (signature, diagnostics) = signature(for: ":bar IN (1, 'Foo', 2.0)")
         XCTAssertEqual(.bool, signature.output)
-        XCTAssert(!diagnostics.diagnostics.isEmpty)
+        XCTAssert(!diagnostics.elements.isEmpty)
     }
     
     func testInRowInferInputAsRow() throws {
@@ -185,7 +185,7 @@ class TypeCheckerTests: XCTestCase {
     ) -> Signature {
         let (expr, _) = Parsers.parse(source: source, parser: { Parsers.expr(state: &$0) })
         var typeInferrer = TypeInferrer(env: scope, schema: [:])
-        let (signature, _) = typeInferrer.signature(for: expr)
+        let signature = typeInferrer.signature(for: expr)
         return signature
     }
     
@@ -194,10 +194,10 @@ class TypeCheckerTests: XCTestCase {
         for source: String,
         in scope: Environment = Environment()
     ) -> (Signature, Diagnostics) {
-        let (expr, d1) = Parsers.parse(source: source, parser: { Parsers.expr(state: &$0) })
+        let (expr, exprDiags) = Parsers.parse(source: source, parser: { Parsers.expr(state: &$0) })
         var typeInferrer = TypeInferrer(env: scope, schema: [:])
-        let (signature, d2) = typeInferrer.signature(for: expr)
-        var diagnostics = Diagnostics(diagnostics: d1.diagnostics + d2.diagnostics)
+        let signature = typeInferrer.signature(for: expr)
+        let diagnostics = typeInferrer.diagnostics.merging(exprDiags)
         return (signature, diagnostics)
     }
     
