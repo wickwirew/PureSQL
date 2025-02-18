@@ -8,7 +8,7 @@
 /// This cannot be a struct that suppresses `Copyable`
 /// unfortunately. Associated types cannot suppress
 /// it which breaks the `Query` API. Maybe a future thing.
-public final class Transaction: @unchecked Sendable {
+public final class Transaction {
     let connection: Connection
     let kind: Kind
     let signal: Signal?
@@ -125,7 +125,7 @@ public enum TransactionKind: Sendable {
     case write
 }
 
-public protocol TransactionProvider {
+public protocol TransactionProvider: Actor {
     func begin(
         _ kind: TransactionKind
     ) async throws -> sending Transaction
