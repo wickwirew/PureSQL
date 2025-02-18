@@ -8,7 +8,7 @@
 /// This cannot be a struct that suppresses `Copyable`
 /// unfortunately. Associated types cannot suppress
 /// it which breaks the `Query` API. Maybe a future thing.
-public final class Transaction {
+public final class Transaction: @unchecked Sendable {
     let connection: Connection
     let kind: Kind
     let signal: Signal?
@@ -46,14 +46,13 @@ public final class Transaction {
         try connection.execute(sql: sql)
     }
     
-    public consuming func commit() async throws(FeatherError) {
+    public consuming func commit() throws(FeatherError) {
         guard !didCommit else {
             throw .alreadyCommited
         }
         
         didCommit = true
         try connection.execute(sql: "COMMIT;")
-        pool.reclaim(connection: connection, signal: signal)
     }
     
     deinit {
@@ -63,8 +62,71 @@ public final class Transaction {
             } catch {
                 assertionFailure("Failed to \(finalize.rawValue): \(error)")
             }
-            
-            pool.reclaim(connection: connection, signal: signal)
         }
+        
+        pool.reclaim(connection: connection, signal: signal)
     }
+}
+
+extension Transaction {
+    public func fetchMany<Element>(
+        of type: Element.Type,
+        statement: consuming Statement
+    ) throws(FeatherError) -> [Element] where Element: RowDecodable {
+        var cursor = Cursor(of: statement)
+        var result: [Element] = []
+        
+        while try cursor.step() {
+            try result.append(Element(cursor: cursor))
+        }
+        
+        return result
+    }
+    
+    public func fetchOne<Element>(
+        of type: Element.Type,
+        statement: consuming Statement
+    ) throws(FeatherError) -> Element where Element: RowDecodable {
+        var cursor = Cursor(of: statement)
+        
+        guard try cursor.step() else {
+            throw .queryReturnedNoValue
+        }
+        
+        return try Element(cursor: cursor)
+    }
+    
+    public func execute(
+        statement: consuming Statement
+    ) throws(FeatherError) {
+        var cursor = Cursor(of: statement)
+        _ = try cursor.step()
+    }
+
+    public func fetchMany<Element>(
+        of type: Element.Type,
+        sql: String
+    ) throws(FeatherError) -> [Element] where Element: RowDecodable {
+        let statement = try Statement(sql, transaction: self)
+        return try fetchMany(of: Element.self, statement: statement)
+    }
+    
+    public func fetchOne<Element>(
+        of type: Element.Type,
+        sql: String
+    ) throws(FeatherError) -> Element? where Element: RowDecodable {
+        let statement = try Statement(sql, transaction: self)
+        return try fetchOne(of: Element.self, statement: statement)
+    }
+}
+
+public enum TransactionKind: Sendable {
+    case read
+    case write
+}
+
+public protocol TransactionProvider {
+    func begin(
+        _ kind: TransactionKind
+    ) async throws -> sending Transaction
 }

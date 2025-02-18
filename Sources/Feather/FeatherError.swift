@@ -16,4 +16,5 @@ public enum FeatherError: Error {
     case failedToGetConnection
     case poolCannotHaveZeroConnections
     case alreadyCommited
+    case entityWasNotFound
 }

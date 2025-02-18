@@ -19,28 +19,23 @@ public actor ConnectionPool: Sendable {
     
     public static let defaultLimit = 5
     
-    public enum Begin {
-        case read
-        case write
-    }
-    
     public init(
         name: String,
         limit: Int = ConnectionPool.defaultLimit,
         migrations: [Migration]
-    ) async throws {
+    ) throws {
         let url = try FileManager.default
             .url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
             .appendingPathComponent("\(name).sqlite")
         
-        try await self.init(path: url.absoluteString, limit: limit, migrations: migrations)
+        try self.init(path: url.absoluteString, limit: limit, migrations: migrations)
     }
     
     public init(
         path: String,
         limit: Int = ConnectionPool.defaultLimit,
         migrations: [Migration]
-    ) async throws {
+    ) throws {
         guard limit > 0 else {
             throw FeatherError.poolCannotHaveZeroConnections
         }
@@ -53,10 +48,8 @@ public actor ConnectionPool: Sendable {
         
         let connection = try Connection(path: path)
         
-        if limit > 1 {
-            // Turn on WAL mode
-            try connection.execute(sql: "PRAGMA journal_mode=WAL;")
-        }
+        // Turn on WAL mode
+        try connection.execute(sql: "PRAGMA journal_mode=WAL;")
         
         let tx = try Transaction(
             connection: connection,
@@ -65,8 +58,7 @@ public actor ConnectionPool: Sendable {
         )
         
         try MigrationRunner.execute(migrations: migrations, tx: tx)
-        
-        try await tx.commit()
+        try tx.commit()
     }
     
     /// Gives the connection back to the pool.
@@ -77,30 +69,28 @@ public actor ConnectionPool: Sendable {
         connectionContinuation.yield(connection)
         signal?.signal()
     }
-    
+}
+
+extension ConnectionPool: TransactionProvider {
     /// Starts a transaction.
     public func begin(
-        _ begin: Begin,
-        transaction: Transaction.Kind = .deferred
+        _ kind: TransactionKind
     ) async throws(FeatherError) -> sending Transaction {
         // Writes must be exclusive, make sure to wait on any pending writes.
-        if begin == .write {
-            if let writeSignal {
-                await writeSignal.wait()
-            }
+        if kind == .write, let writeSignal {
+            await writeSignal.wait()
         }
         
         // Helper function to create a transaction and set the
         // write signal if needed
         func tx(connection: Connection) throws(FeatherError) -> sending Transaction {
             assert(writeSignal == nil)
-            writeSignal = begin == .write ? Signal() : nil
+            writeSignal = kind == .write ? Signal() : nil
             return try Transaction(
                 connection: connection,
-                kind: transaction,
                 pool: self,
                 signal: writeSignal,
-                finalize: begin == .write ? .rollback : .commit
+                finalize: kind == .write ? .rollback : .commit
             )
         }
         
@@ -108,10 +98,10 @@ public actor ConnectionPool: Sendable {
         // We could recieve a connection from the `for await`
         // below but we would have to eagerly create connections
         // even if one is all that is ever needed
-        var connections = connectionStream.makeAsyncIterator()
-        if let connection = await connections.next() {
-            return try tx(connection: connection)
-        }
+//        var connections = connectionStream.makeAsyncIterator()
+//        if let connection = await connections.next() {
+//            return try tx(connection: connection)
+//        }
         
         // Check if we have any capacity to create a new connection
         if count < limit {

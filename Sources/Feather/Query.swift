@@ -5,112 +5,205 @@
 //  Created by Wes Wickwire on 11/9/24.
 //
 
-public protocol QueryContext {
-    associatedtype Error: Swift.Error
-}
-
-public protocol Query<Input, Output, Context> {
+public protocol Query<Input, Output, Database> {
     associatedtype Input
     associatedtype Output
-    associatedtype Context
+    associatedtype Database
     
-    func execute(with input: Input, in context: Context) throws -> Output
+    var transactionKind: TransactionKind { get }
+    
+    func statement(
+        input: Input,
+        transaction: Transaction
+    ) throws -> Statement
+    
+    func execute(
+        with input: Input,
+        in database: Database
+    ) async throws -> Output
+    
+    func execute(
+        with input: Input,
+        tx: Transaction
+    ) throws -> Output
 }
 
-public extension Query where Input == () {
-    func execute(in context: Context) throws -> Output {
-        try self.execute(with: (), in: context)
+public enum Queries {
+    public struct WithDatabase<Base: Query>: Query {
+        let base: Base
+        let database: Base.Database
+        
+        public var transactionKind: TransactionKind {
+            return base.transactionKind
+        }
+        
+        public func statement(input: Input, transaction: Transaction) throws -> Statement {
+            return try base.statement(
+                input: input,
+                transaction: transaction
+            )
+        }
+        
+        public func execute(with input: Base.Input, in _: ()) async throws -> Base.Output {
+            return try await base.execute(with: input, in: database)
+        }
+        
+        public func execute(with input: Input, tx: Transaction) throws -> Output {
+            return try base.execute(with: input, tx: tx)
+        }
     }
-}
-
-public extension Query where Context == () {
-    func execute(with input: Input) throws -> Output {
-        try self.execute(with: input, in: ())
+    
+    public struct Map<Base: Query, Output>: Query {
+        let base: Base
+        let transform: (Base.Output) throws -> Output
+        
+        public var transactionKind: TransactionKind {
+            return base.transactionKind
+        }
+        
+        public func statement(input: Input, transaction: Transaction) throws -> Statement {
+            return try base.statement(
+                input: input,
+                transaction: transaction
+            )
+        }
+        
+        public func execute(with input: Base.Input, in database: Base.Database) async throws -> Output {
+            return try await transform(base.execute(with: input, in: database))
+        }
+        
+        public func execute(with input: Input, tx: Transaction) throws -> Output {
+            return try transform(base.execute(with: input, tx: tx))
+        }
     }
 }
 
 public extension Query {
-    func with(input: Input) -> Queries.WithInput<Self> {
-        return Queries.WithInput(base: self, input: input)
+    func with(database: Database) -> Queries.WithDatabase<Self> {
+        return Queries.WithDatabase(base: self, database: database)
     }
-}
-
-public enum Queries {
-    public struct Just<Input, Output, Context>: Query {
-        public let output: Output
-        
-        public init(_ output: Output) {
-            self.output = output
-        }
-        
-        public func execute(with input: Input, in context: Context) throws -> Output {
-            output
-        }
+    
+    func map<NewOutput>(
+        _ transform: @escaping (Output) throws -> NewOutput
+    ) -> Queries.Map<Self, NewOutput> {
+        return Queries.Map(base: self, transform: transform)
     }
-        
-    public struct WithInput<Base: Query>: Query {
-        public let base: Base
-        public let input: Base.Input
-        
-        public init(base: Base, input: Base.Input) {
-            self.input = input
-            self.base = base
-        }
-        
-        public func execute(with _: (), in context: Base.Context) throws -> Base.Output {
-            try base.execute(with: input, in: context)
+    
+    func throwIfNotFound<Wrapped>() -> Queries.Map<Self, Output> where Output == Wrapped? {
+        return Queries.Map(base: self) { entity in
+            guard let entity else {
+                throw FeatherError.entityWasNotFound
+            }
+            
+            return entity
         }
     }
 }
 
-public protocol DatabaseQuery<Input, Output>: Query {
-    func statement(
-        in transaction: Transaction,
-        with input: Input
-    ) throws(FeatherError) -> Statement
+public extension Query {
+    func execute(with input: Input) async throws -> Output
+        where Database == ()
+    {
+        return try await execute(with: input, in: ())
+    }
+    
+    func execute(in database: Database) async throws -> Output
+        where Input == ()
+    {
+        return try await execute(with: (), in: database)
+    }
+    
+    func execute() async throws -> Output
+        where Input == (), Database == ()
+    {
+        return try await execute(with: (), in: ())
+    }
+
+    func execute(tx: Transaction) throws -> Output
+        where Input == ()
+    {
+        return try execute(with: (), tx: tx)
+    }
 }
 
-public extension DatabaseQuery where Output: RangeReplaceableCollection, Output.Element: RowDecodable {
-    func execute(
+public struct DatabaseQuery<Input, Output>: Query {
+    public let transactionKind: TransactionKind
+    private let _statement: (Input, Transaction) throws -> Statement
+    private let _execute: (consuming Statement, Transaction) throws -> Output
+    
+    public init(
+        _ transactionKind: TransactionKind,
+        statement: @escaping (Input, Transaction) throws -> Statement,
+        execute: @escaping (consuming Statement, Transaction) -> Output
+    ) {
+        self.transactionKind = transactionKind
+        self._statement = statement
+        self._execute = execute
+    }
+    
+    public init(
+        _ transactionKind: TransactionKind,
+        statement: @escaping (Input, Transaction) throws -> Statement
+    ) where Output: RowDecodable {
+        self.transactionKind = transactionKind
+        self._statement = statement
+        // Note: There seems to be a bug in swift that does not mark `s` as consuming
+        // even though in `_execute`s declaration it is.
+        self._execute = { (s: consuming Statement, t) in try t.fetchOne(of: Output.self, statement: s) }
+    }
+    
+    public init<Element>(
+        _ transactionKind: TransactionKind,
+        statement: @escaping (Input, Transaction) throws -> Statement
+    ) where Element: RowDecodable, Output == [Element] {
+        self.transactionKind = transactionKind
+        self._statement = statement
+        // Note: There seems to be a bug in swift that does not mark `s` as consuming
+        // even though in `_execute`s declaration it is.
+        self._execute = { (s: consuming Statement, t) in try t.fetchMany(of: Element.self, statement: s) }
+    }
+    
+    public init(
+        _ transactionKind: TransactionKind,
+        statement: @escaping (Input, Transaction) throws -> Statement
+    ) where Output == () {
+        self.transactionKind = transactionKind
+        self._statement = statement
+        // Note: There seems to be a bug in swift that does not mark `s` as consuming
+        // even though in `_execute`s declaration it is.
+        self._execute = { (s: consuming Statement, t) in try t.execute(statement: s) }
+    }
+    
+    public func statement(
+        input: Input,
+        transaction: Transaction
+    ) throws -> Statement {
+        return try _statement(input, transaction)
+    }
+    
+    public func execute(
         with input: Input,
-        in context: Transaction
-    ) throws -> Output {
-        let statement = try statement(in: context, with: input)
-        var cursor = Cursor(of: statement)
-        var result = Output()
-        
-        while try cursor.step() {
-            try result.append(Output.Element(cursor: cursor))
-        }
-        
+        in database: any TransactionProvider
+    ) async throws -> Output {
+        let transaction = try await database.begin(transactionKind)
+        let result = try execute(with: input, tx: transaction)
+        try transaction.commit()
         return result
     }
-}
-
-public extension DatabaseQuery where Output: RowDecodable {
-    func execute(
+    
+    public func execute(
         with input: Input,
-        in context: Transaction
+        tx: Transaction
     ) throws -> Output {
-        let statement = try statement(in: context, with: input)
-        var cursor = Cursor(of: statement)
-        
-        guard try cursor.step() else {
-            throw FeatherError.queryReturnedNoValue
-        }
-        
-        return try Output(cursor: cursor)
+        let statement = try statement(input: input, transaction: tx)
+        return try _execute(statement, tx)
     }
 }
 
-public extension DatabaseQuery where Output == Void {
-    func execute(
-        with input: Input,
-        in context: Transaction
-    ) throws {
-        let statement = try statement(in: context, with: input)
-        var cursor = Cursor(of: statement)
-        _ = try cursor.step()
-    }
-}
 
+func meow<Q: Query>(query: Q, db: Q.Database) async throws where Q.Input == Int {
+    let result = try await query.execute(with: 1, in: db)
+
+    let query2 = query.with(database: db)
+    let result2 = try await query2.execute(with: 1)
+}
