@@ -38,7 +38,7 @@ class CompilerTests: XCTestCase {
                 compiler.compile(contents)
                 return compiler.statements
                     .filter{ !($0.syntax is CreateTableStmtSyntax) }
-                    .map { $0.signature.outputIsSingleElement ? "SINGLE" : "MANY" }
+                    .map { $0.signature.outputCardinality.rawValue.uppercased() }
             }
         )
     }

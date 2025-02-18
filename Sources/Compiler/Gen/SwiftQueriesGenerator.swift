@@ -13,32 +13,30 @@ public struct SwiftQueriesGenerator {
     public let schema: Schema
     public let statements: [Statement]
     public let source: String
-    public let addImports: Bool
     
     public init(
         schema: Schema,
         statements: [Statement],
-        source: String,
-        addImports: Bool = true
+        source: String
     ) {
         self.schema = schema
         self.statements = statements
         self.source = source
-        self.addImports = addImports
     }
     
-    public mutating func gen() throws -> SourceFileSyntax {
+    public mutating func generateFile() throws -> SourceFileSyntax {
         return try SourceFileSyntax {
-            if addImports {
-                try ImportDeclSyntax("import Feather")
-            }
-            
-            for statement in statements.filter({ !$0.signature.isEmpty }) {
-                if let name = statement.name {
-                    try gen(name: name, statement: statement)
-                }
-            }
+            try ImportDeclSyntax("import Feather")
+            try generateDeclarations()
         }
+    }
+    
+    public mutating func generateDeclarations() throws -> [DeclSyntax] {
+        return try statements.filter({ !$0.signature.isEmpty })
+            .compactMap { statement in
+                guard let name = statement.name else { return nil }
+                return try gen(name: name, statement: statement)
+            }
     }
     
     private mutating func gen(
@@ -51,24 +49,25 @@ public struct SwiftQueriesGenerator {
         let hasInput = !parameters.isEmpty
         
         return try DeclSyntax(StructDeclSyntax(name: "\(raw: name)Query: DatabaseQuery") {
-            if statement.signature.output != nil {
-                if statement.signature.outputIsSingleElement {
+            if let output = statement.signature.output, output != .row(.empty) {
+                switch statement.signature.outputCardinality {
+                case .single:
                     try TypeAliasDeclSyntax("typealias Output = \(raw: name)")
-                } else {
+                case .many:
                     try TypeAliasDeclSyntax("typealias Output = [\(raw: name)]")
                 }
             } else {
                 try TypeAliasDeclSyntax("typealias Output = ()")
             }
             
-            try TypeAliasDeclSyntax("typealias Context = Connection")
+            try TypeAliasDeclSyntax("typealias Context = Feather.Transaction")
             
             if !hasInput {
                 try TypeAliasDeclSyntax("typealias Input = ()")
             }
             
-            try FunctionDeclSyntax("func statement(\nin connection: borrowing Connection,\nwith input: Input\n) throws(FeatherError) -> Statement") {
-                "\(raw: hasInput ? "var" : "let") statement = try Statement(\"\"\"\n\(raw: querySource)\n\"\"\", \nconnection: connection\n)"
+            try FunctionDeclSyntax("func statement(\nin transaction: Feather.Transaction,\nwith input: Input\n) throws(FeatherError) -> Feather.Statement") {
+                "\(raw: hasInput ? "var" : "let") statement = try Feather.Statement(\"\"\"\n\(raw: querySource)\n\"\"\", \ntransaction: transaction\n)"
                 
                 for parameter in parameters {
                     "try statement.bind(value: input.\(raw: parameter.name), to: \(raw: parameter.index))"
@@ -86,12 +85,12 @@ public struct SwiftQueriesGenerator {
             }
             
             if case let .row(.named(columns)) = statement.signature.output {
-                try DeclSyntax(StructDeclSyntax(name: "\(raw: name): RowDecodable") {
+                try DeclSyntax(StructDeclSyntax(name: "\(raw: name): Feather.RowDecodable") {
                     for (column, type) in columns {
                         "let \(raw: column): \(raw: swiftType(for: type))"
                     }
                     
-                    try InitializerDeclSyntax("init(cursor: borrowing Cursor) throws(FeatherError)") {
+                    try InitializerDeclSyntax("init(cursor: borrowing Feather.Cursor) throws(FeatherError)") {
                         "var columns = cursor.indexedColumns()"
                         
                         for (column, _) in columns {

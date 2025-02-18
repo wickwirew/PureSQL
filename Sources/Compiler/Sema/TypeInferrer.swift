@@ -43,21 +43,27 @@ struct TypeInferrer {
     /// Calculates the signature for a single expression.
     mutating func signature<E: ExprSyntax>(for expr: E) -> Signature {
         let (ty, sub, _) = expr.accept(visitor: &self)
-        return signature(ty: ty, sub: sub)
+        return signature(ty: ty, sub: sub, outputCardinality: .many)
     }
     
     /// Calculates the solution of an entire statement.
     mutating func signature<S: StmtSyntax>(for stmt: S) -> Signature {
         let (ty, sub) = stmt.accept(visitor: &self)
-        let signature = signature(ty: ty, sub: sub)
         
         // Since its a statement we need to also infer whether or not
         // the exepected result count is a single or many rows
-        var singleOuputInferer = IsSingleResultInferrer(schema: schema)
-        return singleOuputInferer.infer(signature, syntax: stmt)
+        var singleOuputInferer = ResultCardinalityInferrer(schema: schema)
+        let cardinality = singleOuputInferer.cardinality(for: stmt)
+        
+        return signature(ty: ty, sub: sub, outputCardinality: cardinality)
     }
     
-    private mutating func signature(ty: Type?, sub: Substitution) -> Signature {
+    /// Calculates the final inferred signature of the statement
+    private mutating func signature(
+        ty: Type?,
+        sub: Substitution,
+        outputCardinality: Signature.Cardinality
+    ) -> Signature {
         let constraints = finalizeConstraints(with: sub)
         
         return Signature(
@@ -79,8 +85,7 @@ struct TypeInferrer {
                     constraints: constraints
                 )
             },
-            // Will be inferred later in another pass if its a statement.
-            outputIsSingleElement: false
+            outputCardinality: outputCardinality
         )
     }
     
@@ -711,11 +716,7 @@ extension TypeInferrer {
         if cte.columns.isEmpty {
             tableTy = type
         } else {
-            guard case let .row(row) = type else {
-                assertionFailure("Select is not a row?")
-                return sub
-            }
-            
+            let row = assumeRow(type)
             let columnTypes = row.types
             if columnTypes.count != cte.columns.count {
                 diagnostics.add(.init(

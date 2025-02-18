@@ -15,11 +15,15 @@ public struct SwiftMigrationsGenerator {
     
     public func generate() throws -> SourceFileSyntax {
         return try SourceFileSyntax {
-            try VariableDeclSyntax("var migrations: [Migration]") {
-                ArrayExprSyntax(
-                    expressions: migrations.map { SwiftSyntax.ExprSyntax($0) }
-                )
-            }
+            try generateVariable()
+        }
+    }
+    
+    public func generateVariable(static: Bool = false) throws -> VariableDeclSyntax {
+        try VariableDeclSyntax("\(raw: `static` ? "static " : "")var migrationss: [Migration]") {
+            ArrayExprSyntax(
+                expressions: migrations.map { SwiftSyntax.ExprSyntax($0) }
+            )
         }
     }
     

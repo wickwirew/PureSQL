@@ -5,7 +5,7 @@
 //  Created by Wes Wickwire on 2/16/25.
 //
 
-public struct Migration {
+public struct Migration: Sendable {
     public let number: Int
     public let sql: String
     
@@ -25,6 +25,8 @@ public struct MigrationRunner {
     }
     
     public static func execute(migrations: [Migration], tx: Transaction) throws {
+        try createTableIfNeeded(tx: tx)
+        
         let lastMigration = try GetLastMigrationNumber().execute(in: tx)
         
         let pendingMigrations = migrations
@@ -59,7 +61,7 @@ public struct MigrationRunner {
             with input: ()
         ) throws(FeatherError) -> Statement {
             return try Statement(
-                "SELECT MAX(number) FROM migrations",
+                "SELECT MAX(number) FROM \(MigrationRunner.migrationTableName)",
                 transaction: transaction
             )
         }

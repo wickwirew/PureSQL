@@ -47,7 +47,7 @@ public struct DatabaseMacro: MemberMacro {
             return []
         }
         
-        let migrations = try migrationsSyntax.elements
+        let migrationsSource = try migrationsSyntax.elements
             .map {
                 guard let source = $0.expression.as(StringLiteralExprSyntax.self) else {
                     throw GenError("Migrations must be string literals")
@@ -55,9 +55,8 @@ public struct DatabaseMacro: MemberMacro {
                 
                 return source.segments.description
             }
-            .joined(separator: "\n")
         
-        let queries: [(name: String, source: String, syntax: StringLiteralExprSyntax)] = try queriesSyntax
+        let queriesSource: [(name: String, source: String, syntax: StringLiteralExprSyntax)] = try queriesSyntax
             .map {
                 guard let name = $0.key.as(StringLiteralExprSyntax.self),
                       let source = $0.value.as(StringLiteralExprSyntax.self)
@@ -68,7 +67,29 @@ public struct DatabaseMacro: MemberMacro {
                 return (name.segments.description, source.segments.description, source)
             }
         
-        return []
+        var compiler = Compiler()
+        for migration in migrationsSource {
+            compiler.compile(migration)
+        }
+        
+        var migrationsGenerator = SwiftMigrationsGenerator()
+        migrationsSource.enumerated().forEach { migrationsGenerator.addMigration(number: $0.offset + 1, sql: $0.element) }
+        let migrations = try migrationsGenerator.generateVariable(static: true)
+        
+        let statements: [DeclSyntax] = try queriesSource.flatMap { query in
+            var compiler = Compiler(schema: compiler.schema)
+            compiler.compile(query.source)
+            
+            var queriesGenerator = SwiftQueriesGenerator(
+                schema: compiler.schema,
+                statements: compiler.statements.map { $0.with(name: query.name[...]) },
+                source: query.source
+            )
+            
+            return try queriesGenerator.generateDeclarations()
+        }
+        
+        return [DeclSyntax(migrations)] + statements
         
 //        var schemaCompiler = SchemaCompiler()
 //        let (schema, diags) = try schemaCompiler.compile(migrations)

@@ -9,7 +9,6 @@ import Collections
 import SQLite3
 import Foundation
 
-
 /// Holds a raw SQLite database connection.
 /// `@unchecked Sendable` Thread safety is managed by
 /// the `ConnectionPool`

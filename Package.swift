@@ -60,7 +60,7 @@ let package = Package(
         
         .testTarget(
             name: "FeatherTests",
-            dependencies: ["Feather"]
+            dependencies: ["Feather", "Compiler"]
         ),
 
         .testTarget(

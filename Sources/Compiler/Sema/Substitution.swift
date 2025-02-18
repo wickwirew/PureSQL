@@ -29,7 +29,11 @@ extension Substitution {
         return output
     }
     
-    func merging(_ a: Substitution, _ b: Substitution, _ c: Substitution) -> Substitution {
+    func merging(
+        _ a: Substitution,
+        _ b: Substitution,
+        _ c: Substitution
+    ) -> Substitution {
         var output = self
         for (k, v) in a {
             output[k] = v
@@ -43,7 +47,12 @@ extension Substitution {
         return output
     }
     
-    func merging(_ a: Substitution, _ b: Substitution, _ c: Substitution, _ d: Substitution) -> Substitution {
+    func merging(
+        _ a: Substitution,
+        _ b: Substitution,
+        _ c: Substitution,
+        _ d: Substitution
+    ) -> Substitution {
         var output = self
         for (k, v) in a {
             output[k] = v
@@ -60,7 +69,13 @@ extension Substitution {
         return output
     }
     
-    func merging(_ a: Substitution, _ b: Substitution, _ c: Substitution, _ d: Substitution, _ e: Substitution) -> Substitution {
+    func merging(
+        _ a: Substitution,
+        _ b: Substitution,
+        _ c: Substitution,
+        _ d: Substitution,
+        _ e: Substitution
+    ) -> Substitution {
         var output = self
         for (k, v) in a {
             output[k] = v

@@ -123,8 +123,12 @@ public enum SQLiteCode: Int32, Error {
     }
 }
 
-func throwing(_ rc: Int32) throws(FeatherError) {
+func throwing(_ rc: Int32, connection: OpaquePointer? = nil) throws(FeatherError) {
     guard rc != SQLITE_OK, let code = SQLiteCode(rawValue: rc) else { return }
-
+    
+    if let connection {
+        print(String(cString: sqlite3_errmsg(connection)))
+    }
+    
     throw .sqlite(code)
 }

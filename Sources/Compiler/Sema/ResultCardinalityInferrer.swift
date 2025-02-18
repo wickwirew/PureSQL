@@ -1,5 +1,5 @@
 //
-//  IsSingleResultInferrer.swift
+//  ResultCardinalityInferrer.swift
 //  Feather
 //
 //  Created by Wes Wickwire on 2/16/25.
@@ -8,72 +8,62 @@
 /// Infers the amount of items returned in a query.
 /// This allows the generation to be smart and set the
 /// return type to an Array only if needed.
-struct IsSingleResultInferrer {
+struct ResultCardinalityInferrer {
     let schema: Schema
     
-    mutating func infer(_ statement: consuming Statement) -> Statement {
-        guard statement.syntax.accept(visitor: &self) else { return statement }
-        return Statement(
-            name: statement.name,
-            signature: statement.signature.withSingleOutput(),
-            syntax: statement.syntax
-        )
+    mutating func cardinality<S: StmtSyntax>(for syntax: borrowing S) -> Signature.Cardinality {
+        return syntax.accept(visitor: &self)
     }
     
-    mutating func infer<S: StmtSyntax>(
-        _ signature: consuming Signature,
-        syntax: borrowing S
-    ) -> Signature {
-        guard syntax.accept(visitor: &self) else { return signature }
-        return signature.withSingleOutput()
-    }
-    
-    private mutating func didFilterByPrimaryKey(
-        in expr: ExpressionSyntax,
+    /// Returns the cardinality based off how a statement was fitlered.
+    /// If it is filtered down to a single PK then it will return a single result.
+    private mutating func cadinalityForFilter(
+        _ expr: ExpressionSyntax,
         for table: Table
-    ) -> Bool {
+    ) -> Signature.Cardinality {
         let filteredPrimaryKeys = expr.accept(visitor: &self)
-        return !table.primaryKey.contains{ !filteredPrimaryKeys.contains($0) }
+        let didFilterByPrimaryKey = !table.primaryKey.contains{ !filteredPrimaryKeys.contains($0) }
+        return didFilterByPrimaryKey ? .single : .many
     }
 }
 
 /// Returns `true` if the query/statement will only return one value.
-extension IsSingleResultInferrer: StmtSyntaxVisitor {
-    mutating func visit(_ stmt: borrowing CreateTableStmtSyntax) -> Bool { false }
+extension ResultCardinalityInferrer: StmtSyntaxVisitor {
+    mutating func visit(_ stmt: borrowing CreateTableStmtSyntax) -> Signature.Cardinality { .many }
     
-    mutating func visit(_ stmt: borrowing AlterTableStmtSyntax) -> Bool { false }
+    mutating func visit(_ stmt: borrowing AlterTableStmtSyntax) -> Signature.Cardinality { .many }
     
-    mutating func visit(_ stmt: borrowing EmptyStmtSyntax) -> Bool { false }
+    mutating func visit(_ stmt: borrowing EmptyStmtSyntax) -> Signature.Cardinality { .many }
     
-    mutating func visit(_ stmt: borrowing UpdateStmtSyntax) -> Bool {
+    mutating func visit(_ stmt: borrowing UpdateStmtSyntax) -> Signature.Cardinality {
         // No filtering, update is to full table
-        guard let whereExpr = stmt.whereExpr else { return false }
+        guard let whereExpr = stmt.whereExpr else { return .many }
         
         guard let table = schema[stmt.tableName.tableName.name.value] else {
             // Upstream will have emitted diag
-            return false
+            return .many
         }
         
-        return didFilterByPrimaryKey(in: whereExpr, for: table)
+        return cadinalityForFilter(whereExpr, for: table)
     }
     
-    mutating func visit(_ stmt: borrowing SelectStmtSyntax) -> Bool {
+    mutating func visit(_ stmt: borrowing SelectStmtSyntax) -> Signature.Cardinality {
         // See if there is a LIMIT 1 since this will always return a single result regardless
         // of what happens in the query.
         if case let .literal(e) = stmt.limit?.expr, case let .numeric(i, _) = e.kind, i == 1 {
-            return true
+            return .single
         }
         
         // A compound select since its bringing in multiple tables we could never know whether
         // a single result could be returned, and it is unlikely to do so.
         guard case let .single(selectCore) = stmt.selects.value else {
-            return false
+            return .many
         }
         
         switch selectCore {
         case .select(let select):
             // If its not filtered down with a `WHERE` it will always return more
-            guard let filter = select.where else { return false }
+            guard let filter = select.where else { return .many }
             
             if case let .join(join) = select.from {
                 // If there are joins just return that it returns many rows.
@@ -81,47 +71,47 @@ extension IsSingleResultInferrer: StmtSyntaxVisitor {
                 // so some better inference but this will do for now. Adding a
                 // `LIMIT 1` to the query will get them the result they want if
                 // it is inferred as a list.
-                guard join.joins.isEmpty else { return false }
+                guard join.joins.isEmpty else { return .many }
                 
                 // If its not against a table we cannot infer it.
-                guard case let .table(table) = join.tableOrSubquery else { return false }
+                guard case let .table(table) = join.tableOrSubquery else { return .many }
                 
                 // If we cannot find the table something upstream will have already emitted
                 // diagnositic so just exit
-                guard let t = schema[table.name.value] else { return false }
+                guard let t = schema[table.name.value] else { return .many }
                 
                 // If they had filtering on all primary keys we can assume a single
                 // result will be returned.
-                return didFilterByPrimaryKey(in: filter, for: t)
+                return cadinalityForFilter(filter, for: t)
             }
         case .values(let values):
             // VALUES (1, 2), (3, 4)
             if values.count > 1 {
-                return false
+                return .many
             }
         }
 
-        return false
+        return .many
     }
     
-    mutating func visit(_ stmt: borrowing InsertStmtSyntax) -> Bool {
+    mutating func visit(_ stmt: borrowing InsertStmtSyntax) -> Signature.Cardinality {
         // If no value, `DEFAULT VALUES` was used, which is one row.
-        guard let values = stmt.values else { return true }
+        guard let values = stmt.values else { return .single }
         return values.select.accept(visitor: &self)
     }
     
-    mutating func visit(_ stmt: borrowing DeleteStmtSyntax) -> Bool {
-        guard let filter = stmt.whereExpr else { return false }
+    mutating func visit(_ stmt: borrowing DeleteStmtSyntax) -> Signature.Cardinality {
+        guard let filter = stmt.whereExpr else { return .many }
         
         guard let table = schema[stmt.table.tableName.name.value] else {
             // Upstream will have emitted diag
-            return false
+            return .many
         }
         
-        return didFilterByPrimaryKey(in: filter, for: table)
+        return cadinalityForFilter(filter, for: table)
     }
     
-    mutating func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> Bool {
+    mutating func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> Signature.Cardinality {
         return stmt.statement.accept(visitor: &self)
     }
 }
@@ -129,7 +119,7 @@ extension IsSingleResultInferrer: StmtSyntaxVisitor {
 /// We need to look for a `primaryKey = value`. This can get complicated since
 /// tables can have composite primary key with many columns.
 /// Which would require a `pk1 = value1 AND pk2 = value2`
-extension IsSingleResultInferrer: ExprSyntaxVisitor {
+extension ResultCardinalityInferrer: ExprSyntaxVisitor {
     typealias ExprOutput = Set<Substring>
     
     mutating func visit(_ expr: borrowing LiteralExprSyntax) -> ExprOutput { [] }

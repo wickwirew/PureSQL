@@ -16,14 +16,21 @@ public struct Signature: CustomReflectable {
     public let parameters: [Int: Parameter<Substring?>]
     /// The return type if any.
     public let output: Type?
-    /// If `true` the statement will only ever return
-    /// a single value.
-    public let outputIsSingleElement: Bool
+    /// How many possible items will be in the result set.
+    public let outputCardinality: Cardinality
     
-    static var empty: Signature {
-        return Signature(parameters: [:], output: nil, outputIsSingleElement: false)
+    /// The amount of elements in the result set.
+    public enum Cardinality: String {
+        case single
+        case many
     }
     
+    /// A default empty signature with no input or output.
+    static var empty: Signature {
+        return Signature(parameters: [:], output: nil, outputCardinality: .single)
+    }
+    
+    /// Whether or not there is any input or outputs
     public var isEmpty: Bool {
         return parameters.isEmpty && output == nil
     }
@@ -84,19 +91,13 @@ public struct Signature: CustomReflectable {
         
         return result
     }
-    
-    consuming func withSingleOutput() -> Signature {
-        return Signature(
-            parameters: parameters,
-            output: output,
-            outputIsSingleElement: true
-        )
-    }
-    
+
+    /// Will get the type for the bind parameter at the given index
     public func type(for index: Int) -> Type? {
         return parameters[index]?.type
     }
     
+    /// Will get the type for the bind parameter bound to the given name.
     public func type(for name: Substring) -> Type? {
         guard let (index, _) = parameters
             .first(where: { $1.name == name }) else { return nil }
@@ -104,6 +105,9 @@ public struct Signature: CustomReflectable {
         return type(for: index)
     }
     
+    /// Will return the inferred name for the bind parameter at the given index.
+    /// The name will not be unique, if two are inferred to have `bar` both will
+    /// return `bar` at this point.
     public func name(for index: Int) -> Substring? {
         return parameters[index]?.name
     }

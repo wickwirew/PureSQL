@@ -17,7 +17,10 @@ public struct Statement: ~Copyable {
     ) throws(FeatherError) {
         self.source = source
         var raw: OpaquePointer?
-        try throwing(sqlite3_prepare_v2(transaction.connection.raw, source, -1, &raw, nil))
+        try throwing(
+            sqlite3_prepare_v2(transaction.connection.raw, source, -1, &raw, nil),
+            connection: transaction.connection.raw
+        )
         
         guard let raw else {
             throw .failedToInitializeStatement

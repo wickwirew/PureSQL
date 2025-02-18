@@ -28,19 +28,19 @@ public actor ConnectionPool: Sendable {
         name: String,
         limit: Int = ConnectionPool.defaultLimit,
         migrations: [Migration]
-    ) throws {
+    ) async throws {
         let url = try FileManager.default
             .url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
             .appendingPathComponent("\(name).sqlite")
         
-        try self.init(path: url.absoluteString, limit: limit, migrations: migrations)
+        try await self.init(path: url.absoluteString, limit: limit, migrations: migrations)
     }
     
     public init(
         path: String,
         limit: Int = ConnectionPool.defaultLimit,
         migrations: [Migration]
-    ) throws {
+    ) async throws {
         guard limit > 0 else {
             throw FeatherError.poolCannotHaveZeroConnections
         }
@@ -65,6 +65,8 @@ public actor ConnectionPool: Sendable {
         )
         
         try MigrationRunner.execute(migrations: migrations, tx: tx)
+        
+        try await tx.commit()
     }
     
     /// Gives the connection back to the pool.

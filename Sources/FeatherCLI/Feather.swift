@@ -50,7 +50,7 @@ struct Feather: ParsableCommand {
             compiler.compile(file)
             
             var codeGen = SwiftQueriesGenerator(schema: schema, statements: compiler.statements, source: file)
-            return try (codeGen.gen().formatted(), fileName)
+            return try (codeGen.generateFile().formatted(), fileName)
         }
         
         if let output {

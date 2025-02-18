@@ -25,4 +25,9 @@ public struct Statement {
             return syntax.range
         }
     }
+    
+    /// Replaces the name with the given input
+    public func with(name: Substring?) -> Statement {
+        return Statement(name: name, signature: signature, syntax: syntax)
+    }
 }
