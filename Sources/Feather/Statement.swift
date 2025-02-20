@@ -37,6 +37,16 @@ public struct Statement: ~Copyable {
         self = statement
     }
     
+    public init(in transaction: borrowing Transaction, sql: SQL) throws {
+        self = try Statement(in: transaction) {
+            sql.source
+        } bind: { statement in
+            for (i, parameter) in sql.parameters.enumerated() {
+                try statement.bind(value: parameter, to: Int32(i + 1))
+            }
+        }
+    }
+    
     public mutating func bind<Value: DatabasePrimitive>(
         value: Value,
         to index: Int32

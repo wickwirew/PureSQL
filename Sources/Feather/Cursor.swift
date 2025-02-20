@@ -28,7 +28,7 @@ public struct Cursor: ~Copyable {
         case .sqliteRow:
             return true
         default:
-            throw .sqlite(code)
+            throw .sqlite(code, String(cString: sqlite3_errmsg(statement.raw)))
         }
     }
 }

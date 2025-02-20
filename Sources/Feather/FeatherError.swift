@@ -11,7 +11,7 @@ public enum FeatherError: Error {
     case columnIsNil(Int32)
     case noMoreColumns
     case queryReturnedNoValue
-    case sqlite(SQLiteCode)
+    case sqlite(SQLiteCode, String?)
     case txNoLongerValid
     case failedToGetConnection
     case poolCannotHaveZeroConnections

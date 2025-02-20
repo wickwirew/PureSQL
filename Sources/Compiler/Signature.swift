@@ -25,6 +25,21 @@ public struct Signature: CustomReflectable {
         case many
     }
     
+    /// An input parameter for a query.
+    public struct Parameter<Name> {
+        /// The type of the input
+        public let type: Type
+        /// The bind parameter index SQLite is expecting
+        public let index: Int
+        /// The explicit or inferred name of the parameter.
+        public let name: Name
+        
+        func with<NewName>(name: NewName) -> Parameter<NewName> {
+            return Parameter<NewName>(type: type, index: index, name: name)
+        }
+    }
+
+    
     /// A default empty signature with no input or output.
     static var empty: Signature {
         return Signature(parameters: [:], output: nil, outputCardinality: .single)
@@ -110,19 +125,5 @@ public struct Signature: CustomReflectable {
     /// return `bar` at this point.
     public func name(for index: Int) -> Substring? {
         return parameters[index]?.name
-    }
- }
-
-/// An input parameter for a query.
-public struct Parameter<Name> {
-    /// The type of the input
-    public let type: Type
-    /// The bind parameter index SQLite is expecting
-    public let index: Int
-    /// The explicit or inferred name of the parameter.
-    public let name: Name
-    
-    func with<NewName>(name: NewName) -> Parameter<NewName> {
-        return Parameter<NewName>(type: type, index: index, name: name)
     }
 }

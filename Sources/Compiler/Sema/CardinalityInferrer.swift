@@ -1,5 +1,5 @@
 //
-//  ResultCardinalityInferrer.swift
+//  CardinalityInferrer.swift
 //  Feather
 //
 //  Created by Wes Wickwire on 2/16/25.
@@ -8,7 +8,7 @@
 /// Infers the amount of items returned in a query.
 /// This allows the generation to be smart and set the
 /// return type to an Array only if needed.
-struct ResultCardinalityInferrer {
+struct CardinalityInferrer {
     let schema: Schema
     
     mutating func cardinality<S: StmtSyntax>(for syntax: borrowing S) -> Signature.Cardinality {
@@ -28,7 +28,7 @@ struct ResultCardinalityInferrer {
 }
 
 /// Returns `true` if the query/statement will only return one value.
-extension ResultCardinalityInferrer: StmtSyntaxVisitor {
+extension CardinalityInferrer: StmtSyntaxVisitor {
     mutating func visit(_ stmt: borrowing CreateTableStmtSyntax) -> Signature.Cardinality { .many }
     
     mutating func visit(_ stmt: borrowing AlterTableStmtSyntax) -> Signature.Cardinality { .many }
@@ -119,7 +119,7 @@ extension ResultCardinalityInferrer: StmtSyntaxVisitor {
 /// We need to look for a `primaryKey = value`. This can get complicated since
 /// tables can have composite primary key with many columns.
 /// Which would require a `pk1 = value1 AND pk2 = value2`
-extension ResultCardinalityInferrer: ExprSyntaxVisitor {
+extension CardinalityInferrer: ExprSyntaxVisitor {
     typealias ExprOutput = Set<Substring>
     
     mutating func visit(_ expr: borrowing LiteralExprSyntax) -> ExprOutput { [] }

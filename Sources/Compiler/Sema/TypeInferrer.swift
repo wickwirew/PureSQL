@@ -52,7 +52,7 @@ struct TypeInferrer {
         
         // Since its a statement we need to also infer whether or not
         // the exepected result count is a single or many rows
-        var singleOuputInferer = ResultCardinalityInferrer(schema: schema)
+        var singleOuputInferer = CardinalityInferrer(schema: schema)
         let cardinality = singleOuputInferer.cardinality(for: stmt)
         
         return signature(ty: ty, sub: sub, outputCardinality: cardinality)
@@ -68,7 +68,7 @@ struct TypeInferrer {
         
         return Signature(
             parameters: parameterTypes.reduce(into: [:]) { params, value in
-                params[value.key] = Parameter(
+                params[value.key] = Signature.Parameter(
                     type: finalType(
                         for: value.value,
                         substitution: sub,

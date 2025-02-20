@@ -10,18 +10,23 @@ import OrderedCollections
 /// The environment for which every query and statement is
 /// type checked against as well as any other static analysis.
 struct Environment {
-    private var identifiers: OrderedDictionary<Substring, TyContainer> = [:]
+    private var identifiers: OrderedDictionary<Substring, TypeContainer> = [:]
     
     private var functions: OrderedDictionary<Substring, TypeScheme> = [
         "MAX": Builtins.max,
     ]
     
     /// Holds the type in the map.
-    /// We need to track ambiguous items. We could store
-    /// each as an array but that seems like a bad idea.
-    /// This just allows us to store the flag right with the type.
-    struct TyContainer {
+    struct TypeContainer {
         let type: Type
+        /// We need to track ambiguous items. We could store
+        /// each as an array but that seems like a bad idea due to
+        /// the number of allocations that would add.
+        ///
+        /// This just allows us to store the flag right with the type.
+        ///
+        /// Is flipped to `true` when the same name is inserted into
+        /// the environment twice or more.
         let isAmbiguous: Bool
     }
     
@@ -29,16 +34,16 @@ struct Environment {
 
     /// Inserts or updates the type for the given name
     mutating func upsert(_ name: Substring, ty: Type) {
-        identifiers[name] = TyContainer(type: ty, isAmbiguous: false)
+        identifiers[name] = TypeContainer(type: ty, isAmbiguous: false)
     }
     
     /// Inserts the type for the given name. If the name
     /// already exists it will be marked as ambiguous
     mutating func insert(_ name: Substring, ty: Type) {
         if let existing = identifiers[name] {
-            identifiers[name] = TyContainer(type: existing.type, isAmbiguous: true)
+            identifiers[name] = TypeContainer(type: existing.type, isAmbiguous: true)
         } else {
-            identifiers[name] = TyContainer(type: ty, isAmbiguous: false)
+            identifiers[name] = TypeContainer(type: ty, isAmbiguous: false)
         }
     }
     
@@ -48,7 +53,7 @@ struct Environment {
         identifiers[newValue] = value
     }
     
-    subscript(_ key: Substring) -> TyContainer? {
+    subscript(_ key: Substring) -> TypeContainer? {
         return identifiers[key]
     }
     
@@ -119,9 +124,9 @@ extension Environment: CustomStringConvertible {
 }
 
 extension Environment: Sequence {
-    typealias Iterator = OrderedDictionary<Substring, Environment.TyContainer>.Iterator
+    typealias Iterator = OrderedDictionary<Substring, Environment.TypeContainer>.Iterator
     
-    func makeIterator() -> OrderedDictionary<Substring, Environment.TyContainer>.Iterator {
+    func makeIterator() -> OrderedDictionary<Substring, Environment.TypeContainer>.Iterator {
         return identifiers.makeIterator()
     }
 }

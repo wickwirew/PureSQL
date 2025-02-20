@@ -82,10 +82,11 @@ struct EmptyStmtSyntax: Equatable, StmtSyntax {
     }
 }
 
-struct TypeNameSyntax: Equatable, CustomStringConvertible, Sendable {
+struct TypeNameSyntax: Syntax, Equatable, CustomStringConvertible, Sendable {
     let name: IdentifierSyntax
     let arg1: SignedNumberSyntax?
     let arg2: SignedNumberSyntax?
+    let range: Range<Substring.Index>
 
     var description: String {
         if let arg1, let arg2 {
@@ -125,10 +126,15 @@ struct OrderSyntax: Syntax, CustomStringConvertible {
     }
 }
 
-struct IndexedColumnSyntax {
+struct IndexedColumnSyntax: Syntax {
     let expr: ExpressionSyntax
     let collation: IdentifierSyntax?
-    let order: OrderSyntax
+    let order: OrderSyntax?
+    
+    var range: Range<Substring.Index> {
+        let upper = order?.range.upperBound ?? collation?.range.upperBound ?? expr.range.upperBound
+        return expr.range.lowerBound..<upper
+    }
     
     var columnName: IdentifierSyntax? {
         guard case let .column(column) = expr else { return nil }
@@ -136,10 +142,11 @@ struct IndexedColumnSyntax {
     }
 }
 
-struct ForeignKeyClauseSyntax {
+struct ForeignKeyClauseSyntax: Syntax {
     let foreignTable: IdentifierSyntax
     let foreignColumns: [IdentifierSyntax]
     let actions: [Action]
+    let range: Range<Substring.Index>
 
     enum Action {
         case onDo(On, Do)
@@ -263,22 +270,12 @@ enum ResultColumnSyntax {
 
 struct OrderingTermSyntax {
     let expr: ExpressionSyntax
-    let order: OrderSyntax
+    let order: OrderSyntax?
     let nulls: Nulls?
 
     enum Nulls {
         case first
         case last
-    }
-
-    init(
-        expr: ExpressionSyntax,
-        order: OrderSyntax,
-        nulls: Nulls?
-    ) {
-        self.expr = expr
-        self.order = order
-        self.nulls = nulls
     }
 }
 
@@ -363,12 +360,13 @@ struct TableConstraintSyntax: Syntax {
     }
 }
 
-struct ColumnConstraintSyntax {
+struct ColumnConstraintSyntax: Syntax {
     let name: IdentifierSyntax?
     let kind: Kind
+    let range: Range<Substring.Index>
 
     enum Kind {
-        case primaryKey(order: OrderSyntax, ConfictClauseSyntax, autoincrement: Bool)
+        case primaryKey(order: OrderSyntax?, ConfictClauseSyntax, autoincrement: Bool)
         case notNull(ConfictClauseSyntax)
         case unique(ConfictClauseSyntax)
         case check(ExpressionSyntax)
@@ -398,15 +396,14 @@ struct ColumnConstraintSyntax {
     }
 }
 
-struct ColumnDefSyntax {
+struct ColumnDefSyntax: Syntax {
     var name: IdentifierSyntax
     var type: TypeNameSyntax
     var constraints: [ColumnConstraintSyntax]
-
-    enum Default {
-        case literal(LiteralExprSyntax)
-        case signedNumber(SignedNumberSyntax)
-        case expr(ExpressionSyntax)
+    
+    var range: Range<Substring.Index> {
+        let upper = constraints.last?.range.upperBound ?? type.range.upperBound
+        return name.range.lowerBound..<upper
     }
 }
 
@@ -429,7 +426,7 @@ struct TableOptionsSyntax: OptionSet, Sendable, CustomStringConvertible {
     }
 }
 
-struct TableNameSyntax: Hashable, CustomStringConvertible {
+struct TableNameSyntax: Syntax, Hashable, CustomStringConvertible {
     let schema: Schema
     let name: IdentifierSyntax
 

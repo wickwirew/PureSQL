@@ -7,12 +7,18 @@
 
 import Foundation
 
+public enum DatabaseLocation {
+    case inMemory
+    case applicationDirectory(name: String)
+    case path(String)
+}
+
 public actor ConnectionPool: Sendable {
     private let path: String
     private var count: Int = 1
     private let limit: Int
     
-    private var writeSignal: Signal?
+    private var writeLock = Lock()
     
     private let connectionStream: AsyncStream<Connection>
     private let connectionContinuation: AsyncStream<Connection>.Continuation
@@ -53,8 +59,8 @@ public actor ConnectionPool: Sendable {
         
         let tx = try Transaction(
             connection: connection,
-            pool: self,
-            finalize: .rollback
+            kind: .write,
+            pool: self
         )
         
         try MigrationRunner.execute(migrations: migrations, tx: tx)
@@ -64,10 +70,14 @@ public actor ConnectionPool: Sendable {
     /// Gives the connection back to the pool.
     nonisolated func reclaim(
         connection: Connection,
-        signal: Signal?
+        txKind: TransactionKind
     ) {
         connectionContinuation.yield(connection)
-        signal?.signal()
+        
+        if txKind == .write {
+            // TODO: Find a better way to do this.
+            Task { await writeLock.unlock() }
+        }
     }
 }
 
@@ -77,20 +87,17 @@ extension ConnectionPool: TransactionProvider {
         _ kind: TransactionKind
     ) async throws(FeatherError) -> sending Transaction {
         // Writes must be exclusive, make sure to wait on any pending writes.
-        if kind == .write, let writeSignal {
-            await writeSignal.wait()
+        if kind == .write {
+            await writeLock.lock()
         }
         
         // Helper function to create a transaction and set the
         // write signal if needed
         func tx(connection: Connection) throws(FeatherError) -> sending Transaction {
-            assert(writeSignal == nil)
-            writeSignal = kind == .write ? Signal() : nil
             return try Transaction(
                 connection: connection,
-                pool: self,
-                signal: writeSignal,
-                finalize: kind == .write ? .rollback : .commit
+                kind: kind,
+                pool: self
             )
         }
         

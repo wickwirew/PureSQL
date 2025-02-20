@@ -11,12 +11,13 @@ import Testing
 @Suite
 struct ConnectionPoolTests {
     @Test func canOpenConnectionToPool() async throws {
-        _ = try ConnectionPool(name: ":memory:", migrations: [])
+        _ = try ConnectionPool(path: ":memory:", migrations: [])
     }
 
     @Test func poolRunsMigrationsOnInit() async throws {
         let pool = try ConnectionPool(
-            name: ":memory:",
+            path: ":memory:",
+            limit: 1,
             migrations: [
                 Migration(number: 1, sql: "CREATE TABLE foo (bar INTEGER)")
             ]
@@ -28,8 +29,8 @@ struct ConnectionPoolTests {
     
     @Test func poolReusesConnections() async throws {
         let pool = try ConnectionPool(
-            name: ":memory:",
-            limit: 5,
+            path: ":memory:",
+            limit: 1,
             migrations: [
                 Migration(number: 1, sql: "CREATE TABLE foo (bar INTEGER)")
             ]

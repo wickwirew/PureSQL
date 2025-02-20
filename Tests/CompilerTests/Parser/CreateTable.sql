@@ -29,7 +29,6 @@ CREATE TABLE user (id INT, name TEXT);
 -- CHECK:             COLUMN_CONSTRAINT_SYNTAX
 -- CHECK:               KIND
 -- CHECK:                 PRIMARY_KEY
--- CHECK:                   ORDER asc
 -- CHECK:                   CONFICT_CLAUSE_SYNTAX none
 -- CHECK:                   AUTOINCREMENT false
 -- CHECK:         KEY name
@@ -53,7 +52,6 @@ CREATE TABLE user (id INT PRIMARY KEY, name TEXT);
 -- CHECK:             COLUMN_CONSTRAINT_SYNTAX
 -- CHECK:               KIND
 -- CHECK:                 PRIMARY_KEY
--- CHECK:                   ORDER asc
 -- CHECK:                   CONFICT_CLAUSE_SYNTAX replace
 -- CHECK:                   AUTOINCREMENT false
 -- CHECK:         KEY name
@@ -216,7 +214,6 @@ CREATE TABLE user (
 -- CHECK:             COLUMN_CONSTRAINT_SYNTAX
 -- CHECK:               KIND
 -- CHECK:                 PRIMARY_KEY
--- CHECK:                   ORDER asc
 -- CHECK:                   CONFICT_CLAUSE_SYNTAX none
 -- CHECK:                   AUTOINCREMENT false
 -- CHECK:         KEY name
@@ -248,7 +245,6 @@ CREATE TABLE user (
 -- CHECK:             COLUMN_CONSTRAINT_SYNTAX
 -- CHECK:               KIND
 -- CHECK:                 PRIMARY_KEY
--- CHECK:                   ORDER asc
 -- CHECK:                   CONFICT_CLAUSE_SYNTAX replace
 -- CHECK:                   AUTOINCREMENT false
 -- CHECK:         KEY name
@@ -263,12 +259,10 @@ CREATE TABLE user (
 -- CHECK:               EXPR
 -- CHECK:                 COLUMN
 -- CHECK:                   COLUMN id
--- CHECK:               ORDER asc
 -- CHECK:             INDEXED_COLUMN_SYNTAX
 -- CHECK:               EXPR
 -- CHECK:                 COLUMN
 -- CHECK:                   COLUMN name
--- CHECK:               ORDER asc
 -- CHECK:           CONFICT_CLAUSE_SYNTAX none
 -- CHECK:   OPTIONS []
 CREATE TABLE user (

@@ -44,7 +44,7 @@ struct QueryTests {
     }
     
     private var selectAllFoo: DatabaseQuery<(), [Foo]> {
-        return DatabaseQuery<(), [Foo]> { input, transaction in
+        return DatabaseQuery<(), [Foo]>(.read) { input, transaction in
             try Statement(in: transaction) {
                 "SELECT * FROM foo;"
             }
@@ -52,7 +52,7 @@ struct QueryTests {
     }
     
     private var insert: DatabaseQuery<Foo, ()> {
-        return DatabaseQuery<Foo, ()> { input, transaction in
+        return DatabaseQuery<Foo, ()>(.write) { input, transaction in
             try Statement(in: transaction) {
                 "INSERT INTO foo (bar, baz) VALUES (?, ?)"
             } bind: { statement in

@@ -6,7 +6,6 @@
 -- CHECK:           EXPR
 -- CHECK:             COLUMN
 -- CHECK:               COLUMN id
--- CHECK:           ORDER asc
 -- CHECK:       CONFICT_CLAUSE_SYNTAX none
 CONSTRAINT theName PRIMARY KEY (id);
 
@@ -18,12 +17,10 @@ CONSTRAINT theName PRIMARY KEY (id);
 -- CHECK:           EXPR
 -- CHECK:             COLUMN
 -- CHECK:               COLUMN id
--- CHECK:           ORDER asc
 -- CHECK:         INDEXED_COLUMN_SYNTAX
 -- CHECK:           EXPR
 -- CHECK:             COLUMN
 -- CHECK:               COLUMN otherId
--- CHECK:           ORDER asc
 -- CHECK:       CONFICT_CLAUSE_SYNTAX none
 CONSTRAINT theName PRIMARY KEY (id, otherId);
 
@@ -34,7 +31,6 @@ CONSTRAINT theName PRIMARY KEY (id, otherId);
 -- CHECK:           EXPR
 -- CHECK:             COLUMN
 -- CHECK:               COLUMN id
--- CHECK:           ORDER asc
 -- CHECK:       CONFICT_CLAUSE_SYNTAX ignore
 PRIMARY KEY (id) ON CONFLICT IGNORE;
 
@@ -45,7 +41,6 @@ PRIMARY KEY (id) ON CONFLICT IGNORE;
 -- CHECK:           EXPR
 -- CHECK:             COLUMN
 -- CHECK:               COLUMN theColumn
--- CHECK:           ORDER asc
 -- CHECK:       CONFICT_CLAUSE_SYNTAX none
 UNIQUE (theColumn);
 
@@ -56,12 +51,10 @@ UNIQUE (theColumn);
 -- CHECK:           EXPR
 -- CHECK:             COLUMN
 -- CHECK:               COLUMN theColumn
--- CHECK:           ORDER asc
 -- CHECK:         INDEXED_COLUMN_SYNTAX
 -- CHECK:           EXPR
 -- CHECK:             COLUMN
 -- CHECK:               COLUMN otherColumn
--- CHECK:           ORDER asc
 -- CHECK:       CONFICT_CLAUSE_SYNTAX replace
 UNIQUE (theColumn, otherColumn) ON CONFLICT REPLACE;
 

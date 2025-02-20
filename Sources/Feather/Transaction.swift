@@ -10,36 +10,28 @@
 /// it which breaks the `Query` API. Maybe a future thing.
 public final class Transaction {
     let connection: Connection
-    let kind: Kind
-    let signal: Signal?
-    let finalize: Finalize
+    let kind: TransactionKind
+    let behavior: Behavior
     private var didCommit = false
     private let pool: ConnectionPool
     
-    public enum Kind: String, Sendable {
+    public enum Behavior: String, Sendable {
         case deferred = "DEFERRED"
         case immediate = "IMMEDIATE"
         case exclusive = "EXCLUSIVE"
     }
     
-    public enum Finalize: String, Sendable {
-        case commit = "COMMIT"
-        case rollback = "ROLLBACK"
-    }
-    
     init(
         connection: Connection,
-        kind: Kind = .deferred,
-        pool: ConnectionPool,
-        signal: Signal? = nil,
-        finalize: Finalize
+        kind: TransactionKind,
+        behavior: Behavior = .deferred,
+        pool: ConnectionPool
     ) throws(FeatherError) {
         self.connection = connection
         self.kind = kind
+        self.behavior = behavior
         self.pool = pool
-        self.signal = signal
-        self.finalize = finalize
-        try connection.execute(sql: "BEGIN \(kind.rawValue) TRANSACTION;")
+        try connection.execute(sql: "BEGIN \(behavior.rawValue) TRANSACTION;")
     }
     
     public func execute(sql: String) throws(FeatherError) {
@@ -58,13 +50,18 @@ public final class Transaction {
     deinit {
         if !didCommit {
             do {
-                try connection.execute(sql: "\(finalize.rawValue);")
+                switch kind {
+                case .read:
+                    try connection.execute(sql: "COMMIT;")
+                case .write:
+                    try connection.execute(sql: "ROLLBACK;")
+                }
             } catch {
-                assertionFailure("Failed to \(finalize.rawValue): \(error)")
+                assertionFailure("Failed to commit or rollback")
             }
         }
         
-        pool.reclaim(connection: connection, signal: signal)
+        pool.reclaim(connection: connection, txKind: kind)
     }
 }
 
