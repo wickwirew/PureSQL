@@ -9,6 +9,7 @@ public struct Statement {
     public let name: Substring?
     public let signature: Signature
     let syntax: any StmtSyntax
+    public let isReadOnly: Bool
     
     public var range: Range<Substring.Index> {
         return syntax.range
@@ -28,6 +29,11 @@ public struct Statement {
     
     /// Replaces the name with the given input
     public func with(name: Substring?) -> Statement {
-        return Statement(name: name, signature: signature, syntax: syntax)
+        return Statement(
+            name: name,
+            signature: signature,
+            syntax: syntax,
+            isReadOnly: isReadOnly
+        )
     }
 }

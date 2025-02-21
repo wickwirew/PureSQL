@@ -43,11 +43,11 @@ extension Compiler: StmtSyntaxVisitor {
         
         switch stmt.kind {
         case let .select(selectStmt):
-            let signature = compile(select: selectStmt)
+            let signature = signature(of: selectStmt)
             
             guard case let .row(.named(columns)) = signature.output else {
                 assertionFailure("Create table did not have named columns")
-                return Statement(name: nil, signature: .empty, syntax: stmt)
+                return Statement(name: nil, signature: .empty, syntax: stmt, isReadOnly: false)
             }
             
             schema[stmt.name.value] = Table(
@@ -55,7 +55,7 @@ extension Compiler: StmtSyntaxVisitor {
                 columns: columns,
                 primaryKey: tablePrimaryKeyConstraints
             )
-            return Statement(name: nil, signature: signature, syntax: stmt)
+            return Statement(name: nil, signature: signature, syntax: stmt, isReadOnly: false)
         case let .columns(columns):
             // If there were no primary keys defined in the table constraints
             // check if any columns have the PRIMARY KEY constraint.
@@ -74,14 +74,14 @@ extension Compiler: StmtSyntaxVisitor {
                 },
                 primaryKey: primaryKey
             )
-            return Statement(name: nil, signature: .empty, syntax: stmt)
+            return Statement(name: nil, signature: .empty, syntax: stmt, isReadOnly: false)
         }
     }
     
     mutating func visit(_ stmt: AlterTableStmtSyntax) -> Statement? {
         guard var table = schema[stmt.name.value] else {
             diagnostics.add(.init("Table '\(stmt.name)' does not exist", at: stmt.name.range))
-            return Statement(name: nil, signature: .empty, syntax: stmt)
+            return Statement(name: nil, signature: .empty, syntax: stmt, isReadOnly: false)
         }
         
         switch stmt.kind {
@@ -97,32 +97,48 @@ extension Compiler: StmtSyntaxVisitor {
         }
         
         schema[stmt.name.value] = table
-        return Statement(name: nil, signature: .empty, syntax: stmt)
+        return Statement(
+            name: nil,
+            signature: .empty,
+            syntax: stmt,
+            isReadOnly: false
+        )
     }
     
     mutating func visit(_ stmt: SelectStmtSyntax) -> Statement? {
-        return Statement(name: nil, signature: compile(select: stmt), syntax: stmt)
+        return Statement(
+            name: nil,
+            signature: signature(of: stmt),
+            syntax: stmt,
+            isReadOnly: true
+        )
     }
     
     mutating func visit(_ stmt: InsertStmtSyntax) -> Statement? {
-        var inferrer = TypeInferrer(schema: schema)
-        let signature = inferrer.signature(for: stmt)
-        self.diagnostics.merge(inferrer.diagnostics)
-        return Statement(name: nil, signature: signature, syntax: stmt)
+        return Statement(
+            name: nil,
+            signature: signature(of: stmt),
+            syntax: stmt,
+            isReadOnly: false
+        )
     }
     
     mutating func visit(_ stmt: UpdateStmtSyntax) -> Statement? {
-        var inferrer = TypeInferrer(schema: schema)
-        let signature = inferrer.signature(for: stmt)
-        self.diagnostics.merge(inferrer.diagnostics)
-        return Statement(name: nil, signature: signature, syntax: stmt)
+        return Statement(
+            name: nil,
+            signature: signature(of: stmt),
+            syntax: stmt,
+            isReadOnly: false
+        )
     }
     
     mutating func visit(_ stmt: DeleteStmtSyntax) -> Statement? {
-        var inferrer = TypeInferrer(schema: schema)
-        let signature = inferrer.signature(for: stmt)
-        self.diagnostics.merge(inferrer.diagnostics)
-        return Statement(name: nil, signature: signature, syntax: stmt)
+        return Statement(
+            name: nil,
+            signature: signature(of: stmt),
+            syntax: stmt,
+            isReadOnly: false
+        )
     }
     
     mutating func visit(_ stmt: QueryDefinitionStmtSyntax) -> Statement? {
@@ -131,7 +147,7 @@ extension Compiler: StmtSyntaxVisitor {
             return nil
         }
         
-        return Statement(name: stmt.name.value, signature: inner.signature, syntax: stmt)
+        return Statement(name: stmt.name.value, signature: inner.signature, syntax: stmt, isReadOnly: inner.isReadOnly)
     }
     
     mutating func visit(_ stmt: EmptyStmtSyntax) -> Statement? {
@@ -151,9 +167,9 @@ extension Compiler: StmtSyntaxVisitor {
         }
     }
     
-    private mutating func compile(select: borrowing SelectStmtSyntax) -> Signature {
+    private mutating func signature<S: StmtSyntax>(of stmt: S) -> Signature {
         var inferrer = TypeInferrer(schema: schema)
-        let signature = inferrer.signature(for: select)
+        let signature = inferrer.signature(for: stmt)
         self.diagnostics.merge(inferrer.diagnostics)
         return signature
     }
