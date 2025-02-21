@@ -67,7 +67,7 @@ public struct DatabaseMacro: MemberMacro {
                 return (name.segments.description, source.segments.description, source)
             }
         
-        var compiler = Compiler()
+        var compiler = QueryCompiler()
         for migration in migrationsSource {
             compiler.compile(migration)
         }
@@ -77,7 +77,7 @@ public struct DatabaseMacro: MemberMacro {
         let migrations = try migrationsGenerator.generateVariable(static: true)
         
         let statements: [DeclSyntax] = try queriesSource.flatMap { query in
-            var compiler = Compiler(schema: compiler.schema)
+            var compiler = QueryCompiler(schema: compiler.schema)
             compiler.compile(query.source)
             
             var queriesGenerator = SwiftQueriesGenerator(

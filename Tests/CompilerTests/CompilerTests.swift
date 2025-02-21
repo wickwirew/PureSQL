@@ -34,7 +34,10 @@ class CompilerTests: XCTestCase {
         try check(
             sqlFile: "IsSingleResult",
             parse: { contents in
-                var compiler = Compiler()
+                var schemaCompiler = SchemaCompiler()
+                schemaCompiler.compile(contents)
+                
+                var compiler = QueryCompiler(schema: schemaCompiler.schema)
                 compiler.compile(contents)
                 return compiler.statements
                     .filter{ !($0.syntax is CreateTableStmtSyntax) }
@@ -55,7 +58,10 @@ func check(
     try check(
         sqlFile: sqlFile,
         parse: { contents in
-            var compiler = Compiler()
+            var schemaCompiler = SchemaCompiler()
+            schemaCompiler.compile(contents)
+            
+            var compiler = QueryCompiler(schema: schemaCompiler.schema)
             compiler.compile(contents)
             diagnostics = compiler.diagnostics.elements
             return compiler.statements.map(\.signature).filter{ !$0.isEmpty }
@@ -68,7 +74,9 @@ func check(
 
     try check(
         sqlFile: sqlFile,
-        parse: { _ in diagnostics.map(\.message) },
+        parse: { _ in diagnostics.map(\.message)
+            // Ignore illegal in migrations/queries since its nice to mix them in tests
+            .filter { !$0.contains("in migrations") && !$0.contains("in queries") } },
         prefix: "CHECK-ERROR",
         dump: dump,
         file: file,

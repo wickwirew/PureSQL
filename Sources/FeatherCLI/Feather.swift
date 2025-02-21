@@ -33,7 +33,7 @@ struct Feather: ParsableCommand {
         var schema = Schema()
 
         try forEachFile(in: migrations) { file, fileName in
-            var compiler = Compiler(schema: schema)
+            var compiler = SchemaCompiler(schema: schema)
             compiler.compile(file)
             schema = compiler.schema
             
@@ -46,7 +46,7 @@ struct Feather: ParsableCommand {
         }
         
         let outputFiles = try forEachFile(in: queries) { file, fileName in
-            var compiler = Compiler(schema: schema)
+            var compiler = QueryCompiler(schema: schema)
             compiler.compile(file)
             
             var codeGen = SwiftQueriesGenerator(schema: schema, statements: compiler.statements, source: file)

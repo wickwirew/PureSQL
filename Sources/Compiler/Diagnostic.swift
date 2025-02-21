@@ -130,4 +130,25 @@ extension Diagnostic {
         
         return Diagnostic("Unexpected token \(kind), expected any of \(expected)", at: range)
     }
+    
+    static func illegalStatementInMigrations(
+        _ kind: Token.Kind,
+        at range: Range<Substring.Index>
+    ) -> Diagnostic {
+        return Diagnostic("'\(kind)' is not allowed in migrations", at: range)
+    }
+    
+    static func illegalStatementInQueries(
+        _ kind: Token.Kind,
+        at range: Range<Substring.Index>
+    ) -> Diagnostic {
+        return Diagnostic("'\(kind)' is not allowed in queries", at: range)
+    }
+    
+    static func alreadyHasPrimaryKey(
+        _ table: Substring,
+        at range: Range<Substring.Index>
+    ) -> Diagnostic {
+        return Diagnostic("Table '\(table)' already has a primary key", at: range)
+    }
 }
