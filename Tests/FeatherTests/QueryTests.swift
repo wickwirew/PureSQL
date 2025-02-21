@@ -67,7 +67,7 @@ struct QueryTests {
             path: ":memory:",
             limit: 1,
             migrations: [
-                Migration(number: 1, sql: "CREATE TABLE foo (bar INTEGER PRIMARY KEY, baz TEXT)")
+                "CREATE TABLE foo (bar INTEGER PRIMARY KEY, baz TEXT)"
             ]
         )
     }

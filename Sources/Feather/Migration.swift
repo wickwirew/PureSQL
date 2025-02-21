@@ -5,36 +5,27 @@
 //  Created by Wes Wickwire on 2/16/25.
 //
 
-public struct Migration: Sendable {
-    public let number: Int
-    public let sql: String
-    
-    public init(number: Int, sql: String) {
-        self.number = number
-        self.sql = sql
-    }
-}
-
 public struct MigrationRunner {
     static let migrationTableName = "__featherMigrations"
     
-    public static func execute(migrations: [Migration], pool: ConnectionPool) async throws {
+    public static func execute(migrations: [String], pool: ConnectionPool) async throws {
         let tx = try await pool.begin(.write)
         try execute(migrations: migrations, tx: tx)
         try tx.commit()
     }
     
-    public static func execute(migrations: [Migration], tx: Transaction) throws {
+    public static func execute(migrations: [String], tx: Transaction) throws {
         try createTableIfNeeded(tx: tx)
         
         let lastMigration = try lastMigration.execute(with: (), tx: tx)
         
-        let pendingMigrations = migrations
+        let pendingMigrations = migrations.enumerated()
+            .map { (number: $0.offset + 1, migration: $0.element) }
             .filter { $0.number > lastMigration }
             .sorted { $0.number < $1.number }
         
-        for migration in pendingMigrations {
-            try execute(migration: migration, tx: tx)
+        for (number, migration) in pendingMigrations {
+            try execute(migration: migration, number: number, tx: tx)
         }
     }
     
@@ -46,9 +37,9 @@ public struct MigrationRunner {
         """)
     }
     
-    static func execute(migration: Migration, tx: Transaction) throws {
-        try tx.execute(sql: migration.sql)
-        try insertMigration.execute(with: migration.number, tx: tx)
+    static func execute(migration: String, number: Int, tx: Transaction) throws {
+        try tx.execute(sql: migration)
+        try insertMigration.execute(with: number, tx: tx)
     }
     
     private static var lastMigration: DatabaseQuery<(), Int> {

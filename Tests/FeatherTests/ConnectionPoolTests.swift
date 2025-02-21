@@ -19,7 +19,7 @@ struct ConnectionPoolTests {
             path: ":memory:",
             limit: 1,
             migrations: [
-                Migration(number: 1, sql: "CREATE TABLE foo (bar INTEGER)")
+                "CREATE TABLE foo (bar INTEGER)"
             ]
         )
         
@@ -32,7 +32,7 @@ struct ConnectionPoolTests {
             path: ":memory:",
             limit: 1,
             migrations: [
-                Migration(number: 1, sql: "CREATE TABLE foo (bar INTEGER)")
+                "CREATE TABLE foo (bar INTEGER)"
             ]
         )
         

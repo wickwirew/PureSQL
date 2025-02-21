@@ -28,7 +28,7 @@ public actor ConnectionPool: Sendable {
     public init(
         name: String,
         limit: Int = ConnectionPool.defaultLimit,
-        migrations: [Migration]
+        migrations: [String]
     ) throws {
         let url = try FileManager.default
             .url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
@@ -40,7 +40,7 @@ public actor ConnectionPool: Sendable {
     public init(
         path: String,
         limit: Int = ConnectionPool.defaultLimit,
-        migrations: [Migration]
+        migrations: [String]
     ) throws {
         guard limit > 0 else {
             throw FeatherError.poolCannotHaveZeroConnections
