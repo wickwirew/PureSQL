@@ -12,107 +12,107 @@ import XCTest
 /// Just tests for the smaller, less complex parsers that dont really need their own file.
 final class ParserTests: XCTestCase {
     func testTableOptions() throws {
-        try check(sqlFile: "TableOptions", parser: Parsers.tableOptions)
+        try check(sqlFile: "ParseTableOptions", parser: Parsers.tableOptions)
     }
     
     func testConflictClause() throws {
-        try check(sqlFile: "ConflictClause", parser: Parsers.conflictClause)
+        try check(sqlFile: "ParseConflictClause", parser: Parsers.conflictClause)
     }
     
     func testForeignKeyClause() throws {
-        try check(sqlFile: "ForeignKeyClause", parser: Parsers.foreignKeyClause)
+        try check(sqlFile: "ParseForeignKeyClause", parser: Parsers.foreignKeyClause)
     }
     
     func testOrder() throws {
-        try check(sqlFile: "Order", parser: Parsers.order)
+        try check(sqlFile: "ParseOrder", parser: Parsers.order)
     }
     
     func testColumnConstraint() throws {
-        try check(sqlFile: "ColumnConstraint", parser: { Parsers.columnConstraint(state: &$0) })
+        try check(sqlFile: "ParseColumnConstraint", parser: { Parsers.columnConstraint(state: &$0) })
     }
     
     func testColumnDefinition() throws {
-        try check(sqlFile: "ColumnDefinition", parser: Parsers.columnDef)
+        try check(sqlFile: "ParseColumnDefinition", parser: Parsers.columnDef)
     }
     
     func testAlterTable() throws {
-        try check(sqlFile: "AlterTable", parser: Parsers.alterStmt)
+        try check(sqlFile: "ParseAlterTable", parser: Parsers.alterStmt)
     }
     
     func testSignedNumber() throws {
-        try check(sqlFile: "SignedNumber", parser: Parsers.signedNumber)
+        try check(sqlFile: "ParseSignedNumber", parser: Parsers.signedNumber)
     }
     
     func testTypeName() throws {
-        try check(sqlFile: "TypeName", parser: Parsers.typeName)
+        try check(sqlFile: "ParseTypeName", parser: Parsers.typeName)
     }
     
     func testCreateTable() throws {
-        try check(sqlFile: "CreateTable", parser: Parsers.createTableStmt)
+        try check(sqlFile: "ParseCreateTable", parser: Parsers.createTableStmt)
     }
     
     func testBindParameter() throws {
-        try check(sqlFile: "BindParameter", parser: Parsers.bindParameter)
+        try check(sqlFile: "ParseBindParameter", parser: Parsers.bindParameter)
     }
     
     func testOpertators() throws {
-        try check(sqlFile: "Operators", parser: Parsers.operator)
+        try check(sqlFile: "ParseOperators", parser: Parsers.operator)
     }
     
     func testExpression() throws {
-        try check(sqlFile: "Expression", parser: { Parsers.expr(state: &$0) })
+        try check(sqlFile: "ParseExpression", parser: { Parsers.expr(state: &$0) })
     }
     
     func testSelectStmt() throws {
-        try check(sqlFile: "SelectStmt", parser: Parsers.selectStmt)
+        try check(sqlFile: "ParseSelectStmt", parser: Parsers.selectStmt)
     }
     
     func testJoinConstraint() throws {
-        try check(sqlFile: "JoinConstraint", parser: Parsers.joinConstraint)
+        try check(sqlFile: "ParseJoinConstraint", parser: Parsers.joinConstraint)
     }
     
     func testCommonTableExpression() throws {
-        try check(sqlFile: "CommonTableExpression", parser: Parsers.cte)
+        try check(sqlFile: "ParseCommonTableExpression", parser: Parsers.cte)
     }
     
     func testJoinOperator() throws {
-        try check(sqlFile: "JoinOperator", parser: Parsers.joinOperator)
+        try check(sqlFile: "ParseJoinOperator", parser: Parsers.joinOperator)
     }
     
     func testOrderingTerm() throws {
-        try check(sqlFile: "OrderingTerm", parser: Parsers.orderingTerm)
+        try check(sqlFile: "ParseOrderingTerm", parser: Parsers.orderingTerm)
     }
     
     func testResultColumn() throws {
-        try check(sqlFile: "ResultColumn", parser: Parsers.resultColumn)
+        try check(sqlFile: "ParseResultColumn", parser: Parsers.resultColumn)
     }
     
     func testTableOrSubquery() throws {
-        try check(sqlFile: "TableOrSubquery", parser: Parsers.tableOrSubquery)
+        try check(sqlFile: "ParseTableOrSubquery", parser: Parsers.tableOrSubquery)
     }
     
     func testJoinClause() throws {
-        try check(sqlFile: "JoinClause", parser: Parsers.joinClauseOrTableOrSubqueries)
+        try check(sqlFile: "ParseJoinClause", parser: Parsers.joinClauseOrTableOrSubqueries)
     }
     
     func testInsertStmt() throws {
-        try check(sqlFile: "InsertStmt", parser: Parsers.insertStmt)
+        try check(sqlFile: "ParseInsertStmt", parser: Parsers.insertStmt)
     }
     
     func testUpdateStmt() throws {
-        try check(sqlFile: "UpdateStmt", parser: Parsers.updateStmt)
+        try check(sqlFile: "ParseUpdateStmt", parser: Parsers.updateStmt)
     }
     
     func testDefinition() throws {
-        try check(sqlFile: "Definition", parser: Parsers.definition)
+        try check(sqlFile: "ParseDefinition", parser: Parsers.definition)
     }
     
     func testTableConstraints() throws {
-        try check(sqlFile: "TableConstraint", parser: Parsers.tableConstraint)
+        try check(sqlFile: "ParseTableConstraint", parser: Parsers.tableConstraint)
     }
     
     func testDeleteStmt() throws {
-        try check(sqlFile: "DeleteStmt", parser: Parsers.deleteStmt)
+        try check(sqlFile: "ParseDeleteStmt", parser: Parsers.deleteStmt)
     }
 }
 

@@ -11,32 +11,32 @@ import XCTest
 
 class CompilerTests: XCTestCase {
     func testCheckSimpleSelects() throws {
-        try checkQueries(compile: "SimpleSelects")
+        try checkQueries(compile: "CompileSimpleSelects")
     }
 
     func testSelectWithJoins() throws {
-        try checkQueries(compile: "SelectWithJoins")
+        try checkQueries(compile: "CompileSelectWithJoins")
     }
 
     func testInsert() throws {
-        try checkQueries(compile: "Insert")
+        try checkQueries(compile: "CompileInsert")
     }
     
     func testUpdate() throws {
-        try checkQueries(compile: "Update")
+        try checkQueries(compile: "CompileUpdate")
     }
     
     func testDelete() throws {
-        try checkQueries(compile: "Delete")
+        try checkQueries(compile: "CompileDelete")
     }
     
     func testCreateTable() throws {
-        try checkSchema(compile: "CreateTable2", dump: true)
+        try checkSchema(compile: "CompileCreateTable")
     }
     
     func testOutputCountInference() throws {
         try check(
-            sqlFile: "IsSingleResult",
+            sqlFile: "CompileIsSingleResult",
             parse: { contents in
                 var schemaCompiler = SchemaCompiler()
                 schemaCompiler.compile(contents)
