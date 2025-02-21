@@ -1156,6 +1156,7 @@ enum Parsers {
             return ColumnConstraintSyntax(name: name, kind: .generated(expr, generated), range: state.range(from: start))
         default:
             state.diagnostics.add(.unexpectedToken(of: state.current.kind, at: state.range))
+            state.skip()
             return nil
         }
     }

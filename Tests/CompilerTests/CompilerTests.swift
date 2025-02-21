@@ -11,23 +11,27 @@ import XCTest
 
 class CompilerTests: XCTestCase {
     func testCheckSimpleSelects() throws {
-        try check(compile: "SimpleSelects")
+        try checkQueries(compile: "SimpleSelects")
     }
 
     func testSelectWithJoins() throws {
-        try check(compile: "SelectWithJoins")
+        try checkQueries(compile: "SelectWithJoins")
     }
 
     func testInsert() throws {
-        try check(compile: "Insert")
+        try checkQueries(compile: "Insert")
     }
     
     func testUpdate() throws {
-        try check(compile: "Update")
+        try checkQueries(compile: "Update")
     }
     
     func testDelete() throws {
-        try check(compile: "Delete")
+        try checkQueries(compile: "Delete")
+    }
+    
+    func testCreateTable() throws {
+        try checkSchema(compile: "CreateTable2", dump: true)
     }
     
     func testOutputCountInference() throws {
@@ -46,9 +50,54 @@ class CompilerTests: XCTestCase {
         )
     }
 }
-
-func check(
+func checkSchema(
     compile sqlFile: String,
+    dump: Bool = false,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws {
+    try checkWithErrors(
+        compile: sqlFile,
+        parse: { contents in
+            var schemaCompiler = SchemaCompiler()
+            schemaCompiler.compile(contents)
+            return (Array(schemaCompiler.schema.values), schemaCompiler.diagnostics)
+        },
+        dump: dump,
+        file: file,
+        line: line
+    )
+}
+
+func checkQueries(
+    compile sqlFile: String,
+    dump: Bool = false,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws {
+    try checkWithErrors(
+        compile: sqlFile,
+        parse: { contents in
+            var schemaCompiler = SchemaCompiler()
+            schemaCompiler.compile(contents)
+            
+            var compiler = QueryCompiler(schema: schemaCompiler.schema)
+            compiler.compile(contents)
+
+            return (
+                compiler.statements.map(\.signature).filter{ !$0.isEmpty },
+                compiler.diagnostics
+            )
+        },
+        dump: dump,
+        file: file,
+        line: line
+    )
+}
+
+func checkWithErrors<Output>(
+    compile sqlFile: String,
+    parse: (String) -> ([Output], Diagnostics),
     dump: Bool = false,
     file: StaticString = #filePath,
     line: UInt = #line
@@ -58,13 +107,9 @@ func check(
     try check(
         sqlFile: sqlFile,
         parse: { contents in
-            var schemaCompiler = SchemaCompiler()
-            schemaCompiler.compile(contents)
-            
-            var compiler = QueryCompiler(schema: schemaCompiler.schema)
-            compiler.compile(contents)
-            diagnostics = compiler.diagnostics.elements
-            return compiler.statements.map(\.signature).filter{ !$0.isEmpty }
+            let (output, diags) = parse(contents)
+            diagnostics.append(contentsOf: diags.elements)
+            return output
         },
         prefix: "CHECK",
         dump: dump,

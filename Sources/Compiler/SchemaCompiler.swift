@@ -61,23 +61,25 @@ public struct SchemaCompiler {
         columns: Columns
     ) -> [Substring] {
         // Any PK define by table constraints
-        let byTableConstraints: [IndexedColumnSyntax] = stmt.constraints
-            .compactMap { constraint -> [IndexedColumnSyntax]? in
+        let byTableConstraints: [([IndexedColumnSyntax], TableConstraintSyntax)] = stmt.constraints
+            .compactMap { constraint -> ([IndexedColumnSyntax], TableConstraintSyntax)? in
                 guard case let .primaryKey(columns, _) = constraint.kind else { return nil }
-                return columns
+                return (columns, constraint)
             }
-            .flatMap(\.self)
         
         // Any PK defined at the column level
-        let byColumnConstraints: [ColumnConstraintSyntax]
+        let byColumnConstraints: [IdentifierSyntax]
         if case let .columns(columns) = stmt.kind {
             byColumnConstraints = columns.values
                 .filter{ $0.constraints.contains(where: \.isPkConstraint) }
-                .flatMap(\.constraints)
+                .map(\.name)
         } else {
             // Due to parsing this should never be allowed to happen but easy to check
             if let constraint = byTableConstraints.first {
-                diagnostics.add(.init("CREATE TABLE AS SELECT cannot have any constraints", at: constraint.range))
+                diagnostics.add(.init(
+                    "CREATE TABLE AS SELECT cannot have any constraints",
+                    at: constraint.1.range
+                ))
             }
             
             return []
@@ -86,25 +88,27 @@ public struct SchemaCompiler {
         // Make sure only 1 primary key constraint is added.
         // This allows for PRIMARY KEY(foo, bar) but not for multiple of those constraints
         if !byColumnConstraints.isEmpty, let constraint = byTableConstraints.first {
-            diagnostics.add(.alreadyHasPrimaryKey(stmt.name.value, at: constraint.range))
+            diagnostics.add(.alreadyHasPrimaryKey(stmt.name.value, at: constraint.1.range))
         } else if byColumnConstraints.count > 1, let constraint = byColumnConstraints.last {
             diagnostics.add(.alreadyHasPrimaryKey(stmt.name.value, at: constraint.range))
         } else if byTableConstraints.count > 1, let constraint = byTableConstraints.last {
-            diagnostics.add(.alreadyHasPrimaryKey(stmt.name.value, at: constraint.range))
+            diagnostics.add(.alreadyHasPrimaryKey(stmt.name.value, at: constraint.1.range))
         }
         
         if !byColumnConstraints.isEmpty && byTableConstraints.isEmpty {
-            return byColumnConstraints.compactMap(\.name?.value)
+            return byColumnConstraints.map(\.value)
         } else {
             // Make sure the columns actually exist since they are define afterwards
             var columnNames: [Substring] = []
             for constraint in byTableConstraints {
-                guard let name = constraint.columnName else { continue }
-                
-                if columns[name.value] == nil {
-                    diagnostics.add(.columnDoesNotExist(name))
-                } else {
-                    columnNames.append(name.value)
+                for column in constraint.0 {
+                    guard let name = column.columnName else { continue }
+                    
+                    if columns[name.value] == nil {
+                        diagnostics.add(.columnDoesNotExist(name))
+                    } else {
+                        columnNames.append(name.value)
+                    }
                 }
             }
             return columnNames
