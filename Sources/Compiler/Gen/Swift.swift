@@ -10,7 +10,7 @@ import SwiftSyntaxBuilder
 
 public struct Swift: Language {
     public typealias File = SourceFileSyntax
-    public typealias Query = DeclSyntax
+    public typealias Query = [DeclSyntax]
     public typealias Migration = StringLiteralExprSyntax
     
     public static func migration(
@@ -23,58 +23,88 @@ public struct Swift: Language {
         source: String,
         statement: Statement,
         name: Substring
-    ) throws -> DeclSyntax {
-        let name = name.capitalizedFirst
+    ) throws -> [DeclSyntax] {
         let parameters = statement.signature.parametersWithNames
         let querySource = source[statement.rangeWithoutDefinition]
-
+        var declarations: [DeclSyntax] = []
+        
+        
+        
+        let inputTypeName: String
+        if let firstParam = statement.signature.parameters.values.first {
+            if statement.signature.parameters.count > 1 {
+                inputTypeName = "\(name.capitalizedFirst)Input"
+                let inputType = DeclSyntax(StructDeclSyntax(name: "\(raw: name.capitalizedFirst)Input") {
+                    for input in parameters {
+                        "let \(raw: input.name): \(raw: swiftType(for: input.type))"
+                    }
+                })
+                declarations.append(inputType)
+            } else {
+                // Single input parameter, just use the single value as the parameter type
+                inputTypeName = swiftType(for: firstParam.type)
+            }
+        } else {
+            inputTypeName = "()"
+        }
+        
+        let outputTypeName: String
+        if statement.signature.noOutput {
+            outputTypeName = "()"
+        } else {
+            // TODO: Check for single output
+            outputTypeName = "\(name.capitalizedFirst)Output"
+            try declarations.append(outputStructDecl(name: outputTypeName, type: statement.signature.output))
+        }
+        
         let queryType: String = if statement.signature.noOutput {
-            "VoidQuery"
+            "VoidQuery<\(inputTypeName)>"
         } else {
             switch statement.signature.outputCardinality {
-            case .many: "FetchManyQuery"
-            case .single: "FetchSingleQuery"
+            case .many: "FetchManyQuery<\(inputTypeName), [\(outputTypeName)]>"
+            case .single: "FetchSingleQuery<\(inputTypeName), \(outputTypeName)>"
             }
         }
         
-        return try DeclSyntax(StructDeclSyntax(name: "\(raw: name)Query: \(raw: queryType)") {
-            if let firstParam = statement.signature.parameters.values.first {
-                if statement.signature.parameters.count > 1 {
-                    DeclSyntax(StructDeclSyntax(name: "Input") {
-                        for input in parameters {
-                            "let \(raw: input.name): \(raw: swiftType(for: input.type))"
-                        }
-                    })
-                } else {
-                    // Single input parameter, just use the single value as the parameter type
-                    try TypeAliasDeclSyntax("typealias Input = \(raw: swiftType(for: firstParam.type))")
+        let query = try VariableDeclSyntax("static var \(raw: name): \(raw: queryType)") {
+            FunctionCallExprSyntax(
+                calledExpression: DeclReferenceExprSyntax(
+                    baseName: .identifier(queryType)
+                ),
+                leftParen: .leftParenToken(),
+                arguments: LabeledExprListSyntax {
+                    LabeledExprSyntax(
+                        label: nil,
+                        colon: nil,
+                        expression: DeclReferenceExprSyntax(
+                            baseName: statement.isReadOnly ? ".read" : ".write"
+                        ),
+                        trailingComma: nil
+                    )
+                },
+                rightParen: .rightParenToken(),
+                trailingClosure: ClosureExprSyntax(
+                    signature: ClosureSignatureSyntax(
+                        parameterClause: .simpleInput(.init {
+                            ClosureShorthandParameterSyntax(name: "input")
+                            ClosureShorthandParameterSyntax(name: "transaction")
+                        })
+                    )
+                ) {
+                    "let statement = try Feather.Statement(\n\"\"\"\n\(raw: querySource)\n\"\"\", \ntransaction: transaction\n)"
+                    
+                    for parameter in parameters {
+                        "try statement.bind(value: input.\(raw: parameter.name), to: \(raw: parameter.index))"
+                    }
+                    
+                    "return statement"
                 }
-            } else {
-                try TypeAliasDeclSyntax("typealias Input = ()")
-            }
-            
-            if statement.signature.noOutput {
-                try TypeAliasDeclSyntax("typealias Output = ()")
-            } else {
-                switch statement.signature.outputCardinality {
-                case .single:
-                    try outputStructDecl(name: "Output", type: statement.signature.output)
-                case .many:
-                    try outputStructDecl(name: "Element", type: statement.signature.output)
-                    try TypeAliasDeclSyntax("typealias Output = [Element]")
-                }
-            }
-            
-            try FunctionDeclSyntax("func statement(\nin transaction: Feather.Transaction,\nwith input: Input\n) throws(FeatherError) -> Feather.Statement") {
-                "let statement = try Feather.Statement(\n\"\"\"\n\(raw: querySource)\n\"\"\", \ntransaction: transaction\n)"
-                
-                for parameter in parameters {
-                    "try statement.bind(value: input.\(raw: parameter.name), to: \(raw: parameter.index))"
-                }
-                
-                "return statement"
-            }
-        })
+            )
+        }
+        
+        declarations.append(DeclSyntax(query))
+        
+        return declarations
     }
     
     private static func outputStructDecl(name: String, type: Type?) throws -> DeclSyntax {
@@ -108,7 +138,9 @@ public struct Swift: Language {
             }
             
             for query in queries {
-                query
+                for decl in query {
+                    decl
+                }
             }
         }
     }

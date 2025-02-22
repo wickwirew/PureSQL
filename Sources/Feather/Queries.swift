@@ -112,3 +112,20 @@ public extension Query {
         }
     }
 }
+
+struct MyDB {
+    var migrations: [String] {
+        return [
+            ""
+        ]
+    }
+    
+    var queries: [String] {
+        return [
+            """
+            DEFINE QUERY fetchUsers AS
+            SELECT * FROM user;
+            """,
+        ]
+    }
+}

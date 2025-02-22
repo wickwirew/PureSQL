@@ -12,6 +12,8 @@ public struct Compiler {
     private var diagnostics = Diagnostics()
     private var pragmas = FeatherPragmas()
     
+    public init() {}
+    
     @discardableResult
     public mutating func compile(migration: String) -> Diagnostics {
         var schemaCompiler = SchemaCompiler(schema: schema)
@@ -26,7 +28,7 @@ public struct Compiler {
     }
     
     @discardableResult
-    public mutating func compile(queries: String) -> Diagnostics {
+    public mutating func compile(queries: String) -> ([Statement], Diagnostics) {
         var queryCompiler = QueryCompiler(schema: schema, pragmas: pragmas)
         queryCompiler.compile(queries)
         
@@ -34,6 +36,6 @@ public struct Compiler {
         
         let allDiagnostics = queryCompiler.allDiagnostics
         diagnostics.merge(allDiagnostics)
-        return allDiagnostics
+        return (queryCompiler.statements, allDiagnostics)
     }
 }

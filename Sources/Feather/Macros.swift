@@ -9,6 +9,6 @@ public macro query(_ source: String) = #externalMacro(module: "FeatherMacros", t
 public macro Database() = #externalMacro(module: "FeatherMacros", type: "DatabaseMacro")
 
 public protocol Database {
-    static var queries: [String: String] { get }
+    static var queries: [String] { get }
     static var migrations: [String] { get }
 }
