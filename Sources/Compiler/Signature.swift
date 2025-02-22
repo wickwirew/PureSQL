@@ -50,6 +50,11 @@ public struct Signature: CustomReflectable {
         return parameters.isEmpty && output == nil
     }
     
+    /// If `true` the query returns nothing.
+    public var noOutput: Bool {
+        return output == nil || output == .row(.empty)
+    }
+    
     public var customMirror: Mirror {
         // Helps the CHECK statements in the tests since the `Type`
         // structure is fairly complex and has lots of nesting.

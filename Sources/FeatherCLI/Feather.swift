@@ -13,6 +13,8 @@ import SwiftSyntax
 enum CLIError: Error {
     case fileIsNotValidUTF8(path: String)
     case migrationFileNameMustBeNumber(String)
+    case invalidOutput(String)
+    case outputMustBeFileNotDirectory(String)
 }
 
 @main
@@ -20,70 +22,11 @@ struct Feather: ParsableCommand {
     @Option(name: .shortAndLong, help: "The root directory of the Feather sources")
     var path: String? = nil
     
-    @Option(name: .shortAndLong, help: "Where the output files should be written to. Default is stdout")
+    @Option(name: .shortAndLong, help: "The output file path. Default is to stdout")
     var output: String? = nil
 
     mutating func run() throws {
-        let path = path ?? FileManager.default.currentDirectoryPath
-        let migrations = "\(path)/Migrations"
-        let queries = "\(path)/Queries"
-        
-        var migrationsGenerator = SwiftMigrationsGenerator()
-        
-        var schema = Schema()
-        var pragmas = FeatherPragmas()
-        var diagnostics = Diagnostics()
-        
-        try forEachFile(in: migrations) { file, fileName in
-            var compiler = SchemaCompiler(schema: schema)
-            compiler.compile(file)
-            schema = compiler.schema
-            pragmas = compiler.pragmas.featherPragmas
-            diagnostics.merge(compiler.allDiagnostics)
-            
-            let numberStr = fileName.split(separator: ".")[0]
-            guard let number = Int(numberStr) else {
-                throw CLIError.migrationFileNameMustBeNumber(fileName)
-            }
-            
-            migrationsGenerator.addMigration(number: number, sql: file)
-        }
-        
-        let outputFiles = try forEachFile(in: queries) { file, fileName in
-            var compiler = QueryCompiler(schema: schema, pragmas: pragmas)
-            compiler.compile(file)
-            diagnostics.merge(compiler.allDiagnostics)
-            
-            var codeGen = SwiftQueriesGenerator(schema: schema, statements: compiler.statements, source: file)
-            return try (codeGen.generateFile().formatted(), fileName)
-        }
-        
-        if let output {
-            // Create the directory if it does not exist
-            if !FileManager.default.fileExists(atPath: output) {
-                try FileManager.default.createDirectory(
-                    atPath: output,
-                    withIntermediateDirectories: true
-                )
-            }
-            
-            try migrationsGenerator.generate()
-                .formatted()
-                .description
-                .write(toFile: "\(output)/Migrations.swift", atomically: true, encoding: .utf8)
-            
-            for (file, fileName) in outputFiles {
-                let swiftFileName = "\(fileName.split(separator: ".")[0]).swift"
-                try file.description.write(toFile: "\(output)/\(swiftFileName)", atomically: true, encoding: .utf8)
-            }
-        } else {
-            // No output directory, just print to stdout
-            try print(migrationsGenerator.generate().formatted())
-            
-            for (file, _) in outputFiles {
-                print(file)
-            }
-        }
+        try generate(language: Swift.self)
     }
     
     @discardableResult
@@ -104,5 +47,76 @@ struct Feather: ParsableCommand {
         }
         
         return result
+    }
+    
+    private func generate<Lang: Language>(language: Lang.Type) throws {
+        let path = path ?? FileManager.default.currentDirectoryPath
+        var schema = Schema()
+        var pragmas = FeatherPragmas()
+        var diagnostics = Diagnostics()
+        
+        var migrations: [Lang.Migration] = []
+        var queries: [Lang.Query] = []
+        
+        try forEachFile(in: "\(path)/Migrations") { file, fileName in
+            var compiler = SchemaCompiler(schema: schema)
+            compiler.compile(file)
+            schema = compiler.schema
+            pragmas = compiler.pragmas.featherPragmas
+            diagnostics.merge(compiler.allDiagnostics)
+            
+            let numberStr = fileName.split(separator: ".")[0]
+            guard Int(numberStr) != nil else {
+                throw CLIError.migrationFileNameMustBeNumber(fileName)
+            }
+            
+            try migrations.append(language.migration(source: file))
+        }
+        
+        try forEachFile(in: "\(path)/Queries") { file, fileName in
+            var compiler = QueryCompiler(schema: schema, pragmas: pragmas)
+            compiler.compile(file)
+            diagnostics.merge(compiler.allDiagnostics)
+            
+            for statement in compiler.statements {
+                guard let name = statement.name else {
+                    // Should have been caught up stream
+                    assertionFailure("Statement in queries has no name")
+                    continue
+                }
+                try queries.append(language.query(source: file, statement: statement, name: name))
+            }
+        }
+        
+        let file = try language.file(migrations: migrations, queries: queries)
+        
+        if let output {
+            try validateIsFile(output)
+            try createDirectoiesIfNeeded(output)
+            
+            try language.string(for: file)
+                .write(toFile: output, atomically: true, encoding: .utf8)
+        } else {
+            // No output directory, just print to stdout
+            print(language.string(for: file))
+        }
+    }
+    
+    private func createDirectoiesIfNeeded(_ output: String) throws {
+        let url = URL(fileURLWithPath: output)
+        let directory = url.deletingLastPathComponent()
+        
+        guard !FileManager.default.fileExists(atPath: directory.path) else { return }
+        
+        try FileManager.default.createDirectory(
+            atPath: directory.path,
+            withIntermediateDirectories: true
+        )
+    }
+    
+    private func validateIsFile(_ output: String) throws {
+        if output.split(separator: ".").count <= 1 {
+            throw CLIError.outputMustBeFileNotDirectory(output)
+        }
     }
 }

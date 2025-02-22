@@ -61,7 +61,7 @@ public struct Statement: ~Copyable {
         }
     }
     
-    public mutating func bind<Value: DatabasePrimitive>(
+    public func bind<Value: DatabasePrimitive>(
         value: Value,
         to index: Int32
     ) throws(FeatherError) {
