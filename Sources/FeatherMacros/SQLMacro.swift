@@ -186,22 +186,3 @@ struct SQLPlugin: CompilerPlugin {
 struct LogError: Error, CustomStringConvertible {
     let description: String
 }
-
-extension Type {
-    var swiftType: String {
-        switch self {
-        case let .nominal(name):
-            return switch name.uppercased() {
-            case "REAL": "Double"
-            case "INT": "Int"
-            case "INTEGER": "Int"
-            case "TEXT": "String"
-            default: "Any"
-            }
-        case let .optional(ty):
-            return "\(ty.swiftType)?"
-        case .var, .fn, .row, .error:
-            return "Any"
-        }
-    }
-}

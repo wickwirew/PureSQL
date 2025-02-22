@@ -163,6 +163,8 @@ public struct Swift: Language {
             return "\(swiftType(for: ty))?"
         case .var, .fn, .row, .error:
             return "Any"
+        case .alias(_, let alias):
+            return alias.description
         }
     }
 }

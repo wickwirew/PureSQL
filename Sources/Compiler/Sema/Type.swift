@@ -13,6 +13,7 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
     indirect case fn(params: [Type], ret: Type)
     case row(Row)
     indirect case optional(Type)
+    indirect case alias(Type, Substring)
     /// There was an error somewhere in the analysis. We can just return
     /// an `error` type and continue the analysis. So if the user makes up
     /// 3 columns, they can get all 3 errors at once.
@@ -107,6 +108,7 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
             case let .unknown(ty): "(\(ty)...)"
             }
         case let .optional(ty): "\(ty)?"
+        case let .alias(t, a): "\(t) AS \(a)"
         case .error: "<<error>>"
         }
     }
@@ -135,6 +137,8 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
             return .row(tys.apply(s))
         case let .optional(ty):
             return .optional(ty)
+        case let .alias(t, a):
+            return .alias(t.apply(s), a)
         case .nominal, .error:
             // Literals can't be substituted for.
             return self
@@ -193,6 +197,10 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
                 diagnostics.add(.init("Unable to unify types '\(self)' and '\(other)'", at: range))
                 return [:]
             }
+        case let (.alias(t1, a), t2):
+            return t1.unify(with: t2, at: range, diagnostics: &diagnostics)
+        case let (t1, .alias(t2, a)):
+            return t2.unify(with: t1, at: range, diagnostics: &diagnostics)
         default:
             diagnostics.add(.init("Unable to unify types '\(self)' and '\(other)'", at: range))
             return [:]

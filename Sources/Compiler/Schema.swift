@@ -24,3 +24,13 @@ public struct Table {
         return .row(.named(columns))
     }
 }
+
+public struct ColumnType {
+    public let type: Type
+    public let alias: Substring?
+    
+    init(_ type: Type, alias: Substring? = nil) {
+        self.type = type
+        self.alias = alias
+    }
+}
