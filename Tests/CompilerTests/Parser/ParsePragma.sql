@@ -1,0 +1,21 @@
+-- CHECK: PRAGMA_STMT
+-- CHECK:   NAME name
+-- CHECK:   VALUE
+-- CHECK:     LITERAL 1.0
+-- CHECK:   IS_FUNCTION_CALL false
+PRAGMA name = 1;
+
+-- CHECK: PRAGMA_STMT
+-- CHECK:   NAME name
+-- CHECK:   VALUE
+-- CHECK:     LITERAL 1.0
+-- CHECK:   IS_FUNCTION_CALL true
+PRAGMA name(1);
+
+-- CHECK: PRAGMA_STMT
+-- CHECK:   SCHEMA schema
+-- CHECK:   NAME name
+-- CHECK:   VALUE
+-- CHECK:     LITERAL 1.0
+-- CHECK:   IS_FUNCTION_CALL true
+PRAGMA schema.name(1);

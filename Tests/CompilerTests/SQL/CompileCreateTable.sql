@@ -28,6 +28,7 @@ CREATE TABLE bar (
     PRIMARY KEY (foo, baz)
 );
 
+PRAGMA feather_require_strict_tables = ON;
 
 -- CHECK: TABLE
 -- CHECK:   NAME baz
@@ -36,6 +37,7 @@ CREATE TABLE bar (
 -- CHECK:       VALUE TEXT?
 -- CHECK:   PRIMARY_KEY
 -- CHECK:     foo
+-- CHECK-ERROR: Missing STRICT table option
 -- CHECK-ERROR: Column 'bar' does not exist
 CREATE TABLE baz (
     foo TEXT,
@@ -56,4 +58,4 @@ CREATE TABLE qux (
     foo TEXT PRIMARY KEY,
     bar INTEGER,
     PRIMARY KEY (bar)
-);
+) STRICT;

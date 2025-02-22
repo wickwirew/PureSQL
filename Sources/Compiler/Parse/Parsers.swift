@@ -53,6 +53,8 @@ enum Parsers {
             return try deleteStmt(state: &state)
         case (.define, _):
             return try definition(state: &state)
+        case (.pragma, _):
+            return pragma(state: &state)
         case (.with, _):
             let start = state.current
             let cte = try withCte(state: &state)
@@ -182,6 +184,54 @@ enum Parsers {
             kind = .ignore
         }
         return OrSyntax(kind: kind, range: token.range)
+    }
+    
+    /// https://www.sqlite.org/pragma.html
+    static func pragma(state: inout ParserState) -> PragmaStmt {
+        let start = state.take(.pragma)
+        
+        let schema: IdentifierSyntax?
+        if state.peek.kind == .dot {
+            schema = identifier(state: &state)
+            state.skip()
+        } else {
+            schema = nil
+        }
+        
+        let name = identifier(state: &state)
+        
+        let isFunctionCall: Bool
+        let value: ExprSyntax
+        switch state.current.kind {
+        case .openParen:
+            isFunctionCall = true
+            // The parens could technically get parsed by the `expr` but
+            // then the expr type would technically be different.
+            value = parens(state: &state) { state in
+                expr(state: &state)
+            }
+        case .equal:
+            isFunctionCall = false
+            state.skip()
+            value = expr(state: &state)
+        default:
+            state.diagnostics.add(.unexpectedToken(
+                of: state.current.kind,
+                expectedAnyOf: .equal, .openParen,
+                at: state.current.range
+            ))
+            // Still try to parse the value
+            value = expr(state: &state)
+            isFunctionCall = false
+        }
+        
+        return PragmaStmt(
+            schema: schema,
+            name: name,
+            value: value,
+            isFunctionCall: isFunctionCall,
+            range: state.range(from: start)
+        )
     }
     
     /// https://www.sqlite.org/syntax/upsert-clause.html

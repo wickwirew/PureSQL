@@ -41,7 +41,10 @@ class CompilerTests: XCTestCase {
                 var schemaCompiler = SchemaCompiler()
                 schemaCompiler.compile(contents)
                 
-                var compiler = QueryCompiler(schema: schemaCompiler.schema)
+                var compiler = QueryCompiler(
+                    schema: schemaCompiler.schema,
+                    pragmas: schemaCompiler.pragmas.featherPragmas
+                )
                 compiler.compile(contents)
                 return compiler.statements
                     .filter{ !($0.syntax is CreateTableStmtSyntax) }
@@ -61,7 +64,7 @@ func checkSchema(
         parse: { contents in
             var schemaCompiler = SchemaCompiler()
             schemaCompiler.compile(contents)
-            return (Array(schemaCompiler.schema.values), schemaCompiler.diagnostics)
+            return (Array(schemaCompiler.schema.values), schemaCompiler.allDiagnostics)
         },
         dump: dump,
         file: file,
@@ -81,12 +84,14 @@ func checkQueries(
             var schemaCompiler = SchemaCompiler()
             schemaCompiler.compile(contents)
             
-            var compiler = QueryCompiler(schema: schemaCompiler.schema)
+            var compiler = QueryCompiler(
+                schema: schemaCompiler.schema,
+                pragmas: schemaCompiler.pragmas.featherPragmas
+            )
             compiler.compile(contents)
-
             return (
                 compiler.statements.map(\.signature).filter{ !$0.isEmpty },
-                compiler.diagnostics
+                compiler.allDiagnostics.merging(schemaCompiler.allDiagnostics)
             )
         },
         dump: dump,

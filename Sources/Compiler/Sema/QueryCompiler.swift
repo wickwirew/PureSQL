@@ -10,15 +10,20 @@ import OrderedCollections
 /// Compiles and type checks any queries.
 public struct QueryCompiler {
     public let schema: Schema
-    public private(set) var diagnostics = Diagnostics()
+    private var diagnostics = Diagnostics()
     public private(set) var statements: [Statement] = []
+    private(set) var pragmas = PragmaAnalysis()
     
     public init(
-        schema: Schema = Schema(),
-        diagnostics: Diagnostics = Diagnostics()
+        schema: Schema,
+        pragmas: FeatherPragmas
     ) {
         self.schema = schema
-        self.diagnostics = diagnostics
+        self.pragmas = PragmaAnalysis(featherPragmas: pragmas)
+    }
+    
+    public var allDiagnostics: Diagnostics {
+        return diagnostics.merging(pragmas.diagnostics)
     }
     
     public mutating func compile(_ source: String) {
@@ -99,6 +104,11 @@ extension QueryCompiler: StmtSyntaxVisitor {
             syntax: stmt,
             isReadOnly: inner.isReadOnly
         )
+    }
+    
+    mutating func visit(_ stmt: borrowing PragmaStmt) -> Statement? {
+        pragmas.handle(pragma: stmt)
+        return nil
     }
     
     mutating func visit(_ stmt: EmptyStmtSyntax) -> Statement? {

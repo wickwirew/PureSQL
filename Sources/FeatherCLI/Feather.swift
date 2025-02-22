@@ -31,11 +31,15 @@ struct Feather: ParsableCommand {
         var migrationsGenerator = SwiftMigrationsGenerator()
         
         var schema = Schema()
-
+        var pragmas = FeatherPragmas()
+        var diagnostics = Diagnostics()
+        
         try forEachFile(in: migrations) { file, fileName in
             var compiler = SchemaCompiler(schema: schema)
             compiler.compile(file)
             schema = compiler.schema
+            pragmas = compiler.pragmas.featherPragmas
+            diagnostics.merge(compiler.allDiagnostics)
             
             let numberStr = fileName.split(separator: ".")[0]
             guard let number = Int(numberStr) else {
@@ -46,8 +50,9 @@ struct Feather: ParsableCommand {
         }
         
         let outputFiles = try forEachFile(in: queries) { file, fileName in
-            var compiler = QueryCompiler(schema: schema)
+            var compiler = QueryCompiler(schema: schema, pragmas: pragmas)
             compiler.compile(file)
+            diagnostics.merge(compiler.allDiagnostics)
             
             var codeGen = SwiftQueriesGenerator(schema: schema, statements: compiler.statements, source: file)
             return try (codeGen.generateFile().formatted(), fileName)

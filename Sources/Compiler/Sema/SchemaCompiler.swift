@@ -10,7 +10,8 @@ import OrderedCollections
 /// Manages compiling just the migrations that would affect the schema
 public struct SchemaCompiler {
     public private(set) var schema: Schema
-    public private(set) var diagnostics = Diagnostics()
+    private var diagnostics = Diagnostics()
+    public private(set) var pragmas = PragmaAnalysis()
     
     public init(
         schema: Schema = Schema(),
@@ -18,6 +19,10 @@ public struct SchemaCompiler {
     ) {
         self.schema = schema
         self.diagnostics = diagnostics
+    }
+    
+    public var allDiagnostics: Diagnostics {
+        return diagnostics.merging(pragmas.diagnostics)
     }
     
     public mutating func compile(_ source: String) {
@@ -118,6 +123,15 @@ public struct SchemaCompiler {
 
 extension SchemaCompiler: StmtSyntaxVisitor {
     mutating func visit(_ stmt: CreateTableStmtSyntax) {
+        if pragmas.isOn(.requireStrictTables)
+            && !stmt.options.contains(.strict) {
+            diagnostics.add(.init(
+                "Missing STRICT table option",
+                at: stmt.range,
+                suggestion: .append(" STRICT")
+            ))
+        }
+        
         switch stmt.kind {
         case let .select(selectStmt):
             let signature = signature(of: selectStmt)
@@ -150,6 +164,7 @@ extension SchemaCompiler: StmtSyntaxVisitor {
             let columns: Columns = columns.reduce(into: [:]) {
                 $0[$1.value.name.value] = typeFor(column: $1.value)
             }
+            
             schema[stmt.name.value] = Table(
                 name: stmt.name.value,
                 columns: columns,
@@ -199,6 +214,10 @@ extension SchemaCompiler: StmtSyntaxVisitor {
     
     mutating func visit(_ stmt: QueryDefinitionStmtSyntax) {
         diagnostics.add(.illegalStatementInMigrations(.define, at: stmt.range))
+    }
+    
+    mutating func visit(_ stmt: PragmaStmt) {
+        pragmas.handle(pragma: stmt)
     }
     
     mutating func visit(_ stmt: EmptyStmtSyntax) {}

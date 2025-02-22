@@ -114,6 +114,10 @@ final class ParserTests: XCTestCase {
     func testDeleteStmt() throws {
         try check(sqlFile: "ParseDeleteStmt", parser: Parsers.deleteStmt)
     }
+    
+    func testPragmas() throws {
+        try check(sqlFile: "ParsePragma", parser: Parsers.pragma)
+    }
 }
 
 func check<Output>(

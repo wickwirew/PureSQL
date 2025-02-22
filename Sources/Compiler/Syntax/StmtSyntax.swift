@@ -21,6 +21,7 @@ protocol StmtSyntaxVisitor {
     mutating func visit(_ stmt: borrowing UpdateStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: borrowing DeleteStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: borrowing PragmaStmt) -> StmtOutput
 }
 
 struct CreateTableStmtSyntax: StmtSyntax {
@@ -469,5 +470,17 @@ struct TableNameSyntax: Syntax, Hashable, CustomStringConvertible {
 
     func with(name: IdentifierSyntax) -> TableNameSyntax {
         return TableNameSyntax(schema: schema, name: name)
+    }
+}
+
+struct PragmaStmt: StmtSyntax {
+    let schema: IdentifierSyntax?
+    let name: IdentifierSyntax
+    let value: ExprSyntax?
+    let isFunctionCall: Bool
+    let range: Range<Substring.Index>
+    
+    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
+        return visitor.visit(self)
     }
 }
