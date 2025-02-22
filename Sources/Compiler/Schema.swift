@@ -17,20 +17,10 @@ public typealias Columns = OrderedDictionary<Substring, Type>
 
 public struct Table {
     public var name: Substring
-    public var columns: OrderedDictionary<Substring, Type>
+    public var columns: Columns
     public let primaryKey: [Substring]
     
     var type: Type {
         return .row(.named(columns))
-    }
-}
-
-public struct ColumnType {
-    public let type: Type
-    public let alias: Substring?
-    
-    init(_ type: Type, alias: Substring? = nil) {
-        self.type = type
-        self.alias = alias
     }
 }

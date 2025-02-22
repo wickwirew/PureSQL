@@ -87,15 +87,22 @@ struct TypeNameSyntax: Syntax, Equatable, CustomStringConvertible, Sendable {
     let name: IdentifierSyntax
     let arg1: SignedNumberSyntax?
     let arg2: SignedNumberSyntax?
+    let alias: IdentifierSyntax?
     let range: Range<Substring.Index>
 
     var description: String {
-        if let arg1, let arg2 {
-            return "\(name)(\(arg1), \(arg2))"
+        let type = if let arg1, let arg2 {
+            "\(name)(\(arg1), \(arg2))"
         } else if let arg1 {
-            return "\(name)(\(arg1))"
+            "\(name)(\(arg1))"
         } else {
-            return name.description
+            name.description
+        }
+        
+        if let alias {
+            return "\(type) AS \(alias)"
+        } else {
+            return type
         }
     }
 }

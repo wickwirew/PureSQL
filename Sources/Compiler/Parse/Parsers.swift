@@ -949,26 +949,32 @@ enum Parsers {
             if state.take(if: .comma) {
                 let second = signedNumber(state: &state)
                 state.consume(.closeParen)
+                let alias = maybeAlias(state: &state)
                 return TypeNameSyntax(
                     name: name,
                     arg1: first,
                     arg2: second,
+                    alias: alias,
                     range: state.range(from: name.range)
                 )
             } else {
                 state.consume(.closeParen)
+                let alias = maybeAlias(state: &state)
                 return TypeNameSyntax(
                     name: name,
                     arg1: first,
                     arg2: nil,
+                    alias: alias,
                     range: state.range(from: name.range)
                 )
             }
         } else {
+            let alias = maybeAlias(state: &state)
             return TypeNameSyntax(
                 name: name,
                 arg1: nil,
                 arg2: nil,
+                alias: alias,
                 range: state.range(from: name.range)
             )
         }
