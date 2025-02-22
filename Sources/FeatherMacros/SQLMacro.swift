@@ -143,7 +143,7 @@ public struct DatabaseMacro: MemberMacro {
 //                    }
 //                    
 //                    """
-//                    init(cursor: borrowing Cursor) throws(FeatherError) {
+//                    init(row: borrowing Row) throws(FeatherError) {
 //                        var columns = cursor.indexedColumns()
 //                        \(raw: columns.map { "self.\($0.key) = try columns.next()" }.joined(separator: "\n"))
 //                    }

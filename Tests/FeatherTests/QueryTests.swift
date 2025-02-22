@@ -36,23 +36,23 @@ struct QueryTests {
             self.baz = baz
         }
         
-        init(cursor: borrowing Cursor) throws(FeatherError) {
-            var columns = cursor.indexedColumns()
+        init(row: borrowing Row) throws(FeatherError) {
+            var columns = row.columnIterator()
             self.bar = try columns.next()
             self.baz = try columns.next()
         }
     }
     
-    private var selectAllFoo: DatabaseQuery<(), [Foo]> {
-        return DatabaseQuery<(), [Foo]>(.read) { input, transaction in
+    private var selectAllFoo: FetchManyQuery<(), [Foo]> {
+        return FetchManyQuery<(), [Foo]>(.read) { input, transaction in
             try Statement(in: transaction) {
                 "SELECT * FROM foo;"
             }
         }
     }
     
-    private var insert: DatabaseQuery<Foo, ()> {
-        return DatabaseQuery<Foo, ()>(.write) { input, transaction in
+    private var insert: VoidQuery<Foo> {
+        return VoidQuery<Foo>(.write) { input, transaction in
             try Statement(in: transaction) {
                 "INSERT INTO foo (bar, baz) VALUES (?, ?)"
             } bind: { statement in

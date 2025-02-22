@@ -17,7 +17,9 @@ public struct MigrationRunner {
     public static func execute(migrations: [String], tx: Transaction) throws {
         try createTableIfNeeded(tx: tx)
         
-        let lastMigration = try lastMigration.execute(with: (), tx: tx)
+        let lastMigration = try lastMigration
+            .replaceNil(with: 0)
+            .execute(with: (), tx: tx)
         
         let pendingMigrations = migrations.enumerated()
             .map { (number: $0.offset + 1, migration: $0.element) }
@@ -42,16 +44,16 @@ public struct MigrationRunner {
         try insertMigration.execute(with: number, tx: tx)
     }
     
-    private static var lastMigration: DatabaseQuery<(), Int> {
-        return DatabaseQuery(.read) { _, transaction in
+    private static var lastMigration: FetchSingleQuery<(), Int> {
+        return FetchSingleQuery(.read) { _, transaction in
             try Statement(in: transaction) {
                 "SELECT MAX(number) FROM \(MigrationRunner.migrationTableName)"
             }
         }
     }
     
-    private static var insertMigration: DatabaseQuery<Int, ()> {
-        return DatabaseQuery(.write) { input, transaction in
+    private static var insertMigration: VoidQuery<Int> {
+        return VoidQuery(.write) { input, transaction in
             try Statement(in: transaction) {
                 "INSERT INTO \(MigrationRunner.migrationTableName) (number) VALUES (?)"
             } bind: { statement in

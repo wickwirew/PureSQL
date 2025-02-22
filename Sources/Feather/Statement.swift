@@ -10,14 +10,19 @@ import SQLite3
 public struct Statement: ~Copyable {
     let raw: OpaquePointer
     
+    public enum Step {
+        case row
+        case done
+    }
+    
     public init(
         _ source: String,
         transaction: borrowing Transaction
     ) throws(FeatherError) {
         var raw: OpaquePointer?
         try throwing(
-            sqlite3_prepare_v2(transaction.connection.raw, source, -1, &raw, nil),
-            connection: transaction.connection.raw
+            sqlite3_prepare_v2(transaction.connection.sqliteConnection, source, -1, &raw, nil),
+            connection: transaction.connection.sqliteConnection
         )
         
         guard let raw else {
@@ -44,6 +49,15 @@ public struct Statement: ~Copyable {
             for (i, parameter) in sql.parameters.enumerated() {
                 try statement.bind(value: parameter, to: Int32(i + 1))
             }
+        }
+    }
+    
+    public func step() throws(FeatherError) -> Step {
+        let code = SQLiteCode(sqlite3_step(raw))
+        switch code {
+        case .sqliteDone: return .done
+        case .sqliteRow: return .row
+        default: throw .sqlite(code, String(cString: sqlite3_errmsg(raw)))
         }
     }
     

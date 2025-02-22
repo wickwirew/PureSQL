@@ -7,7 +7,7 @@
 
 import SQLite3
 
-public struct Cursor: ~Copyable {
+public struct Cursor<Element: RowDecodable>: ~Copyable {
     private let statement: Statement
     private var column: Int32 = 0
     
@@ -15,35 +15,37 @@ public struct Cursor: ~Copyable {
         self.statement = statement
     }
     
-    public func indexedColumns() -> IndexedColumns {
-        return IndexedColumns(statement.raw)
-    }
-    
-    public mutating func step() throws(FeatherError) -> Bool {
-        let code = SQLiteCode(sqlite3_step(statement.raw))
-        
-        switch code {
-        case .sqliteDone:
-            return false
-        case .sqliteRow:
-            return true
-        default:
-            throw .sqlite(code, String(cString: sqlite3_errmsg(statement.raw)))
+    public mutating func next() throws(FeatherError) -> Element? {
+        switch try statement.step() {
+        case .row:
+            let row = Row(sqliteStatement: statement.raw)
+            return try Element(row: row)
+        case .done:
+            return nil
         }
     }
 }
 
-public extension Cursor {
-    /// A method of decoding columns. The fastest way
-    /// to read the columns out of a select is in order.
-    struct IndexedColumns: ~Copyable {
-        @usableFromInline var raw: OpaquePointer
+public struct Row: ~Copyable {
+    let sqliteStatement: OpaquePointer
+    
+    /// Gets an interator to enumerate all of the columns for the `Row`
+    public func columnIterator() -> ColumnIterator {
+        return ColumnIterator(sqliteStatement)
+    }
+    
+    /// Will iterate over the columns. Returning the next column
+    /// in the row. Starts at column 0.
+    public struct ColumnIterator: ~Copyable {
+        @usableFromInline var sqliteStatement: OpaquePointer
+        /// The next column index to read. These indices start
+        /// with 0, unlike bind params starting at 1
         @usableFromInline var column: Int32 = 0
         @usableFromInline let count: Int32
         
-        init(_ raw: OpaquePointer) {
-            self.raw = raw
-            self.count = sqlite3_column_count(raw)
+        init(_ sqliteStatement: OpaquePointer) {
+            self.sqliteStatement = sqliteStatement
+            self.count = sqlite3_column_count(sqliteStatement)
         }
         
         @inlinable public mutating func next<Value: DatabasePrimitive>() throws(FeatherError) -> Value {
@@ -51,7 +53,7 @@ public extension Cursor {
                 throw .noMoreColumns
             }
             
-            let value = try Value(from: raw, at: column)
+            let value = try Value(from: sqliteStatement, at: column)
             column += 1
             return value
         }

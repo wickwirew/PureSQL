@@ -44,7 +44,7 @@ public final class Transaction {
         }
         
         didCommit = true
-        try connection.execute(sql: "COMMIT;")
+        try connection.execute(sql: "COMMIT")
     }
     
     deinit {
@@ -52,9 +52,9 @@ public final class Transaction {
             do {
                 switch kind {
                 case .read:
-                    try connection.execute(sql: "COMMIT;")
+                    try connection.execute(sql: "COMMIT")
                 case .write:
-                    try connection.execute(sql: "ROLLBACK;")
+                    try connection.execute(sql: "ROLLBACK")
                 }
             } catch {
                 assertionFailure("Failed to commit or rollback")
@@ -62,58 +62,6 @@ public final class Transaction {
         }
         
         pool.reclaim(connection: connection, txKind: kind)
-    }
-}
-
-extension Transaction {
-    public func fetchMany<Element>(
-        of type: Element.Type,
-        statement: consuming Statement
-    ) throws(FeatherError) -> [Element] where Element: RowDecodable {
-        var cursor = Cursor(of: statement)
-        var result: [Element] = []
-        
-        while try cursor.step() {
-            try result.append(Element(cursor: cursor))
-        }
-        
-        return result
-    }
-    
-    public func fetchOne<Element>(
-        of type: Element.Type,
-        statement: consuming Statement
-    ) throws(FeatherError) -> Element where Element: RowDecodable {
-        var cursor = Cursor(of: statement)
-        
-        guard try cursor.step() else {
-            throw .queryReturnedNoValue
-        }
-        
-        return try Element(cursor: cursor)
-    }
-    
-    public func execute(
-        statement: consuming Statement
-    ) throws(FeatherError) {
-        var cursor = Cursor(of: statement)
-        _ = try cursor.step()
-    }
-
-    public func fetchMany<Element>(
-        of type: Element.Type,
-        sql: String
-    ) throws(FeatherError) -> [Element] where Element: RowDecodable {
-        let statement = try Statement(sql, transaction: self)
-        return try fetchMany(of: Element.self, statement: statement)
-    }
-    
-    public func fetchOne<Element>(
-        of type: Element.Type,
-        sql: String
-    ) throws(FeatherError) -> Element? where Element: RowDecodable {
-        let statement = try Statement(sql, transaction: self)
-        return try fetchOne(of: Element.self, statement: statement)
     }
 }
 

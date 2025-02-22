@@ -13,7 +13,7 @@ import Foundation
 /// `@unchecked Sendable` Thread safety is managed by
 /// the `ConnectionPool`
 class Connection: @unchecked Sendable {
-    let raw: OpaquePointer
+    let sqliteConnection: OpaquePointer
     
     init(
         path: String,
@@ -29,18 +29,18 @@ class Connection: @unchecked Sendable {
             throw .failedToOpenConnection(path: path)
         }
         
-        self.raw = raw
+        self.sqliteConnection = raw
     }
     
     func execute(sql: String) throws(FeatherError) {
-        try throwing(sqlite3_exec(raw, sql, nil, nil, nil))
+        try throwing(sqlite3_exec(sqliteConnection, sql, nil, nil, nil))
     }
-    
+
     deinit {
         do {
-            try throwing(sqlite3_close_v2(raw))
+            try throwing(sqlite3_close_v2(sqliteConnection))
         } catch {
-            assertionFailure("\(error)")
+            assertionFailure("Failed to close connection: \(error)")
         }
     }
 }
