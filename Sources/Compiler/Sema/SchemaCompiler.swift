@@ -53,10 +53,18 @@ public struct SchemaCompiler {
         let isNotNullable = column.constraints
             .contains { $0.isPkConstraint || $0.isNotNullConstraint }
         
-        if isNotNullable {
-            return .nominal(column.type.name.value)
+        let nominal: Type = .nominal(column.type.name.value)
+        
+        let type: Type = if let alias = column.type.alias {
+            .alias(nominal, alias.value)
         } else {
-            return .optional(.nominal(column.type.name.value))
+            nominal
+        }
+        
+        if isNotNullable {
+            return type
+        } else {
+            return .optional(type)
         }
     }
     

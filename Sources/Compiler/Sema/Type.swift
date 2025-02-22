@@ -108,7 +108,7 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
             case let .unknown(ty): "(\(ty)...)"
             }
         case let .optional(ty): "\(ty)?"
-        case let .alias(t, a): "\(t) AS \(a)"
+        case let .alias(t, a): "(\(t) AS \(a))"
         case .error: "<<error>>"
         }
     }
