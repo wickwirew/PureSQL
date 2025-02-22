@@ -20,15 +20,11 @@ public struct Swift: Language {
     }
     
     public static func query(
-        source: String,
         statement: Statement,
         name: Substring
     ) throws -> [DeclSyntax] {
         let parameters = statement.signature.parametersWithNames
-        let querySource = source[statement.rangeWithoutDefinition]
         var declarations: [DeclSyntax] = []
-        
-        
         
         let inputTypeName: String
         if let firstParam = statement.signature.parameters.values.first {
@@ -91,7 +87,7 @@ public struct Swift: Language {
                         })
                     )
                 ) {
-                    "let statement = try Feather.Statement(\n\"\"\"\n\(raw: querySource)\n\"\"\", \ntransaction: transaction\n)"
+                    "let statement = try Feather.Statement(\n\"\"\"\n\(raw: statement.sanitizedSource)\n\"\"\", \ntransaction: transaction\n)"
                     
                     for parameter in parameters {
                         "try statement.bind(value: input.\(raw: parameter.name), to: \(raw: parameter.index))"

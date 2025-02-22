@@ -10,6 +10,7 @@ public struct Statement {
     public let signature: Signature
     let syntax: any StmtSyntax
     public let isReadOnly: Bool
+    public let sanitizedSource: String
     
     public var range: Range<Substring.Index> {
         return syntax.range
@@ -33,7 +34,8 @@ public struct Statement {
             name: name,
             signature: signature,
             syntax: syntax,
-            isReadOnly: isReadOnly
+            isReadOnly: isReadOnly,
+            sanitizedSource: sanitizedSource
         )
     }
 }

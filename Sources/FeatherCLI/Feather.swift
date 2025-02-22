@@ -51,19 +51,13 @@ struct Feather: ParsableCommand {
     
     private func generate<Lang: Language>(language: Lang.Type) throws {
         let path = path ?? FileManager.default.currentDirectoryPath
-        var schema = Schema()
-        var pragmas = FeatherPragmas()
-        var diagnostics = Diagnostics()
-        
+        var compiler = Compiler()
+
         var migrations: [Lang.Migration] = []
         var queries: [Lang.Query] = []
         
         try forEachFile(in: "\(path)/Migrations") { file, fileName in
-            var compiler = SchemaCompiler(schema: schema)
-            compiler.compile(file)
-            schema = compiler.schema
-            pragmas = compiler.pragmas.featherPragmas
-            diagnostics.merge(compiler.allDiagnostics)
+            compiler.compile(migration: file)
             
             let numberStr = fileName.split(separator: ".")[0]
             guard Int(numberStr) != nil else {
@@ -74,9 +68,7 @@ struct Feather: ParsableCommand {
         }
         
         try forEachFile(in: "\(path)/Queries") { file, fileName in
-            var compiler = QueryCompiler(schema: schema, pragmas: pragmas)
-            compiler.compile(file)
-            diagnostics.merge(compiler.allDiagnostics)
+            compiler.compile(queries: file)
             
             for statement in compiler.statements {
                 guard let name = statement.name else {
@@ -84,7 +76,7 @@ struct Feather: ParsableCommand {
                     assertionFailure("Statement in queries has no name")
                     continue
                 }
-                try queries.append(language.query(source: file, statement: statement, name: name))
+                try queries.append(language.query(statement: statement, name: name))
             }
         }
         

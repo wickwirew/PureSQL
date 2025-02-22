@@ -14,7 +14,7 @@ struct InsertStmtSyntax: StmtSyntax, Syntax {
     let cteRecursive: Bool
     let action: Action
     let tableName: TableNameSyntax
-    let tableAlias: IdentifierSyntax?
+    let tableAlias: AliasSyntax?
     let columns: [IdentifierSyntax]?
     let values: Values? // if nil, default values
     let returningClause: ReturningClauseSyntax?
@@ -68,7 +68,7 @@ struct ReturningClauseSyntax: Syntax {
     let range: Range<Substring.Index>
 
     enum Value {
-        case expr(expr: ExpressionSyntax, alias: IdentifierSyntax?)
+        case expr(expr: ExpressionSyntax, alias: AliasSyntax?)
         case all
     }
 }
@@ -134,7 +134,7 @@ struct UpdateStmtSyntax: StmtSyntax {
 
 struct QualifiedTableNameSyntax: Syntax {
     let tableName: TableNameSyntax
-    let alias: IdentifierSyntax?
+    let alias: AliasSyntax?
     let indexed: Indexed?
     let range: Range<Substring.Index>
 

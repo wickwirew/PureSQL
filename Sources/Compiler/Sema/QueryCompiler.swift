@@ -9,15 +9,18 @@ import OrderedCollections
 
 /// Compiles and type checks any queries.
 public struct QueryCompiler {
+    public let source: String
     public let schema: Schema
     private var diagnostics = Diagnostics()
     public private(set) var statements: [Statement] = []
     private(set) var pragmas = PragmaAnalysis()
     
     public init(
+        source: String,
         schema: Schema,
         pragmas: FeatherPragmas
     ) {
+        self.source = source
         self.schema = schema
         self.pragmas = PragmaAnalysis(featherPragmas: pragmas)
     }
@@ -61,7 +64,8 @@ extension QueryCompiler: StmtSyntaxVisitor {
             name: nil,
             signature: signature(of: stmt),
             syntax: stmt,
-            isReadOnly: true
+            isReadOnly: true,
+            sanitizedSource: Sanitizer.sanitize(stmt, in: source)
         )
     }
     
@@ -70,7 +74,8 @@ extension QueryCompiler: StmtSyntaxVisitor {
             name: nil,
             signature: signature(of: stmt),
             syntax: stmt,
-            isReadOnly: false
+            isReadOnly: false,
+            sanitizedSource: Sanitizer.sanitize(stmt, in: source)
         )
     }
     
@@ -79,7 +84,8 @@ extension QueryCompiler: StmtSyntaxVisitor {
             name: nil,
             signature: signature(of: stmt),
             syntax: stmt,
-            isReadOnly: false
+            isReadOnly: false,
+            sanitizedSource: Sanitizer.sanitize(stmt, in: source)
         )
     }
     
@@ -88,7 +94,8 @@ extension QueryCompiler: StmtSyntaxVisitor {
             name: nil,
             signature: signature(of: stmt),
             syntax: stmt,
-            isReadOnly: false
+            isReadOnly: false,
+            sanitizedSource: Sanitizer.sanitize(stmt, in: source)
         )
     }
     
@@ -102,7 +109,8 @@ extension QueryCompiler: StmtSyntaxVisitor {
             name: stmt.name.value,
             signature: inner.signature,
             syntax: stmt,
-            isReadOnly: inner.isReadOnly
+            isReadOnly: inner.isReadOnly,
+            sanitizedSource: Sanitizer.sanitize(stmt, in: source)
         )
     }
     

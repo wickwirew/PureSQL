@@ -8,6 +8,7 @@
 public struct Compiler {
     public private(set) var schema = Schema()
     public private(set) var statements: [Statement] = []
+    public private(set) var migrations: [String] = []
     
     private var diagnostics = Diagnostics()
     private var pragmas = FeatherPragmas()
@@ -17,7 +18,8 @@ public struct Compiler {
     @discardableResult
     public mutating func compile(migration: String) -> Diagnostics {
         var schemaCompiler = SchemaCompiler(schema: schema)
-        schemaCompiler.compile(migration)
+        let sanitizedMigration = schemaCompiler.compile(migration)
+        migrations.append(sanitizedMigration)
         
         schema = schemaCompiler.schema
         pragmas = schemaCompiler.pragmas.featherPragmas
@@ -29,7 +31,7 @@ public struct Compiler {
     
     @discardableResult
     public mutating func compile(queries: String) -> ([Statement], Diagnostics) {
-        var queryCompiler = QueryCompiler(schema: schema, pragmas: pragmas)
+        var queryCompiler = QueryCompiler(source: queries, schema: schema, pragmas: pragmas)
         queryCompiler.compile(queries)
         
         statements = queryCompiler.statements

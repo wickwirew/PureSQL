@@ -75,6 +75,16 @@ extension Float: DatabasePrimitive {
     }
 }
 
+extension Bool: DatabasePrimitive {
+    @inlinable public init(from cursor: OpaquePointer, at index: Int32) throws(FeatherError) {
+        self = sqlite3_column_int64(cursor, index) != 1
+    }
+
+    @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(FeatherError) {
+        sqlite3_bind_int(statement, index, self ? 1 : 0)
+    }
+}
+
 extension Optional: DatabasePrimitive where Wrapped: DatabasePrimitive {
     @inlinable public init(from cursor: OpaquePointer, at index: Int32) throws(FeatherError) {
         if sqlite3_column_type(cursor, index) == SQLITE_NULL {

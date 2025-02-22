@@ -15,7 +15,6 @@ public protocol Language {
     ) throws -> Migration
     
     static func query(
-        source: String,
         statement: Statement,
         name: Substring
     ) throws -> Query

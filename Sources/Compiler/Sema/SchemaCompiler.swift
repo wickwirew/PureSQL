@@ -25,10 +25,15 @@ public struct SchemaCompiler {
         return diagnostics.merging(pragmas.diagnostics)
     }
     
-    public mutating func compile(_ source: String) {
+    public mutating func compile(_ source: String) -> String {
+        var sanitizer = Sanitizer()
+        
         for stmt in Parsers.parse(source: source) {
             stmt.accept(visitor: &self)
+            sanitizer.combine(stmt)
         }
+        
+        return sanitizer.finalize(in: source)
     }
     
     /// Just performs type checking.
@@ -56,7 +61,7 @@ public struct SchemaCompiler {
         let nominal: Type = .nominal(column.type.name.value)
         
         let type: Type = if let alias = column.type.alias {
-            .alias(nominal, alias.value)
+            .alias(nominal, alias.identifier.value)
         } else {
             nominal
         }

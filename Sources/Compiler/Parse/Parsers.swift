@@ -792,17 +792,8 @@ enum Parsers {
             return .all(table: table)
         default:
             let expr = expr(state: &state)
-            
-            if state.take(if: .as) {
-                let alias = identifier(state: &state)
-                return .expr(expr, as: alias)
-            } else if case let .symbol(alias) = state.current.kind {
-                let alias = IdentifierSyntax(value: alias, range: state.current.range)
-                state.skip()
-                return .expr(expr, as: alias)
-            } else {
-                return .expr(expr, as: nil)
-            }
+            let alias = maybeAlias(state: &state, asRequired: false)
+            return .expr(expr, as: alias)
         }
     }
     
@@ -894,13 +885,16 @@ enum Parsers {
     static func maybeAlias(
         state: inout ParserState,
         asRequired: Bool = true
-    ) -> IdentifierSyntax? {
-        if state.take(if: .as) {
-            return identifier(state: &state)
-        } else if !asRequired, case let .symbol(ident) = state.current.kind {
-            let tok = state.take()
-            return IdentifierSyntax(value: ident, range: tok.range)
-        } else {
+    ) -> AliasSyntax? {
+        switch state.current.kind {
+        case .as:
+            let start = state.take()
+            let ident = identifier(state: &state)
+            return AliasSyntax(identifier: ident, range: state.range(from: start))
+        case .symbol where !asRequired:
+            let ident = identifier(state: &state)
+            return AliasSyntax(identifier: ident, range: ident.range)
+        default:
             return nil
         }
     }

@@ -280,7 +280,7 @@ struct CheckEmitter {
              is UInt, is UInt8, is UInt16, is UInt32, is UInt64,
              is Float, is Double, is String, is Any.Type, is IdentifierSyntax,
              is LiteralExprSyntax, is TableOptionsSyntax, is TypeNameSyntax, is BindParameterSyntax,
-             is OperatorSyntax, is OrderSyntax, is Type: true
+            is OperatorSyntax, is OrderSyntax, is Type, is AliasSyntax: true
         case _ as Substring:
             true
         default: false

@@ -83,11 +83,11 @@ struct EmptyStmtSyntax: Equatable, StmtSyntax {
     }
 }
 
-struct TypeNameSyntax: Syntax, Equatable, CustomStringConvertible, Sendable {
+struct TypeNameSyntax: Syntax, CustomStringConvertible, Sendable {
     let name: IdentifierSyntax
     let arg1: SignedNumberSyntax?
     let arg2: SignedNumberSyntax?
-    let alias: IdentifierSyntax?
+    let alias: AliasSyntax?
     let range: Range<Substring.Index>
 
     var description: String {
@@ -131,6 +131,15 @@ struct OrderSyntax: Syntax, CustomStringConvertible {
     
     var description: String {
         return kind.rawValue
+    }
+}
+
+struct AliasSyntax: Syntax, CustomStringConvertible {
+    let identifier: IdentifierSyntax
+    let range: Range<Substring.Index>
+    
+    var description: String {
+        return identifier.description
     }
 }
 
@@ -271,7 +280,7 @@ struct DeleteStmtSyntax: StmtSyntax {
 
 enum ResultColumnSyntax {
     /// Note: This will represent even just a single column select
-    case expr(ExpressionSyntax, as: IdentifierSyntax?)
+    case expr(ExpressionSyntax, as: AliasSyntax?)
     /// `*` or `table.*`
     case all(table: IdentifierSyntax?)
 }
@@ -329,15 +338,15 @@ enum JoinConstraintSyntax {
 
 enum TableOrSubquerySyntax {
     case table(Table)
-    case tableFunction(schema: IdentifierSyntax?, table: IdentifierSyntax, args: [ExpressionSyntax], alias: IdentifierSyntax?)
-    case subquery(SelectStmtSyntax, alias: IdentifierSyntax?)
+    case tableFunction(schema: IdentifierSyntax?, table: IdentifierSyntax, args: [ExpressionSyntax], alias: AliasSyntax?)
+    case subquery(SelectStmtSyntax, alias: AliasSyntax?)
     indirect case join(JoinClauseSyntax)
-    case subTableOrSubqueries([TableOrSubquerySyntax], alias: IdentifierSyntax?)
+    case subTableOrSubqueries([TableOrSubquerySyntax], alias: AliasSyntax?)
 
     struct Table {
         let schema: IdentifierSyntax?
         let name: IdentifierSyntax
-        let alias: IdentifierSyntax?
+        let alias: AliasSyntax?
         let indexedBy: IdentifierSyntax?
     }
 }

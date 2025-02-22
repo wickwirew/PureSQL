@@ -698,7 +698,7 @@ extension TypeInferrer {
                 let (type, exprSub, names) = expr.accept(visitor: &self)
                 sub.merge(exprSub)
                 
-                guard let name = alias?.value ?? names.proposedName else {
+                guard let name = alias?.identifier.value ?? names.proposedName else {
                     diagnostics.add(.nameRequired(at: expr.range))
                     continue
                 }
@@ -859,7 +859,7 @@ extension TypeInferrer {
                 let (type, columnSub, names) = expr.accept(visitor: &self)
                 sub.merge(columnSub)
                 
-                if let name = alias?.value ?? names.proposedName {
+                if let name = alias?.identifier.value ?? names.proposedName {
                     columns[name] = type
                 } else {
                     diagnostics.add(.nameRequired(at: expr.range))
@@ -965,7 +965,7 @@ extension TypeInferrer {
             
             // Insert the result of the subquery into the environment
             if let alias {
-                env.insert(alias.value, ty: type)
+                env.insert(alias.identifier.value, ty: type)
             }
             
             guard case let .row(.named(columns)) = type else {
@@ -1002,12 +1002,12 @@ extension TypeInferrer {
     /// as well. Useful in joins that may or may not have a match, e.g. Outer
     private mutating func insertTableAndColumnsIntoEnv(
         _ table: Table,
-        as alias: IdentifierSyntax? = nil,
+        as alias: AliasSyntax? = nil,
         isOptional: Bool = false,
         onlyColumnsIn columns: Set<Substring> = []
     ) {
         env.insert(
-            alias?.value ?? table.name,
+            alias?.identifier.value ?? table.name,
             ty: isOptional ? .optional(table.type) : table.type
         )
         
