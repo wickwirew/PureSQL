@@ -1,25 +1,30 @@
 -- CHECK: RESULT_COLUMN_SYNTAX
--- CHECK:   ALL
+-- CHECK:   KIND
+-- CHECK:     ALL
 *;
 
 -- CHECK: RESULT_COLUMN_SYNTAX
--- CHECK:   ALL
--- CHECK:     TABLE foo
+-- CHECK:   KIND
+-- CHECK:     ALL
+-- CHECK:       TABLE foo
 foo.*;
 
 -- CHECK: RESULT_COLUMN_SYNTAX
--- CHECK:   EXPR
--- CHECK:       LITERAL 1.0
+-- CHECK:   KIND
+-- CHECK:     EXPR
+-- CHECK:         LITERAL 1.0
 1;
 
 -- CHECK: RESULT_COLUMN_SYNTAX
--- CHECK:   EXPR
--- CHECK:       LITERAL 1.0
--- CHECK:     AS one
+-- CHECK:   KIND
+-- CHECK:     EXPR
+-- CHECK:         LITERAL 1.0
+-- CHECK:       AS one
 1 AS one;
 
 -- CHECK: RESULT_COLUMN_SYNTAX
--- CHECK:   EXPR
--- CHECK:       LITERAL 1.0
--- CHECK:     AS one
+-- CHECK:   KIND
+-- CHECK:     EXPR
+-- CHECK:         LITERAL 1.0
+-- CHECK:       AS one
 1 one;

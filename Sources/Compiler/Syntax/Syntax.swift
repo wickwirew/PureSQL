@@ -5,11 +5,21 @@
 //  Created by Wes Wickwire on 11/12/24.
 //
 
+struct SyntaxId: Hashable, Sendable {
+    private let rawValue: Int
+    
+    init(_ rawValue: Int) {
+        self.rawValue = rawValue
+    }
+}
+
 protocol Syntax {
+    var id: SyntaxId { get }
     var range: Range<Substring.Index> { get }
 }
 
 struct InsertStmtSyntax: StmtSyntax, Syntax {
+    let id: SyntaxId
     let cte: CommonTableExpressionSyntax?
     let cteRecursive: Bool
     let action: Action
@@ -21,6 +31,7 @@ struct InsertStmtSyntax: StmtSyntax, Syntax {
     let range: Range<Substring.Index>
 
     struct Values: Syntax {
+        let id: SyntaxId
         let select: SelectStmtSyntax
         let upsertClause: UpsertClauseSyntax?
         
@@ -32,6 +43,7 @@ struct InsertStmtSyntax: StmtSyntax, Syntax {
     }
 
     struct Action: Syntax {
+        let id: SyntaxId
         let kind: Kind
         let range: Range<Substring.Index>
         
@@ -47,6 +59,7 @@ struct InsertStmtSyntax: StmtSyntax, Syntax {
 }
 
 struct OrSyntax: Syntax, CustomStringConvertible {
+    let id: SyntaxId
     let kind: Kind
     let range: Range<Substring.Index>
     
@@ -64,6 +77,7 @@ struct OrSyntax: Syntax, CustomStringConvertible {
 }
 
 struct ReturningClauseSyntax: Syntax {
+    let id: SyntaxId
     let values: [Value]
     let range: Range<Substring.Index>
 
@@ -74,6 +88,7 @@ struct ReturningClauseSyntax: Syntax {
 }
 
 struct UpsertClauseSyntax: Syntax {
+    let id: SyntaxId
     let confictTarget: ConflictTarget?
     let doAction: Do
     let range: Range<Substring.Index>
@@ -90,6 +105,7 @@ struct UpsertClauseSyntax: Syntax {
 }
 
 struct SetActionSyntax: Syntax {
+    let id: SyntaxId
     let column: Column
     let expr: ExpressionSyntax
     
@@ -97,7 +113,7 @@ struct SetActionSyntax: Syntax {
         return column.range.lowerBound..<expr.range.upperBound
     }
 
-    enum Column: Syntax {
+    enum Column {
         case single(IdentifierSyntax)
         case list([IdentifierSyntax])
         
@@ -117,6 +133,7 @@ struct SetActionSyntax: Syntax {
 }
 
 struct UpdateStmtSyntax: StmtSyntax {
+    let id: SyntaxId
     let cte: CommonTableExpressionSyntax?
     let cteRecursive: Bool
     let or: OrSyntax?
@@ -133,6 +150,7 @@ struct UpdateStmtSyntax: StmtSyntax {
 }
 
 struct QualifiedTableNameSyntax: Syntax {
+    let id: SyntaxId
     let tableName: TableNameSyntax
     let alias: AliasSyntax?
     let indexed: Indexed?

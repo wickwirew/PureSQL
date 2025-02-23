@@ -41,14 +41,16 @@ INSERT INTO foo (bar, baz) VALUES (1, 'two');
 -- CHECK:               DISTINCT false
 -- CHECK:               COLUMNS
 -- CHECK:                 RESULT_COLUMN_SYNTAX
--- CHECK:                   EXPR
--- CHECK:                       COLUMN
--- CHECK:                         COLUMN baz
+-- CHECK:                   KIND
+-- CHECK:                     EXPR
+-- CHECK:                         COLUMN
+-- CHECK:                           COLUMN baz
 -- CHECK:               FROM
 -- CHECK:                 JOIN
 -- CHECK:                   TABLE_OR_SUBQUERY
--- CHECK:                     TABLE
--- CHECK:                       NAME qux
+-- CHECK:                     KIND
+-- CHECK:                       TABLE
+-- CHECK:                         NAME qux
 -- CHECK:   RETURNING_CLAUSE
 -- CHECK:     VALUES
 -- CHECK:       VALUE
@@ -71,14 +73,16 @@ REPLACE INTO foo (bar) SELECT baz FROM qux RETURNING bar;
 -- CHECK:               DISTINCT false
 -- CHECK:               COLUMNS
 -- CHECK:                 RESULT_COLUMN_SYNTAX
--- CHECK:                   EXPR
--- CHECK:                       COLUMN
--- CHECK:                         COLUMN bar
+-- CHECK:                   KIND
+-- CHECK:                     EXPR
+-- CHECK:                         COLUMN
+-- CHECK:                           COLUMN bar
 -- CHECK:               FROM
 -- CHECK:                 JOIN
 -- CHECK:                   TABLE_OR_SUBQUERY
--- CHECK:                     TABLE
--- CHECK:                       NAME baz
+-- CHECK:                     KIND
+-- CHECK:                       TABLE
+-- CHECK:                         NAME baz
 -- CHECK:   CTE_RECURSIVE true
 -- CHECK:   ACTION
 -- CHECK:     KIND

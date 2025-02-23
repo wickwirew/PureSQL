@@ -25,14 +25,16 @@ UPDATE foo SET bar = 1;
 -- CHECK:               DISTINCT false
 -- CHECK:               COLUMNS
 -- CHECK:                 RESULT_COLUMN_SYNTAX
--- CHECK:                   EXPR
--- CHECK:                       COLUMN
--- CHECK:                         COLUMN foo
+-- CHECK:                   KIND
+-- CHECK:                     EXPR
+-- CHECK:                         COLUMN
+-- CHECK:                           COLUMN foo
 -- CHECK:               FROM
 -- CHECK:                 JOIN
 -- CHECK:                   TABLE_OR_SUBQUERY
--- CHECK:                     TABLE
--- CHECK:                       NAME bar
+-- CHECK:                     KIND
+-- CHECK:                       TABLE
+-- CHECK:                         NAME bar
 -- CHECK:   CTE_RECURSIVE false
 -- CHECK:   TABLE_NAME
 -- CHECK:     TABLE_NAME

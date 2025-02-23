@@ -137,7 +137,7 @@ public struct SchemaCompiler {
 extension SchemaCompiler: StmtSyntaxVisitor {
     mutating func visit(_ stmt: CreateTableStmtSyntax) {
         if pragmas.isOn(.requireStrictTables)
-            && !stmt.options.contains(.strict) {
+            && !stmt.options.kind.contains(.strict) {
             diagnostics.add(.init(
                 "Missing STRICT table option",
                 at: stmt.range,

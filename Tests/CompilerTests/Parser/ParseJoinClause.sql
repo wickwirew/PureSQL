@@ -1,79 +1,100 @@
 -- CHECK: JOIN_CLAUSE_OR_TABLE_OR_SUBQUERIES
 -- CHECK:   JOIN
 -- CHECK:     TABLE_OR_SUBQUERY
--- CHECK:       TABLE
--- CHECK:         NAME foo
+-- CHECK:       KIND
+-- CHECK:         TABLE
+-- CHECK:           NAME foo
 -- CHECK:     JOINS
 -- CHECK:       JOIN
 -- CHECK:         OP
--- CHECK:           INNER
--- CHECK:             NATURAL false
+-- CHECK:           KIND
+-- CHECK:             INNER
+-- CHECK:               NATURAL false
 -- CHECK:         TABLE_OR_SUBQUERY
--- CHECK:           TABLE
--- CHECK:             NAME bar
--- CHECK:         CONSTRAINT none
+-- CHECK:           KIND
+-- CHECK:             TABLE
+-- CHECK:               NAME bar
+-- CHECK:         CONSTRAINT
+-- CHECK:           KIND none
 foo INNER JOIN bar;
 
 -- CHECK: JOIN_CLAUSE_OR_TABLE_OR_SUBQUERIES
 -- CHECK:   JOIN
 -- CHECK:     TABLE_OR_SUBQUERY
--- CHECK:       TABLE
--- CHECK:         NAME foo
+-- CHECK:       KIND
+-- CHECK:         TABLE
+-- CHECK:           NAME foo
 -- CHECK:     JOINS
 -- CHECK:       JOIN
 -- CHECK:         OP
--- CHECK:           INNER
--- CHECK:             NATURAL false
+-- CHECK:           KIND
+-- CHECK:             INNER
+-- CHECK:               NATURAL false
 -- CHECK:         TABLE_OR_SUBQUERY
--- CHECK:           TABLE
--- CHECK:             NAME bar
--- CHECK:         CONSTRAINT none
+-- CHECK:           KIND
+-- CHECK:             TABLE
+-- CHECK:               NAME bar
+-- CHECK:         CONSTRAINT
+-- CHECK:           KIND none
 -- CHECK:       JOIN
 -- CHECK:         OP
--- CHECK:           LEFT
--- CHECK:             NATURAL false
--- CHECK:             OUTER false
+-- CHECK:           KIND
+-- CHECK:             LEFT
+-- CHECK:               NATURAL false
+-- CHECK:               OUTER false
 -- CHECK:         TABLE_OR_SUBQUERY
--- CHECK:           TABLE
--- CHECK:             NAME baz
--- CHECK:         CONSTRAINT none
+-- CHECK:           KIND
+-- CHECK:             TABLE
+-- CHECK:               NAME baz
+-- CHECK:         CONSTRAINT
+-- CHECK:           KIND none
 foo INNER JOIN bar LEFT JOIN baz;
 
 -- CHECK: JOIN_CLAUSE_OR_TABLE_OR_SUBQUERIES
 -- CHECK:   JOIN
 -- CHECK:     TABLE_OR_SUBQUERY
--- CHECK:       TABLE
--- CHECK:         NAME foo
+-- CHECK:       KIND
+-- CHECK:         TABLE
+-- CHECK:           NAME foo
 -- CHECK:     JOINS
 -- CHECK:       JOIN
 -- CHECK:         OP
--- CHECK:           INNER
--- CHECK:             NATURAL false
+-- CHECK:           KIND
+-- CHECK:             INNER
+-- CHECK:               NATURAL false
 -- CHECK:         TABLE_OR_SUBQUERY
--- CHECK:           TABLE
--- CHECK:             NAME bar
+-- CHECK:           KIND
+-- CHECK:             TABLE
+-- CHECK:               NAME bar
 -- CHECK:         CONSTRAINT
--- CHECK:           ON
--- CHECK:             LITERAL 1.0
+-- CHECK:           KIND
+-- CHECK:             ON
+-- CHECK:               LITERAL 1.0
 foo INNER JOIN bar ON 1;
 
 -- CHECK: JOIN_CLAUSE_OR_TABLE_OR_SUBQUERIES
 -- CHECK:   JOIN
 -- CHECK:     TABLE_OR_SUBQUERY
--- CHECK:       TABLE
--- CHECK:         NAME foo
+-- CHECK:       KIND
+-- CHECK:         TABLE
+-- CHECK:           NAME foo
 -- CHECK:     JOINS
 -- CHECK:       JOIN
 -- CHECK:         OP
--- CHECK:           INNER
--- CHECK:             NATURAL false
+-- CHECK:           KIND
+-- CHECK:             INNER
+-- CHECK:               NATURAL false
 -- CHECK:         TABLE_OR_SUBQUERY
--- CHECK:           SUB_TABLE_OR_SUBQUERIES
--- CHECK:               TABLE_OR_SUBQUERY_SYNTAX
--- CHECK:                 TABLE
--- CHECK:                   NAME bar
--- CHECK:               TABLE_OR_SUBQUERY_SYNTAX
--- CHECK:                 TABLE
--- CHECK:                   NAME baz
--- CHECK:         CONSTRAINT none
+-- CHECK:           KIND
+-- CHECK:             SUB_TABLE_OR_SUBQUERIES
+-- CHECK:                 TABLE_OR_SUBQUERY_SYNTAX
+-- CHECK:                   KIND
+-- CHECK:                     TABLE
+-- CHECK:                       NAME bar
+-- CHECK:                 TABLE_OR_SUBQUERY_SYNTAX
+-- CHECK:                   KIND
+-- CHECK:                     TABLE
+-- CHECK:                       NAME baz
+-- CHECK:         CONSTRAINT
+-- CHECK:           KIND none
 foo INNER JOIN (bar, baz);

@@ -25,6 +25,7 @@ protocol StmtSyntaxVisitor {
 }
 
 struct CreateTableStmtSyntax: StmtSyntax {
+    let id: SyntaxId
     let name: IdentifierSyntax
     let schemaName: IdentifierSyntax?
     let isTemporary: Bool
@@ -47,6 +48,7 @@ struct CreateTableStmtSyntax: StmtSyntax {
 }
 
 struct AlterTableStmtSyntax: StmtSyntax {
+    let id: SyntaxId
     let name: IdentifierSyntax
     let schemaName: IdentifierSyntax?
     let kind: Kind
@@ -65,6 +67,7 @@ struct AlterTableStmtSyntax: StmtSyntax {
 }
 
 struct QueryDefinitionStmtSyntax: StmtSyntax {
+    let id: SyntaxId
     let name: IdentifierSyntax
     let statement: any StmtSyntax
     let range: Range<String.Index>
@@ -76,6 +79,7 @@ struct QueryDefinitionStmtSyntax: StmtSyntax {
 
 /// Just an empty `;` statement. Silly but useful in the parser.
 struct EmptyStmtSyntax: Equatable, StmtSyntax {
+    let id: SyntaxId
     let range: Range<String.Index>
     
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
@@ -84,6 +88,7 @@ struct EmptyStmtSyntax: Equatable, StmtSyntax {
 }
 
 struct TypeNameSyntax: Syntax, CustomStringConvertible, Sendable {
+    let id: SyntaxId
     let name: IdentifierSyntax
     let arg1: SignedNumberSyntax?
     let arg2: SignedNumberSyntax?
@@ -121,6 +126,7 @@ enum ConfictClauseSyntax {
 }
 
 struct OrderSyntax: Syntax, CustomStringConvertible {
+    let id: SyntaxId
     let kind: Kind
     let range: Range<Substring.Index>
     
@@ -135,6 +141,7 @@ struct OrderSyntax: Syntax, CustomStringConvertible {
 }
 
 struct AliasSyntax: Syntax, CustomStringConvertible {
+    let id: SyntaxId
     let identifier: IdentifierSyntax
     let range: Range<Substring.Index>
     
@@ -144,6 +151,7 @@ struct AliasSyntax: Syntax, CustomStringConvertible {
 }
 
 struct IndexedColumnSyntax: Syntax {
+    let id: SyntaxId
     let expr: ExpressionSyntax
     let collation: IdentifierSyntax?
     let order: OrderSyntax?
@@ -160,6 +168,7 @@ struct IndexedColumnSyntax: Syntax {
 }
 
 struct ForeignKeyClauseSyntax: Syntax {
+    let id: SyntaxId
     let foreignTable: IdentifierSyntax
     let foreignColumns: [IdentifierSyntax]
     let actions: [Action]
@@ -243,6 +252,7 @@ enum SelectCoreSyntax {
 }
 
 struct SelectStmtSyntax: StmtSyntax {
+    let id: SyntaxId
     let cte: Indirect<CommonTableExpressionSyntax>?
     let cteRecursive: Bool
     let selects: Indirect<Selects>
@@ -266,6 +276,7 @@ struct SelectStmtSyntax: StmtSyntax {
 }
 
 struct DeleteStmtSyntax: StmtSyntax {
+    let id: SyntaxId
     let cte: CommonTableExpressionSyntax?
     let cteRecursive: Bool
     let table: QualifiedTableNameSyntax
@@ -278,17 +289,25 @@ struct DeleteStmtSyntax: StmtSyntax {
     }
 }
 
-enum ResultColumnSyntax {
-    /// Note: This will represent even just a single column select
-    case expr(ExpressionSyntax, as: AliasSyntax?)
-    /// `*` or `table.*`
-    case all(table: IdentifierSyntax?)
+struct ResultColumnSyntax: Syntax {
+    let id: SyntaxId
+    let kind: Kind
+    let range: Range<Substring.Index>
+    
+    enum Kind {
+        /// Note: This will represent even just a single column select
+        case expr(ExpressionSyntax, as: AliasSyntax?)
+        /// `*` or `table.*`
+        case all(table: IdentifierSyntax?)
+    }
 }
 
-struct OrderingTermSyntax {
+struct OrderingTermSyntax: Syntax {
+    let id: SyntaxId
     let expr: ExpressionSyntax
     let order: OrderSyntax?
     let nulls: Nulls?
+    let range: Range<Substring.Index>
 
     enum Nulls {
         case first
@@ -296,16 +315,24 @@ struct OrderingTermSyntax {
     }
 }
 
-enum CompoundOperatorSyntax {
-    case union
-    case unionAll
-    case intersect
-    case except
+struct CompoundOperatorSyntax: Syntax {
+    let id: SyntaxId
+    let kind: Kind
+    let range: Range<Substring.Index>
+    
+    enum Kind {
+        case union
+        case unionAll
+        case intersect
+        case except
+    }
 }
 
-struct JoinClauseSyntax {
+struct JoinClauseSyntax: Syntax {
+    let id: SyntaxId
     let tableOrSubquery: TableOrSubquerySyntax
     let joins: [Join]
+    let range: Range<Substring.Index>
 
     struct Join {
         let op: JoinOperatorSyntax
@@ -314,34 +341,52 @@ struct JoinClauseSyntax {
     }
 }
 
-enum JoinOperatorSyntax {
-    case comma
-    case join
-    case natural
-    case left(natural: Bool = false, outer: Bool = false)
-    case right(natural: Bool = false, outer: Bool = false)
-    case full(natural: Bool = false, outer: Bool = false)
-    case inner(natural: Bool = false)
-    case cross
-}
-
-enum JoinConstraintSyntax {
-    case on(ExpressionSyntax)
-    case using([IdentifierSyntax])
-    case none
-
-    var on: ExpressionSyntax? {
-        if case let .on(e) = self { return e }
-        return nil
+struct JoinOperatorSyntax: Syntax {
+    let id: SyntaxId
+    let kind: Kind
+    let range: Range<Substring.Index>
+    
+    enum Kind {
+        case comma
+        case join
+        case natural
+        case left(natural: Bool = false, outer: Bool = false)
+        case right(natural: Bool = false, outer: Bool = false)
+        case full(natural: Bool = false, outer: Bool = false)
+        case inner(natural: Bool = false)
+        case cross
     }
 }
 
-enum TableOrSubquerySyntax {
-    case table(Table)
-    case tableFunction(schema: IdentifierSyntax?, table: IdentifierSyntax, args: [ExpressionSyntax], alias: AliasSyntax?)
-    case subquery(SelectStmtSyntax, alias: AliasSyntax?)
-    indirect case join(JoinClauseSyntax)
-    case subTableOrSubqueries([TableOrSubquerySyntax], alias: AliasSyntax?)
+struct JoinConstraintSyntax: Syntax {
+    let id: SyntaxId
+    let kind: Kind
+    let range: Range<Substring.Index>
+    
+    enum Kind {
+        case on(ExpressionSyntax)
+        case using([IdentifierSyntax])
+        case none
+
+        var on: ExpressionSyntax? {
+            if case let .on(e) = self { return e }
+            return nil
+        }
+    }
+}
+
+struct TableOrSubquerySyntax: Syntax {
+    let id: SyntaxId
+    let kind: Kind
+    let range: Range<Substring.Index>
+    
+    enum Kind {
+        case table(Table)
+        case tableFunction(schema: IdentifierSyntax?, table: IdentifierSyntax, args: [ExpressionSyntax], alias: AliasSyntax?)
+        case subquery(SelectStmtSyntax, alias: AliasSyntax?)
+        indirect case join(JoinClauseSyntax)
+        case subTableOrSubqueries([TableOrSubquerySyntax], alias: AliasSyntax?)
+    }
 
     struct Table {
         let schema: IdentifierSyntax?
@@ -352,11 +397,13 @@ enum TableOrSubquerySyntax {
 }
 
 // TODO: Implement windows
-struct WindowDefinitionSyntax {
-    init() {}
+struct WindowDefinitionSyntax: Syntax {
+    let id: SyntaxId
+    let range: Range<Substring.Index>
 }
 
-struct CommonTableExpressionSyntax {
+struct CommonTableExpressionSyntax: Syntax {
+    let id: SyntaxId
     let table: IdentifierSyntax
     let columns: [IdentifierSyntax]
     let materialized: Bool
@@ -365,6 +412,7 @@ struct CommonTableExpressionSyntax {
 }
 
 struct TableConstraintSyntax: Syntax {
+    let id: SyntaxId
     let name: IdentifierSyntax?
     let kind: Kind
     let range: Range<Substring.Index>
@@ -378,6 +426,7 @@ struct TableConstraintSyntax: Syntax {
 }
 
 struct ColumnConstraintSyntax: Syntax {
+    let id: SyntaxId
     let name: IdentifierSyntax?
     let kind: Kind
     let range: Range<Substring.Index>
@@ -414,6 +463,7 @@ struct ColumnConstraintSyntax: Syntax {
 }
 
 struct ColumnDefSyntax: Syntax {
+    let id: SyntaxId
     var name: IdentifierSyntax
     var type: TypeNameSyntax
     var constraints: [ColumnConstraintSyntax]
@@ -424,48 +474,39 @@ struct ColumnDefSyntax: Syntax {
     }
 }
 
-struct TableOptionsSyntax: OptionSet, Sendable, CustomStringConvertible {
-    let rawValue: UInt8
+struct TableOptionsSyntax: Syntax, Sendable, CustomStringConvertible {
+    let id: SyntaxId
+    let kind: Kind
+    let range: Range<Substring.Index>
 
-    static let withoutRowId = TableOptionsSyntax(rawValue: 1 << 0)
-    static let strict = TableOptionsSyntax(rawValue: 1 << 1)
-
-    init(rawValue: UInt8) {
-        self.rawValue = rawValue
+    struct Kind: OptionSet {
+        let rawValue: UInt8
+        
+        init(rawValue: UInt8) {
+            self.rawValue = rawValue
+        }
+        
+        static let withoutRowId = Kind(rawValue: 1 << 0)
+        static let strict = Kind(rawValue: 1 << 1)
     }
 
     var description: String {
-        guard rawValue > 0 else { return "[]" }
+        guard kind.rawValue > 0 else { return "[]" }
         var opts: [String] = []
-        if self.contains(.withoutRowId) { opts.append("WITHOUT ROWID") }
-        if self.contains(.strict) { opts.append("STRICT") }
+        if kind.contains(.withoutRowId) { opts.append("WITHOUT ROWID") }
+        if kind.contains(.strict) { opts.append("STRICT") }
         return "[\(opts.joined(separator: ", "))]"
     }
 }
 
 struct TableNameSyntax: Syntax, Hashable, CustomStringConvertible {
+    let id: SyntaxId
     let schema: Schema
     let name: IdentifierSyntax
-
-    static let main: IdentifierSyntax = "main"
 
     enum Schema: Hashable {
         case main
         case other(IdentifierSyntax)
-    }
-
-    init(schema: Schema, name: IdentifierSyntax) {
-        self.schema = schema
-        self.name = name
-    }
-
-    init(schema: IdentifierSyntax?, name: IdentifierSyntax) {
-        if let schema, schema == Self.main {
-            self.schema = .other(schema)
-        } else {
-            self.schema = .main
-        }
-        self.name = name
     }
 
     var description: String {
@@ -483,13 +524,10 @@ struct TableNameSyntax: Syntax, Hashable, CustomStringConvertible {
         case let .other(schema): schema.range.lowerBound..<name.range.upperBound
         }
     }
-
-    func with(name: IdentifierSyntax) -> TableNameSyntax {
-        return TableNameSyntax(schema: schema, name: name)
-    }
 }
 
 struct PragmaStmt: StmtSyntax {
+    let id: SyntaxId
     let schema: IdentifierSyntax?
     let name: IdentifierSyntax
     let value: ExprSyntax?

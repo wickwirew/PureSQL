@@ -76,7 +76,7 @@ extension CardinalityInferrer: StmtSyntaxVisitor {
                 guard join.joins.isEmpty else { return .many }
                 
                 // If its not against a table we cannot infer it.
-                guard case let .table(table) = join.tableOrSubquery else { return .many }
+                guard case let .table(table) = join.tableOrSubquery.kind else { return .many }
                 
                 // If we cannot find the table something upstream will have already emitted
                 // diagnositic so just exit

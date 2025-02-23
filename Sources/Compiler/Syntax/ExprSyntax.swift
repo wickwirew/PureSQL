@@ -61,6 +61,7 @@ extension ExprSyntaxVisitor {
 }
 
 struct OperatorSyntax: CustomStringConvertible {
+    let id: SyntaxId
     let `operator`: Operator
     let range: Range<String.Index>
     
@@ -70,6 +71,7 @@ struct OperatorSyntax: CustomStringConvertible {
 }
 
 struct LiteralExprSyntax: ExprSyntax {
+    let id: SyntaxId
     let kind: Kind
     let range: Range<String.Index>
     
@@ -141,6 +143,24 @@ indirect enum ExpressionSyntax: ExprSyntax {
     case select(SelectExprSyntax)
     case invalid(InvalidExprSyntax)
     
+    var id: SyntaxId {
+        return switch self {
+        case let .literal(expr): expr.id
+        case let .bindParameter(expr): expr.id
+        case let .column(expr): expr.id
+        case let .prefix(expr): expr.id
+        case let .infix(expr): expr.id
+        case let .postfix(expr): expr.id
+        case let .between(expr): expr.id
+        case let .fn(expr): expr.id
+        case let .cast(expr): expr.id
+        case let .grouped(expr): expr.id
+        case let .caseWhenThen(expr): expr.id
+        case let .select(expr): expr.id
+        case let .invalid(expr): expr.id
+        }
+    }
+    
     var range: Range<String.Index> {
         return switch self {
         case let .literal(expr): expr.range
@@ -203,6 +223,7 @@ extension ExpressionSyntax: CustomStringConvertible {
 }
 
 struct GroupedExprSyntax: ExprSyntax, CustomStringConvertible {
+    let id: SyntaxId
     let exprs: [ExpressionSyntax]
     let range: Range<String.Index>
     
@@ -216,6 +237,7 @@ struct GroupedExprSyntax: ExprSyntax, CustomStringConvertible {
 }
 
 struct PrefixExprSyntax: ExprSyntax, CustomStringConvertible {
+    let id: SyntaxId
     let `operator`: OperatorSyntax
     let rhs: ExpressionSyntax
     
@@ -233,6 +255,7 @@ struct PrefixExprSyntax: ExprSyntax, CustomStringConvertible {
 }
 
 struct PostfixExprSyntax: ExprSyntax, CustomStringConvertible {
+    let id: SyntaxId
     let lhs: ExpressionSyntax
     let `operator`: OperatorSyntax
     
@@ -250,6 +273,7 @@ struct PostfixExprSyntax: ExprSyntax, CustomStringConvertible {
 }
 
 struct InfixExprSyntax: ExprSyntax, CustomStringConvertible {
+    let id: SyntaxId
     let lhs: ExpressionSyntax
     let `operator`: OperatorSyntax
     let rhs: ExpressionSyntax
@@ -268,6 +292,7 @@ struct InfixExprSyntax: ExprSyntax, CustomStringConvertible {
 }
 
 struct BetweenExprSyntax: ExprSyntax, CustomStringConvertible {
+    let id: SyntaxId
     let not: Bool
     let value: ExpressionSyntax
     let lower: ExpressionSyntax
@@ -287,6 +312,7 @@ struct BetweenExprSyntax: ExprSyntax, CustomStringConvertible {
 }
 
 struct FunctionExprSyntax: ExprSyntax, CustomStringConvertible {
+    let id: SyntaxId
     let table: IdentifierSyntax?
     let name: IdentifierSyntax
     let args: [ExpressionSyntax]
@@ -302,6 +328,7 @@ struct FunctionExprSyntax: ExprSyntax, CustomStringConvertible {
 }
 
 struct CastExprSyntax: ExprSyntax, CustomStringConvertible {
+    let id: SyntaxId
     let expr: ExpressionSyntax
     let ty: TypeNameSyntax
     let range: Range<String.Index>
@@ -316,6 +343,7 @@ struct CastExprSyntax: ExprSyntax, CustomStringConvertible {
 }
 
 struct BindParameterSyntax: ExprSyntax, Hashable, CustomStringConvertible {
+    let id: SyntaxId
     let kind: Kind
     let index: Index
     let range: Range<String.Index>
@@ -593,6 +621,7 @@ extension Operator: CustomStringConvertible {
 }
 
 struct ColumnExprSyntax: ExprSyntax, CustomStringConvertible {
+    let id: SyntaxId
     let schema: IdentifierSyntax?
     let table: IdentifierSyntax?
     let column: IdentifierSyntax // TODO: Support *
@@ -614,6 +643,7 @@ struct ColumnExprSyntax: ExprSyntax, CustomStringConvertible {
 }
 
 struct CaseWhenThenExprSyntax: ExprSyntax {
+    let id: SyntaxId
     let `case`: ExpressionSyntax?
     let whenThen: [WhenThen]
     let `else`: ExpressionSyntax?
@@ -647,6 +677,7 @@ extension CaseWhenThenExprSyntax: CustomStringConvertible {
 }
 
 struct SelectExprSyntax: ExprSyntax {
+    let id: SyntaxId
     let select: SelectStmtSyntax
     let range: Range<String.Index>
     
@@ -656,6 +687,7 @@ struct SelectExprSyntax: ExprSyntax {
 }
 
 struct InvalidExprSyntax: ExprSyntax, CustomStringConvertible {
+    let id: SyntaxId
     let range: Range<String.Index>
     
     var description: String {

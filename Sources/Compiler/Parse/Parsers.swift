@@ -83,14 +83,14 @@ enum Parsers {
                 )
             default:
                 state.diagnostics.add(.unexpectedToken(of: state.current.kind, at: state.range))
-                return EmptyStmtSyntax(range: state.current.range)
+                return EmptyStmtSyntax(id: state.nextId(), range: state.current.range)
             }
         case (.semiColon, _), (.eof, _):
             state.skip()
-            return EmptyStmtSyntax(range: state.current.range)
+            return EmptyStmtSyntax(id: state.nextId(), range: state.current.range)
         default:
             state.diagnostics.add(.unexpectedToken(of: state.current.kind, at: state.range))
-            return EmptyStmtSyntax(range: state.current.range)
+            return EmptyStmtSyntax(id: state.nextId(), range: state.current.range)
         }
     }
     
@@ -121,6 +121,7 @@ enum Parsers {
         let returningClause = take(if: .returning, state: &state, parse: returningClause)
         
         return InsertStmtSyntax(
+            id: state.nextId(),
             cte: cte,
             cteRecursive: cteRecursive,
             action: action,
@@ -143,7 +144,7 @@ enum Parsers {
         } else {
             let select = try selectStmt(state: &state)
             let upsertClause = state.current.kind == .on ? upsertClause(state: &state) : nil
-            return .init(select: select, upsertClause: upsertClause)
+            return .init(id: state.nextId(), select: select, upsertClause: upsertClause)
         }
     }
     
@@ -164,7 +165,7 @@ enum Parsers {
             kind = .insert(nil)
         }
         
-        return InsertStmtSyntax.Action(kind: kind, range: token.range)
+        return InsertStmtSyntax.Action(id: state.nextId(), kind: kind, range: token.range)
     }
     
     /// Example: OR ABORT
@@ -183,7 +184,7 @@ enum Parsers {
             state.diagnostics.add(.unexpectedToken(of: token.kind, at: token.range))
             kind = .ignore
         }
-        return OrSyntax(kind: kind, range: token.range)
+        return OrSyntax(id: state.nextId(),kind: kind, range: token.range)
     }
     
     /// https://www.sqlite.org/pragma.html
@@ -226,6 +227,7 @@ enum Parsers {
         }
         
         return PragmaStmt(
+            id: state.nextId(),
             schema: schema,
             name: name,
             value: value,
@@ -247,6 +249,7 @@ enum Parsers {
         
         if state.take(if: .nothing) {
             return .init(
+                id: state.nextId(),
                 confictTarget: conflictTarget,
                 doAction: .nothing,
                 range: on.range.lowerBound ..< state.current.range.lowerBound
@@ -265,6 +268,7 @@ enum Parsers {
         }
         
         return UpsertClauseSyntax(
+            id: state.nextId(),
             confictTarget: conflictTarget,
             doAction: .updateSet(sets: sets, where: whereExpr),
             range: on.range.lowerBound ..< state.current.range.lowerBound
@@ -290,7 +294,7 @@ enum Parsers {
         
         let expr = expr(state: &state)
         
-        return SetActionSyntax(column: column, expr: expr)
+        return SetActionSyntax(id: state.nextId(), column: column, expr: expr)
     }
     
     /// https://www.sqlite.org/syntax/upsert-clause.html
@@ -329,7 +333,7 @@ enum Parsers {
             }
         }
         
-        return ReturningClauseSyntax(values: values, range: state.range(from: start))
+        return ReturningClauseSyntax(id: state.nextId(), values: values, range: state.range(from: start))
     }
     
     /// https://www.sqlite.org/lang_update.html
@@ -348,6 +352,7 @@ enum Parsers {
         }
         let returningClause = take(if: .returning, state: &state, parse: returningClause)
         return UpdateStmtSyntax(
+            id: state.nextId(),
             cte: cte.cte,
             cteRecursive: cte.recursive,
             or: or,
@@ -385,6 +390,7 @@ enum Parsers {
         let whereExpr = state.take(if: .where) ? expr(state: &state) : nil
         let returningClause = state.take(if: .returning) ? returningClause(state: &state) : nil
         return DeleteStmtSyntax(
+            id: state.nextId(),
             cte: cte,
             cteRecursive: cteRecursive,
             table: table,
@@ -413,6 +419,7 @@ enum Parsers {
         }
         
         return QualifiedTableNameSyntax(
+            id: state.nextId(),
             tableName: tableName,
             alias: alias,
             indexed: indexed,
@@ -433,7 +440,12 @@ enum Parsers {
         }
         
         let order = order(state: &state)
-        return IndexedColumnSyntax(expr: expr, collation: collation, order: order)
+        return IndexedColumnSyntax(
+            id: state.nextId(),
+            expr: expr,
+            collation: collation,
+            order: order
+        )
     }
     
     /// https://www.sqlite.org/lang_with.html
@@ -476,6 +488,7 @@ enum Parsers {
         let select = try parens(state: &state, value: selectStmt)
         
         return CommonTableExpressionSyntax(
+            id: state.nextId(),
             table: table,
             columns: columns ?? [],
             materialized: materialized,
@@ -486,77 +499,91 @@ enum Parsers {
     
     /// https://www.sqlite.org/syntax/join-constraint.html
     static func joinConstraint(state: inout ParserState) -> JoinConstraintSyntax {
+        let start = state.range
+        
+        let kind: JoinConstraintSyntax.Kind
         if state.take(if: .on) {
-            return .on(
-                expr(state: &state)
-            )
+            kind = .on(expr(state: &state))
         } else if state.take(if: .using) {
-            return .using(
+            kind = .using(
                 parens(state: &state) { state in
                     commaDelimited(state: &state, element: identifier)
                 }
             )
         } else {
-            return .none
+            kind = .none
         }
+        
+        return JoinConstraintSyntax(
+            id: state.nextId(),
+            kind: kind,
+            range: state.range(from: start)
+        )
     }
     
     /// https://www.sqlite.org/syntax/join-operator.html
     static func joinOperator(state: inout ParserState) -> JoinOperatorSyntax {
         let token = state.take()
         
+        let kind: JoinOperatorSyntax.Kind
         switch token.kind {
-        case .comma: return .comma
-        case .join: return .join
+        case .comma: kind = .comma
+        case .join: kind = .join
         case .natural:
             let token = state.take()
             switch token.kind {
-            case .join: return .natural
+            case .join: kind = .natural
             case .left:
                 if state.take(if: .outer) {
                     state.consume(.join)
-                    return .left(natural: true, outer: true)
+                    kind = .left(natural: true, outer: true)
                 } else {
                     state.consume(.join)
-                    return .left(natural: true)
+                    kind = .left(natural: true)
                 }
             case .right:
                 state.consume(.join)
-                return .right(natural: true)
+                kind = .right(natural: true)
             case .inner:
                 state.consume(.join)
-                return .inner(natural: true)
+                kind = .inner(natural: true)
             case .full:
                 state.consume(.join)
-                return .full(natural: true)
+                kind = .full(natural: true)
             default:
                 state.diagnostics.add(.unexpectedToken(of: token.kind, at: token.range))
-                return .full(natural: true, outer: false)
+                kind = .full(natural: true, outer: false)
             }
         case .left:
             if state.take(if: .outer) {
                 state.consume(.join)
-                return .left(outer: true)
+                kind = .left(outer: true)
             } else {
                 state.consume(.join)
-                return .left(outer: false)
+                kind = .left(outer: false)
             }
         case .right:
             state.consume(.join)
-            return .right()
+            kind = .right()
         case .inner:
             state.consume(.join)
-            return .inner()
+            kind = .inner()
         case .cross:
             state.consume(.join)
-            return .cross
+            kind = .cross
         case .full:
             state.consume(.join)
-            return .full()
+            kind = .full()
         default:
             state.diagnostics.add(.init("Invalid join operator", at: state.current.range))
-            return .full()
+            kind = .full()
         }
+        
+        return JoinOperatorSyntax(
+            id: state.nextId(),
+            kind: kind,
+            range: state.range(from: token)
+        )
     }
     
     static func from(state: inout ParserState) throws -> FromSyntax? {
@@ -581,7 +608,11 @@ enum Parsers {
     
     static func tableName(state: inout ParserState) -> TableNameSyntax {
         let names = tableAndSchemaName(state: &state)
-        return TableNameSyntax(schema: names.schema, name: names.table)
+        return TableNameSyntax(
+            id: state.nextId(),
+            schema: names.schema.map { .other($0) } ?? .main,
+            name: names.table
+        )
     }
     
     static func tableAndSchemaName(state: inout ParserState) -> (schema: IdentifierSyntax?, table: IdentifierSyntax) {
@@ -615,6 +646,7 @@ enum Parsers {
         let limit = limit(state: &state)
         
         return SelectStmtSyntax(
+            id: state.nextId(),
             cte: cte.map(Indirect.init),
             cteRecursive: cteRecursive,
             selects: .init(.single(selects!.first!)), // TODO: Fix this and do it properly
@@ -672,7 +704,13 @@ enum Parsers {
             nulls = nil
         }
         
-        return OrderingTermSyntax(expr: expr, order: order, nulls: nulls)
+        return OrderingTermSyntax(
+            id: state.nextId(),
+            expr: expr,
+            order: order,
+            nulls: nulls,
+            range: state.range(from: expr.range)
+        )
     }
     
     /// https://www.sqlite.org/syntax/select-stmt.html
@@ -780,24 +818,40 @@ enum Parsers {
     
     /// https://www.sqlite.org/syntax/result-column.html
     static func resultColumn(state: inout ParserState) -> ResultColumnSyntax {
+        let start = state.current.range
         switch state.current.kind {
         case .star:
             state.skip()
-            return .all(table: nil)
+            return ResultColumnSyntax(
+                id: state.nextId(),
+                kind: .all(table: nil),
+                range: state.range(from: start)
+            )
         case let .symbol(table) where state.peek.kind == .dot && state.peek2.kind == .star:
             let table = IdentifierSyntax(value: table, range: state.current.range)
             state.skip()
             state.consume(.dot)
             state.consume(.star)
-            return .all(table: table)
+            return ResultColumnSyntax(
+                id: state.nextId(),
+                kind: .all(table: table),
+                range: state.range(from: start)
+            )
         default:
             let expr = expr(state: &state)
             let alias = maybeAlias(state: &state, asRequired: false)
-            return .expr(expr, as: alias)
+            return ResultColumnSyntax(
+                id: state.nextId(),
+                kind: .expr(expr, as: alias),
+                range: state.range(from: start)
+            )
         }
     }
     
     static func tableOrSubquery(state: inout ParserState) throws -> TableOrSubquerySyntax {
+        let start = state.range
+        let kind: TableOrSubquerySyntax.Kind
+        
         switch state.current.kind {
         case .symbol:
             let (schema, table) = tableAndSchemaName(state: &state)
@@ -805,7 +859,7 @@ enum Parsers {
             if state.current.kind == .openParen {
                 let args = commaDelimitedInParens(state: &state) { expr(state: &$0) }
                 let alias = maybeAlias(state: &state, asRequired: false)
-                return .tableFunction(schema: schema, table: table, args: args, alias: alias)
+                kind = .tableFunction(schema: schema, table: table, args: args, alias: alias)
             } else {
                 let alias = maybeAlias(state: &state, asRequired: false)
                 
@@ -830,27 +884,33 @@ enum Parsers {
                     indexedBy: indexedBy
                 )
                 
-                return .table(table)
+                kind = .table(table)
             }
         case .openParen:
             if state.peek.kind == .select {
                 let subquery = try parens(state: &state, value: selectStmt)
                 let alias = maybeAlias(state: &state, asRequired: false)
-                return .subquery(subquery, alias: alias)
+                kind = .subquery(subquery, alias: alias)
             } else {
                 let result = try parens(state: &state, value: joinClauseOrTableOrSubqueries)
                 
                 switch result {
                 case let .join(joinClause):
-                    return .join(joinClause)
+                    kind = .join(joinClause)
                 case let .tableOrSubqueries(table):
                     let alias = maybeAlias(state: &state, asRequired: false)
-                    return .subTableOrSubqueries(table, alias: alias)
+                    kind = .subTableOrSubqueries(table, alias: alias)
                 }
             }
         default:
             throw state.diagnostics.add(.init("Expected table or subquery", at: state.current.range))
         }
+        
+        return TableOrSubquerySyntax(
+            id: state.nextId(),
+            kind: kind,
+            range: state.range(from: start)
+        )
     }
     
     static func joinClause(
@@ -858,12 +918,18 @@ enum Parsers {
         tableOrSubquery: TableOrSubquerySyntax
     ) throws -> JoinClauseSyntax {
         let joinOperatorStarts: Set<Token.Kind> = [.natural, .comma, .left, .right, .full, .inner, .cross, .join]
+        let start = state.range
         
         var joins: [JoinClauseSyntax.Join] = []
         while joinOperatorStarts.contains(state.current.kind) {
             try joins.append(join(state: &state))
         }
-        return JoinClauseSyntax(tableOrSubquery: tableOrSubquery, joins: joins)
+        return JoinClauseSyntax(
+            id: state.nextId(),
+            tableOrSubquery: tableOrSubquery,
+            joins: joins,
+            range: state.range(from: start)
+        )
     }
     
     static func join(state: inout ParserState) throws -> JoinClauseSyntax.Join {
@@ -890,10 +956,18 @@ enum Parsers {
         case .as:
             let start = state.take()
             let ident = identifier(state: &state)
-            return AliasSyntax(identifier: ident, range: state.range(from: start))
+            return AliasSyntax(
+                id: state.nextId(),
+                identifier: ident,
+                range: state.range(from: start)
+            )
         case .symbol where !asRequired:
             let ident = identifier(state: &state)
-            return AliasSyntax(identifier: ident, range: ident.range)
+            return AliasSyntax(
+                id: state.nextId(),
+                identifier: ident,
+                range: ident.range
+            )
         default:
             return nil
         }
@@ -901,7 +975,8 @@ enum Parsers {
     
     /// https://www.sqlite.org/syntax/table-options.html
     static func tableOptions(state: inout ParserState) -> TableOptionsSyntax {
-        var options: TableOptionsSyntax = []
+        let start = state.range
+        var options: TableOptionsSyntax.Kind = []
         
         repeat {
             switch state.current.kind {
@@ -913,18 +988,18 @@ enum Parsers {
                 state.skip()
                 options = options.union(.strict)
             case .eof, .semiColon:
-                return options
+                break
             default:
                 state.diagnostics.add(.unexpectedToken(
                     of: state.current.kind,
                     expectedAnyOf: .without, .strict,
                     at: state.current.range
                 ))
-                return options
+                break
             }
         } while state.take(if: .comma)
         
-        return options
+        return TableOptionsSyntax(id: state.nextId(), kind: options, range: state.range(from: start))
     }
     
     /// https://www.sqlite.org/syntax/type-name.html
@@ -945,6 +1020,7 @@ enum Parsers {
                 state.consume(.closeParen)
                 let alias = maybeAlias(state: &state)
                 return TypeNameSyntax(
+                    id: state.nextId(),
                     name: name,
                     arg1: first,
                     arg2: second,
@@ -955,6 +1031,7 @@ enum Parsers {
                 state.consume(.closeParen)
                 let alias = maybeAlias(state: &state)
                 return TypeNameSyntax(
+                    id: state.nextId(),
                     name: name,
                     arg1: first,
                     arg2: nil,
@@ -965,6 +1042,7 @@ enum Parsers {
         } else {
             let alias = maybeAlias(state: &state)
             return TypeNameSyntax(
+                id: state.nextId(),
                 name: name,
                 arg1: nil,
                 arg2: nil,
@@ -981,6 +1059,7 @@ enum Parsers {
         let names = tableAndSchemaName(state: &state)
         let kind = try alterKind(state: &state)
         return AlterTableStmtSyntax(
+            id: state.nextId(),
             name: names.table,
             schemaName: names.schema,
             kind: kind,
@@ -1049,6 +1128,7 @@ enum Parsers {
             let options = tableOptions(state: &state)
             
             return CreateTableStmtSyntax(
+                id: state.nextId(),
                 name: table,
                 schemaName: schema,
                 isTemporary: isTemporary,
@@ -1127,6 +1207,7 @@ enum Parsers {
         }
         
         return TableConstraintSyntax(
+            id: state.nextId(),
             name: name,
             kind: kind,
             range: state.range(from: start)
@@ -1148,7 +1229,7 @@ enum Parsers {
             constraints.append(c)
         }
         
-        return ColumnDefSyntax(name: name, type: type, constraints: constraints)
+        return ColumnDefSyntax(id: state.nextId(), name: name, type: type, constraints: constraints)
     }
     
     /// https://www.sqlite.org/syntax/column-constraint.html
@@ -1168,30 +1249,65 @@ enum Parsers {
             state.skip()
             state.consume(.null)
             let conflictClause = conflictClause(state: &state)
-            return ColumnConstraintSyntax(name: name, kind: .notNull(conflictClause), range: state.range(from: start))
+            return ColumnConstraintSyntax(
+                id: state.nextId(),
+                name: name,
+                kind: .notNull(conflictClause),
+                range: state.range(from: start)
+            )
         case .unique:
             state.skip()
             let conflictClause = conflictClause(state: &state)
-            return ColumnConstraintSyntax(name: name, kind: .unique(conflictClause), range: state.range(from: start))
+            return ColumnConstraintSyntax(
+                id: state.nextId(),
+                name: name,
+                kind: .unique(conflictClause),
+                range: state.range(from: start)
+            )
         case .check:
             state.skip()
             let expr = parens(state: &state) { Parsers.expr(state: &$0) }
-            return ColumnConstraintSyntax(name: name, kind: .check(expr), range: state.range(from: start))
+            return ColumnConstraintSyntax(
+                id: state.nextId(),
+                name: name,
+                kind: .check(expr),
+                range: state.range(from: start)
+            )
         case .default:
             state.skip()
             if state.current.kind == .openParen {
                 let expr = parens(state: &state) { Parsers.expr(state: &$0) }
-                return ColumnConstraintSyntax(name: name, kind: .default(expr), range: state.range(from: start))
+                return ColumnConstraintSyntax(
+                    id: state.nextId(),
+                    name: name,
+                    kind: .default(expr),
+                    range: state.range(from: start)
+                )
             } else {
-                return ColumnConstraintSyntax(name: name, kind: .default(expr(state: &state)), range: state.range(from: start))
+                return ColumnConstraintSyntax(
+                    id: state.nextId(),
+                    name: name,
+                    kind: .default(expr(state: &state)),
+                    range: state.range(from: start)
+                )
             }
         case .collate:
             state.skip()
             let collation = identifier(state: &state)
-            return ColumnConstraintSyntax(name: name, kind: .collate(collation), range: state.range(from: start))
+            return ColumnConstraintSyntax(
+                id: state.nextId(),
+                name: name,
+                kind: .collate(collation),
+                range: state.range(from: start)
+            )
         case .references:
             let fk = foreignKeyClause(state: &state)
-            return ColumnConstraintSyntax(name: name, kind: .foreignKey(fk), range: state.range(from: start))
+            return ColumnConstraintSyntax(
+                id: state.nextId(),
+                name: name,
+                kind: .foreignKey(fk),
+                range: state.range(from: start)
+            )
         case .generated:
             state.skip()
             state.consume(.always)
@@ -1199,11 +1315,21 @@ enum Parsers {
             let expr = parens(state: &state) { Parsers.expr(state: &$0) }
             let generated = parseGeneratedKind(state: &state)
             
-            return ColumnConstraintSyntax(name: name, kind: .generated(expr, generated), range: state.range(from: start))
+            return ColumnConstraintSyntax(
+                id: state.nextId(),
+                name: name,
+                kind: .generated(expr, generated),
+                range: state.range(from: start)
+            )
         case .as:
             let expr = parens(state: &state) { Parsers.expr(state: &$0) }
             let generated = parseGeneratedKind(state: &state)
-            return ColumnConstraintSyntax(name: name, kind: .generated(expr, generated), range: state.range(from: start))
+            return ColumnConstraintSyntax(
+                id: state.nextId(),
+                name: name,
+                kind: .generated(expr, generated),
+                range: state.range(from: start)
+            )
         default:
             state.diagnostics.add(.unexpectedToken(of: state.current.kind, at: state.range))
             state.skip()
@@ -1236,6 +1362,7 @@ enum Parsers {
         let autoincrement = state.take(if: .autoincrement)
         
         return ColumnConstraintSyntax(
+            id: state.nextId(),
             name: name,
             kind: .primaryKey(order: order, conflictClause, autoincrement: autoincrement),
             range: state.range(from: start)
@@ -1275,6 +1402,7 @@ enum Parsers {
         let actions = foreignKeyClauseActions(state: &state)
         
         return ForeignKeyClauseSyntax(
+            id: state.nextId(),
             foreignTable: table,
             foreignColumns: columns ?? [],
             actions: actions,
@@ -1405,7 +1533,13 @@ enum Parsers {
             // at an open paren treat as a function call.
             if state.is(of: .openParen), case let .column(column) = expr, column.schema == nil {
                 let args = commaDelimitedInParens(state: &state) { Parsers.expr(state: &$0) }
-                return .fn(FunctionExprSyntax(table: column.table, name: column.column, args: args, range: state.range(from: expr.range)))
+                return .fn(FunctionExprSyntax(
+                    id: state.nextId(),
+                    table: column.table,
+                    name: column.column,
+                    args: args,
+                    range: state.range(from: expr.range))
+                )
             }
             
             guard let op = Operator.guess(for: state.current.kind, after: state.peek.kind),
@@ -1430,7 +1564,13 @@ enum Parsers {
                 let lowerBound = Parsers.expr(state: &state, precedence: precAboveAnd)
                 state.consume(.and)
                 let upperBound = Parsers.expr(state: &state, precedence: precAboveAnd)
-                expr = .between(BetweenExprSyntax(not: op.operator == .not(.between), value: expr, lower: lowerBound, upper: upperBound))
+                expr = .between(BetweenExprSyntax(
+                    id: state.nextId(),
+                    not: op.operator == .not(.between),
+                    value: expr,
+                    lower: lowerBound,
+                    upper: upperBound)
+                )
             } else {
                 expr = infixExpr(state: &state, lhs: expr)
             }
@@ -1454,25 +1594,25 @@ enum Parsers {
             return .bindParameter(bindParameter(state: &state))
         case .plus:
             let token = state.take()
-            let op = OperatorSyntax(operator: .plus, range: token.range)
-            return .prefix(PrefixExprSyntax(operator: op, rhs: expr(state: &state, precedence: precedence)))
+            let op = OperatorSyntax(id: state.nextId(), operator: .plus, range: token.range)
+            return .prefix(PrefixExprSyntax(id: state.nextId(), operator: op, rhs: expr(state: &state, precedence: precedence)))
         case .tilde:
             let token = state.take()
-            let op = OperatorSyntax(operator: .tilde, range: token.range)
-            return .prefix(PrefixExprSyntax(operator: op, rhs: expr(state: &state, precedence: precedence)))
+            let op = OperatorSyntax(id: state.nextId(), operator: .tilde, range: token.range)
+            return .prefix(PrefixExprSyntax(id: state.nextId(), operator: op, rhs: expr(state: &state, precedence: precedence)))
         case .minus:
             let token = state.take()
-            let op = OperatorSyntax(operator: .minus, range: token.range)
-            return .prefix(PrefixExprSyntax(operator: op, rhs: expr(state: &state, precedence: precedence)))
+            let op = OperatorSyntax(id: state.nextId(), operator: .minus, range: token.range)
+            return .prefix(PrefixExprSyntax(id: state.nextId(), operator: op, rhs: expr(state: &state, precedence: precedence)))
         case .null:
             let token = state.take()
-            return .literal(LiteralExprSyntax(kind: .null, range: token.range))
+            return .literal(LiteralExprSyntax(id: state.nextId(),kind: .null, range: token.range))
         case .openParen:
             let start = state.current.range
             let expr = parens(state: &state) { state in
                 commaDelimited(state: &state) { Parsers.expr(state: &$0) }
             }
-            return .grouped(GroupedExprSyntax(exprs: expr, range: state.range(from: start)))
+            return .grouped(GroupedExprSyntax(id: state.nextId(), exprs: expr, range: state.range(from: start)))
         case .cast:
             let start = state.take()
             state.consume(.openParen)
@@ -1480,7 +1620,7 @@ enum Parsers {
             state.consume(.as)
             let type = typeName(state: &state)
             state.consume(.closeParen)
-            return .cast(CastExprSyntax(expr: expr, ty: type, range: state.range(from: start.range)))
+            return .cast(CastExprSyntax(id: state.nextId(), expr: expr, ty: type, range: state.range(from: start.range)))
         case .select:
             fatalError("TODO: Not yet implemented")
         case .exists:
@@ -1502,14 +1642,20 @@ enum Parsers {
             
             state.consume(.end)
             
-            return .caseWhenThen(.init(case: `case`, whenThen: whenThens, else: el, range: state.range(from: start.range)))
+            return .caseWhenThen(.init(
+                id: state.nextId(),
+                case: `case`,
+                whenThen: whenThens,
+                else: el,
+                range: state.range(from: start.range)
+            ))
         default:
             let tok = state.take()
             state.diagnostics.add(.init(
                 "Expected expression, but got '\(tok.kind)' instead",
                 at: state.range
             ))
-            return .invalid(InvalidExprSyntax(range: tok.range))
+            return .invalid(InvalidExprSyntax(id: state.nextId(), range: tok.range))
         }
     }
     
@@ -1522,7 +1668,7 @@ enum Parsers {
         
         switch op.operator {
         case .isnull, .notnull, .notNull, .collate:
-            return .postfix(PostfixExprSyntax(lhs: lhs, operator: op))
+            return .postfix(PostfixExprSyntax(id: state.nextId(), lhs: lhs, operator: op))
         default: break
         }
         
@@ -1531,7 +1677,7 @@ enum Parsers {
             precedence: op.operator.precedence(usage: .infix) + 1
         )
         
-        return .infix(InfixExprSyntax(lhs: lhs, operator: op, rhs: rhs))
+        return .infix(InfixExprSyntax(id: state.nextId(), lhs: lhs, operator: op, rhs: rhs))
     }
     
     /// https://www.sqlite.org/syntax/expr.html
@@ -1542,12 +1688,27 @@ enum Parsers {
             let second = identifier(state: &state)
             
             if state.take(if: .dot) {
-                return ColumnExprSyntax(schema: first, table: second, column: identifier(state: &state))
+                return ColumnExprSyntax(
+                    id: state.nextId(),
+                    schema: first,
+                    table: second,
+                    column: identifier(state: &state)
+                )
             } else {
-                return ColumnExprSyntax(schema: nil, table: first, column: second)
+                return ColumnExprSyntax(
+                    id: state.nextId(),
+                    schema: nil,
+                    table: first,
+                    column: second
+                )
             }
         } else {
-            return ColumnExprSyntax(schema: nil, table: nil, column: first)
+            return ColumnExprSyntax(
+                id: state.nextId(),
+                schema: nil,
+                table: nil,
+                column: first
+            )
         }
     }
     
@@ -1566,19 +1727,29 @@ enum Parsers {
         
         switch token.kind {
         case .questionMark:
-            return BindParameterSyntax(kind: .unnamed, index: state.indexForUnnamedParam(), range: token.range)
+            return BindParameterSyntax(
+                id: state.nextId(),
+                kind: .unnamed,
+                index: state.indexForUnnamedParam(),
+                range: token.range
+            )
         case .colon:
             let symbol = identifier(state: &state)
             let range = token.range.lowerBound..<symbol.range.upperBound
             let name = IdentifierSyntax(value: ":\(symbol)", range: range)
             let index = state.indexForParam(named: name.value)
-            return BindParameterSyntax(kind: .named(name), index: index, range: range)
+            return BindParameterSyntax(
+                id: state.nextId(),
+                kind: .named(name),
+                index: index,
+                range: range
+            )
         case .at:
             let symbol = identifier(state: &state)
             let range = token.range.lowerBound..<symbol.range.upperBound
             let name = IdentifierSyntax(value: "@\(symbol)", range: range)
             let index = state.indexForParam(named: name.value)
-            return BindParameterSyntax(kind: .named(name), index: index, range: range)
+            return BindParameterSyntax(id: state.nextId(), kind: .named(name), index: index, range: range)
         case .dollarSign:
             let segments = delimited(by: .colon, and: .colon, state: &state, element: identifier)
             let nameRange = token.range.lowerBound..<(segments.last?.range.upperBound ?? state.current.range.upperBound)
@@ -1592,15 +1763,20 @@ enum Parsers {
                 let range = token.range.lowerBound..<suffix.range.upperBound
                 let name = IdentifierSyntax(value: "$\(fullName)(\(suffix))", range: range)
                 let index = state.indexForParam(named: name.value)
-                return BindParameterSyntax(kind: .named(name), index: index, range: range)
+                return BindParameterSyntax(id: state.nextId(), kind: .named(name), index: index, range: range)
             } else {
                 let name = IdentifierSyntax(value: "$\(fullName)", range: nameRange)
                 let index = state.indexForParam(named: name.value)
-                return BindParameterSyntax(kind: .named(name), index: index, range: nameRange)
+                return BindParameterSyntax(id: state.nextId(), kind: .named(name), index: index, range: nameRange)
             }
         default:
             state.diagnostics.add(.init("Invalid bind parameter", at: token.range))
-            return BindParameterSyntax(kind: .unnamed, index: state.indexForUnnamedParam(), range: token.range)
+            return BindParameterSyntax(
+                id: state.nextId(),
+                kind: .unnamed,
+                index: state.indexForUnnamedParam(),
+                range: token.range
+            )
         }
     }
     
@@ -1610,7 +1786,7 @@ enum Parsers {
             after: state.peek.kind
         ) else {
             state.diagnostics.add(.init("Invalid operator", at: state.range))
-            return .init(operator: .plus, range: state.current.range)
+            return .init(id: state.nextId(), operator: .plus, range: state.current.range)
         }
         
         let start = state.current.range
@@ -1621,20 +1797,28 @@ enum Parsers {
              .mod, .plus, .minus, .bitwiseAnd, .bitwuseOr, .shl, .shr, .escape,
              .lt, .gt, .lte, .gte, .eq, .eq2, .neq, .neq2, .match, .like, .regexp,
              .glob, .or, .and, .between, .not, .in, .isnull, .notnull, .notNull, .isDistinctFrom:
-            return OperatorSyntax(operator: op, range: start)
+            return OperatorSyntax(id: state.nextId(), operator: op, range: start)
         case .is:
             if state.take(if: .distinct) {
                 let from = state.take(.from)
-                return OperatorSyntax(operator: .isDistinctFrom, range: start.lowerBound..<from.range.upperBound)
+                return OperatorSyntax(id: state.nextId(), operator: .isDistinctFrom, range: start.lowerBound..<from.range.upperBound)
             } else {
-                return OperatorSyntax(operator: .is, range: start)
+                return OperatorSyntax(id: state.nextId(), operator: .is, range: start)
             }
         case .isNot:
             if state.take(if: .distinct) {
                 let from = state.take(.from)
-                return OperatorSyntax(operator: .isNotDistinctFrom, range: start.lowerBound..<from.range.upperBound)
+                return OperatorSyntax(
+                    id: state.nextId(),
+                    operator: .isNotDistinctFrom,
+                    range: start.lowerBound..<from.range.upperBound
+                )
             } else {
-                return OperatorSyntax(operator: .isNot, range: start.lowerBound..<state.current.range.upperBound)
+                return OperatorSyntax(
+                    id: state.nextId(),
+                    operator: .isNot,
+                    range: start.lowerBound..<state.current.range.upperBound
+                )
             }
         case .isNotDistinctFrom:
             fatalError("guess will not return these since the look ahead is only 2")
@@ -1649,6 +1833,7 @@ enum Parsers {
         state.skip(.as)
         let stmt = try stmt(state: &state)
         return QueryDefinitionStmtSyntax(
+            id: state.nextId(),
             name: name,
             statement: stmt,
             range: define.range.lowerBound..<state.current.range.lowerBound
@@ -1807,17 +1992,17 @@ enum Parsers {
             kind = .invalid
         }
         
-        return LiteralExprSyntax(kind: kind, range: token.range)
+        return LiteralExprSyntax(id: state.nextId(), kind: kind, range: token.range)
     }
     
     static func order(state: inout ParserState) -> OrderSyntax? {
         switch state.current.kind {
         case .asc:
             let token = state.take()
-            return OrderSyntax(kind: .asc, range: token.range)
+            return OrderSyntax(id: state.nextId(), kind: .asc, range: token.range)
         case .desc:
             let token = state.take()
-            return OrderSyntax(kind: .desc, range: token.range)
+            return OrderSyntax(id: state.nextId(), kind: .desc, range: token.range)
         default:
             return nil
         }

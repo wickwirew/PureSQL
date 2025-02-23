@@ -205,7 +205,7 @@ struct CheckEmitter {
         
         if isPrimitive(value) {
             write(value, for: key, typeAsBackupKey: typeAsBackupKey, indent: indent)
-        } else if value is Range<Substring.Index> {
+        } else if (value is Range<Substring.Index> || value is SyntaxId) {
             return // Skip ranges since it would be too much
         } else if let arr = value as? [Any] {
             guard !arr.isEmpty else { return }

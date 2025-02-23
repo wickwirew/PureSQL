@@ -1,15 +1,18 @@
 -- CHECK: JOIN_CONSTRAINT_SYNTAX
--- CHECK:   ON
--- CHECK:     LITERAL 1.0
+-- CHECK:   KIND
+-- CHECK:     ON
+-- CHECK:       LITERAL 1.0
 ON 1;
 
 -- CHECK: JOIN_CONSTRAINT_SYNTAX
--- CHECK:   USING
--- CHECK:     id
+-- CHECK:   KIND
+-- CHECK:     USING
+-- CHECK:       id
 USING (id);
 
 -- CHECK: JOIN_CONSTRAINT_SYNTAX
--- CHECK:   USING
--- CHECK:     foo
--- CHECK:     bar
+-- CHECK:   KIND
+-- CHECK:     USING
+-- CHECK:       foo
+-- CHECK:       bar
 USING (foo, bar);

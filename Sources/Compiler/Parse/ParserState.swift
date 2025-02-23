@@ -13,7 +13,8 @@ struct ParserState {
     private var parameterIndex = 1
     private var namedParamIndices: [Substring: Int] = [:]
     var diagnostics = Diagnostics()
-    	
+    private var syntaxCounter = 0
+    
     init(_ lexer: Lexer) {
         self.lexer = lexer
         self.current = self.lexer.next()
@@ -127,5 +128,10 @@ struct ParserState {
     mutating func resetParameterIndex() {
         parameterIndex = 1
         namedParamIndices.removeAll(keepingCapacity: true)
+    }
+    
+    mutating func nextId() -> SyntaxId {
+        defer { syntaxCounter += 1 }
+        return SyntaxId(syntaxCounter)
     }
 }

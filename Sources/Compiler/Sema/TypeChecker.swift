@@ -852,7 +852,7 @@ extension TypeChecker {
         var sub: Substitution = [:]
         
         for resultColumn in resultColumns {
-            switch resultColumn {
+            switch resultColumn.kind {
             case let .expr(expr, alias):
                 let (type, columnSub, names) = expr.accept(visitor: &self)
                 sub.merge(columnSub)
@@ -901,7 +901,7 @@ extension TypeChecker {
     }
     
     private mutating func infer(join: JoinClauseSyntax.Join) -> Substitution {
-        switch join.constraint {
+        switch join.constraint.kind {
         case let .on(expression):
             let joinSub = infer(join.tableOrSubquery, joinOp: join.op)
             
@@ -931,17 +931,15 @@ extension TypeChecker {
         joinOp: JoinOperatorSyntax? = nil,
         columns usedColumns: Set<Substring> = []
     ) -> Substitution {
-        switch tableOrSubquery {
+        switch tableOrSubquery.kind {
         case let .table(table):
-            let tableName = TableNameSyntax(schema: table.schema, name: table.name)
-            
-            guard let envTable = schema[tableName.name.value] else {
+            guard let envTable = schema[table.name.value] else {
                 // TODO: Add diag
                 env.insert(table.name.value, ty: .error)
                 return [:]
             }
             
-            let isOptional = switch joinOp {
+            let isOptional = switch joinOp?.kind {
             case nil, .inner: false
             default: true
             }

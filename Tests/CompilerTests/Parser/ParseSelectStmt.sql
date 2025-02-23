@@ -7,10 +7,12 @@
 -- CHECK:           DISTINCT false
 -- CHECK:           COLUMNS
 -- CHECK:             RESULT_COLUMN_SYNTAX
--- CHECK:               ALL
+-- CHECK:               KIND
+-- CHECK:                 ALL
 -- CHECK:           FROM
 -- CHECK:             JOIN
 -- CHECK:               TABLE_OR_SUBQUERY
--- CHECK:                 TABLE
--- CHECK:                   NAME foo
+-- CHECK:                 KIND
+-- CHECK:                   TABLE
+-- CHECK:                     NAME foo
 SELECT * FROM foo;

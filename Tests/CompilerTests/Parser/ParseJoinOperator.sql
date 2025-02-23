@@ -1,66 +1,79 @@
--- CHECK: JOIN_OPERATOR_SYNTAX natural
+-- CHECK: JOIN_OPERATOR_SYNTAX
+-- CHECK:   KIND natural
 NATURAL JOIN;
 
 -- CHECK: JOIN_OPERATOR_SYNTAX
--- CHECK:   LEFT
--- CHECK:     NATURAL true
--- CHECK:     OUTER false
+-- CHECK:   KIND
+-- CHECK:     LEFT
+-- CHECK:       NATURAL true
+-- CHECK:       OUTER false
 NATURAL LEFT JOIN;
 
 -- CHECK: JOIN_OPERATOR_SYNTAX
--- CHECK:   LEFT
--- CHECK:     NATURAL true
--- CHECK:     OUTER true
+-- CHECK:   KIND
+-- CHECK:     LEFT
+-- CHECK:       NATURAL true
+-- CHECK:       OUTER true
 NATURAL LEFT OUTER JOIN;
 
 -- CHECK: JOIN_OPERATOR_SYNTAX
--- CHECK:   RIGHT
--- CHECK:     NATURAL true
--- CHECK:     OUTER false
+-- CHECK:   KIND
+-- CHECK:     RIGHT
+-- CHECK:       NATURAL true
+-- CHECK:       OUTER false
 NATURAL RIGHT JOIN;
 
 -- CHECK: JOIN_OPERATOR_SYNTAX
--- CHECK:   FULL
--- CHECK:     NATURAL true
--- CHECK:     OUTER false
+-- CHECK:   KIND
+-- CHECK:     FULL
+-- CHECK:       NATURAL true
+-- CHECK:       OUTER false
 NATURAL FULL JOIN;
 
 -- CHECK: JOIN_OPERATOR_SYNTAX
--- CHECK:   INNER
--- CHECK:     NATURAL true
+-- CHECK:   KIND
+-- CHECK:     INNER
+-- CHECK:       NATURAL true
 NATURAL INNER JOIN;
 
 -- CHECK: JOIN_OPERATOR_SYNTAX
--- CHECK:   LEFT
--- CHECK:     NATURAL false
--- CHECK:     OUTER false
+-- CHECK:   KIND
+-- CHECK:     LEFT
+-- CHECK:       NATURAL false
+-- CHECK:       OUTER false
 LEFT JOIN;
 
 -- CHECK: JOIN_OPERATOR_SYNTAX
--- CHECK:   LEFT
--- CHECK:     NATURAL false
--- CHECK:     OUTER true
+-- CHECK:   KIND
+-- CHECK:     LEFT
+-- CHECK:       NATURAL false
+-- CHECK:       OUTER true
 LEFT OUTER JOIN;
 
 -- CHECK: JOIN_OPERATOR_SYNTAX
--- CHECK:   RIGHT
--- CHECK:     NATURAL false
--- CHECK:     OUTER false
+-- CHECK:   KIND
+-- CHECK:     RIGHT
+-- CHECK:       NATURAL false
+-- CHECK:       OUTER false
 RIGHT JOIN;
 
 -- CHECK: JOIN_OPERATOR_SYNTAX
--- CHECK:   FULL
--- CHECK:     NATURAL false
--- CHECK:     OUTER false
+-- CHECK:   KIND
+-- CHECK:     FULL
+-- CHECK:       NATURAL false
+-- CHECK:       OUTER false
 FULL JOIN;
 
 -- CHECK: JOIN_OPERATOR_SYNTAX
--- CHECK:   INNER
--- CHECK:     NATURAL false
+-- CHECK:   KIND
+-- CHECK:     INNER
+-- CHECK:       NATURAL false
 INNER JOIN;
 
--- CHECK: JOIN_OPERATOR_SYNTAX comma
+-- CHECK: JOIN_OPERATOR_SYNTAX
+-- CHECK:   KIND comma
 ,;
 
--- CHECK: JOIN_OPERATOR_SYNTAX cross
+-- CHECK: JOIN_OPERATOR_SYNTAX
+-- CHECK:   KIND cross
 CROSS JOIN;
