@@ -45,7 +45,7 @@ public struct SchemaCompiler {
     
     /// Infers the signature of the stmt
     private mutating func signature<S: StmtSyntax>(of stmt: S) -> Signature {
-        var inferrer = TypeInferrer(schema: schema)
+        var inferrer = TypeChecker(schema: schema)
         let signature = inferrer.signature(for: stmt)
         self.diagnostics.merge(inferrer.diagnostics)
         return signature

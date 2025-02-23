@@ -1,5 +1,5 @@
 //
-//  TypeInferrer.swift
+//  TypeChecker.swift
 //
 //
 //  Created by Wes Wickwire on 10/19/24.
@@ -7,14 +7,14 @@
 
 import OrderedCollections
 
-struct TypeInferrer {
+struct TypeChecker {
     /// The environment in which the query executes. Any joined in tables
     /// will be added to this.
     private var env: Environment
     /// The entire database schema
     private let schema: Schema
     /// Any diagnostics that are emitted during compilation
-    private(set) var diagnostics: Diagnostics
+    private(set) var diagnostics = Diagnostics()
     /// Number of type variables. Incremented each time a new
     /// fresh type var is created so all are unique
     private var tyVarCounter = 0
@@ -32,12 +32,10 @@ struct TypeInferrer {
     
     init(
         env: Environment = Environment(),
-        schema: Schema,
-        diagnostics: Diagnostics = Diagnostics()
+        schema: Schema
     ) {
         self.env = env
         self.schema = schema
-        self.diagnostics = diagnostics
     }
     
     /// Calculates the signature for a single expression.
@@ -224,7 +222,7 @@ struct TypeInferrer {
     /// Performs the inference in a new environment.
     /// Useful for subqueries that don't inhereit our current joins.
     private mutating func inNewEnvironment<Output>(
-        _ action: (inout TypeInferrer) -> Output
+        _ action: (inout TypeChecker) -> Output
     ) -> Output {
         var inferrer = self
         inferrer.env = Environment()
@@ -237,7 +235,7 @@ struct TypeInferrer {
     }
 }
 
-extension TypeInferrer: ExprSyntaxVisitor {
+extension TypeChecker: ExprSyntaxVisitor {
     mutating func visit(_ expr: borrowing LiteralExprSyntax) -> (Type, Substitution, Names) {
         switch expr.kind {
         case let .numeric(_, isInt):
@@ -466,7 +464,7 @@ extension TypeInferrer: ExprSyntaxVisitor {
     }
 }
 
-extension TypeInferrer: StmtSyntaxVisitor {
+extension TypeChecker: StmtSyntaxVisitor {
     mutating func visit(_ stmt: borrowing CreateTableStmtSyntax) -> (Type?, Substitution) {
         fatalError()
     }
@@ -504,7 +502,7 @@ extension TypeInferrer: StmtSyntaxVisitor {
     }
 }
 
-extension TypeInferrer {
+extension TypeChecker {
     mutating func infer(
         select: SelectStmtSyntax,
         potentialNames: [IdentifierSyntax]? = nil

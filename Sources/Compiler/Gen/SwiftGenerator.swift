@@ -1,5 +1,5 @@
 //
-//  Swift.swift
+//  SwiftGenerator.swift
 //  Feather
 //
 //  Created by Wes Wickwire on 2/16/25.
@@ -8,7 +8,7 @@
 import SwiftSyntax
 import SwiftSyntaxBuilder
 
-public struct Swift: Language {
+public struct SwiftGenerator: Language {
     public typealias File = SourceFileSyntax
     public typealias Query = [DeclSyntax]
     public typealias Migration = StringLiteralExprSyntax

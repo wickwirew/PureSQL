@@ -39,9 +39,10 @@ class CompilerTests: XCTestCase {
             sqlFile: "CompileIsSingleResult",
             parse: { contents in
                 var schemaCompiler = SchemaCompiler()
-                schemaCompiler.compile(contents)
+                _ = schemaCompiler.compile(contents)
                 
                 var compiler = QueryCompiler(
+                    source: contents,
                     schema: schemaCompiler.schema,
                     pragmas: schemaCompiler.pragmas.featherPragmas
                 )
@@ -63,7 +64,7 @@ func checkSchema(
         compile: sqlFile,
         parse: { contents in
             var schemaCompiler = SchemaCompiler()
-            schemaCompiler.compile(contents)
+            _ = schemaCompiler.compile(contents)
             return (Array(schemaCompiler.schema.values), schemaCompiler.allDiagnostics)
         },
         dump: dump,
@@ -82,9 +83,10 @@ func checkQueries(
         compile: sqlFile,
         parse: { contents in
             var schemaCompiler = SchemaCompiler()
-            schemaCompiler.compile(contents)
+            _ = schemaCompiler.compile(contents)
             
             var compiler = QueryCompiler(
+                source: contents,
                 schema: schemaCompiler.schema,
                 pragmas: schemaCompiler.pragmas.featherPragmas
             )

@@ -46,7 +46,7 @@ public struct DatabaseMacro: MemberMacro {
         }
         
         var compiler = Compiler()
-        var queries: [Swift.Query] = []
+        var queries: [SwiftGenerator.Query] = []
         
         for (contents, syntax) in migrationsSyntax {
             for diagnostic in compiler.compile(migration: contents).elements {
@@ -59,7 +59,7 @@ public struct DatabaseMacro: MemberMacro {
             
             for statement in statements {
                 guard let name = statement.name else { continue }
-                try queries.append(Swift.query(source: contents, statement: statement, name: name))
+                try queries.append(SwiftGenerator.query(statement: statement, name: name))
             }
             
             for diagnostic in diagnostics.elements {

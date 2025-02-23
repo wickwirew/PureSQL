@@ -26,7 +26,7 @@ struct Feather: ParsableCommand {
     var output: String? = nil
 
     mutating func run() throws {
-        try generate(language: Swift.self)
+        try generate(language: SwiftGenerator.self)
     }
     
     @discardableResult
