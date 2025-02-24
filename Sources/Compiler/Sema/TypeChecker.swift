@@ -7,6 +7,10 @@
 
 import OrderedCollections
 
+struct InferenceContext {
+    
+}
+
 struct TypeChecker {
     /// The environment in which the query executes. Any joined in tables
     /// will be added to this.
@@ -22,10 +26,6 @@ struct TypeChecker {
     /// the final type. The overall substitution will have to be applied
     /// to the type.
     private var parameterTypes: [BindParameterSyntax.Index: Type] = [:]
-    /// Any constraints over a type. These are not constraints as in a
-    /// constraint based inference algorithm but rather constraints on a type
-    /// like type classes, protocols, or interfaces.
-    private var constraints: Constraints = [:]
     /// We are not only inferring types but potential names for the parameters.
     /// Any result will be added here
     private var parameterNames: [BindParameterSyntax.Index: Substring] = [:]
@@ -62,15 +62,12 @@ struct TypeChecker {
         sub: Substitution,
         outputCardinality: Signature.Cardinality
     ) -> Signature {
-        let constraints = finalizeConstraints(with: sub)
-        
         return Signature(
             parameters: parameterTypes.reduce(into: [:]) { params, value in
                 params[value.key] = Signature.Parameter(
                     type: finalType(
                         for: value.value,
-                        substitution: sub,
-                        constraints: constraints
+                        substitution: sub
                     ),
                     index: value.key,
                     name: parameterNames[value.key]
@@ -79,8 +76,7 @@ struct TypeChecker {
             output: ty.map { ty in
                 finalType(
                     for: ty.apply(sub),
-                    substitution: sub,
-                    constraints: constraints
+                    substitution: sub
                 )
             },
             outputCardinality: outputCardinality
@@ -92,27 +88,21 @@ struct TypeChecker {
     /// found one will be guessed from the constraints.
     private func finalType(
         for ty: Type,
-        substitution: Substitution,
-        constraints: Constraints
+        substitution: Substitution
     ) -> Type {
         let ty = ty.apply(substitution)
         
         switch ty.apply(substitution) {
         case let .var(tv):
-            // The type variable was never bound to a concrete type.
-            // Check if the constraints gives any clues about a default type
-            // if none just assume `ANY`
-            if let constraints = constraints[tv], constraints.contains(.numeric) {
-                return .integer
-            }
-            return .any
+            // Was never bound to a concrete type. Try to guess
+            // based of the ty var kind
+            return tv.defaultType
         case let .row(tys):
             // Finalize all of the inner types in the row.
             return .row(tys.mapTypes {
                 finalType(
                     for: $0,
-                    substitution: substitution,
-                    constraints: constraints
+                    substitution: substitution
                 )
             })
         default:
@@ -120,31 +110,13 @@ struct TypeChecker {
         }
     }
     
-    /// Applies the substitution to the overall constraints
-    /// so it is the final type to in the map
-    private mutating func finalizeConstraints(
-        with substitution: Substitution
-    ) -> Constraints {
-        var result: [TypeVariable: TypeConstraints] = [:]
-        
-        for (tv, constraints) in constraints {
-            let ty = Type.var(tv).apply(substitution)
-            
-            if case let .var(tv) = ty {
-                result[tv] = constraints
-            } else {
-                // TODO: If it is a non type variable we need to validate
-                // the type meets the constraints requirements.
-            }
-        }
-        
-        return result
-    }
-    
     /// Creates a fresh new unique type variable
-    private mutating func freshTyVar(for param: BindParameterSyntax? = nil) -> TypeVariable {
+    private mutating func freshTyVar(
+        for param: BindParameterSyntax? = nil,
+        kind: TypeVariable.Kind = .general
+    ) -> TypeVariable {
         defer { tyVarCounter += 1 }
-        let ty = TypeVariable(tyVarCounter)
+        let ty = TypeVariable(tyVarCounter, kind: kind)
         if let param {
             parameterTypes[param.index] = .var(ty)
         }
@@ -230,7 +202,6 @@ struct TypeChecker {
         diagnostics = inferrer.diagnostics
         tyVarCounter = inferrer.tyVarCounter
         parameterTypes = inferrer.parameterTypes
-        constraints = inferrer.constraints
         return result
     }
 }
@@ -240,8 +211,7 @@ extension TypeChecker: ExprSyntaxVisitor {
         switch expr.kind {
         case let .numeric(_, isInt):
             if isInt {
-                let tv = freshTyVar()
-                constraints[tv] = .numeric
+                let tv = freshTyVar(kind: isInt ? .integer : .float)
                 return (.var(tv), [:], .none)
             } else {
                 return (.real, [:], .none)

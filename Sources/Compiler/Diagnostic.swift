@@ -151,4 +151,12 @@ extension Diagnostic {
     ) -> Diagnostic {
         return Diagnostic("Table '\(table)' already has a primary key", at: range)
     }
+    
+    static func unableToUnify(
+        _ t1: Type,
+        with t2: Type,
+        at range: Range<Substring.Index>
+    ) -> Diagnostic {
+        return Diagnostic("Unable to unify types '\(t1)' and '\(t2)'", at: range)
+    }
 }
