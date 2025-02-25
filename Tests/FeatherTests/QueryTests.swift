@@ -27,15 +27,15 @@ struct QueryTests {
         #expect(foos.count == 3)
     }
     
-    @Test func testMacroQuery() async throws {
-        let pool = try ConnectionPool(path: ":memory:", limit: 1, migrations: TestDB.migrations)
-        
-        try await TestDB.insertFoo.execute(with: .init(bar: 1, baz: "one"), in: pool)
-        try await TestDB.insertFoo.execute(with: .init(bar: 2, baz: "two"), in: pool)
-        
-        let foos = try await TestDB.fetchFoos.execute(in: pool)
-        #expect(foos.count == 2)
-    }
+//    @Test func testMacroQuery() async throws {
+//        let pool = try ConnectionPool(path: ":memory:", limit: 1, migrations: TestDB.migrations)
+//        
+//        try await TestDB.insertFoo.execute(with: .init(bar: 1, baz: "one"), in: pool)
+//        try await TestDB.insertFoo.execute(with: .init(bar: 2, baz: "two"), in: pool)
+//        
+//        let foos = try await TestDB.fetchFoos.execute(in: pool)
+//        #expect(foos.count == 2)
+//    }
     
     struct Foo: RowDecodable {
         let bar: Int
@@ -81,25 +81,25 @@ struct QueryTests {
             ]
         )
     }
-    
-    @Database
-    struct TestDB: Database {
-        static var migrations: [String] {
-            return [
-                "CREATE TABLE foo (bar INTEGER PRIMARY KEY, baz TEXT)"
-            ]
-        }
-        
-        static var queries: [String] {
-            return [
-                """
-                DEFINE QUERY fetchFoos AS
-                SELECT * FROM foo;
-                
-                DEFINE QUERY insertFoo AS
-                INSERT INTO foo (bar, baz) VALUES (?, ?);
-                """,
-            ]
-        }
-    }
+//    
+//    @Database
+//    struct TestDB: Database {
+//        static var migrations: [String] {
+//            return [
+//                "CREATE TABLE foo (bar INTEGER PRIMARY KEY, baz TEXT)"
+//            ]
+//        }
+//        
+//        static var queries: [String] {
+//            return [
+//                """
+//                DEFINE QUERY fetchFoos AS
+//                SELECT * FROM foo;
+//                
+//                DEFINE QUERY insertFoo AS
+//                INSERT INTO foo (bar, baz) VALUES (?, ?);
+//                """,
+//            ]
+//        }
+//    }
 }

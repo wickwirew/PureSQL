@@ -5,8 +5,8 @@
 //  Created by Wes Wickwire on 12/17/24.
 //
 
-/// Manages the inference for the unnamed bind parameters.
-enum Names {
+/// Represents the state of name for an expression.
+enum Name {
     /// Returned when an expression needs a name.
     /// `index` is the bind parameter index
     case needed(index: Int)

@@ -184,7 +184,7 @@ class TypeCheckerTests: XCTestCase {
         in scope: Environment = Environment()
     ) -> Signature {
         let (expr, _) = Parsers.parse(source: source, parser: { Parsers.expr(state: &$0) })
-        var typeInferrer = TypeChecker(env: scope, schema: [:])
+        var typeInferrer = StmtTypeChecker(env: scope, schema: [:])
         let signature = typeInferrer.signature(for: expr)
         return signature
     }
@@ -195,9 +195,9 @@ class TypeCheckerTests: XCTestCase {
         in scope: Environment = Environment()
     ) -> (Signature, Diagnostics) {
         let (expr, exprDiags) = Parsers.parse(source: source, parser: { Parsers.expr(state: &$0) })
-        var typeInferrer = TypeChecker(env: scope, schema: [:])
+        var typeInferrer = StmtTypeChecker(env: scope, schema: [:])
         let signature = typeInferrer.signature(for: expr)
-        let diagnostics = typeInferrer.diagnostics.merging(exprDiags)
+        let diagnostics = typeInferrer.allDiagnostics.merging(exprDiags)
         return (signature, diagnostics)
     }
     

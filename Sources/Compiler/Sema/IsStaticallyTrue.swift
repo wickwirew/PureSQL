@@ -82,7 +82,7 @@ struct IsStaticallyTrue: ExprSyntaxVisitor {
     
     mutating func visit(_ expr: borrowing LiteralExprSyntax) -> Bool {
         switch expr.kind {
-        case .numeric(let numericSyntax, let isInt):
+        case .numeric(let numericSyntax, _):
             return numericSyntax != 0
         case .true:
             return true

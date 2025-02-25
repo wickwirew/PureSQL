@@ -41,9 +41,9 @@ public struct QueryCompiler {
     }
     
     private mutating func signature<S: StmtSyntax>(of stmt: S) -> Signature {
-        var inferrer = TypeChecker(schema: schema)
+        var inferrer = StmtTypeChecker(schema: schema)
         let signature = inferrer.signature(for: stmt)
-        self.diagnostics.merge(inferrer.diagnostics)
+        self.diagnostics.merge(inferrer.allDiagnostics)
         return signature
     }
 }
