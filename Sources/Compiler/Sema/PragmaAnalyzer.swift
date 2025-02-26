@@ -19,16 +19,16 @@ public struct FeatherPragmas: OptionSet, Sendable {
     }
 }
 
-public struct PragmaAnalyzer {
-    public private(set) var featherPragmas: FeatherPragmas
-    public private(set) var diagnostics = Diagnostics()
+struct PragmaAnalyzer {
+    private(set) var featherPragmas: FeatherPragmas
+    private(set) var diagnostics = Diagnostics()
     private var isStaticallyTrue = IsStaticallyTrue(allowOnOff: true)
     
-    public init(featherPragmas: FeatherPragmas = FeatherPragmas()) {
+    init(featherPragmas: FeatherPragmas = FeatherPragmas()) {
         self.featherPragmas = featherPragmas
     }
     
-    public func isOn(_ pragma: FeatherPragmas) -> Bool {
+    func isOn(_ pragma: FeatherPragmas) -> Bool {
         return featherPragmas.contains(pragma)
     }
     
@@ -57,6 +57,14 @@ public struct PragmaAnalyzer {
     }
     
     private mutating func isTrue(_ expr: ExprSyntax) -> Bool {
-        return expr.accept(visitor: &isStaticallyTrue)
+        guard expr.accept(visitor: &isStaticallyTrue) else {
+            diagnostics.add(.init(
+                "Value is not a static boolean, expected TRUE, FALSE, 1 or 0",
+                at: expr.range
+            ))
+            return false
+        }
+        
+        return true
     }
 }
