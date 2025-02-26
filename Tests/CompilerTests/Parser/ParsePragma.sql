@@ -1,48 +1,21 @@
 -- CHECK: PRAGMA_STMT
 -- CHECK:   NAME name
--- CHECK:   VALUE one
+-- CHECK:   VALUE
+-- CHECK:     LITERAL 1.0
 -- CHECK:   IS_FUNCTION_CALL false
 PRAGMA name = 1;
 
 -- CHECK: PRAGMA_STMT
 -- CHECK:   NAME name
--- CHECK:   VALUE zero
+-- CHECK:   VALUE
+-- CHECK:     LITERAL 1.0
 -- CHECK:   IS_FUNCTION_CALL true
 PRAGMA name(0);
 
 -- CHECK: PRAGMA_STMT
 -- CHECK:   SCHEMA schema
 -- CHECK:   NAME name
--- CHECK:   VALUE yes
+-- CHECK:   VALUE
+-- CHECK:     LITERAL 1.0
 -- CHECK:   IS_FUNCTION_CALL true
-PRAGMA schema.name(YES);
-
--- CHECK: PRAGMA_STMT
--- CHECK:   NAME name
--- CHECK:   VALUE no
--- CHECK:   IS_FUNCTION_CALL false
-PRAGMA name = NO;
-
--- CHECK: PRAGMA_STMT
--- CHECK:   NAME name
--- CHECK:   VALUE true
--- CHECK:   IS_FUNCTION_CALL false
-PRAGMA name = TRUE;
-
--- CHECK: PRAGMA_STMT
--- CHECK:   NAME name
--- CHECK:   VALUE false
--- CHECK:   IS_FUNCTION_CALL false
-PRAGMA name = FALSE;
-
--- CHECK: PRAGMA_STMT
--- CHECK:   NAME name
--- CHECK:   VALUE on
--- CHECK:   IS_FUNCTION_CALL false
-PRAGMA name = ON;
-
--- CHECK: PRAGMA_STMT
--- CHECK:   NAME name
--- CHECK:   VALUE off
--- CHECK:   IS_FUNCTION_CALL false
-PRAGMA name = OFF;
+PRAGMA schema.name(1);

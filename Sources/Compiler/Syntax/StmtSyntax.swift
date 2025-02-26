@@ -531,20 +531,9 @@ struct PragmaStmt: StmtSyntax {
     let id: SyntaxId
     let schema: IdentifierSyntax?
     let name: IdentifierSyntax
-    let value: Value?
+    let value: ExprSyntax?
     let isFunctionCall: Bool
     let range: Range<Substring.Index>
-    
-    enum Value {
-        case on
-        case off
-        case `true`
-        case `false`
-        case one
-        case zero
-        case yes
-        case no
-    }
     
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
         return visitor.visit(self)
