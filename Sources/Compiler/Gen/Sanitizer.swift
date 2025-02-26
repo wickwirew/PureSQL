@@ -82,4 +82,12 @@ extension Sanitizer: StmtSyntaxVisitor {
     func visit(_ stmt: borrowing PragmaStmt) -> [Range<Substring.Index>] { [] }
     
     func visit(_ stmt: borrowing DropTableStmtSyntax) -> [Range<Substring.Index>] { [] }
+    
+    func visit(_ stmt: borrowing CreateIndexStmtSyntax) -> [Range<Substring.Index>] { [] }
+    
+    func visit(_ stmt: borrowing DropIndexStmtSyntax) -> [Range<Substring.Index>] { [] }
+    
+    func visit(_ stmt: borrowing ReindexStmtSyntax) -> [Range<Substring.Index>] { [] }
+    
+    func visit(_ stmt: borrowing CreateViewStmtSyntax) -> [Range<Substring.Index>] { [] }
 }

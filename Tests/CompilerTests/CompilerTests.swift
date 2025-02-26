@@ -38,6 +38,11 @@ class CompilerTests: XCTestCase {
         try checkQueries(compile: "CompileDropTable")
     }
     
+    func testView() throws {
+        try checkSchema(compile: "CompileView", prefix: "CHECK-SCHEMA")
+        try checkQueries(compile: "CompileView", prefix: "CHECK-QUERIES")
+    }
+    
     func testOutputCountInference() throws {
         try check(
             sqlFile: "CompileIsSingleResult",
@@ -86,6 +91,7 @@ struct CheckSignature: Checkable {
 
 func checkSchema(
     compile sqlFile: String,
+    prefix: String = "CHECK",
     dump: Bool = false,
     file: StaticString = #filePath,
     line: UInt = #line
@@ -101,6 +107,7 @@ func checkSchema(
             )
             return (Array(compiler.schema.values), diags)
         },
+        prefix: prefix,
         dump: dump,
         file: file,
         line: line
@@ -109,6 +116,7 @@ func checkSchema(
 
 func checkQueries(
     compile sqlFile: String,
+    prefix: String = "CHECK",
     dump: Bool = false,
     file: StaticString = #filePath,
     line: UInt = #line
@@ -127,6 +135,7 @@ func checkQueries(
                 diags
             )
         },
+        prefix: prefix,
         dump: dump,
         file: file,
         line: line
@@ -136,6 +145,7 @@ func checkQueries(
 func checkWithErrors<Output>(
     compile sqlFile: String,
     parse: (String) -> ([Output], Diagnostics),
+    prefix: String = "CHECK",
     dump: Bool = false,
     file: StaticString = #filePath,
     line: UInt = #line
@@ -149,7 +159,7 @@ func checkWithErrors<Output>(
             diagnostics.append(contentsOf: diags.elements)
             return output
         },
-        prefix: "CHECK",
+        prefix: prefix,
         dump: dump,
         file: file,
         line: line

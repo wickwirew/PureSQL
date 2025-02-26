@@ -122,6 +122,22 @@ final class ParserTests: XCTestCase {
     func testDropTable() throws {
         try check(sqlFile: "ParseDropTableStmt", parser: Parsers.dropTable)
     }
+    
+    func testCreateIndex() throws {
+        try check(sqlFile: "ParseCreateIndexStmt", parser: Parsers.createIndex)
+    }
+    
+    func testDropIndex() throws {
+        try check(sqlFile: "ParseDropIndexStmt", parser: Parsers.dropIndex)
+    }
+    
+    func testReindex() throws {
+        try check(sqlFile: "ParseReindexStmt", parser: Parsers.reindex)
+    }
+    
+    func testCreateView() throws {
+        try check(sqlFile: "ParseCreateViewStmt", parser: Parsers.createView, dump: true)
+    }
 }
 
 func check<Output>(

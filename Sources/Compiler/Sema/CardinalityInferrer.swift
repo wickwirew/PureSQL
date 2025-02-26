@@ -124,6 +124,14 @@ extension CardinalityInferrer: StmtSyntaxVisitor {
     mutating func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> Cardinality {
         return stmt.statement.accept(visitor: &self)
     }
+    
+    mutating func visit(_ stmt: borrowing CreateIndexStmtSyntax) -> Cardinality { .many }
+    
+    mutating func visit(_ stmt: borrowing DropIndexStmtSyntax) -> Cardinality { .many }
+    
+    mutating func visit(_ stmt: borrowing ReindexStmtSyntax) -> Cardinality { .many }
+    
+    mutating func visit(_ stmt: borrowing CreateViewStmtSyntax) -> Cardinality { .many }
 }
 
 /// We need to look for a `primaryKey = value`. This can get complicated since

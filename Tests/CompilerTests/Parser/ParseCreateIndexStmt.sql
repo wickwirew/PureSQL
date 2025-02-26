@@ -1,0 +1,42 @@
+-- CHECK: CREATE_INDEX_STMT_SYNTAX
+-- CHECK:   UNIQUE true
+-- CHECK:   IF_NOT_EXISTS false
+-- CHECK:   NAME foo
+-- CHECK:   TABLE bar
+-- CHECK:   INDEXED_COLUMNS
+-- CHECK:     INDEXED_COLUMN_SYNTAX
+-- CHECK:       EXPR
+-- CHECK:         COLUMN
+-- CHECK:           COLUMN baz
+CREATE UNIQUE INDEX foo ON bar (baz);
+
+-- CHECK: CREATE_INDEX_STMT_SYNTAX
+-- CHECK:   UNIQUE false
+-- CHECK:   IF_NOT_EXISTS true
+-- CHECK:   NAME foo
+-- CHECK:   TABLE bar
+-- CHECK:   INDEXED_COLUMNS
+-- CHECK:     INDEXED_COLUMN_SYNTAX
+-- CHECK:       EXPR
+-- CHECK:         COLUMN
+-- CHECK:           COLUMN baz
+-- CHECK:     INDEXED_COLUMN_SYNTAX
+-- CHECK:       EXPR
+-- CHECK:         COLUMN
+-- CHECK:           COLUMN qux
+CREATE INDEX IF NOT EXISTS foo ON bar (baz, qux);
+
+-- CHECK: CREATE_INDEX_STMT_SYNTAX
+-- CHECK:   UNIQUE false
+-- CHECK:   IF_NOT_EXISTS false
+-- CHECK:   SCHEMA_NAME meow
+-- CHECK:   NAME foo
+-- CHECK:   TABLE bar
+-- CHECK:   INDEXED_COLUMNS
+-- CHECK:     INDEXED_COLUMN_SYNTAX
+-- CHECK:       EXPR
+-- CHECK:         COLUMN
+-- CHECK:           COLUMN baz
+-- CHECK:   WHERE_EXPR
+-- CHECK:     ...
+CREATE INDEX meow.foo ON bar (baz) WHERE qux = 1;

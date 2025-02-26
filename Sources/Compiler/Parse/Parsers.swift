@@ -42,8 +42,14 @@ enum Parsers {
         switch (state.current.kind, state.peek.kind) {
         case (.create, .table):
             return createTableStmt(state: &state)
+        case (.create, .index):
+            return createIndex(state: &state)
         case (.alter, .table):
             return try alterStmt(state: &state)
+        case (.create, .view),
+            (.create, .temp) where state.peek2.kind == .view,
+            (.create, .temporary) where state.peek2.kind == .view:
+            return try createView(state: &state)
         case (.select, _):
             return try selectStmt(state: &state)
         case (.insert, _):
@@ -56,8 +62,12 @@ enum Parsers {
             return try definition(state: &state)
         case (.pragma, _):
             return pragma(state: &state)
-        case (.drop, _):
+        case (.drop, .table):
             return dropTable(state: &state)
+        case (.drop, .index):
+            return dropIndex(state: &state)
+        case (.reindex, _):
+            return reindex(state: &state)
         case (.with, _):
             let start = state.current
             let cte = try withCte(state: &state)
@@ -237,6 +247,134 @@ enum Parsers {
             isFunctionCall: isFunctionCall,
             range: state.range(from: start)
         )
+    }
+    
+    /// https://www.sqlite.org/lang_createindex.html
+    static func createIndex(state: inout ParserState) -> CreateIndexStmtSyntax {
+        let create = state.take(.create)
+        let unique = state.take(if: .unique)
+        state.consume(.index)
+        let ifNotExists = ifNotExists(state: &state)
+        
+        let schema: IdentifierSyntax?
+        if state.peek.kind == .dot {
+            schema = identifier(state: &state)
+            state.consume(.dot)
+        } else {
+            schema = nil
+        }
+        
+        let indexName = identifier(state: &state)
+        state.consume(.on)
+        let tableName = identifier(state: &state)
+        let indexedColumns = commaDelimitedInParens(state: &state, element: indexedColumn)
+        let whereExpr = state.take(if: .where) ? expr(state: &state) : nil
+        
+        return CreateIndexStmtSyntax(
+            id: state.nextId(),
+            unique: unique,
+            ifNotExists: ifNotExists,
+            schemaName: schema,
+            name: indexName,
+            table: tableName,
+            indexedColumns: indexedColumns,
+            whereExpr: whereExpr,
+            range: state.range(from: create)
+        )
+    }
+    
+    /// https://www.sqlite.org/lang_dropindex.html
+    static func dropIndex(state: inout ParserState) -> DropIndexStmtSyntax {
+        let drop = state.take(.drop)
+        state.consume(.index)
+        let ifExists = ifExists(state: &state)
+        
+        let schema: IdentifierSyntax?
+        if state.peek.kind == .dot {
+            schema = identifier(state: &state)
+            state.consume(.dot)
+        } else {
+            schema = nil
+        }
+        
+        let indexName = identifier(state: &state)
+        
+        return DropIndexStmtSyntax(
+            id: state.nextId(),
+            ifExists: ifExists,
+            schemaName: schema,
+            name: indexName,
+            range: state.range(from: drop)
+        )
+    }
+    
+    /// https://www.sqlite.org/lang_reindex.html
+    static func reindex(state: inout ParserState) -> ReindexStmtSyntax {
+        let reindex = state.take(.reindex)
+        
+        let schema: IdentifierSyntax?
+        if state.peek.kind == .dot {
+            schema = identifier(state: &state)
+            state.consume(.dot)
+        } else {
+            schema = nil
+        }
+        
+        let name = state.current.kind.isSymbol ? identifier(state: &state) : nil
+        return ReindexStmtSyntax(
+            id: state.nextId(),
+            schemaName: schema,
+            name: name,
+            range: state.range(from: reindex)
+        )
+    }
+    
+    /// https://www.sqlite.org/lang_createview.html
+    static func createView(state: inout ParserState) throws -> CreateViewStmtSyntax {
+        let create = state.take(.create)
+        let temp = state.take(if: .temp) || state.take(if: .temporary)
+        state.consume(.view)
+        let ifNotExists = ifNotExists(state: &state)
+        
+        let schema: IdentifierSyntax?
+        if state.peek.kind == .dot {
+            schema = identifier(state: &state)
+            state.consume(.dot)
+        } else {
+            schema = nil
+        }
+        let name = identifier(state: &state)
+        
+        let columns = state.current.kind == .openParen
+            ? commaDelimitedInParens(state: &state, element: identifier)
+            : []
+        state.consume(.as)
+        let select = try selectStmt(state: &state)
+        return CreateViewStmtSyntax(
+            id: state.nextId(),
+            temp: temp,
+            ifNotExists: ifNotExists,
+            schemaName: schema,
+            name: name,
+            columnNames: columns,
+            select: select,
+            range: state.range(from: create)
+        )
+    }
+    
+    /// Will optionally parse `IF NOT EXISTS` if the first token is `IF`
+    static func ifNotExists(state: inout ParserState) -> Bool {
+        guard state.take(if: .if) else { return false }
+        state.consume(.not)
+        state.consume(.exists)
+        return true
+    }
+    
+    /// Will optionally parse `IF EXISTS` if the first token is `IF`
+    static func ifExists(state: inout ParserState) -> Bool {
+        guard state.take(if: .if) else { return false }
+        state.consume(.exists)
+        return true
     }
     
     /// https://www.sqlite.org/syntax/upsert-clause.html
@@ -1111,11 +1249,7 @@ enum Parsers {
         let isTemporary = state.take(if: .temp, or: .temporary)
         state.consume(.table)
         
-        let ifNotExists = state.take(if: .if)
-        if ifNotExists {
-            state.consume(.not)
-            state.consume(.exists)
-        }
+        let ifNotExists = ifNotExists(state: &state)
         
         if state.is(of: .as) {
             fatalError("Implement SELECT statement")
@@ -1529,10 +1663,7 @@ enum Parsers {
         let drop = state.take(.drop)
         state.consume(.table)
         
-        let ifExists = state.take(if: .if)
-        if ifExists {
-            state.consume(.exists)
-        }
+        let ifExists = ifExists(state: &state)
         
         let table = tableName(state: &state)
         return DropTableStmtSyntax(

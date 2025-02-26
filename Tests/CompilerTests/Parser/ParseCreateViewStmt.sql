@@ -1,0 +1,27 @@
+-- CHECK: CREATE_VIEW_STMT_SYNTAX
+-- CHECK:   TEMP false
+-- CHECK:   IF_NOT_EXISTS false
+-- CHECK:   SCHEMA_NAME main
+-- CHECK:   NAME foo
+-- CHECK:   SELECT
+-- CHECK:     ...
+CREATE VIEW main.foo AS SELECT * FROM bar;
+
+-- CHECK: CREATE_VIEW_STMT_SYNTAX
+-- CHECK:   TEMP true
+-- CHECK:   IF_NOT_EXISTS false
+-- CHECK:   NAME foo
+-- CHECK:   COLUMN_NAMES
+-- CHECK:     qux
+-- CHECK:     meow
+-- CHECK:   SELECT
+-- CHECK:     ...
+CREATE TEMP VIEW foo (qux, meow) AS SELECT * FROM bar;
+
+-- CHECK: CREATE_VIEW_STMT_SYNTAX
+-- CHECK:   TEMP true
+-- CHECK:   IF_NOT_EXISTS false
+-- CHECK:   NAME foo
+-- CHECK:   SELECT
+-- CHECK:     ...
+CREATE TEMPORARY VIEW foo AS SELECT * FROM bar;

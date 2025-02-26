@@ -147,6 +147,70 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
         typeCheck(dropTable: stmt)
         return nil
     }
+    
+    mutating func visit(_ stmt: borrowing CreateIndexStmtSyntax) -> Type? {
+        guard let table = schema[stmt.table.value] else {
+            diagnostics.add(.tableDoesNotExist(stmt.table))
+            return nil
+        }
+        
+        if let whereExpr = stmt.whereExpr {
+            _ = typeCheck(whereExpr)
+        }
+        
+        return nil
+    }
+    
+    mutating func visit(_ stmt: borrowing DropIndexStmtSyntax) -> Type? {
+        // Indices are not stored at the moment, so there is nothign to do.
+        return nil
+    }
+    
+    mutating func visit(_ stmt: borrowing ReindexStmtSyntax) -> Type? {
+        // Indices are not stored at the moment, so there is nothign to do.
+        // We cant really even validate the name since it can be the
+        // index name and not just the table
+        return nil
+    }
+    
+    mutating func visit(_ stmt: borrowing CreateViewStmtSyntax) -> Type? {
+        let select = typeCheck(select: stmt.select)
+        let row = assumeRow(select)
+    
+        if let firstName = stmt.columnNames.first, row.count != stmt.columnNames.count {
+            diagnostics.add(.init(
+                "SELECT returns \(row.count) columns but only have \(stmt.columnNames.count) names defined",
+                at: firstName.range
+            ))
+        }
+        
+        let columns: Columns
+        if stmt.columnNames.isEmpty {
+            guard case let .named(c) = row else {
+                diagnostics.add(.init("Column names not defined", at: stmt.range))
+                return .error
+            }
+            
+            // Don't have explicit names, just return the column names.
+            columns = c
+        } else {
+            // If the counts do not match a diagnostic will already have been emitted
+            // so just for safety choose the minimum of the two.
+            let types = row.types
+            let minCount = min(stmt.columnNames.count, types.count)
+            columns = (0..<minCount).reduce(into: [:]) { columns, index in
+                columns[stmt.columnNames[index].value] = types[index]
+            }
+        }
+        
+        schema[stmt.name.value] = Table(
+            name: stmt.name.value,
+            columns: columns,
+            primaryKey: [/* In the future we can analyze the select to see if we can do better */]
+        )
+        
+        return nil
+    }
 }
 
 extension StmtTypeChecker {

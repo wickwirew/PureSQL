@@ -192,6 +192,22 @@ extension CompilerWithSource: StmtSyntaxVisitor {
     mutating func visit(_ stmt: DropTableStmtSyntax) -> (Statement, Diagnostics)? {
         return typeCheck(stmt, isReadOnly: false)
     }
+    
+    mutating func visit(_ stmt: CreateIndexStmtSyntax) -> (Statement, Diagnostics)? {
+        return typeCheck(stmt, isReadOnly: false)
+    }
+    
+    mutating func visit(_ stmt: DropIndexStmtSyntax) -> (Statement, Diagnostics)? {
+        return typeCheck(stmt, isReadOnly: false)
+    }
+    
+    mutating func visit(_ stmt: ReindexStmtSyntax) -> (Statement, Diagnostics)? {
+        return typeCheck(stmt, isReadOnly: false)
+    }
+    
+    mutating func visit(_ stmt: CreateViewStmtSyntax) -> (Statement, Diagnostics)? {
+        return typeCheck(stmt, isReadOnly: false)
+    }
 }
 
 /// Used to validate whether a statement syntax is valid for use in migrations
@@ -206,6 +222,10 @@ struct IsValidForMigrations: StmtSyntaxVisitor {
     func visit(_ stmt: borrowing PragmaStmt) -> Bool { true }
     func visit(_ stmt: borrowing EmptyStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing DropTableStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing CreateIndexStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing DropIndexStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing ReindexStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing CreateViewStmtSyntax) -> Bool { true }
 }
 
 /// Used to validate whether a statement syntax is valid for use in queries
@@ -220,6 +240,10 @@ struct IsValidForQueries: StmtSyntaxVisitor {
     func visit(_ stmt: borrowing PragmaStmt) -> Bool { true }
     func visit(_ stmt: borrowing EmptyStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing DropTableStmtSyntax) -> Bool { false }
+    func visit(_ stmt: borrowing CreateIndexStmtSyntax) -> Bool { false }
+    func visit(_ stmt: borrowing DropIndexStmtSyntax) -> Bool { false }
+    func visit(_ stmt: borrowing ReindexStmtSyntax) -> Bool { false }
+    func visit(_ stmt: borrowing CreateViewStmtSyntax) -> Bool { false }
 }
 
 // Mainly used in tests, since they are usually a mix of migrations and queries
@@ -234,4 +258,8 @@ struct IsAlwaysValid: StmtSyntaxVisitor {
     func visit(_ stmt: borrowing PragmaStmt) -> Bool { true }
     func visit(_ stmt: borrowing EmptyStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing DropTableStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing CreateIndexStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing DropIndexStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing ReindexStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing CreateViewStmtSyntax) -> Bool { true }
 }

@@ -23,6 +23,10 @@ protocol StmtSyntaxVisitor {
     mutating func visit(_ stmt: borrowing DeleteStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: borrowing PragmaStmt) -> StmtOutput
+    mutating func visit(_ stmt: borrowing CreateIndexStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: borrowing DropIndexStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: borrowing ReindexStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: borrowing CreateViewStmtSyntax) -> StmtOutput
 }
 
 struct CreateTableStmtSyntax: StmtSyntax {
@@ -544,6 +548,61 @@ struct DropTableStmtSyntax: StmtSyntax {
     let id: SyntaxId
     let ifExists: Bool
     let tableName: TableNameSyntax
+    let range: Range<Substring.Index>
+    
+    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
+        return visitor.visit(self)
+    }
+}
+
+struct CreateIndexStmtSyntax: StmtSyntax {
+    let id: SyntaxId
+    let unique: Bool
+    let ifNotExists: Bool
+    let schemaName: IdentifierSyntax?
+    let name: IdentifierSyntax
+    let table: IdentifierSyntax
+    let indexedColumns: [IndexedColumnSyntax]
+    let whereExpr: ExprSyntax?
+    let range: Range<Substring.Index>
+    
+    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
+        return visitor.visit(self)
+    }
+}
+
+struct DropIndexStmtSyntax: StmtSyntax {
+    let id: SyntaxId
+    let ifExists: Bool
+    let schemaName: IdentifierSyntax?
+    let name: IdentifierSyntax
+    let range: Range<Substring.Index>
+    
+    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
+        return visitor.visit(self)
+    }
+}
+
+struct ReindexStmtSyntax: StmtSyntax {
+    let id: SyntaxId
+    let schemaName: IdentifierSyntax?
+    // Note: This can be the collation, index or table name
+    let name: IdentifierSyntax?
+    let range: Range<Substring.Index>
+    
+    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
+        return visitor.visit(self)
+    }
+}
+
+struct CreateViewStmtSyntax: StmtSyntax {
+    let id: SyntaxId
+    let temp: Bool
+    let ifNotExists: Bool
+    let schemaName: IdentifierSyntax?
+    let name: IdentifierSyntax
+    let columnNames: [IdentifierSyntax]
+    let select: SelectStmtSyntax
     let range: Range<Substring.Index>
     
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
