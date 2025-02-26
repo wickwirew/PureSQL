@@ -8,6 +8,8 @@
 import OrderedCollections
 
 struct StmtTypeChecker {
+    typealias Output = (parameters: [Parameter<Substring?>], output: Type?)
+    
     /// The environment in which the query executes. Any joined in tables
     /// will be added to this.
     private(set) var env: Environment
@@ -44,21 +46,15 @@ struct StmtTypeChecker {
     }
     
     /// Calculates the signature for a single expression.
-    mutating func signature<E: ExprSyntax>(for expr: E) -> Signature {
+    mutating func signature<E: ExprSyntax>(for expr: E) -> Output {
         let (ty, _) = typeCheck(expr)
-        return signature(ty: ty, outputCardinality: .many)
+        return output(ty: ty)
     }
     
     /// Calculates the solution of an entire statement.
-    mutating func signature<S: StmtSyntax>(for stmt: S) -> Signature {
+    mutating func signature<S: StmtSyntax>(for stmt: S) -> Output {
         let ty = stmt.accept(visitor: &self)
-        
-        // Since its a statement we need to also infer whether or not
-        // the exepected result count is a single or many rows
-        var singleOuputInferer = CardinalityInferrer(schema: schema)
-        let cardinality = singleOuputInferer.cardinality(for: stmt)
-        
-        return signature(ty: ty, outputCardinality: cardinality)
+        return output(ty: ty)
     }
     
     /// Type checks and infers the type and any bind parameter names in the expression
@@ -78,23 +74,20 @@ struct StmtTypeChecker {
     }
     
     /// Calculates the final inferred signature of the statement
-    private mutating func signature(
-        ty: Type?,
-        outputCardinality: Signature.Cardinality
-    ) -> Signature {
-        return Signature(
-            parameters: inferenceState
-                .parameterSolutions(defaultIfTyVar: true)
-                .reduce(into: [:]) { parameters, parameter in
-                    parameters[parameter.index] = Signature.Parameter(
-                        type: parameter.type,
-                        index: parameter.index,
-                        name: nameInferrer.parameterName(at: parameter.index)
-                    )
-                },
-            output: ty.map { ty in inferenceState.solution(for: ty, defaultIfTyVar: true) },
-            outputCardinality: outputCardinality
-        )
+    private mutating func output(ty: Type?) -> Output {
+        let parameters = inferenceState
+            .parameterSolutions(defaultIfTyVar: true)
+            .map { parameter in
+                Parameter(
+                    type: parameter.type,
+                    index: parameter.index,
+                    name: nameInferrer.parameterName(at: parameter.index)
+                )
+            }
+        
+        let type = ty.map { ty in inferenceState.solution(for: ty, defaultIfTyVar: true) }
+        
+        return (parameters, type)
     }
     
     /// Performs the inference in a new environment.

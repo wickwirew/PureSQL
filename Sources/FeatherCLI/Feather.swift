@@ -57,27 +57,30 @@ struct Feather: ParsableCommand {
         var queries: [Lang.Query] = []
         
         try forEachFile(in: "\(path)/Migrations") { file, fileName in
-            compiler.compile(migration: file)
+            let diags = compiler.compile(migration: file)
             
             let numberStr = fileName.split(separator: ".")[0]
             guard Int(numberStr) != nil else {
                 throw CLIError.migrationFileNameMustBeNumber(fileName)
             }
             
-            try migrations.append(language.migration(source: file))
+            report(diagnostics: diags, forFile: fileName)
         }
         
+        try migrations.append(contentsOf: compiler.migrations.map { try language.migration(source: $0.sanitizedSource) })
+        
         try forEachFile(in: "\(path)/Queries") { file, fileName in
-            compiler.compile(queries: file)
-            
-            for statement in compiler.queries {
-                guard let name = statement.name else {
-                    // Should have been caught up stream
-                    assertionFailure("Statement in queries has no name")
-                    continue
-                }
-                try queries.append(language.query(statement: statement, name: name))
+            let diags = compiler.compile(queries: file)
+            report(diagnostics: diags, forFile: fileName)
+        }
+        
+        for statement in compiler.queries {
+            guard let name = statement.name else {
+                // Should have been caught up stream
+                assertionFailure("Statement in queries has no name")
+                continue
             }
+            try queries.append(language.query(statement: statement, name: name))
         }
         
         let file = try language.file(migrations: migrations, queries: queries)

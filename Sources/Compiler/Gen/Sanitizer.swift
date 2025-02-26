@@ -11,15 +11,10 @@
 struct Sanitizer {
     private var rangesToRemove: [Range<Substring.Index>] = []
     
-    static func sanitize<S: StmtSyntax>(_ stmt: S, in source: String) -> String {
-        var sanitizer = Sanitizer()
-        return sanitizer.sanitize(stmt, in: source)
-    }
-    
     mutating func sanitize<S: StmtSyntax>(_ stmt: S, in source: String) -> String {
         let rangesToRemove = stmt.accept(visitor: &self)
         
-        guard !rangesToRemove.isEmpty else { return String(source[stmt.range]) }
+        guard !rangesToRemove.isEmpty else { return "\(source[stmt.range]);" }
         
         var final = ""
         var start = stmt.range.lowerBound
@@ -34,7 +29,7 @@ struct Sanitizer {
             final.append(contentsOf: source[start..<stmt.range.upperBound])
         }
         
-        return final
+        return "\(final.trimmingCharacters(in: .whitespaces));"
     }
     
     mutating func finalize(in original: String) -> String {

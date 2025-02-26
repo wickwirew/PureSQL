@@ -230,9 +230,15 @@ struct CheckEmitter {
                 }
             } else {
                 if mirror.displayStyle != .tuple {
+                    let typeName = if let value = value as? Checkable {
+                        value.typeName
+                    } else {
+                        "\(type(of: value))"
+                    }
+                    
                     // For non tuple types we want a backup name to be the type name.
                     // Tuple types will show as `(foo: Bar)` which is obviously not wanted
-                    write(key: key ?? "\(type(of: value))", indent: indent)
+                    write(key: key ?? typeName, indent: indent)
                 } else if let key {
                     // Write key if there is one.
                     write(key: key, indent: indent)

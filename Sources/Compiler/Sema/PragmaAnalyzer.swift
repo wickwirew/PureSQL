@@ -1,5 +1,5 @@
 //
-//  PragmaAnalysis.swift
+//  PragmaAnalyzer.swift
 //  Feather
 //
 //  Created by Wes Wickwire on 2/21/25.
@@ -19,7 +19,7 @@ public struct FeatherPragmas: OptionSet, Sendable {
     }
 }
 
-public struct PragmaAnalysis {
+public struct PragmaAnalyzer {
     public private(set) var featherPragmas: FeatherPragmas
     public private(set) var diagnostics = Diagnostics()
     private var isStaticallyTrue = IsStaticallyTrue(allowOnOff: true)

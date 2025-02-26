@@ -10,11 +10,10 @@ public struct Compiler {
     public private(set) var queries: [Statement] = []
     public private(set) var migrations: [Statement] = []
     
-    private var pragmas = PragmaAnalysis()
+    private var pragmas = PragmaAnalyzer()
     
     public init() {}
     
-    @discardableResult
     public mutating func compile(migration: String) -> Diagnostics {
         let (stmts, diagnostics) = compile(
             source: migration,
@@ -25,7 +24,6 @@ public struct Compiler {
         return diagnostics
     }
     
-    @discardableResult
     public mutating func compile(queries: String) -> Diagnostics {
         let (stmts, diagnostics) = compile(
             source: queries,
@@ -35,6 +33,48 @@ public struct Compiler {
         self.queries.append(contentsOf: stmts)
         return diagnostics
     }
+    
+    mutating func compile<Validator>(
+        source: String,
+        validator: Validator,
+        context: String
+    ) -> ([Statement], Diagnostics)
+        where Validator: StmtSyntaxVisitor, Validator.StmtOutput == Bool
+    {
+        var stmts: [Statement] = []
+        var diagnostics = Diagnostics()
+        var validator = validator
+        var compiler = CompilerWithSource(schema: schema, source: source, pragmas: pragmas)
+        
+        for stmtSyntax in Parsers.parse(source: source) {
+            if !stmtSyntax.accept(visitor: &validator) {
+                diagnostics.add(.illegalStatement(in: context, at: stmtSyntax.range))
+            }
+            
+            guard let (stmt, diags) = stmtSyntax.accept(visitor: &compiler) else { continue }
+            stmts.append(stmt)
+            diagnostics.merge(diags)
+        }
+        
+        schema = compiler.schema
+        pragmas = compiler.pragmas
+        
+        return (stmts, diagnostics)
+    }
+}
+
+/// Not meant to be exposed beyond this file. The compiler needs
+/// to have the source SQL so it can sanitize that. But in the `Compiler`
+/// we would have to set it as a property before compilation and clear
+/// it after so the `visit` methods would have access to it since they
+/// do not take any input.
+///
+/// Having a basically a wrapper that just holds onto the source
+/// and kicks off the compilation seemed cleaner.
+fileprivate struct CompilerWithSource {
+    var schema: Schema
+    let source: String
+    var pragmas: PragmaAnalyzer
     
     mutating func compile<Validator>(
         source: String,
@@ -65,23 +105,68 @@ public struct Compiler {
         // Calculating the statement signature will type check it.
         // We can just ignore the output
         var typeChecker = StmtTypeChecker(schema: schema, pragmas: pragmas.featherPragmas)
-        let signature = typeChecker.signature(for: stmt)
+        let (parameters, type) = typeChecker.signature(for: stmt)
+        
+        var cardinalityInferer = CardinalityInferrer(schema: schema)
+        let cardinality = cardinalityInferer.cardinality(for: stmt)
+        
+        var sanitizer = Sanitizer()
+        let sanitizedSource = sanitizer.sanitize(stmt, in: source)
         
         self.schema = typeChecker.schema
         
         let statement = Statement(
             name: nil,
-            signature: signature,
-            syntax: stmt,
+            parameters: uniquify(parameters: parameters)
+                .reduce(into: [:]) { $0[$1.index] = $1 },
+            output: type,
+            outputCardinality: cardinality,
             isReadOnly: isReadOnly,
-            sanitizedSource: ""
+            sanitizedSource: sanitizedSource,
+            syntax: stmt
         )
         
         return (statement, typeChecker.allDiagnostics)
     }
+    
+    private func uniquify(parameters: [Parameter<Substring?>]) -> [Parameter<String>] {
+        var seenNames: Set<String> = []
+        var result: [Parameter<String>] = []
+        
+        func uniquify(_ name: String) -> String {
+            if !seenNames.contains(name) {
+                return name
+            }
+            
+            // Start at two, so we don't have id and id1, id and id2 makes more sense.
+            for i in 2..<Int.max {
+                let potential = i == 0 ? name : "\(name)\(i)"
+                guard !seenNames.contains(potential) else { continue }
+                return potential
+            }
+            
+            fatalError("You might want to take it easy on the parameters")
+        }
+        
+        for parameter in parameters.sorted(by: { $0.index < $1.index }) {
+            if let name = parameter.name {
+                // Even inferred names can have collisions.
+                // Example: bar = ? AND bar = ? would have 2 named bar.
+                let name = uniquify(name.description)
+                seenNames.insert(name)
+                result.append(parameter.with(name: name))
+            } else {
+                let name = uniquify("value")
+                seenNames.insert(name)
+                result.append(parameter.with(name: name))
+            }
+        }
+        
+        return result
+    }
 }
 
-extension Compiler: StmtSyntaxVisitor {
+extension CompilerWithSource: StmtSyntaxVisitor {
     mutating func visit(_ stmt: CreateTableStmtSyntax) -> (Statement, Diagnostics)? {
         return typeCheck(stmt, isReadOnly: false)
     }
@@ -113,7 +198,8 @@ extension Compiler: StmtSyntaxVisitor {
     
     mutating func visit(_ stmt: PragmaStmt) -> (Statement, Diagnostics)? {
         pragmas.handle(pragma: stmt)
-        return (Statement(name: nil, signature: .empty, syntax: stmt, isReadOnly: true, sanitizedSource: ""), Diagnostics())
+        // TODO: Figure out what to do with these
+        return (Statement(name: nil, parameters: [:], output: nil, outputCardinality: .single, isReadOnly: true, sanitizedSource: "", syntax: stmt), Diagnostics())
     }
     
     mutating func visit(_ stmt: EmptyStmtSyntax) -> (Statement, Diagnostics)? {

@@ -23,15 +23,14 @@ public struct SwiftGenerator: Language {
         statement: Statement,
         name: Substring
     ) throws -> [DeclSyntax] {
-        let parameters = statement.signature.parametersWithNames
         var declarations: [DeclSyntax] = []
         
         let inputTypeName: String
-        if let firstParam = statement.signature.parameters.values.first {
-            if statement.signature.parameters.count > 1 {
+        if let firstParam = statement.parameters.values.first {
+            if statement.parameters.count > 1 {
                 inputTypeName = "\(name.capitalizedFirst)Input"
                 let inputType = DeclSyntax(StructDeclSyntax(name: "\(raw: name.capitalizedFirst)Input") {
-                    for input in parameters {
+                    for input in statement.parameters.values {
                         "let \(raw: input.name): \(raw: swiftType(for: input.type))"
                     }
                 })
@@ -45,18 +44,18 @@ public struct SwiftGenerator: Language {
         }
         
         let outputTypeName: String
-        if statement.signature.noOutput {
+        if statement.noOutput {
             outputTypeName = "()"
         } else {
             // TODO: Check for single output
             outputTypeName = "\(name.capitalizedFirst)Output"
-            try declarations.append(outputStructDecl(name: outputTypeName, type: statement.signature.output))
+            try declarations.append(outputStructDecl(name: outputTypeName, type: statement.output))
         }
         
-        let queryType: String = if statement.signature.noOutput {
+        let queryType: String = if statement.noOutput {
             "VoidQuery<\(inputTypeName)>"
         } else {
-            switch statement.signature.outputCardinality {
+            switch statement.outputCardinality {
             case .many: "FetchManyQuery<\(inputTypeName), [\(outputTypeName)]>"
             case .single: "FetchSingleQuery<\(inputTypeName), \(outputTypeName)>"
             }
@@ -89,7 +88,7 @@ public struct SwiftGenerator: Language {
                 ) {
                     "let statement = try Feather.Statement(\n\"\"\"\n\(raw: statement.sanitizedSource)\n\"\"\", \ntransaction: transaction\n)"
                     
-                    for parameter in parameters {
+                    for parameter in statement.parameters.values {
                         "try statement.bind(value: input.\(raw: parameter.name), to: \(raw: parameter.index))"
                     }
                     

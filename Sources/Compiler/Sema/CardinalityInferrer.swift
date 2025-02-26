@@ -5,13 +5,19 @@
 //  Created by Wes Wickwire on 2/16/25.
 //
 
+/// The amount of elements in the result set.
+public enum Cardinality: String {
+    case single
+    case many
+}
+
 /// Infers the amount of items returned in a query.
 /// This allows the generation to be smart and set the
 /// return type to an Array only if needed.
 struct CardinalityInferrer {
     let schema: Schema
     
-    mutating func cardinality<S: StmtSyntax>(for syntax: borrowing S) -> Signature.Cardinality {
+    mutating func cardinality<S: StmtSyntax>(for syntax: borrowing S) -> Cardinality {
         return syntax.accept(visitor: &self)
     }
     
@@ -20,7 +26,7 @@ struct CardinalityInferrer {
     private mutating func cadinalityForFilter(
         _ expr: ExpressionSyntax,
         for table: Table
-    ) -> Signature.Cardinality {
+    ) -> Cardinality {
         let filteredPrimaryKeys = expr.accept(visitor: &self)
         let didFilterByPrimaryKey = !table.primaryKey.contains{ !filteredPrimaryKeys.contains($0) }
         return didFilterByPrimaryKey ? .single : .many
@@ -29,15 +35,15 @@ struct CardinalityInferrer {
 
 /// Returns `true` if the query/statement will only return one value.
 extension CardinalityInferrer: StmtSyntaxVisitor {
-    mutating func visit(_ stmt: borrowing CreateTableStmtSyntax) -> Signature.Cardinality { .many }
+    mutating func visit(_ stmt: borrowing CreateTableStmtSyntax) -> Cardinality { .many }
     
-    mutating func visit(_ stmt: borrowing AlterTableStmtSyntax) -> Signature.Cardinality { .many }
+    mutating func visit(_ stmt: borrowing AlterTableStmtSyntax) -> Cardinality { .many }
     
-    mutating func visit(_ stmt: borrowing EmptyStmtSyntax) -> Signature.Cardinality { .many }
+    mutating func visit(_ stmt: borrowing EmptyStmtSyntax) -> Cardinality { .many }
     
-    mutating func visit(_ stmt: borrowing PragmaStmt) -> Signature.Cardinality { .many }
+    mutating func visit(_ stmt: borrowing PragmaStmt) -> Cardinality { .many }
     
-    mutating func visit(_ stmt: borrowing UpdateStmtSyntax) -> Signature.Cardinality {
+    mutating func visit(_ stmt: borrowing UpdateStmtSyntax) -> Cardinality {
         // No filtering, update is to full table
         guard let whereExpr = stmt.whereExpr else { return .many }
         
@@ -49,7 +55,7 @@ extension CardinalityInferrer: StmtSyntaxVisitor {
         return cadinalityForFilter(whereExpr, for: table)
     }
     
-    mutating func visit(_ stmt: borrowing SelectStmtSyntax) -> Signature.Cardinality {
+    mutating func visit(_ stmt: borrowing SelectStmtSyntax) -> Cardinality {
         // See if there is a LIMIT 1 since this will always return a single result regardless
         // of what happens in the query.
         if case let .literal(e) = stmt.limit?.expr, case let .numeric(i, _) = e.kind, i == 1 {
@@ -96,13 +102,13 @@ extension CardinalityInferrer: StmtSyntaxVisitor {
         return .many
     }
     
-    mutating func visit(_ stmt: borrowing InsertStmtSyntax) -> Signature.Cardinality {
+    mutating func visit(_ stmt: borrowing InsertStmtSyntax) -> Cardinality {
         // If no value, `DEFAULT VALUES` was used, which is one row.
         guard let values = stmt.values else { return .single }
         return values.select.accept(visitor: &self)
     }
     
-    mutating func visit(_ stmt: borrowing DeleteStmtSyntax) -> Signature.Cardinality {
+    mutating func visit(_ stmt: borrowing DeleteStmtSyntax) -> Cardinality {
         guard let filter = stmt.whereExpr else { return .many }
         
         guard let table = schema[stmt.table.tableName.name.value] else {
@@ -113,7 +119,7 @@ extension CardinalityInferrer: StmtSyntaxVisitor {
         return cadinalityForFilter(filter, for: table)
     }
     
-    mutating func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> Signature.Cardinality {
+    mutating func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> Cardinality {
         return stmt.statement.accept(visitor: &self)
     }
 }

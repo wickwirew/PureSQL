@@ -11,7 +11,7 @@ import XCTest
 
 class CompilerTests: XCTestCase {
     func testCheckSimpleSelects() throws {
-        try checkQueries(compile: "CompileSimpleSelects")
+        try checkQueries(compile: "CompileSimpleSelects", dump: true)
     }
 
     func testSelectWithJoins() throws {
@@ -42,11 +42,44 @@ class CompilerTests: XCTestCase {
                 compiler.compile(queries: contents)
                 return compiler.queries
                     .filter{ !($0.syntax is CreateTableStmtSyntax) }
-                    .map { $0.signature.outputCardinality.rawValue.uppercased() }
+                    .map { $0.outputCardinality.rawValue.uppercased() }
             }
         )
     }
 }
+
+struct CheckSignature: Checkable {
+    let parameters: [Parameter<String>]
+    let output: Type?
+    
+    init(_ statement: Statement) {
+        self.parameters = statement.parameters.values.sorted(by: { $0.index < $1.index })
+        self.output = statement.output
+    }
+    
+    var typeName: String {
+        return "Signature"
+    }
+    
+    var customMirror: Mirror {
+        // Helps the CHECK statements in the tests since the `Type`
+        // structure is fairly complex and has lots of nesting.
+        let outputTypes: [String] = if case let .row(.named(columns)) = output {
+            columns.elements.map { "\($0) \($1)" }
+        } else {
+            []
+        }
+        
+        return Mirror(
+            self,
+            children: [
+                "parameters": parameters,
+                "output": outputTypes,
+            ]
+        )
+    }
+}
+
 func checkSchema(
     compile sqlFile: String,
     dump: Bool = false,
@@ -57,7 +90,7 @@ func checkSchema(
         compile: sqlFile,
         parse: { contents in
             var compiler = Compiler()
-            let (stmts, diags) = compiler.compile(
+            let (_, diags) = compiler.compile(
                 source: contents,
                 validator: IsAlwaysValid(),
                 context: "tests"
@@ -86,7 +119,7 @@ func checkQueries(
                 context: "tests"
             )
             return (
-                stmts.map(\.signature).filter{ !$0.isEmpty },
+                stmts.map { CheckSignature($0) }.filter{ !$0.parameters.isEmpty || $0.output != nil },
                 diags
             )
         },
@@ -120,9 +153,7 @@ func checkWithErrors<Output>(
 
     try check(
         sqlFile: sqlFile,
-        parse: { _ in diagnostics.map(\.message)
-            // Ignore illegal in migrations/queries since its nice to mix them in tests
-            .filter { !$0.contains("in migrations") && !$0.contains("in queries") } },
+        parse: { _ in diagnostics.map(\.message) },
         prefix: "CHECK-ERROR",
         dump: dump,
         file: file,
