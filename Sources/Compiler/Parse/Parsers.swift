@@ -205,19 +205,19 @@ enum Parsers {
         let name = identifier(state: &state)
         
         let isFunctionCall: Bool
-        let value: ExprSyntax
+        let value: PragmaStmt.Value?
         switch state.current.kind {
         case .openParen:
             isFunctionCall = true
             // The parens could technically get parsed by the `expr` but
             // then the expr type would technically be different.
             value = parens(state: &state) { state in
-                expr(state: &state)
+                pragmaValue(state: &state)
             }
         case .equal:
             isFunctionCall = false
             state.skip()
-            value = expr(state: &state)
+            value = pragmaValue(state: &state)
         default:
             state.diagnostics.add(.unexpectedToken(
                 of: state.current.kind,
@@ -225,7 +225,7 @@ enum Parsers {
                 at: state.current.range
             ))
             // Still try to parse the value
-            value = expr(state: &state)
+            value = pragmaValue(state: &state)
             isFunctionCall = false
         }
         
@@ -237,6 +237,42 @@ enum Parsers {
             isFunctionCall: isFunctionCall,
             range: state.range(from: start)
         )
+    }
+    
+    /// https://www.sqlite.org/pragma.html
+    static func pragmaValue(state: inout ParserState) -> PragmaStmt.Value? {
+        switch state.current.kind {
+        case .yes:
+            state.skip()
+            return .yes
+        case .no:
+            state.skip()
+            return .no
+        case .true:
+            state.skip()
+            return .true
+        case .false:
+            state.skip()
+            return .false
+        case .int(let value):
+            let token = state.take()
+            if value == 0 {
+                return .zero
+            } else if value == 1 {
+                return .one
+            } else {
+                state.diagnostics.add(.init("Expected 1 or 0", at: token.range))
+                return nil
+            }
+        case .on:
+            state.skip()
+            return .on
+        case .off:
+            state.skip()
+            return .off
+        default:
+            return nil
+        }
     }
     
     /// https://www.sqlite.org/syntax/upsert-clause.html
@@ -391,7 +427,7 @@ enum Parsers {
         state.consume(.from)
         let table = qualifiedTableName(state: &state)
         let whereExpr = state.take(if: .where) ? expr(state: &state) : nil
-        let returningClause = state.take(if: .returning) ? returningClause(state: &state) : nil
+        let returningClause = state.current.kind == .returning ? returningClause(state: &state) : nil
         return DeleteStmtSyntax(
             id: state.nextId(),
             cte: cte,

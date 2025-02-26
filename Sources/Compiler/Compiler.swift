@@ -80,7 +80,10 @@ fileprivate struct CompilerWithSource {
     var pragmas: PragmaAnalyzer
     
     /// Just performs type checking.
-    private mutating func typeCheck<S: StmtSyntax>(_ stmt: S, isReadOnly: Bool) -> (Statement, Diagnostics) {
+    private mutating func typeCheck<S: StmtSyntax>(
+        _ stmt: S,
+        isReadOnly: Bool
+    ) -> (Statement, Diagnostics) {
         // Calculating the statement signature will type check it.
         // We can just ignore the output
         var typeChecker = StmtTypeChecker(schema: schema, pragmas: pragmas.featherPragmas)
@@ -178,7 +181,7 @@ extension CompilerWithSource: StmtSyntaxVisitor {
     mutating func visit(_ stmt: PragmaStmt) -> (Statement, Diagnostics)? {
         pragmas.handle(pragma: stmt)
         // TODO: Figure out what to do with these
-        return (Statement(name: nil, parameters: [:], output: nil, outputCardinality: .single, isReadOnly: true, sanitizedSource: "", syntax: stmt), Diagnostics())
+        return nil
     }
     
     mutating func visit(_ stmt: EmptyStmtSyntax) -> (Statement, Diagnostics)? {

@@ -27,7 +27,7 @@ class CompilerTests: XCTestCase {
     }
     
     func testDelete() throws {
-        try checkQueries(compile: "CompileDelete", dump: true)
+        try checkQueries(compile: "CompileDelete")
     }
     
     func testCreateTable() throws {
