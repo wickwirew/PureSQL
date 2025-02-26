@@ -19,6 +19,7 @@ protocol StmtSyntaxVisitor {
     mutating func visit(_ stmt: borrowing SelectStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: borrowing InsertStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: borrowing UpdateStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: borrowing DropTableStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: borrowing DeleteStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: borrowing PragmaStmt) -> StmtOutput
@@ -532,6 +533,17 @@ struct PragmaStmt: StmtSyntax {
     let name: IdentifierSyntax
     let value: ExprSyntax?
     let isFunctionCall: Bool
+    let range: Range<Substring.Index>
+    
+    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
+        return visitor.visit(self)
+    }
+}
+
+struct DropTableStmtSyntax: StmtSyntax {
+    let id: SyntaxId
+    let ifExists: Bool
+    let tableName: TableNameSyntax
     let range: Range<Substring.Index>
     
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {

@@ -17,9 +17,10 @@ enum Parsers {
         return (stmts, state.diagnostics)
     }
     
-    static func parse(source: String) -> [any StmtSyntax] {
+    static func parse(source: String) -> ([any StmtSyntax], Diagnostics) {
         var state = ParserState(Lexer(source: source))
-        return stmts(state: &state)
+        let stmts = stmts(state: &state)
+        return (stmts, state.diagnostics)
     }
     
     static func stmts(state: inout ParserState) -> [any StmtSyntax] {
@@ -32,7 +33,7 @@ enum Parsers {
             } catch {
                 recover(state: &state)
             }
-        } while state.take(if: .semiColon)
+        } while state.take(if: .semiColon) && state.current.kind != .eof
         
         return stmts
     }
@@ -55,6 +56,8 @@ enum Parsers {
             return try definition(state: &state)
         case (.pragma, _):
             return pragma(state: &state)
+        case (.drop, _):
+            return dropTable(state: &state)
         case (.with, _):
             let start = state.current
             let cte = try withCte(state: &state)
@@ -1519,6 +1522,25 @@ enum Parsers {
         default:
             return nil
         }
+    }
+    
+    /// https://www.sqlite.org/lang_droptable.html
+    static func dropTable(state: inout ParserState) -> DropTableStmtSyntax {
+        let drop = state.take(.drop)
+        state.consume(.table)
+        
+        let ifExists = state.take(if: .if)
+        if ifExists {
+            state.consume(.exists)
+        }
+        
+        let table = tableName(state: &state)
+        return DropTableStmtSyntax(
+            id: state.nextId(),
+            ifExists: ifExists,
+            tableName: table,
+            range: state.range(from: drop)
+        )
     }
     
     /// https://www.sqlite.org/syntax/expr.html

@@ -51,7 +51,7 @@ struct Sanitizer {
 }
 
 extension Sanitizer: StmtSyntaxVisitor {
-    mutating func visit(_ stmt: borrowing CreateTableStmtSyntax) -> [Range<Substring.Index>] {
+    func visit(_ stmt: borrowing CreateTableStmtSyntax) -> [Range<Substring.Index>] {
         switch stmt.kind {
         case .columns(let columns):
             return columns.values.compactMap { $0.type.alias?.range }
@@ -60,24 +60,26 @@ extension Sanitizer: StmtSyntaxVisitor {
         }
     }
     
-    mutating func visit(_ stmt: borrowing AlterTableStmtSyntax) -> [Range<Substring.Index>] {
+    func visit(_ stmt: borrowing AlterTableStmtSyntax) -> [Range<Substring.Index>] {
         return []
     }
     
-    mutating func visit(_ stmt: borrowing EmptyStmtSyntax) -> [Range<Substring.Index>] { [] }
+    func visit(_ stmt: borrowing EmptyStmtSyntax) -> [Range<Substring.Index>] { [] }
     
-    mutating func visit(_ stmt: borrowing SelectStmtSyntax) -> [Range<Substring.Index>] { [] }
+    func visit(_ stmt: borrowing SelectStmtSyntax) -> [Range<Substring.Index>] { [] }
     
-    mutating func visit(_ stmt: borrowing InsertStmtSyntax) -> [Range<Substring.Index>] { [] }
+    func visit(_ stmt: borrowing InsertStmtSyntax) -> [Range<Substring.Index>] { [] }
     
-    mutating func visit(_ stmt: borrowing UpdateStmtSyntax) -> [Range<Substring.Index>] { [] }
+    func visit(_ stmt: borrowing UpdateStmtSyntax) -> [Range<Substring.Index>] { [] }
     
-    mutating func visit(_ stmt: borrowing DeleteStmtSyntax) -> [Range<Substring.Index>] { [] }
+    func visit(_ stmt: borrowing DeleteStmtSyntax) -> [Range<Substring.Index>] { [] }
     
-    mutating func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> [Range<Substring.Index>] {
+    func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> [Range<Substring.Index>] {
         // Remove the `DEFINE QUERY name AS`
         return [stmt.range.lowerBound..<stmt.statement.range.lowerBound]
     }
     
-    mutating func visit(_ stmt: borrowing PragmaStmt) -> [Range<Substring.Index>] { [] }
+    func visit(_ stmt: borrowing PragmaStmt) -> [Range<Substring.Index>] { [] }
+    
+    func visit(_ stmt: borrowing DropTableStmtSyntax) -> [Range<Substring.Index>] { [] }
 }

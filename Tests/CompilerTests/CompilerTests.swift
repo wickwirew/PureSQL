@@ -11,7 +11,7 @@ import XCTest
 
 class CompilerTests: XCTestCase {
     func testCheckSimpleSelects() throws {
-        try checkQueries(compile: "CompileSimpleSelects", dump: true)
+        try checkQueries(compile: "CompileSimpleSelects")
     }
 
     func testSelectWithJoins() throws {
@@ -27,11 +27,15 @@ class CompilerTests: XCTestCase {
     }
     
     func testDelete() throws {
-        try checkQueries(compile: "CompileDelete")
+        try checkQueries(compile: "CompileDelete", dump: true)
     }
     
     func testCreateTable() throws {
         try checkSchema(compile: "CompileCreateTable")
+    }
+    
+    func testDropTable() throws {
+        try checkQueries(compile: "CompileDropTable")
     }
     
     func testOutputCountInference() throws {
@@ -39,7 +43,7 @@ class CompilerTests: XCTestCase {
             sqlFile: "CompileIsSingleResult",
             parse: { contents in
                 var compiler = Compiler()
-                compiler.compile(queries: contents)
+                _ = compiler.compile(queries: contents)
                 return compiler.queries
                     .filter{ !($0.syntax is CreateTableStmtSyntax) }
                     .map { $0.outputCardinality.rawValue.uppercased() }

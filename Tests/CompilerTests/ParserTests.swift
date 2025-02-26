@@ -118,6 +118,10 @@ final class ParserTests: XCTestCase {
     func testPragmas() throws {
         try check(sqlFile: "ParsePragma", parser: Parsers.pragma)
     }
+    
+    func testDropTable() throws {
+        try check(sqlFile: "ParseDropTableStmt", parser: Parsers.dropTable)
+    }
 }
 
 func check<Output>(

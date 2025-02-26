@@ -142,6 +142,11 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
     mutating func visit(_ stmt: borrowing PragmaStmt) -> Type? {
         return nil
     }
+    
+    mutating func visit(_ stmt: borrowing DropTableStmtSyntax) -> Type? {
+        typeCheck(dropTable: stmt)
+        return nil
+    }
 }
 
 extension StmtTypeChecker {
@@ -536,8 +541,8 @@ extension StmtTypeChecker {
         switch tableOrSubquery.kind {
         case let .table(table):
             guard let envTable = schema[table.name.value] else {
-                // TODO: Add diag
                 env.insert(table.name.value, ty: .error)
+                diagnostics.add(.tableDoesNotExist(table.name))
                 return
             }
             
@@ -665,7 +670,7 @@ extension StmtTypeChecker {
     
     mutating func typeCheck(alterTable: AlterTableStmtSyntax) {
         guard var table = schema[alterTable.name.value] else {
-            diagnostics.add(.init("Table '\(alterTable.name)' does not exist", at: alterTable.name.range))
+            diagnostics.add(.tableDoesNotExist(alterTable.name))
             return
         }
         
@@ -684,6 +689,16 @@ extension StmtTypeChecker {
         }
         
         schema[alterTable.name.value] = table
+    }
+    
+    mutating func typeCheck(dropTable: DropTableStmtSyntax) {
+        let tableExists = schema[dropTable.tableName.name.value] != nil
+        
+        if !tableExists && !dropTable.ifExists {
+            diagnostics.add(.tableDoesNotExist(dropTable.tableName.name))
+        }
+        
+        schema[dropTable.tableName.name.value] = nil
     }
     
     /// Will figure out the final SQL column type from the syntax

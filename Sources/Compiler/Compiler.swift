@@ -46,7 +46,10 @@ public struct Compiler {
         var validator = validator
         var compiler = CompilerWithSource(schema: schema, source: source, pragmas: pragmas)
         
-        for stmtSyntax in Parsers.parse(source: source) {
+        let (stmtSyntaxes, parsingDiags) = Parsers.parse(source: source)
+        diagnostics.merge(parsingDiags)
+        
+        for stmtSyntax in stmtSyntaxes {
             if !stmtSyntax.accept(visitor: &validator) {
                 diagnostics.add(.illegalStatement(in: context, at: stmtSyntax.range))
             }
@@ -75,30 +78,6 @@ fileprivate struct CompilerWithSource {
     var schema: Schema
     let source: String
     var pragmas: PragmaAnalyzer
-    
-    mutating func compile<Validator>(
-        source: String,
-        validator: Validator,
-        context: String
-    ) -> ([Statement], Diagnostics)
-        where Validator: StmtSyntaxVisitor, Validator.StmtOutput == Bool
-    {
-        var stmts: [Statement] = []
-        var diagnostics = Diagnostics()
-        var validator = validator
-        
-        for stmtSyntax in Parsers.parse(source: source) {
-            if !stmtSyntax.accept(visitor: &validator) {
-                diagnostics.add(.illegalStatement(in: context, at: stmtSyntax.range))
-            }
-            
-            guard let (stmt, diags) = stmtSyntax.accept(visitor: &self) else { continue }
-            stmts.append(stmt)
-            diagnostics.merge(diags)
-        }
-        
-        return (stmts, diagnostics)
-    }
     
     /// Just performs type checking.
     private mutating func typeCheck<S: StmtSyntax>(_ stmt: S, isReadOnly: Bool) -> (Statement, Diagnostics) {
@@ -205,43 +184,50 @@ extension CompilerWithSource: StmtSyntaxVisitor {
     mutating func visit(_ stmt: EmptyStmtSyntax) -> (Statement, Diagnostics)? {
         return nil
     }
+    
+    mutating func visit(_ stmt: DropTableStmtSyntax) -> (Statement, Diagnostics)? {
+        return typeCheck(stmt, isReadOnly: false)
+    }
 }
 
 /// Used to validate whether a statement syntax is valid for use in migrations
 struct IsValidForMigrations: StmtSyntaxVisitor {
-    func visit(_ stmt: CreateTableStmtSyntax) -> Bool { true }
-    func visit(_ stmt: AlterTableStmtSyntax) -> Bool { true }
-    func visit(_ stmt: SelectStmtSyntax) -> Bool { false }
-    func visit(_ stmt: InsertStmtSyntax) -> Bool { true }
-    func visit(_ stmt: UpdateStmtSyntax) -> Bool { true }
-    func visit(_ stmt: DeleteStmtSyntax) -> Bool { true }
-    func visit(_ stmt: QueryDefinitionStmtSyntax) -> Bool { false }
-    func visit(_ stmt: PragmaStmt) -> Bool { true }
-    func visit(_ stmt: EmptyStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing CreateTableStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing AlterTableStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing SelectStmtSyntax) -> Bool { false }
+    func visit(_ stmt: borrowing InsertStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing UpdateStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing DeleteStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> Bool { false }
+    func visit(_ stmt: borrowing PragmaStmt) -> Bool { true }
+    func visit(_ stmt: borrowing EmptyStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing DropTableStmtSyntax) -> Bool { true }
 }
 
 /// Used to validate whether a statement syntax is valid for use in queries
 struct IsValidForQueries: StmtSyntaxVisitor {
-    func visit(_ stmt: CreateTableStmtSyntax) -> Bool { false }
-    func visit(_ stmt: AlterTableStmtSyntax) -> Bool { false }
-    func visit(_ stmt: SelectStmtSyntax) -> Bool { true }
-    func visit(_ stmt: InsertStmtSyntax) -> Bool { true }
-    func visit(_ stmt: UpdateStmtSyntax) -> Bool { true }
-    func visit(_ stmt: DeleteStmtSyntax) -> Bool { true }
-    func visit(_ stmt: QueryDefinitionStmtSyntax) -> Bool { true }
-    func visit(_ stmt: PragmaStmt) -> Bool { true }
-    func visit(_ stmt: EmptyStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing CreateTableStmtSyntax) -> Bool { false }
+    func visit(_ stmt: borrowing AlterTableStmtSyntax) -> Bool { false }
+    func visit(_ stmt: borrowing SelectStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing InsertStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing UpdateStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing DeleteStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing PragmaStmt) -> Bool { true }
+    func visit(_ stmt: borrowing EmptyStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing DropTableStmtSyntax) -> Bool { false }
 }
 
 // Mainly used in tests, since they are usually a mix of migrations and queries
 struct IsAlwaysValid: StmtSyntaxVisitor {
-    func visit(_ stmt: CreateTableStmtSyntax) -> Bool { true }
-    func visit(_ stmt: AlterTableStmtSyntax) -> Bool { true }
-    func visit(_ stmt: SelectStmtSyntax) -> Bool { true }
-    func visit(_ stmt: InsertStmtSyntax) -> Bool { true }
-    func visit(_ stmt: UpdateStmtSyntax) -> Bool { true }
-    func visit(_ stmt: DeleteStmtSyntax) -> Bool { true }
-    func visit(_ stmt: QueryDefinitionStmtSyntax) -> Bool { true }
-    func visit(_ stmt: PragmaStmt) -> Bool { true }
-    func visit(_ stmt: EmptyStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing CreateTableStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing AlterTableStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing SelectStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing InsertStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing UpdateStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing DeleteStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing PragmaStmt) -> Bool { true }
+    func visit(_ stmt: borrowing EmptyStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing DropTableStmtSyntax) -> Bool { true }
 }

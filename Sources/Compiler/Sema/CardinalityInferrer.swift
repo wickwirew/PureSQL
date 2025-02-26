@@ -43,6 +43,8 @@ extension CardinalityInferrer: StmtSyntaxVisitor {
     
     mutating func visit(_ stmt: borrowing PragmaStmt) -> Cardinality { .many }
     
+    mutating func visit(_ stmt: borrowing DropTableStmtSyntax) -> Cardinality { .many }
+    
     mutating func visit(_ stmt: borrowing UpdateStmtSyntax) -> Cardinality {
         // No filtering, update is to full table
         guard let whereExpr = stmt.whereExpr else { return .many }
