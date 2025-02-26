@@ -13,32 +13,18 @@ public struct Statement {
     public let output: Type?
     /// How many possible items will be in the result set.
     public let outputCardinality: Cardinality
-    
+    /// `false` if the statement edits the schema
+    /// or changes any rows in a table.
     public let isReadOnly: Bool
-    
+    /// The statement source with all extra SQL syntax removed
+    /// that is not valid in SQLite but valid in this library
     public let sanitizedSource: String
-    
+    /// The source syntax
     let syntax: any StmtSyntax
-    
-    public var range: Range<Substring.Index> {
-        return syntax.range
-    }
     
     /// If `true` the query returns nothing.
     public var noOutput: Bool {
         return output == nil || output == .row(.empty)
-    }
-    
-    /// If the syntax is a query definition
-    /// e.g. DEFINE QUERY fetchUser AS
-    /// It will return the range of the inner query
-    /// without the DEFINE... part.
-    public var rangeWithoutDefinition: Range<Substring.Index> {
-        if let definition = syntax as? QueryDefinitionStmtSyntax {
-            return definition.statement.range
-        } else {
-            return syntax.range
-        }
     }
     
     /// Replaces the name with the given input
@@ -52,26 +38,6 @@ public struct Statement {
             sanitizedSource: sanitizedSource,
             syntax: syntax
         )
-    }
-    
-    /// Will get the type for the bind parameter at the given index
-    public func type(for index: Int) -> Type? {
-        return parameters[index]?.type
-    }
-    
-    /// Will get the type for the bind parameter bound to the given name.
-    public func type(for name: Substring) -> Type? {
-        guard let (index, _) = parameters
-            .first(where: { $1.name == name }) else { return nil }
-        
-        return type(for: index)
-    }
-    
-    /// Will return the inferred name for the bind parameter at the given index.
-    /// The name will not be unique, if two are inferred to have `bar` both will
-    /// return `bar` at this point.
-    public func name(for index: Int) -> String? {
-        return parameters[index]?.name
     }
 }
 
