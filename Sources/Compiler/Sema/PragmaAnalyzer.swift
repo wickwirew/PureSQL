@@ -21,11 +21,15 @@ public struct FeatherPragmas: OptionSet, Sendable {
 
 struct PragmaAnalyzer {
     private(set) var featherPragmas: FeatherPragmas
-    private(set) var diagnostics = Diagnostics()
-    private var isStaticallyTrue = IsStaticallyTrue(allowOnOff: true)
+    private var diagnostics = Diagnostics()
+    private var isStaticallyTrue = IsStaticallyTrue(allowOnOffYesNo: true)
     
     init(featherPragmas: FeatherPragmas = FeatherPragmas()) {
         self.featherPragmas = featherPragmas
+    }
+    
+    var allDiagnostics: Diagnostics {
+        return diagnostics.merging(isStaticallyTrue.diagnostics)
     }
     
     func isOn(_ pragma: FeatherPragmas) -> Bool {
@@ -40,7 +44,7 @@ struct PragmaAnalyzer {
                 return
             }
             
-            if isTrue(expr) {
+            if isStaticallyTrue.isTrue(expr) {
                 featherPragmas.insert(.requireStrictTables)
             } else {
                 featherPragmas.remove(.requireStrictTables)
@@ -54,17 +58,5 @@ struct PragmaAnalyzer {
             // TODO: Eventually analyze all pragmas but initially out of scope
             break
         }
-    }
-    
-    private mutating func isTrue(_ expr: ExprSyntax) -> Bool {
-        guard expr.accept(visitor: &isStaticallyTrue) else {
-            diagnostics.add(.init(
-                "Value is not a static boolean, expected TRUE, FALSE, 1 or 0",
-                at: expr.range
-            ))
-            return false
-        }
-        
-        return true
     }
 }

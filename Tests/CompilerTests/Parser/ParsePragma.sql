@@ -8,7 +8,7 @@ PRAGMA name = 1;
 -- CHECK: PRAGMA_STMT
 -- CHECK:   NAME name
 -- CHECK:   VALUE
--- CHECK:     LITERAL 1.0
+-- CHECK:     LITERAL 0.0
 -- CHECK:   IS_FUNCTION_CALL true
 PRAGMA name(0);
 

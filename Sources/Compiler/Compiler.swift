@@ -181,6 +181,7 @@ extension CompilerWithSource: StmtSyntaxVisitor {
     mutating func visit(_ stmt: PragmaStmt) -> (Statement, Diagnostics)? {
         pragmas.handle(pragma: stmt)
         // TODO: Figure out what to do with these
+        // TODO: Emit diags from pragmas
         return nil
     }
     
