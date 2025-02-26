@@ -70,7 +70,7 @@ struct Feather: ParsableCommand {
         try forEachFile(in: "\(path)/Queries") { file, fileName in
             compiler.compile(queries: file)
             
-            for statement in compiler.statements {
+            for statement in compiler.queries {
                 guard let name = statement.name else {
                     // Should have been caught up stream
                     assertionFailure("Statement in queries has no name")
@@ -109,6 +109,12 @@ struct Feather: ParsableCommand {
     private func validateIsFile(_ output: String) throws {
         if output.split(separator: ".").count <= 1 {
             throw CLIError.outputMustBeFileNotDirectory(output)
+        }
+    }
+    
+    private func report(diagnostics: Diagnostics, forFile fileName: String) {
+        for diag in diagnostics {
+            print(diag)
         }
     }
 }

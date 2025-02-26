@@ -38,16 +38,9 @@ class CompilerTests: XCTestCase {
         try check(
             sqlFile: "CompileIsSingleResult",
             parse: { contents in
-                var schemaCompiler = SchemaCompiler()
-                _ = schemaCompiler.compile(contents)
-                
-                var compiler = QueryCompiler(
-                    source: contents,
-                    schema: schemaCompiler.schema,
-                    pragmas: schemaCompiler.pragmas.featherPragmas
-                )
-                compiler.compile(contents)
-                return compiler.statements
+                var compiler = Compiler()
+                compiler.compile(queries: contents)
+                return compiler.queries
                     .filter{ !($0.syntax is CreateTableStmtSyntax) }
                     .map { $0.signature.outputCardinality.rawValue.uppercased() }
             }
@@ -63,9 +56,13 @@ func checkSchema(
     try checkWithErrors(
         compile: sqlFile,
         parse: { contents in
-            var schemaCompiler = SchemaCompiler()
-            _ = schemaCompiler.compile(contents)
-            return (Array(schemaCompiler.schema.values), schemaCompiler.allDiagnostics)
+            var compiler = Compiler()
+            let (stmts, diags) = compiler.compile(
+                source: contents,
+                validator: IsAlwaysValid(),
+                context: "tests"
+            )
+            return (Array(compiler.schema.values), diags)
         },
         dump: dump,
         file: file,
@@ -82,18 +79,15 @@ func checkQueries(
     try checkWithErrors(
         compile: sqlFile,
         parse: { contents in
-            var schemaCompiler = SchemaCompiler()
-            _ = schemaCompiler.compile(contents)
-            
-            var compiler = QueryCompiler(
+            var compiler = Compiler()
+            let (stmts, diags) = compiler.compile(
                 source: contents,
-                schema: schemaCompiler.schema,
-                pragmas: schemaCompiler.pragmas.featherPragmas
+                validator: IsAlwaysValid(),
+                context: "tests"
             )
-            compiler.compile(contents)
             return (
-                compiler.statements.map(\.signature).filter{ !$0.isEmpty },
-                compiler.allDiagnostics.merging(schemaCompiler.allDiagnostics)
+                stmts.map(\.signature).filter{ !$0.isEmpty },
+                diags
             )
         },
         dump: dump,

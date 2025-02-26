@@ -170,8 +170,8 @@ class TypeCheckerTests: XCTestCase {
     }
     
     func scope(table: String, schema: String) throws -> Environment {
-        var compiler = SchemaCompiler()
-        _ = compiler.compile(schema)
+        var compiler = Compiler()
+        _ = compiler.compile(migration: schema)
         guard let table = compiler.schema[table[...]] else { fatalError("'table' provided not in 'schema'") }
         var env = Environment()
         env.upsert(table.name, ty: table.type)
@@ -184,7 +184,7 @@ class TypeCheckerTests: XCTestCase {
         in scope: Environment = Environment()
     ) -> Signature {
         let (expr, _) = Parsers.parse(source: source, parser: { Parsers.expr(state: &$0) })
-        var typeInferrer = StmtTypeChecker(env: scope, schema: [:])
+        var typeInferrer = StmtTypeChecker(env: scope, schema: [:], pragmas: [])
         let signature = typeInferrer.signature(for: expr)
         return signature
     }
@@ -195,7 +195,7 @@ class TypeCheckerTests: XCTestCase {
         in scope: Environment = Environment()
     ) -> (Signature, Diagnostics) {
         let (expr, exprDiags) = Parsers.parse(source: source, parser: { Parsers.expr(state: &$0) })
-        var typeInferrer = StmtTypeChecker(env: scope, schema: [:])
+        var typeInferrer = StmtTypeChecker(env: scope, schema: [:], pragmas: [])
         let signature = typeInferrer.signature(for: expr)
         let diagnostics = typeInferrer.allDiagnostics.merging(exprDiags)
         return (signature, diagnostics)

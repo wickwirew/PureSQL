@@ -23,6 +23,10 @@ public struct Diagnostics {
         self.elements.append(contentsOf: diagnostics.elements)
     }
     
+    public mutating func removeAll(keepingCapacity: Bool = false) {
+        elements.removeAll(keepingCapacity: keepingCapacity)
+    }
+    
     public func merging(_ diagnostics: Diagnostics) -> Diagnostics {
         var copy = self
         copy.merge(diagnostics)

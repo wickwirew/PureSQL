@@ -19,14 +19,18 @@ struct ExprTypeChecker {
     /// Any diagnostics that are emitted during compilation
     private(set) var diagnostics = Diagnostics()
     
+    private let pragmas: FeatherPragmas
+    
     init(
         inferenceState: InferenceState,
         env: Environment,
-        schema: Schema
+        schema: Schema,
+        pragmas: FeatherPragmas
     ) {
         self.inferenceState = inferenceState
         self.env = env
         self.schema = schema
+        self.pragmas = pragmas
     }
 
     mutating func typeCheck<E: ExprSyntax>(_ expr: E) -> Type {
@@ -246,7 +250,7 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
     }
     
     mutating func visit(_ expr: borrowing SelectExprSyntax) -> Type {
-        var typeChecker = StmtTypeChecker(env: env, schema: schema, inferenceState: inferenceState)
+        var typeChecker = StmtTypeChecker(env: env, schema: schema, inferenceState: inferenceState, pragmas: pragmas)
         let signature = typeChecker.signature(for: expr.select)
         let type = signature.output ?? .row(.empty)
         // Make sure to update our inference state
