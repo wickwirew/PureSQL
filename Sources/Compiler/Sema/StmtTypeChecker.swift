@@ -154,6 +154,8 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
             return nil
         }
         
+        insertTableAndColumnsIntoEnv(table)
+        
         if let whereExpr = stmt.whereExpr {
             _ = typeCheck(whereExpr)
         }
@@ -174,6 +176,11 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
     }
     
     mutating func visit(_ stmt: borrowing CreateViewStmtSyntax) -> Type? {
+        guard schema[stmt.name.value] == nil else {
+            diagnostics.add(.tableAlreadyExists(stmt.name))
+            return nil
+        }
+        
         let select = typeCheck(select: stmt.select)
         let row = assumeRow(select)
     
@@ -206,8 +213,25 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
         schema[stmt.name.value] = Table(
             name: stmt.name.value,
             columns: columns,
-            primaryKey: [/* In the future we can analyze the select to see if we can do better */]
+            primaryKey: [/* In the future we can analyze the select to see if we can do better */],
+            kind: .view
         )
+        
+        return nil
+    }
+    
+    mutating func visit(_ stmt: borrowing CreateVirtualTableStmtSyntax) -> Type? {
+        guard schema[stmt.tableName.name.value] == nil else {
+            diagnostics.add(.tableAlreadyExists(stmt.tableName.name))
+            return nil
+        }
+        
+        switch stmt.module {
+        case .fts5:
+            typeCheck(fts5Table: stmt)
+        case .unknown:
+            diagnostics.add(.init("Unknown virtual table module name", at: stmt.moduleName.range))
+        }
         
         return nil
     }
@@ -222,9 +246,9 @@ extension StmtTypeChecker {
             typeCheck(cte: cte)
         }
         
-        switch select.selects.value {
+        let type = switch select.selects.value {
         case let .single(selectCore):
-            return typeCheck(
+             typeCheck(
                 select: selectCore,
                 at: select.range,
                 potentialNames: potentialNames
@@ -232,6 +256,16 @@ extension StmtTypeChecker {
         case .compound:
             fatalError()
         }
+        
+        for term in select.orderBy {
+            _ = typeCheck(term.expr)
+        }
+        
+        if let limit = select.limit {
+            _ = typeCheck(limit.expr)
+        }
+        
+        return type
     }
     
     mutating func typeCheck(insert: InsertStmtSyntax) -> Type {
@@ -553,9 +587,9 @@ extension StmtTypeChecker {
                     }
                 } else {
                     for (name, type) in env {
-                        switch type.type {
+                        switch type {
                         case .row: continue // Ignore tables
-                        default: columns[name] = type.type
+                        default: columns[name] = type
                         }
                     }
                 }
@@ -679,6 +713,12 @@ extension StmtTypeChecker {
         for column in table.columns where columns.isEmpty || columns.contains(column.key) {
             env.insert(column.key, ty: isOptional ? .optional(column.value) : column.value)
         }
+        
+        // Make rank available, but only via by direct name so it isnt
+        // included in the result columns during a `SELECT *`
+        if table.kind == .fts5 {
+            env.insert("rank", ty: .real, explicitAccessOnly: true)
+        }
     }
     
     mutating func typeCheck(createTable: CreateTableStmtSyntax) {
@@ -717,7 +757,8 @@ extension StmtTypeChecker {
             schema[createTable.name.value] = Table(
                 name: createTable.name.value,
                 columns: columns,
-                primaryKey: primaryKey(of: createTable, columns: columns)
+                primaryKey: primaryKey(of: createTable, columns: columns),
+                kind: .normal
             )
         case let .columns(columns):
             let columns: Columns = columns.reduce(into: [:]) {
@@ -727,7 +768,8 @@ extension StmtTypeChecker {
             schema[createTable.name.value] = Table(
                 name: createTable.name.value,
                 columns: columns,
-                primaryKey: primaryKey(of: createTable, columns: columns)
+                primaryKey: primaryKey(of: createTable, columns: columns),
+                kind: .normal
             )
         }
     }
@@ -736,6 +778,17 @@ extension StmtTypeChecker {
         guard var table = schema[alterTable.name.value] else {
             diagnostics.add(.tableDoesNotExist(alterTable.name))
             return
+        }
+
+        switch table.kind {
+        case .fts5:
+            diagnostics.add(.init("Cannot alter virtual table", at: alterTable.name.range))
+            return
+        case .view:
+            diagnostics.add(.init("Cannot alter view", at: alterTable.name.range))
+            return
+        default:
+            break
         }
         
         switch alterTable.kind {
@@ -845,5 +898,34 @@ extension StmtTypeChecker {
             }
             return columnNames
         }
+    }
+    
+    mutating func typeCheck(fts5Table: borrowing CreateVirtualTableStmtSyntax) {
+        var columns: Columns = [:]
+        
+        for argument in fts5Table.arguments {
+            switch argument {
+            case let .fts5Column(name, typeName, notNull, _):
+                guard let typeName = typeName?.name.value else {
+                    diagnostics.add(.init("Missing column type", at: name.range))
+                    continue
+                }
+                
+                columns[name.value] = notNull != nil
+                    ? .nominal(typeName)
+                    : .optional(.nominal(typeName))
+            case .fts5Option:
+                break // Nothing to do, maybe validate these in the future
+            case .unknown:
+                fatalError("Not FTS5, caller did not call the right method")
+            }
+        }
+        
+        schema[fts5Table.tableName.name.value] = Table(
+            name: fts5Table.tableName.name.value,
+            columns: columns,
+            primaryKey: [],
+            kind: .fts5
+        )
     }
 }

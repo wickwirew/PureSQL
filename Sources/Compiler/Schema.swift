@@ -19,6 +19,13 @@ public struct Table {
     public var name: Substring
     public var columns: Columns
     public let primaryKey: [Substring]
+    public let kind: Kind
+    
+    public enum Kind {
+        case normal
+        case view
+        case fts5
+    }
     
     var type: Type {
         return .row(.named(columns))

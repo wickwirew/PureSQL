@@ -6,7 +6,7 @@
 //
 
 struct ParserState {
-    private var lexer: Lexer
+    private(set) var lexer: Lexer
     private(set) var current: Token
     private(set) var peek: Token
     private(set) var peek2: Token
@@ -27,11 +27,11 @@ struct ParserState {
     }
     
     func range(from range: borrowing Range<String.Index>) -> Range<String.Index> {
-        return range.lowerBound..<current.range.upperBound
+        return range.lowerBound..<current.range.lowerBound
     }
     
     func range(from token: borrowing Token) -> Range<String.Index> {
-        return token.range.lowerBound..<current.range.upperBound
+        return token.range.lowerBound..<current.range.lowerBound
     }
     
     func skippingOne() -> ParserState {

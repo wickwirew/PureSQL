@@ -132,6 +132,8 @@ extension CardinalityInferrer: StmtSyntaxVisitor {
     mutating func visit(_ stmt: borrowing ReindexStmtSyntax) -> Cardinality { .many }
     
     mutating func visit(_ stmt: borrowing CreateViewStmtSyntax) -> Cardinality { .many }
+    
+    mutating func visit(_ stmt: borrowing CreateVirtualTableStmtSyntax) -> Cardinality { .many }
 }
 
 /// We need to look for a `primaryKey = value`. This can get complicated since

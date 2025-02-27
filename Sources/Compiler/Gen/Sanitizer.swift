@@ -90,4 +90,14 @@ extension Sanitizer: StmtSyntaxVisitor {
     func visit(_ stmt: borrowing ReindexStmtSyntax) -> [Range<Substring.Index>] { [] }
     
     func visit(_ stmt: borrowing CreateViewStmtSyntax) -> [Range<Substring.Index>] { [] }
+    
+    func visit(_ stmt: borrowing CreateVirtualTableStmtSyntax) -> [Range<Substring.Index>] {
+        return stmt.arguments.flatMap { argument -> [Range<Substring.Index>] in
+            guard case let .fts5Column(_, typeName, notNull, _) = argument else { return [] }
+            if let typeName, let notNull { return [typeName.range, notNull] }
+            if let typeName { return [typeName.range] }
+            if let notNull { return [notNull] }
+            return []
+        }
+    }
 }

@@ -7,6 +7,7 @@
 -- CHECK:       VALUE TEXT?
 -- CHECK:   PRIMARY_KEY
 -- CHECK:     bar
+-- CHECK:   KIND normal
 CREATE TABLE foo (
     bar INTEGER PRIMARY KEY,
     baz TEXT
@@ -22,6 +23,7 @@ CREATE TABLE foo (
 -- CHECK:   PRIMARY_KEY
 -- CHECK:     foo
 -- CHECK:     baz
+-- CHECK:   KIND normal
 CREATE TABLE bar (
     foo TEXT,
     baz TEXT,
@@ -37,6 +39,7 @@ PRAGMA feather_require_strict_tables = TRUE;
 -- CHECK:       VALUE TEXT?
 -- CHECK:   PRIMARY_KEY
 -- CHECK:     foo
+-- CHECK:   KIND normal
 -- CHECK-ERROR: Missing STRICT table option
 -- CHECK-ERROR: Column 'bar' does not exist
 CREATE TABLE baz (
@@ -53,6 +56,7 @@ CREATE TABLE baz (
 -- CHECK:       VALUE INTEGER?
 -- CHECK:   PRIMARY_KEY
 -- CHECK:     bar
+-- CHECK:   KIND normal
 -- CHECK-ERROR: Table 'qux' already has a primary key
 CREATE TABLE qux (
     foo TEXT PRIMARY KEY,

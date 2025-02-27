@@ -27,6 +27,7 @@ protocol StmtSyntaxVisitor {
     mutating func visit(_ stmt: borrowing DropIndexStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: borrowing ReindexStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: borrowing CreateViewStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: borrowing CreateVirtualTableStmtSyntax) -> StmtOutput
 }
 
 struct CreateTableStmtSyntax: StmtSyntax {
@@ -604,6 +605,36 @@ struct CreateViewStmtSyntax: StmtSyntax {
     let columnNames: [IdentifierSyntax]
     let select: SelectStmtSyntax
     let range: Range<Substring.Index>
+    
+    func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
+        return visitor.visit(self)
+    }
+}
+
+struct CreateVirtualTableStmtSyntax: StmtSyntax {
+    let id: SyntaxId
+    let ifNotExists: Bool
+    let tableName: TableNameSyntax
+    let module: Module
+    let moduleName: IdentifierSyntax
+    let arguments: [ModuleArgument]
+    let range: Range<Substring.Index>
+    
+    enum Module {
+        case fts5
+        case unknown
+    }
+    
+    enum ModuleArgument {
+        case fts5Column(
+            name: IdentifierSyntax,
+            typeName: TypeNameSyntax?,
+            notNull: Range<Substring.Index>?,
+            unindexed: Bool
+        )
+        case fts5Option(name: IdentifierSyntax, value: ExprSyntax)
+        case unknown
+    }
     
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
         return visitor.visit(self)

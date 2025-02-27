@@ -169,7 +169,8 @@ struct Token {
     enum Kind: Hashable {
         static let `true`: Kind = .symbol("TRUE")
         static let `false`: Kind = .symbol("FALSE")
-                
+        static let unindexed: Kind = .symbol("UNINDEXED")
+
         case symbol(Substring)
         case string(Substring)
         case double(Double)

@@ -44,7 +44,7 @@ final class ParserTests: XCTestCase {
     }
     
     func testTypeName() throws {
-        try check(sqlFile: "ParseTypeName", parser: Parsers.typeName)
+        try check(sqlFile: "ParseTypeName", parser: { Parsers.typeName(state: &$0) })
     }
     
     func testCreateTable() throws {
@@ -136,7 +136,11 @@ final class ParserTests: XCTestCase {
     }
     
     func testCreateView() throws {
-        try check(sqlFile: "ParseCreateViewStmt", parser: Parsers.createView, dump: true)
+        try check(sqlFile: "ParseCreateViewStmt", parser: Parsers.createView)
+    }
+    
+    func testCreateVirtualTable() throws {
+        try check(sqlFile: "ParseCreateVirtualTable", parser: Parsers.createVirutalTable)
     }
 }
 

@@ -81,6 +81,13 @@ extension Diagnostic {
         )
     }
     
+    static func tableAlreadyExists(_ identifier: IdentifierSyntax) -> Diagnostic {
+        Diagnostic(
+            "Table '\(identifier)' already exists",
+            at: identifier.range
+        )
+    }
+    
     static func columnDoesNotExist(_ identifier: IdentifierSyntax) -> Diagnostic {
         Diagnostic(
             "Column '\(identifier)' does not exist",

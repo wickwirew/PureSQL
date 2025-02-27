@@ -28,22 +28,43 @@ struct Environment {
         /// Is flipped to `true` when the same name is inserted into
         /// the environment twice or more.
         let isAmbiguous: Bool
+        /// A value inserted into the environment that should only be
+        /// available by direct access via name.
+        /// The value will not be included when iterating over every
+        /// value in the environment.
+        ///
+        /// Useful for FTS tables. The `rank` column is available
+        /// during a query. However if they do a `SELECT *` it should
+        /// not be included into the result columns
+        let explicitAccessOnly: Bool
     }
     
     init() {}
 
     /// Inserts or updates the type for the given name
-    mutating func upsert(_ name: Substring, ty: Type) {
-        identifiers[name] = TypeContainer(type: ty, isAmbiguous: false)
+    mutating func upsert(_ name: Substring, ty: Type, explicitAccessOnly: Bool = false) {
+        identifiers[name] = TypeContainer(
+            type: ty,
+            isAmbiguous: false,
+            explicitAccessOnly: explicitAccessOnly
+        )
     }
     
     /// Inserts the type for the given name. If the name
     /// already exists it will be marked as ambiguous
-    mutating func insert(_ name: Substring, ty: Type) {
+    mutating func insert(_ name: Substring, ty: Type, explicitAccessOnly: Bool = false) {
         if let existing = identifiers[name] {
-            identifiers[name] = TypeContainer(type: existing.type, isAmbiguous: true)
+            identifiers[name] = TypeContainer(
+                type: existing.type,
+                isAmbiguous: true,
+                explicitAccessOnly: explicitAccessOnly
+            )
         } else {
-            identifiers[name] = TypeContainer(type: ty, isAmbiguous: false)
+            identifiers[name] = TypeContainer(
+                type: ty,
+                isAmbiguous: false,
+                explicitAccessOnly: explicitAccessOnly
+            )
         }
     }
     
@@ -124,10 +145,18 @@ extension Environment: CustomStringConvertible {
 }
 
 extension Environment: Sequence {
-    typealias Iterator = OrderedDictionary<Substring, Environment.TypeContainer>.Iterator
+    func makeIterator() -> Iterator {
+        return Iterator(inner: identifiers.makeIterator())
+    }
     
-    func makeIterator() -> OrderedDictionary<Substring, Environment.TypeContainer>.Iterator {
-        return identifiers.makeIterator()
+    struct Iterator: IteratorProtocol {
+        var inner: OrderedDictionary<Substring, Environment.TypeContainer>.Iterator
+        
+        mutating func next() -> (Substring, Type)? {
+            guard let value = inner.next() else { return nil }
+            guard !value.value.explicitAccessOnly else { return next() }
+            return (value.key, value.value.type)
+        }
     }
 }
 

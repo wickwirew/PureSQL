@@ -42,6 +42,8 @@ enum Parsers {
         switch (state.current.kind, state.peek.kind) {
         case (.create, .table):
             return createTableStmt(state: &state)
+        case (.create, .virtual):
+            return createVirutalTable(state: &state)
         case (.create, .index):
             return createIndex(state: &state)
         case (.alter, .table):
@@ -1144,10 +1146,17 @@ enum Parsers {
     }
     
     /// https://www.sqlite.org/syntax/type-name.html
-    static func typeName(state: inout ParserState) -> TypeNameSyntax {
+    static func typeName(
+        state: inout ParserState,
+        doNotConsumeWords: Set<Substring>? = nil
+    ) -> TypeNameSyntax {
         var name = identifier(state: &state)
         
         while case let .symbol(s) = state.current.kind {
+            if let doNotConsumeWords, doNotConsumeWords.contains(s) {
+                break
+            }
+            
             let upperBound = state.current.range.upperBound
             state.skip()
             name.append(" \(s)", upperBound: upperBound)
@@ -1275,6 +1284,83 @@ enum Parsers {
                 options: options,
                 range: create.range.lowerBound..<state.current.range.lowerBound
             )
+        }
+    }
+    
+    /// https://www.sqlite.org/lang_createvtab.html
+    static func createVirutalTable(state: inout ParserState) -> CreateVirtualTableStmtSyntax {
+        let create = state.take(.create)
+        state.consume(.virtual)
+        state.consume(.table)
+        let ifNotExists = ifNotExists(state: &state)
+        let name = tableName(state: &state)
+        state.consume(.using)
+        
+        let moduleName = identifier(state: &state)
+        let module: CreateVirtualTableStmtSyntax.Module = switch moduleName.value.uppercased() {
+        case "FTS5": .fts5
+        default: .unknown
+        }
+        
+        let arguments = commaDelimitedInParens(state: &state) { state in
+            virtualTableArgument(module: module, state: &state)
+        }
+        
+        return CreateVirtualTableStmtSyntax(
+            id: state.nextId(),
+            ifNotExists: ifNotExists,
+            tableName: name,
+            module: module,
+            moduleName: moduleName,
+            arguments: arguments,
+            range: state.range(from: create)
+        )
+    }
+    
+    static func virtualTableArgument(
+        module: CreateVirtualTableStmtSyntax.Module,
+        state: inout ParserState
+    ) -> CreateVirtualTableStmtSyntax.ModuleArgument {
+        switch module {
+        case .fts5:
+            if state.peek.kind == .equal {
+                let name = identifier(state: &state)
+                let value = expr(state: &state)
+                return .fts5Option(name: name, value: value)
+            } else {
+                let name = identifier(state: &state)
+                
+                let type = state.current.kind.isSymbol && state.current.kind != .unindexed
+                    ? typeName(state: &state, doNotConsumeWords: ["UNINDEXED"])
+                    : nil
+                
+                // This isnt allowed in FTS5, however will will allow it
+                // so we can better generate the column types
+                let notNull: Range<Substring.Index>?
+                if state.current.kind == .not {
+                    let not = state.take(.not)
+                    state.consume(.null)
+                    notNull = state.range(from: not)
+                } else {
+                    notNull = nil
+                }
+                
+                let unindexed = state.take(if: .unindexed)
+                return .fts5Column(
+                    name: name,
+                    typeName: type,
+                    notNull: notNull,
+                    unindexed: unindexed
+                )
+            }
+        case .unknown:
+            repeat {
+                // We don't know what we are parsing, just skip it.
+                state.skip()
+            } while state.current.kind != .closeParen
+                && state.current.kind != .comma
+                && state.current.kind != .eof
+            return .unknown
         }
     }
     
