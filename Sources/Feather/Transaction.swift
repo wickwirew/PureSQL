@@ -5,10 +5,7 @@
 //  Created by Wes Wickwire on 2/16/25.
 //
 
-/// This cannot be a struct that suppresses `Copyable`
-/// unfortunately. Associated types cannot suppress
-/// it which breaks the `Query` API. Maybe a future thing.
-public final class Transaction {
+public struct Transaction: ~Copyable {
     let connection: Connection
     let kind: TransactionKind
     let behavior: Behavior
@@ -68,10 +65,4 @@ public final class Transaction {
 public enum TransactionKind: Sendable {
     case read
     case write
-}
-
-public protocol TransactionProvider: Actor {
-    func begin(
-        _ kind: TransactionKind
-    ) async throws -> sending Transaction
 }

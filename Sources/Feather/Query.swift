@@ -14,7 +14,7 @@ public protocol Query<Input, Output, Database> {
     
     func statement(
         input: Input,
-        transaction: Transaction
+        transaction: borrowing Transaction
     ) throws -> Statement
     
     func execute(
@@ -24,7 +24,7 @@ public protocol Query<Input, Output, Database> {
     
     func execute(
         with input: Input,
-        tx: Transaction
+        tx: borrowing Transaction
     ) throws -> Output
 }
 
@@ -47,9 +47,19 @@ public extension Query {
         return try await execute(with: (), in: ())
     }
 
-    func execute(tx: Transaction) throws -> Output
+    func execute(tx: borrowing Transaction) throws -> Output
         where Input == ()
     {
         return try execute(with: (), tx: tx)
+    }
+}
+
+func meow() async -> AsyncStream<Int> {
+    fatalError()
+}
+
+func meow23() async {
+    for await m in await meow() {
+        print(m)
     }
 }

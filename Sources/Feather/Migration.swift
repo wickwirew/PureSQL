@@ -14,7 +14,7 @@ public struct MigrationRunner {
         try tx.commit()
     }
     
-    public static func execute(migrations: [String], tx: Transaction) throws {
+    public static func execute(migrations: [String], tx: borrowing Transaction) throws {
         try createTableIfNeeded(tx: tx)
         
         let lastMigration = try lastMigration
@@ -31,7 +31,7 @@ public struct MigrationRunner {
         }
     }
     
-    static func createTableIfNeeded(tx: Transaction) throws(FeatherError) {
+    static func createTableIfNeeded(tx: borrowing Transaction) throws(FeatherError) {
         try tx.execute(sql: """
         CREATE TABLE IF NOT EXISTS \(migrationTableName)(
             number INTEGER PRIMARY KEY
@@ -39,7 +39,7 @@ public struct MigrationRunner {
         """)
     }
     
-    static func execute(migration: String, number: Int, tx: Transaction) throws {
+    static func execute(migration: String, number: Int, tx: borrowing Transaction) throws {
         try tx.execute(sql: migration)
         try insertMigration.execute(with: number, tx: tx)
     }

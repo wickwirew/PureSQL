@@ -23,7 +23,7 @@ public enum Queries {
         
         public func statement(
             input: Input,
-            transaction: Transaction
+            transaction: borrowing Transaction
         ) throws -> Statement {
             return try base.statement(
                 input: input,
@@ -40,7 +40,7 @@ public enum Queries {
         
         public func execute(
             with input: Input,
-            tx: Transaction
+            tx: borrowing Transaction
         ) throws -> Output {
             return try base.execute(with: input, tx: tx)
         }
@@ -59,7 +59,7 @@ public enum Queries {
         
         public func statement(
             input: Input,
-            transaction: Transaction
+            transaction: borrowing Transaction
         ) throws -> Statement {
             return try base.statement(
                 input: input,
@@ -76,7 +76,7 @@ public enum Queries {
         
         public func execute(
             with input: Input,
-            tx: Transaction
+            tx: borrowing Transaction
         ) throws -> Output {
             return try transform(base.execute(with: input, tx: tx))
         }

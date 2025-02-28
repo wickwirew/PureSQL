@@ -17,6 +17,7 @@ public actor ConnectionPool: Sendable {
     private let path: String
     private var count: Int = 1
     private let limit: Int
+    private let observer = DatabaseObserver()
     
     private var writeLock = Lock()
     
@@ -53,6 +54,7 @@ public actor ConnectionPool: Sendable {
         self.connectionStream = connectionStream
         
         let connection = try Connection(path: path)
+        self.observer.installHooks(into: connection)
         
         // Turn on WAL mode
         try connection.execute(sql: "PRAGMA journal_mode=WAL;")
@@ -79,9 +81,7 @@ public actor ConnectionPool: Sendable {
             Task { await writeLock.unlock() }
         }
     }
-}
-
-extension ConnectionPool: TransactionProvider {
+    
     /// Starts a transaction.
     public func begin(
         _ kind: TransactionKind
@@ -124,5 +124,9 @@ extension ConnectionPool: TransactionProvider {
         // Can happen if the pool dies and the stream is closed
         // before the caller gets its transaction.
         throw .failedToGetConnection
+    }
+    
+    func observe(observation: @Sendable @escaping () -> Void) -> DatabaseObserver.Token {
+        return observer.observe { _ in observation() }
     }
 }
