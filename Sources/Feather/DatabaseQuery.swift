@@ -4,17 +4,49 @@
 //
 //  Created by Wes Wickwire on 2/21/25.
 //
+public struct QueryObservation<Q: Query>: AsyncSequence
+    where Q.Database == ConnectionPool
+{
+    private let query: Q
+    private let input: Q.Input
+    private let pool: ConnectionPool
+    private let stream: AsyncStream<()>
+    private let continuation: AsyncStream<()>.Continuation
+
+    init(query: Q, input: Q.Input, pool: ConnectionPool) {
+        self.query = query
+        self.input = input
+        self.pool = pool
+        (stream, continuation) = AsyncStream.makeStream()
+    }
+    
+    public func makeAsyncIterator() -> Iterator {
+        Iterator(observation: self)
+    }
+    
+    public struct Iterator: AsyncIteratorProtocol {
+        let observation: QueryObservation
+        
+        public func next() async throws -> Q.Output? {
+            for await _ in observation.stream {
+                guard !Task.isCancelled else { return nil }
+                return try await observation.query.execute(
+                    with: observation.input,
+                    in: observation.pool
+                )
+            }
+            
+            return nil
+        }
+    }
+}
 
 extension Query where Database == ConnectionPool {
     public func values(
         with input: Input,
         in database: Database
-    ) -> AsyncThrowingStream<Output, Error> {
-        fatalError()
-        
-//        return AsyncThrowingStream { continuation in
-//            
-//        }
+    ) -> QueryObservation<Self> {
+        return QueryObservation(query: self, input: input, pool: database)
     }
 }
 

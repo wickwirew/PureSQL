@@ -17,7 +17,7 @@ public actor ConnectionPool: Sendable {
     private let path: String
     private var count: Int = 1
     private let limit: Int
-    private let observer = DatabaseObserver()
+    private nonisolated let observer = DatabaseObserver()
     
     private var writeLock = Lock()
     
@@ -49,9 +49,7 @@ public actor ConnectionPool: Sendable {
         
         self.path = path
         self.limit = limit
-        let (connectionStream, connectionContinuation) = AsyncStream<Connection>.makeStream()
-        self.connectionContinuation = connectionContinuation
-        self.connectionStream = connectionStream
+        (connectionStream, connectionContinuation) = AsyncStream<Connection>.makeStream()
         
         let connection = try Connection(path: path)
         self.observer.installHooks(into: connection)
@@ -126,7 +124,11 @@ public actor ConnectionPool: Sendable {
         throw .failedToGetConnection
     }
     
-    func observe(observation: @Sendable @escaping () -> Void) -> DatabaseObserver.Token {
+    nonisolated func observe(observation: @Sendable @escaping () -> Void) -> DatabaseObserver.Token {
         return observer.observe { _ in observation() }
+    }
+    
+    nonisolated func cancel(observation: DatabaseObserver.Token) {
+        return observer.cancel(token: observation)
     }
 }

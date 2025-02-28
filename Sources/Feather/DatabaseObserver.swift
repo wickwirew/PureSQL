@@ -20,7 +20,7 @@ struct DatabaseEvent: Sendable {
     }
 }
 
-final class DatabaseObserver {
+final class DatabaseObserver: @unchecked Sendable {
     class Token: @unchecked Sendable {}
     
     typealias Observation = @Sendable (DatabaseEvent) -> Void
@@ -82,3 +82,22 @@ final class DatabaseObserver {
         receive(event: event)
     }
 }
+
+//extension Query {
+//    func values(
+//        with input: Input,
+//        in pool: ConnectionPool
+//    ) -> AsyncThrowingStream<Output, Error> {
+//        
+//        
+//        return AsyncThrowingStream<Output, Error> { continuation in
+//            let token = pool.observe {
+//                
+//            }
+//            
+//            continuation.onTermination = {
+//                pool.cancel(observation: token)
+//            }
+//        }
+//    }
+//}
