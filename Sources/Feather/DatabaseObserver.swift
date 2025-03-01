@@ -20,26 +20,22 @@ struct DatabaseEvent: Sendable {
     }
 }
 
-final class DatabaseObserver: @unchecked Sendable {
-    class Token: @unchecked Sendable {}
-    
-    typealias Observation = @Sendable (DatabaseEvent) -> Void
-    
-    private var observations: [ObjectIdentifier: Observation] = [:]
+actor DatabaseObserver: @unchecked Sendable {
+    private var observations: [Observation.Id: Observation] = [:]
 
-    func observe(_ observation: @escaping Observation) -> Token {
-        let token = Token()
-        observations[ObjectIdentifier(token)] = observation
-        return token
+    func observe() -> Observation {
+        let observation = Observation()
+        observations[observation.id] = observation
+        return observation
     }
     
-    func cancel(token: Token) {
-        observations[ObjectIdentifier(token)] = nil
+    func cancel(observation: Observation) {
+        observations[observation.id] = nil
     }
     
     func receive(event: DatabaseEvent) {
         for observation in observations.values {
-            observation(event)
+            observation.emit(event: event)
         }
     }
     
@@ -79,7 +75,9 @@ final class DatabaseObserver: @unchecked Sendable {
             rowId: rowId
         )
         
-        receive(event: event)
+        Task {
+            await receive(event: event)
+        }
     }
 }
 
@@ -101,3 +99,33 @@ final class DatabaseObserver: @unchecked Sendable {
 //        }
 //    }
 //}
+
+class Observation: Identifiable, AsyncSequence, @unchecked Sendable {
+    private let stream: AsyncStream<DatabaseEvent>
+    private let continuation: AsyncStream<DatabaseEvent>.Continuation
+    
+    struct Id: Hashable, Sendable {
+        let rawValue: ObjectIdentifier
+    }
+    
+    init() {
+        (stream, continuation) = AsyncStream.makeStream()
+    }
+    
+    var id: Id {
+        return Id(rawValue: ObjectIdentifier(self))
+    }
+    
+    func emit(event: DatabaseEvent) {
+        continuation.yield(event)
+    }
+    
+    func cancel() {
+        continuation.finish()
+    }
+
+    func makeAsyncIterator() -> AsyncStream<DatabaseEvent>.Iterator {
+        return stream.makeAsyncIterator()
+    }
+}
+

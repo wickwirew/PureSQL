@@ -4,8 +4,10 @@
 //
 //  Created by Wes Wickwire on 2/21/25.
 //
-public struct QueryObservation<Q: Query>: AsyncSequence
-    where Q.Database == ConnectionPool
+public struct QueryObservation<Q: Query>: AsyncSequence, Sendable
+    where Q.Database == ConnectionPool,
+          Q: Sendable,
+          Q.Input: Sendable
 {
     private let query: Q
     private let input: Q.Input
@@ -21,27 +23,34 @@ public struct QueryObservation<Q: Query>: AsyncSequence
     }
     
     public func makeAsyncIterator() -> Iterator {
-        Iterator(observation: self)
+        Iterator(queryObservation: self)
     }
     
     public struct Iterator: AsyncIteratorProtocol {
-        let observation: QueryObservation
+        let queryObservation: QueryObservation
         
-        public func next() async throws -> Q.Output? {
-            for await _ in observation.stream {
-                guard !Task.isCancelled else { return nil }
-                return try await observation.query.execute(
-                    with: observation.input,
-                    in: observation.pool
+        public mutating func next() async throws -> Q.Output? {
+            let dbObservation = await queryObservation.pool.observe()
+            
+            for await _ in dbObservation {
+                guard !Task.isCancelled else {
+                    await queryObservation.pool.cancel(observation: dbObservation)
+                    return nil
+                }
+                
+                return try await queryObservation.query.execute(
+                    with: queryObservation.input,
+                    in: queryObservation.pool
                 )
             }
             
+            await queryObservation.pool.cancel(observation: dbObservation)
             return nil
         }
     }
 }
 
-extension Query where Database == ConnectionPool {
+extension Query where Database == ConnectionPool, Input: Sendable {
     public func values(
         with input: Input,
         in database: Database
@@ -56,11 +65,11 @@ public struct FetchManyQuery<Input, Output>: Query
     Output.Element: RowDecodable
 {
     public let transactionKind: TransactionKind
-    private let _statement: (Input, borrowing Transaction) throws -> Statement
+    private let _statement: @Sendable (Input, borrowing Transaction) throws -> Statement
     
     public init(
         _ transactionKind: TransactionKind,
-        statement: @escaping (Input, borrowing Transaction) throws -> Statement
+        statement: @Sendable @escaping (Input, borrowing Transaction) throws -> Statement
     ){
         self.transactionKind = transactionKind
         self._statement = statement
@@ -104,11 +113,11 @@ public struct FetchSingleQuery<Input, Output>: Query
     where Output: RowDecodable
 {
     public let transactionKind: TransactionKind
-    private let _statement: (Input, borrowing Transaction) throws -> Statement
+    private let _statement: @Sendable (Input, borrowing Transaction) throws -> Statement
     
     public init(
         _ transactionKind: TransactionKind,
-        statement: @escaping (Input, borrowing Transaction) throws -> Statement
+        statement: @Sendable @escaping (Input, borrowing Transaction) throws -> Statement
     ) {
         self.transactionKind = transactionKind
         self._statement = statement
@@ -146,11 +155,11 @@ public struct VoidQuery<Input>: Query {
     public typealias Output = ()
     
     public let transactionKind: TransactionKind
-    private let _statement: (Input, borrowing Transaction) throws -> Statement
+    private let _statement: @Sendable (Input, borrowing Transaction) throws -> Statement
     
     public init(
         _ transactionKind: TransactionKind,
-        statement: @escaping (Input, borrowing Transaction) throws -> Statement
+        statement: @Sendable @escaping (Input, borrowing Transaction) throws -> Statement
     ) {
         self.transactionKind = transactionKind
         self._statement = statement

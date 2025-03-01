@@ -124,11 +124,11 @@ public actor ConnectionPool: Sendable {
         throw .failedToGetConnection
     }
     
-    nonisolated func observe(observation: @Sendable @escaping () -> Void) -> DatabaseObserver.Token {
-        return observer.observe { _ in observation() }
+    func observe() async -> Observation {
+        return await observer.observe()
     }
     
-    nonisolated func cancel(observation: DatabaseObserver.Token) {
-        return observer.cancel(token: observation)
+    func cancel(observation: Observation) async {
+        return await observer.cancel(observation: observation)
     }
 }

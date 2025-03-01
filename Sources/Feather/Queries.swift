@@ -51,7 +51,7 @@ public enum Queries {
         /// The upstream query to transform
         let base: Base
         /// The transform to apply to the output
-        let transform: (Base.Output) throws -> Output
+        let transform: @Sendable (Base.Output) throws -> Output
         
         public var transactionKind: TransactionKind {
             return base.transactionKind
@@ -89,7 +89,7 @@ public extension Query {
     }
     
     func map<NewOutput>(
-        _ transform: @escaping (Output) throws -> NewOutput
+        _ transform: @Sendable @escaping (Output) throws -> NewOutput
     ) -> Queries.Map<Self, NewOutput> {
         return Queries.Map(base: self, transform: transform)
     }
@@ -105,7 +105,7 @@ public extension Query {
     }
     
     func replaceNil<Wrapped>(
-        with value: @autoclosure @escaping () -> Wrapped
+        with value: @Sendable @autoclosure @escaping () -> Wrapped
     ) -> Queries.Map<Self, Wrapped> where Output == Wrapped? {
         return Queries.Map(base: self) { entity in
             return entity ?? value()

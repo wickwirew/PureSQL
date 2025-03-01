@@ -5,10 +5,10 @@
 //  Created by Wes Wickwire on 11/9/24.
 //
 
-public protocol Query<Input, Output, Database> {
+public protocol Query<Input, Output, Database>: Sendable {
     associatedtype Input
     associatedtype Output
-    associatedtype Database
+    associatedtype Database: Sendable
     
     var transactionKind: TransactionKind { get }
     
