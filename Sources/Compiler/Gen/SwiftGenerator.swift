@@ -88,8 +88,12 @@ public struct SwiftGenerator: Language {
                 ) {
                     "let statement = try Feather.Statement(\n\"\"\"\n\(raw: statement.sanitizedSource)\n\"\"\", \ntransaction: transaction\n)"
                     
-                    for parameter in statement.parameters.values {
-                        "try statement.bind(value: input.\(raw: parameter.name), to: \(raw: parameter.index))"
+                    if let first = statement.parameters.values.first, statement.parameters.count == 1 {
+                        "try statement.bind(value: input, to: \(raw: first.index))"
+                    } else {
+                        for parameter in statement.parameters.values {
+                            "try statement.bind(value: input.\(raw: parameter.name), to: \(raw: parameter.index))"
+                        }
                     }
                     
                     "return statement"
@@ -126,15 +130,17 @@ public struct SwiftGenerator: Language {
         return try SourceFileSyntax {
             try ImportDeclSyntax("import Feather")
             
-            try VariableDeclSyntax("var migrations: [String]") {
-                ArrayExprSyntax(
-                    expressions: migrations.map { SwiftSyntax.ExprSyntax($0) }
-                )
-            }
+            try EnumDeclSyntax("enum Queries") {
+                try VariableDeclSyntax("static var migrations: [String]") {
+                    ArrayExprSyntax(
+                        expressions: migrations.map { SwiftSyntax.ExprSyntax($0) }
+                    )
+                }
             
-            for query in queries {
-                for decl in query {
-                    decl
+                for query in queries {
+                    for decl in query {
+                        decl
+                    }
                 }
             }
         }

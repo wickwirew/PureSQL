@@ -111,7 +111,9 @@ public actor ConnectionPool: Sendable {
         // Check if we have any capacity to create a new connection
         if count < limit {
             count += 1
-            return try tx(connection: Connection(path: path))
+            let connection = try Connection(path: path)
+            observer.installHooks(into: connection)
+            return try tx(connection: connection)
         }
         
         // Wait for an available connection

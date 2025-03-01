@@ -77,7 +77,7 @@ extension Float: DatabasePrimitive {
 
 extension Bool: DatabasePrimitive {
     @inlinable public init(from cursor: OpaquePointer, at index: Int32) throws(FeatherError) {
-        self = sqlite3_column_int64(cursor, index) != 1
+        self = sqlite3_column_int64(cursor, index) == 1
     }
 
     @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(FeatherError) {

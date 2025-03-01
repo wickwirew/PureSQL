@@ -4,6 +4,7 @@
 //
 //  Created by Wes Wickwire on 2/21/25.
 //
+
 public struct QueryObservation<Q: Query>: AsyncSequence, Sendable
     where Q.Database == ConnectionPool,
           Q: Sendable,
@@ -28,9 +29,21 @@ public struct QueryObservation<Q: Query>: AsyncSequence, Sendable
     
     public struct Iterator: AsyncIteratorProtocol {
         let queryObservation: QueryObservation
+        var dbObservation: Observation?
         
         public mutating func next() async throws -> Q.Output? {
-            let dbObservation = await queryObservation.pool.observe()
+            if dbObservation == nil {
+                dbObservation = await queryObservation.pool.observe()
+                
+                return try await queryObservation.query.execute(
+                    with: queryObservation.input,
+                    in: queryObservation.pool
+                )
+            }
+            
+            guard let dbObservation else {
+                fatalError()
+            }
             
             for await _ in dbObservation {
                 guard !Task.isCancelled else {
