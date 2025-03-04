@@ -101,7 +101,7 @@ fileprivate struct CompilerWithSource {
             name: nil,
             parameters: uniquify(parameters: parameters)
                 .reduce(into: [:]) { $0[$1.index] = $1 },
-            output: type,
+            resultColumns: type,
             outputCardinality: cardinality,
             isReadOnly: isReadOnly,
             sanitizedSource: sanitizedSource,

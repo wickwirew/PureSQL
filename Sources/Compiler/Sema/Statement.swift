@@ -10,7 +10,7 @@ public struct Statement {
     /// Any bind parameters for the statement
     public let parameters: [Int: Parameter<String>]
     /// The return type if any.
-    public let output: ResultColumns
+    public let resultColumns: ResultColumns
     /// How many possible items will be in the result set.
     public let outputCardinality: Cardinality
     /// `false` if the statement edits the schema
@@ -24,7 +24,7 @@ public struct Statement {
     
     /// If `true` the query returns nothing.
     public var noOutput: Bool {
-        return output.columns.isEmpty
+        return resultColumns.columns.isEmpty
     }
     
     /// Replaces the name with the given input
@@ -32,7 +32,7 @@ public struct Statement {
         return Statement(
             name: name,
             parameters: parameters,
-            output: output,
+            resultColumns: resultColumns,
             outputCardinality: outputCardinality,
             isReadOnly: isReadOnly,
             sanitizedSource: sanitizedSource,
@@ -62,9 +62,13 @@ public struct ResultColumns: Sendable {
     /// The source table this should be mapped too.
     /// If the user does a `SELECT * FROM foo` we can
     /// just return a `Foo` object rather than generate
-    /// a specific type for the output of the `SELECT`
+    /// a specific type for the output of the `SELECT`.
+    /// If the `SELECT` does not map directly to a table
+    /// due to selecting from many columns from many tables
+    /// this will be `nil`.
     public let table: Substring?
     
+    /// The columns as a row type.
     public var type: Type {
         return .row(.named(columns))
     }

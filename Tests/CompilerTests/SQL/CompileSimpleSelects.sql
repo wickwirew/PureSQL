@@ -10,6 +10,7 @@ CREATE TABLE foo (id INTEGER PRIMARY KEY, bar INTEGER AS Bool, baz TEXT NOT NULL
 -- CHECK:     id INTEGER
 -- CHECK:     bar (INTEGER AS Bool)?
 -- CHECK:     baz TEXT
+-- CHECK:   OUTPUT_TABLE foo
 SELECT * FROM foo WHERE id = ?;
 
 -- CHECK: SIGNATURE
@@ -37,4 +38,5 @@ SELECT id, bar + 1 FROM foo WHERE bar * 20 > ?;
 -- CHECK:     id INTEGER
 -- CHECK:     bar (INTEGER AS Bool)?
 -- CHECK:     baz TEXT
+-- CHECK:   OUTPUT_TABLE foo
 SELECT * FROM foo WHERE id = :id AND id = :id AND bar = ?;

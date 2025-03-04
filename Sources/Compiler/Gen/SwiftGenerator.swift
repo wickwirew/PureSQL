@@ -49,7 +49,7 @@ public struct SwiftGenerator: Language {
         } else {
             // TODO: Check for single output
             outputTypeName = "\(name.capitalizedFirst)Output"
-            try declarations.append(outputStructDecl(name: outputTypeName, type: statement.output))
+            try declarations.append(outputStructDecl(name: outputTypeName, type: statement.resultColumns))
         }
         
         let queryType: String = if statement.noOutput {

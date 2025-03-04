@@ -11,7 +11,7 @@ import XCTest
 
 class CompilerTests: XCTestCase {
     func testCheckSimpleSelects() throws {
-        try checkQueries(compile: "CompileSimpleSelects")
+        try checkQueries(compile: "CompileSimpleSelects", dump: true)
     }
 
     func testSelectWithJoins() throws {
@@ -65,24 +65,16 @@ class CompilerTests: XCTestCase {
 struct CheckSignature: Checkable {
     let parameters: [Parameter<String>]
     let output: [String]
+    let outputTable: Substring?
     
     init(_ statement: Statement) {
         self.parameters = statement.parameters.values.sorted(by: { $0.index < $1.index })
-        self.output = statement.output.columns.map { "\($0) \($1)" }
+        self.output = statement.resultColumns.columns.map { "\($0) \($1)" }
+        self.outputTable = statement.resultColumns.table
     }
     
     var typeName: String {
         return "Signature"
-    }
-    
-    var customMirror: Mirror {
-        return Mirror(
-            self,
-            children: [
-                "parameters": parameters,
-                "output": output,
-            ]
-        )
     }
 }
 
