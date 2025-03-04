@@ -64,11 +64,11 @@ class CompilerTests: XCTestCase {
 
 struct CheckSignature: Checkable {
     let parameters: [Parameter<String>]
-    let output: Type?
+    let output: [String]
     
     init(_ statement: Statement) {
         self.parameters = statement.parameters.values.sorted(by: { $0.index < $1.index })
-        self.output = statement.output
+        self.output = statement.output.columns.map { "\($0) \($1)" }
     }
     
     var typeName: String {
@@ -76,19 +76,11 @@ struct CheckSignature: Checkable {
     }
     
     var customMirror: Mirror {
-        // Helps the CHECK statements in the tests since the `Type`
-        // structure is fairly complex and has lots of nesting.
-        let outputTypes: [String] = if case let .row(.named(columns)) = output {
-            columns.elements.map { "\($0) \($1)" }
-        } else {
-            []
-        }
-        
         return Mirror(
             self,
             children: [
                 "parameters": parameters,
-                "output": outputTypes,
+                "output": output,
             ]
         )
     }
@@ -135,8 +127,12 @@ func checkQueries(
                 validator: IsAlwaysValid(),
                 context: "tests"
             )
+            
+            var isQuery = IsValidForQueries()
             return (
-                stmts.map { CheckSignature($0) }.filter{ !$0.parameters.isEmpty || $0.output != nil },
+                stmts
+                    .filter{ $0.syntax.accept(visitor: &isQuery) }
+                    .map { CheckSignature($0) },
                 diags
             )
         },

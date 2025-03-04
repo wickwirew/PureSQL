@@ -53,13 +53,3 @@ public extension Query {
         return try execute(with: (), tx: tx)
     }
 }
-
-func meow() async -> AsyncStream<Int> {
-    fatalError()
-}
-
-func meow23() async {
-    for await m in await meow() {
-        print(m)
-    }
-}

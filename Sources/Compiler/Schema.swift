@@ -15,6 +15,14 @@ public typealias Schema = OrderedDictionary<Substring, Table>
 // TODO: name which the ordered dictionary wouldnt catch. Or just error?
 public typealias Columns = OrderedDictionary<Substring, Type>
 
+extension Columns {
+    /// Initializes the columns with their default names that SQLite gives to them.
+    init(withDefaultNames types: [Type]) {
+        self = types.enumerated()
+            .reduce(into: [:]) { c, v in c["column\(v.offset)"] = v.element }
+    }
+}
+
 public struct Table {
     public var name: Substring
     public var columns: Columns

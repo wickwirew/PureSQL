@@ -8,7 +8,7 @@
 import OrderedCollections
 
 struct StmtTypeChecker {
-    typealias Output = (parameters: [Parameter<Substring?>], output: Type?)
+    typealias Signature = (parameters: [Parameter<Substring?>], output: ResultColumns)
     
     /// The environment in which the query executes. Any joined in tables
     /// will be added to this.
@@ -44,17 +44,11 @@ struct StmtTypeChecker {
     var allDiagnostics: Diagnostics {
         return diagnostics.merging(inferenceState.diagnostics)
     }
-    
-    /// Calculates the signature for a single expression.
-    mutating func signature<E: ExprSyntax>(for expr: E) -> Output {
-        let (ty, _) = typeCheck(expr)
-        return output(ty: ty)
-    }
-    
+
     /// Calculates the solution of an entire statement.
-    mutating func signature<S: StmtSyntax>(for stmt: S) -> Output {
-        let ty = stmt.accept(visitor: &self)
-        return output(ty: ty)
+    mutating func signature<S: StmtSyntax>(for stmt: S) -> Signature {
+        let resultColumns = stmt.accept(visitor: &self)
+        return output(resultColumns: resultColumns)
     }
     
     /// Type checks and infers the type and any bind parameter names in the expression
@@ -74,7 +68,7 @@ struct StmtTypeChecker {
     }
     
     /// Calculates the final inferred signature of the statement
-    private mutating func output(ty: Type?) -> Output {
+    private mutating func output(resultColumns: ResultColumns) -> Signature {
         let parameters = inferenceState
             .parameterSolutions(defaultIfTyVar: true)
             .map { parameter in
@@ -85,9 +79,14 @@ struct StmtTypeChecker {
                 )
             }
         
-        let type = ty.map { ty in inferenceState.solution(for: ty, defaultIfTyVar: true) }
-        
-        return (parameters, type)
+        return (
+            parameters,
+            ResultColumns(
+                columns: resultColumns.columns
+                    .mapValues { ty in inferenceState.solution(for: ty, defaultIfTyVar: true) },
+                table: resultColumns.table
+            )
+        )
     }
     
     /// Performs the inference in a new environment.
@@ -105,53 +104,53 @@ struct StmtTypeChecker {
 }
 
 extension StmtTypeChecker: StmtSyntaxVisitor {
-    mutating func visit(_ stmt: borrowing CreateTableStmtSyntax) -> Type? {
+    mutating func visit(_ stmt: borrowing CreateTableStmtSyntax) -> ResultColumns {
         typeCheck(createTable: stmt)
-        return nil
+        return .empty
     }
     
-    mutating func visit(_ stmt: borrowing AlterTableStmtSyntax) -> Type? {
+    mutating func visit(_ stmt: borrowing AlterTableStmtSyntax) -> ResultColumns {
         typeCheck(alterTable: stmt)
-        return nil
+        return .empty
     }
     
-    mutating func visit(_ stmt: borrowing SelectStmtSyntax) -> Type? {
+    mutating func visit(_ stmt: borrowing SelectStmtSyntax) -> ResultColumns {
         return typeCheck(select: stmt)
     }
     
-    mutating func visit(_ stmt: borrowing InsertStmtSyntax) -> Type? {
+    mutating func visit(_ stmt: borrowing InsertStmtSyntax) -> ResultColumns {
         return typeCheck(insert: stmt)
     }
     
-    mutating func visit(_ stmt: borrowing UpdateStmtSyntax) -> Type? {
+    mutating func visit(_ stmt: borrowing UpdateStmtSyntax) -> ResultColumns {
         return typeCheck(update: stmt)
     }
     
-    mutating func visit(_ stmt: borrowing DeleteStmtSyntax) -> Type? {
+    mutating func visit(_ stmt: borrowing DeleteStmtSyntax) -> ResultColumns {
         return typeCheck(delete: stmt)
     }
     
-    mutating func visit(_ stmt: borrowing EmptyStmtSyntax) -> Type? {
-        return nil
+    mutating func visit(_ stmt: borrowing EmptyStmtSyntax) -> ResultColumns {
+        return .empty
     }
     
-    mutating func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> Type? {
+    mutating func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> ResultColumns {
         return stmt.statement.accept(visitor: &self)
     }
     
-    mutating func visit(_ stmt: borrowing PragmaStmt) -> Type? {
-        return nil
+    mutating func visit(_ stmt: borrowing PragmaStmt) -> ResultColumns {
+        return .empty
     }
     
-    mutating func visit(_ stmt: borrowing DropTableStmtSyntax) -> Type? {
+    mutating func visit(_ stmt: borrowing DropTableStmtSyntax) -> ResultColumns {
         typeCheck(dropTable: stmt)
-        return nil
+        return .empty
     }
     
-    mutating func visit(_ stmt: borrowing CreateIndexStmtSyntax) -> Type? {
+    mutating func visit(_ stmt: borrowing CreateIndexStmtSyntax) -> ResultColumns {
         guard let table = schema[stmt.table.value] else {
             diagnostics.add(.tableDoesNotExist(stmt.table))
-            return nil
+            return .empty
         }
         
         insertTableAndColumnsIntoEnv(table)
@@ -160,50 +159,44 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
             _ = typeCheck(whereExpr)
         }
         
-        return nil
+        return .empty
     }
     
-    mutating func visit(_ stmt: borrowing DropIndexStmtSyntax) -> Type? {
+    mutating func visit(_ stmt: borrowing DropIndexStmtSyntax) -> ResultColumns {
         // Indices are not stored at the moment, so there is nothign to do.
-        return nil
+        return .empty
     }
     
-    mutating func visit(_ stmt: borrowing ReindexStmtSyntax) -> Type? {
+    mutating func visit(_ stmt: borrowing ReindexStmtSyntax) -> ResultColumns {
         // Indices are not stored at the moment, so there is nothign to do.
         // We cant really even validate the name since it can be the
         // index name and not just the table
-        return nil
+        return .empty
     }
     
-    mutating func visit(_ stmt: borrowing CreateViewStmtSyntax) -> Type? {
+    mutating func visit(_ stmt: borrowing CreateViewStmtSyntax) -> ResultColumns {
         guard schema[stmt.name.value] == nil else {
             diagnostics.add(.tableAlreadyExists(stmt.name))
-            return nil
+            return .empty
         }
         
         let select = typeCheck(select: stmt.select)
-        let row = assumeRow(select)
-    
-        if let firstName = stmt.columnNames.first, row.count != stmt.columnNames.count {
+        
+        if let firstName = stmt.columnNames.first, select.columns.count != stmt.columnNames.count {
             diagnostics.add(.init(
-                "SELECT returns \(row.count) columns but only have \(stmt.columnNames.count) names defined",
+                "SELECT returns \(select.columns.count) columns but only have \(stmt.columnNames.count) names defined",
                 at: firstName.range
             ))
         }
         
         let columns: Columns
         if stmt.columnNames.isEmpty {
-            guard case let .named(c) = row else {
-                diagnostics.add(.init("Column names not defined", at: stmt.range))
-                return .error
-            }
-            
             // Don't have explicit names, just return the column names.
-            columns = c
+            columns = select.columns
         } else {
             // If the counts do not match a diagnostic will already have been emitted
             // so just for safety choose the minimum of the two.
-            let types = row.types
+            let types = select.columns.values
             let minCount = min(stmt.columnNames.count, types.count)
             columns = (0..<minCount).reduce(into: [:]) { columns, index in
                 columns[stmt.columnNames[index].value] = types[index]
@@ -217,13 +210,13 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
             kind: .view
         )
         
-        return nil
+        return .empty
     }
     
-    mutating func visit(_ stmt: borrowing CreateVirtualTableStmtSyntax) -> Type? {
+    mutating func visit(_ stmt: borrowing CreateVirtualTableStmtSyntax) -> ResultColumns {
         guard schema[stmt.tableName.name.value] == nil else {
             diagnostics.add(.tableAlreadyExists(stmt.tableName.name))
-            return nil
+            return .empty
         }
         
         switch stmt.module {
@@ -233,7 +226,7 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
             diagnostics.add(.init("Unknown virtual table module name", at: stmt.moduleName.range))
         }
         
-        return nil
+        return .empty
     }
 }
 
@@ -241,12 +234,12 @@ extension StmtTypeChecker {
     mutating func typeCheck(
         select: SelectStmtSyntax,
         potentialNames: [IdentifierSyntax]? = nil
-    ) -> Type {
+    ) -> ResultColumns {
         if let cte = select.cte?.value {
             typeCheck(cte: cte)
         }
         
-        let type = switch select.selects.value {
+        let resultColumns = switch select.selects.value {
         case let .single(selectCore):
              typeCheck(
                 select: selectCore,
@@ -265,17 +258,17 @@ extension StmtTypeChecker {
             _ = typeCheck(limit.expr)
         }
         
-        return type
+        return resultColumns
     }
     
-    mutating func typeCheck(insert: InsertStmtSyntax) -> Type {
+    mutating func typeCheck(insert: InsertStmtSyntax) -> ResultColumns {
         if let cte = insert.cte {
             typeCheck(cte: cte)
         }
         
         guard let table = schema[insert.tableName.name.value] else {
             diagnostics.add(.tableDoesNotExist(insert.tableName.name))
-            return .error
+            return .empty
         }
         
         let inputType: Type
@@ -296,30 +289,30 @@ extension StmtTypeChecker {
         }
         
         if let values = insert.values {
-            let type = typeCheck(select: values.select, potentialNames: insert.columns)
-            inferenceState.unify(inputType, with: type, at: insert.range)
+            let resultColumns = typeCheck(select: values.select, potentialNames: insert.columns)
+            inferenceState.unify(inputType, with: .row(.named(resultColumns.columns)), at: insert.range)
         } else {
             // TODO: Using 'DEFALUT VALUES' make sure all columns
             // TODO: actually have default values or null
         }
         
-        let ty: Type = if let returningClause = insert.returningClause {
+        let resultColumns: ResultColumns = if let returningClause = insert.returningClause {
             typeCheck(returningClause: returningClause, sourceTable: table)
         } else {
-            .row(.empty)
+            .empty
         }
         
-        return ty
+        return resultColumns
     }
     
-    mutating func typeCheck(update: UpdateStmtSyntax) -> Type {
+    mutating func typeCheck(update: UpdateStmtSyntax) -> ResultColumns {
         if let cte = update.cte {
             typeCheck(cte: cte)
         }
         
         guard let table = schema[update.tableName.tableName.name.value] else {
             diagnostics.add(.tableDoesNotExist(update.tableName.tableName.name))
-            return .error
+            return .empty
         }
         
         insertTableAndColumnsIntoEnv(table)
@@ -334,7 +327,7 @@ extension StmtTypeChecker {
                 
                 guard let column = table.columns[column.value] else {
                     diagnostics.add(.columnDoesNotExist(column))
-                    return .error
+                    return .empty
                 }
                 
                 inferenceState.unify(column, with: valueType, at: set.range)
@@ -355,23 +348,23 @@ extension StmtTypeChecker {
             typeCheck(where: whereExpr)
         }
         
-        let returnType: Type = if let returning = update.returningClause {
+        let returnType: ResultColumns = if let returning = update.returningClause {
             typeCheck(returningClause: returning, sourceTable: table)
         } else {
-            .row(.empty)
+            .empty
         }
         
         return returnType
     }
     
-    mutating func typeCheck(delete: DeleteStmtSyntax) -> Type {
+    mutating func typeCheck(delete: DeleteStmtSyntax) -> ResultColumns {
         if let cte = delete.cte {
             typeCheck(cte: cte)
         }
         
         guard let table = schema[delete.table.tableName.name.value] else {
             diagnostics.add(.tableDoesNotExist(delete.table.tableName.name))
-            return .error
+            return .empty
         }
         
         insertTableAndColumnsIntoEnv(table)
@@ -380,10 +373,10 @@ extension StmtTypeChecker {
             typeCheck(where: whereExpr)
         }
         
-        let returnType: Type = if let returning = delete.returningClause {
+        let returnType: ResultColumns = if let returning = delete.returningClause {
             typeCheck(returningClause: returning, sourceTable: table)
         } else {
-            .row(.empty)
+            .empty
         }
         
         return returnType
@@ -410,7 +403,7 @@ extension StmtTypeChecker {
     private mutating func typeCheck(
         returningClause: ReturningClauseSyntax,
         sourceTable: Table
-    ) -> Type {
+    ) -> ResultColumns {
         var resultColumns: Columns = [:]
         
         for value in returningClause.values {
@@ -430,32 +423,29 @@ extension StmtTypeChecker {
             }
         }
         
-        return .row(.named(resultColumns))
+        return ResultColumns(columns: resultColumns, table: nil)
     }
     
     private mutating func typeCheck(cte: CommonTableExpressionSyntax) {
-        let type = typeCheck(select: cte.select)
+        let resultColumns = typeCheck(select: cte.select)
 
-        let tableTy: Type
+        let columns: Columns
         if cte.columns.isEmpty {
-            tableTy = type
+            columns = resultColumns.columns
         } else {
-            let row = assumeRow(type)
-            let columnTypes = row.types
+            let columnTypes = resultColumns.columns.values
             if columnTypes.count != cte.columns.count {
                 diagnostics.add(.init(
-                    "CTE expected \(cte.columns.count) columns, but got \(row.count)",
+                    "CTE expected \(cte.columns.count) columns, but got \(columnTypes.count)",
                     at: cte.range
                 ))
             }
             
-            tableTy = .row(.named(
-                (0 ..< min(columnTypes.count, cte.columns.count))
-                    .reduce(into: [:]) { $0[cte.columns[$1].value] = columnTypes[$1] }
-            ))
+            columns = (0 ..< min(columnTypes.count, cte.columns.count))
+                .reduce(into: [:]) { $0[cte.columns[$1].value] = columnTypes[$1] }
         }
         
-        env.insert(cte.table.value, ty: tableTy)
+        env.insert(cte.table.value, ty: .row(.named(columns)))
     }
     
     /// Will infer the core part of the select.
@@ -470,7 +460,7 @@ extension StmtTypeChecker {
         select: SelectCoreSyntax,
         at range: Range<Substring.Index>,
         potentialNames: [IdentifierSyntax]? = nil
-    ) -> Type {
+    ) -> ResultColumns {
         switch select {
         case let .select(select):
             return typeCheck(select: select)
@@ -501,11 +491,20 @@ extension StmtTypeChecker {
                 inferenceState.unify(all: types, at: range)
             }
             
-            return types.last.map { inferenceState.solution(for: $0) } ?? .row(.empty)
+            guard case let .row(row) = types.last else {
+                return ResultColumns(columns: [:], table: nil)
+            }
+            
+            return ResultColumns(
+                columns: Columns(
+                    withDefaultNames: row.types.map { inferenceState.solution(for: $0) }
+                ),
+                table: nil
+            )
         }
     }
     
-    private mutating func typeCheck(select: SelectCoreSyntax.Select) -> Type {
+    private mutating func typeCheck(select: SelectCoreSyntax.Select) -> ResultColumns {
         if let from = select.from {
             typeCheck(from: from)
         }
@@ -558,8 +557,20 @@ extension StmtTypeChecker {
         }
     }
     
-    private mutating func typeCheck(resultColumns: [ResultColumnSyntax]) -> Type {
+    private mutating func typeCheck(resultColumns: [ResultColumnSyntax]) -> ResultColumns {
         var columns: OrderedDictionary<Substring, Type> = [:]
+        var table: Substring?
+        
+        func setTableIfEmpty(to name: Substring) {
+            if columns.isEmpty {
+                table = name
+            } else {
+                // Two expressions tried to set the table which means
+                // the result columns do not represent a single table.
+                // Example: `SELECT foo.*, bar.* FROM ...`
+                table = nil
+            }
+        }
         
         for resultColumn in resultColumns {
             switch resultColumn.kind {
@@ -571,6 +582,10 @@ extension StmtTypeChecker {
                 } else {
                     diagnostics.add(.nameRequired(at: expr.range))
                 }
+                
+                // We selected a single column, so clear out the table
+                // since its not a select all of a table.
+                table = nil
             case let .all(tableName):
                 if let tableName {
                     if let table = env[tableName.value]?.type {
@@ -582,13 +597,15 @@ extension StmtTypeChecker {
                         for (name, type) in tableColumns {
                             columns[name] = type
                         }
+                        
+                        setTableIfEmpty(to: tableName.value)
                     } else {
                         diagnostics.add(.init("Table '\(tableName)' does not exist", at: tableName.range))
                     }
                 } else {
                     for (name, type) in env {
                         switch type {
-                        case .row: continue // Ignore tables
+                        case .row: setTableIfEmpty(to: name)
                         default: columns[name] = type
                         }
                     }
@@ -596,7 +613,7 @@ extension StmtTypeChecker {
             }
         }
         
-        return .row(.named(columns))
+        return ResultColumns(columns: columns, table: table)
     }
     
     private mutating func typeCheck(joinClause: JoinClauseSyntax) {
@@ -660,22 +677,18 @@ extension StmtTypeChecker {
         case .tableFunction:
             fatalError()
         case let .subquery(selectStmt, alias):
-            let type = inNewEnvironment { inferrer in
+            let resultColumns = inNewEnvironment { inferrer in
                 inferrer.typeCheck(select: selectStmt)
             }
             
             // Insert the result of the subquery into the environment
             if let alias {
-                env.insert(alias.identifier.value, ty: type)
-            }
-            
-            guard case let .row(.named(columns)) = type else {
-                fatalError("SELECT did not result a row type")
+                env.insert(alias.identifier.value, ty: resultColumns.type)
             }
             
             // Also insert each column into the env. So you dont
             // have to do `alias.column`
-            for (name, type) in columns {
+            for (name, type) in resultColumns.columns {
                 env.insert(name, ty: type)
             }
         case let .join(joinClause):
@@ -735,29 +748,10 @@ extension StmtTypeChecker {
         case let .select(selectStmt):
             let signature = signature(for: selectStmt)
             
-            guard case let .row(row) = signature.output else {
-                fatalError("SELECT returned a non row type?")
-            }
-            
-            let columns: Columns
-            switch row {
-            case .named(let c):
-                columns = c
-            case .unnamed(let types):
-                // Technically this is allowed by SQLite, but the names are auto named `column1...`.
-                // I don't think this is a good practice so might as well just error for now.
-                // Can be accomplished by doing `CREATE TABLE foo AS VALUES (1, 2, 3);`
-                diagnostics.add(.init("Result of SELECT did not have named columns", at: selectStmt.range))
-                columns = types.enumerated().reduce(into: [:], { $0["column\($1.offset + 1)"] = $1.element })
-            case .unknown(let type):
-                // `unknown` is only used in inference, but might as well just set it
-                columns = ["column1": type]
-            }
-            
             schema[createTable.name.value] = Table(
                 name: createTable.name.value,
-                columns: columns,
-                primaryKey: primaryKey(of: createTable, columns: columns),
+                columns: signature.output.columns,
+                primaryKey: primaryKey(of: createTable, columns: signature.output.columns),
                 kind: .normal
             )
         case let .columns(columns):

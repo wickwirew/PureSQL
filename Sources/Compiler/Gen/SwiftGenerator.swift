@@ -106,20 +106,16 @@ public struct SwiftGenerator: Language {
         return declarations
     }
     
-    private static func outputStructDecl(name: String, type: Type?) throws -> DeclSyntax {
-        guard case let .row(.named(columns)) = type else {
-            fatalError("Output is not a row type")
-        }
-        
+    private static func outputStructDecl(name: String, type: ResultColumns) throws -> DeclSyntax {
         return try DeclSyntax(StructDeclSyntax(name: "\(raw: name): Feather.RowDecodable") {
-            for (column, type) in columns {
+            for (column, type) in type.columns {
                 "let \(raw: column): \(raw: swiftType(for: type))"
             }
             
             try InitializerDeclSyntax("init(row: borrowing Feather.Row) throws(FeatherError)") {
                 "var columns = row.columnIterator()"
                 
-                for (column, _) in columns {
+                for (column, _) in type.columns {
                     "self.\(raw: column) = try columns.next()"
                 }
             }
