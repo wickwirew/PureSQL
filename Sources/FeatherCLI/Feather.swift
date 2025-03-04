@@ -83,7 +83,14 @@ struct Feather: ParsableCommand {
             try queries.append(language.query(statement: statement, name: name))
         }
         
-        let file = try language.file(migrations: migrations, queries: queries)
+        let tables = try compiler.schema
+            .map { try language.table(name: $0.key, columns: $0.value.columns) }
+        
+        let file = try language.file(
+            migrations: migrations,
+            tables: tables,
+            queries: queries
+        )
         
         if let output {
             try validateIsFile(output)

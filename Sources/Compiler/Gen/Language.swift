@@ -6,6 +6,7 @@
 //
 
 public protocol Language {
+    associatedtype Table
     associatedtype File
     associatedtype Query
     associatedtype Migration
@@ -14,12 +15,18 @@ public protocol Language {
         source: String
     ) throws -> Migration
     
+    static func table(name: Substring, columns: Columns) throws -> Table
+    
     static func query(
         statement: Statement,
         name: Substring
     ) throws -> Query
     
-    static func file(migrations: [Migration], queries: [Query]) throws -> File
+    static func file(
+        migrations: [Migration],
+        tables: [Table],
+        queries: [Query]
+    ) throws -> File
     
     static func string(for file: File) -> String
 }
