@@ -111,6 +111,15 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
     static let any: Type = .nominal("ANY")
     static let bool: Type = .nominal("BOOL")
     
+    /// The underlying root inner type
+    var root: Type {
+        return switch self {
+        case .alias(let t, _): t.root
+        case .optional(let t): t.root
+        default: self
+        }
+    }
+    
     public var description: String {
         return switch self {
         case let .nominal(typeName): typeName.description
