@@ -82,3 +82,21 @@ public struct ResultColumns: Sendable {
     
     public static let empty = ResultColumns(columns: [:], table: nil)
 }
+
+/// The different segments of the source SQL.
+/// Some bits of the SQL need to get written at
+/// runtime for things like parameters that
+/// are a list/row. Since we need to add `?`'s
+/// for each of the inputs.
+///
+/// This breaks it up into the known/unknown parts.
+public enum SourceSegment {
+    /// Just a portion of the text that makes up the statement
+    case text(Substring)
+    /// A spot where a row/list parameter exists which needs
+    /// to be written at runtime.
+    ///
+    /// The original source for the bind parameter has already
+    /// been removed from the preceding `text` segment
+    case rowParam(Parameter<String>)
+}

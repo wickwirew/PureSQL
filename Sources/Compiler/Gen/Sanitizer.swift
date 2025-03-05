@@ -48,6 +48,63 @@ struct Sanitizer {
     mutating func combine<S: StmtSyntax>(_ stmt: S) {
         rangesToRemove.append(contentsOf: stmt.accept(visitor: &self))
     }
+    
+    /// Splits the source into segments where each segment is either
+    /// just text or a spot where a list/row parameter must have its
+    /// bind parameter indices inserted at runtime.
+    ///
+    /// SQLite does not support by default passing in a list as a parameter
+    /// for statements like `bar IN :elements`.
+    /// The above example will need to get rewritten as `bar IN (?, ?, ?)`
+    /// having a `?` for each element in the list.
+    func segment(statement: Statement) -> [SourceSegment] {
+        // All row parameters in order from start to finish associated to the
+        // parameter they appeared from.
+        let rowRanges: [(Range<Substring.Index>, Parameter<String>)] = statement.parameters
+            .compactMap { _, param -> [(Range<Substring.Index>, Parameter<String>)]? in
+                guard case .row = param.type else { return nil }
+                return param.ranges.map { ($0, param) }
+            }
+            .flatMap(\.self)
+            .sorted { $0.0.lowerBound < $1.0.lowerBound }
+        
+        guard !rowRanges.isEmpty else {
+            return [.text(statement.sanitizedSource[...])]
+        }
+        
+        guard rangesToRemove.isEmpty else {
+            // We cannot support both removing parts of the source SQL
+            // while also segmenting out the source for row parameters.
+            // The initial removal would invalidate the ranges in the
+            // parameter syntax nodes.
+            //
+            // In the future we could segment first then remove but
+            // not really worth it since only migrations have syntax removed
+            // and queries only have inputs
+            fatalError("Removed syntax from source and have list inputs")
+        }
+        
+        var segments: [SourceSegment] = []
+        var startIndex = statement.syntax.range.lowerBound
+        
+        for (rowRange, param) in rowRanges {
+            let textRange = startIndex..<rowRange.lowerBound
+            let text = statement.sanitizedSource[textRange]
+            segments.append(.text(text))
+            segments.append(.rowParam(param))
+            startIndex = rowRange.upperBound
+        }
+        
+        // If the last range wasnt to the end of the string
+        // then make sure to append the rest
+        if startIndex < statement.syntax.range.upperBound {
+            let textRange = startIndex..<statement.syntax.range.upperBound
+            let text = statement.sanitizedSource[textRange]
+            segments.append(.text(text))
+        }
+        
+        return segments
+    }
 }
 
 extension Sanitizer: StmtSyntaxVisitor {
