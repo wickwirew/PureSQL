@@ -225,6 +225,8 @@ public struct SwiftGenerator: Language {
             }
         case let .optional(ty):
             return "\(swiftType(for: ty))?"
+        case let .row(.unknown(ty)):
+            return "[\(swiftType(for: ty))]"
         case .var, .fn, .row, .error:
             return "Any"
         case .alias(_, let alias):

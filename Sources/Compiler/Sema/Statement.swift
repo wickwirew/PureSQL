@@ -49,9 +49,16 @@ public struct Parameter<Name> {
     public let index: Int
     /// The explicit or inferred name of the parameter.
     public let name: Name
+    /// Any place in the source the parameter exists
+    public let ranges: [Range<Substring.Index>]
     
     func with<NewName>(name: NewName) -> Parameter<NewName> {
-        return Parameter<NewName>(type: type, index: index, name: name)
+        return Parameter<NewName>(
+            type: type,
+            index: index,
+            name: name,
+            ranges: ranges
+        )
     }
 }
 

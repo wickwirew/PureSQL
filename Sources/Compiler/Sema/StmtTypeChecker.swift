@@ -75,7 +75,8 @@ struct StmtTypeChecker {
                 Parameter(
                     type: parameter.type,
                     index: parameter.index,
-                    name: nameInferrer.parameterName(at: parameter.index)
+                    name: nameInferrer.parameterName(at: parameter.index),
+                    ranges: parameter.ranges
                 )
             }
         

@@ -61,7 +61,10 @@ extension Sanitizer: StmtSyntaxVisitor {
     }
     
     func visit(_ stmt: borrowing AlterTableStmtSyntax) -> [Range<Substring.Index>] {
-        return []
+        return switch stmt.kind {
+        case .addColumn(let c): c.type.alias.map { [$0.range] } ?? []
+        default: []
+        }
     }
     
     func visit(_ stmt: borrowing EmptyStmtSyntax) -> [Range<Substring.Index>] { [] }

@@ -26,6 +26,10 @@ struct InferenceState {
     /// type for a bind param, we first have to ask this for the syntax id
     /// the bind parameter
     private(set) var bindIndexToSyntaxIds: [BindParameterSyntax.Index: SyntaxId] = [:]
+    /// Any ranges the bind parameters show up in.
+    /// This really isnt the most sensible place for this. May likely break out into its
+    /// own thing but keeping it here for now since its so simple.
+    private(set) var bindIndexRanges: [BindParameterSyntax.Index: [Range<Substring.Index>]] = [:]
     
     /// Instantiates a type scheme by substituting all free type variables
     /// for new fresh type variables.
@@ -70,6 +74,8 @@ struct InferenceState {
         forParam param: borrowing BindParameterSyntax,
         kind: TypeVariable.Kind = .general
     ) -> Type {
+        bindIndexRanges[param.index, default: []].append(param.range)
+        
         // If there is already a type var for the parameter just reuse it.
         // Named bind parameters can be referenced more than once which
         // could mean it would get multiple type vars
@@ -134,10 +140,11 @@ struct InferenceState {
     /// default value if it is a type var.
     func parameterSolutions(
         defaultIfTyVar: Bool = false
-    ) -> [(index: BindParameterSyntax.Index, type: Type)] {
+    ) -> [(index: BindParameterSyntax.Index, type: Type, ranges: [Range<Substring.Index>])] {
         return bindIndexToSyntaxIds.map { (index, syntaxId) in
             let type = self.syntaxTypes[syntaxId] ?? .error
-            return (index, solution(for: type, defaultIfTyVar: defaultIfTyVar))
+            let ranges = self.bindIndexRanges[index] ?? []
+            return (index, solution(for: type, defaultIfTyVar: defaultIfTyVar), ranges)
         }
     }
 }
