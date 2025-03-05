@@ -56,13 +56,10 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         case .string: inferenceState.nominalType(of: "TEXT", for: expr)
         case .blob: inferenceState.nominalType(of: "BLOB", for: expr)
         case .null: .optional(inferenceState.freshTyVar(for: expr, kind: .general))
-        case .true, .false:
-            // TODO: Should be INTEGER
-            inferenceState.nominalType(of: "BOOLEAN", for: expr)
+        case .true, .false: inferenceState.nominalType(of: "INTEGER", for: expr)
         case .currentTime, .currentDate, .currentTimestamp:
             inferenceState.nominalType(of: "TEXT", for: expr)
-        case .invalid:
-            inferenceState.nominalType(of: "<ERROR>", for: expr)
+        case .invalid: inferenceState.errorType(for: expr)
         }
     }
     

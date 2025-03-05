@@ -152,7 +152,6 @@ extension InferenceState {
         with other: Type,
         at range: Range<String.Index>
     ) {
-        print("Unifying:", type, "with", other)
         // If they are the same, no need to unify
         guard type != other else { return }
         
@@ -230,8 +229,8 @@ extension InferenceState {
         guard var lastTy = tys.next() else { return }
         
         while let ty = tys.next() {
-            unify(lastTy, with: ty.apply(substitution), at: range)
-            lastTy = ty
+            unify(lastTy, with: ty, at: range)
+            lastTy = ty.apply(substitution)
         }
     }
     
@@ -307,7 +306,9 @@ extension InferenceState {
     }
     
     private mutating func substitute(_ tyVar: TypeVariable, for type: Type) {
-//        assert(substitution[tyVar] == nil)
+        // If the ty var isnt the final leaf in the substitution map
+        // it will break the linked list of substitutions.
+        assert(substitution[tyVar] == nil)
         substitution[tyVar] = type
     }
 }
