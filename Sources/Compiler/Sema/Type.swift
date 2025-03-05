@@ -150,7 +150,7 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
         case let .row(tys):
             return .row(tys.apply(s))
         case let .optional(ty):
-            return .optional(ty)
+            return .optional(ty.apply(s))
         case let .alias(t, a):
             return .alias(t.apply(s), a)
         case .nominal, .error:
@@ -170,13 +170,17 @@ public struct TypeVariable: Hashable, CustomStringConvertible, ExpressibleByInte
     
     /// There are different type of type variables.
     /// Each are spawned from different usages.
-    enum Kind {
-        /// `integer` is any type variable from an integer literal e.g. `0`
-        case integer
-        /// `float` is any type variable from an float literal e.g. `0.0`
-        case float
+    enum Kind: Int, Equatable, Comparable {
         /// `general` is any type variable that does not fall into the above
-        case general
+        case general = 0
+        /// `integer` is any type variable from an integer literal e.g. `0`
+        case integer = 1
+        /// `float` is any type variable from an float literal e.g. `0.0`
+        case float = 2
+        
+        static func <(lhs: Kind, rhs: Kind) -> Bool {
+            return lhs.rawValue < rhs.rawValue
+        }
     }
     
     init(_ n: Int, kind: Kind) {
@@ -205,5 +209,9 @@ public struct TypeVariable: Hashable, CustomStringConvertible, ExpressibleByInte
     
     public var description: String {
         return "τ\(n)"
+    }
+    
+    func with(kind: Kind) -> TypeVariable {
+        return TypeVariable(n, kind: kind)
     }
 }

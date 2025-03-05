@@ -52,12 +52,10 @@ struct ExprTypeChecker {
 extension ExprTypeChecker: ExprSyntaxVisitor {
     mutating func visit(_ expr: borrowing LiteralExprSyntax) -> Type {
         return switch expr.kind {
-        case let .numeric(_, isInt):
-            // If it is an integer literal we cant assume it should be an int.
-            isInt ? inferenceState.freshTyVar(for: expr, kind: isInt ? .integer : .float) : .real
+        case let .numeric(_, isInt): inferenceState.freshTyVar(for: expr, kind: isInt ? .integer : .float)
         case .string: inferenceState.nominalType(of: "TEXT", for: expr)
         case .blob: inferenceState.nominalType(of: "BLOB", for: expr)
-        case .null: inferenceState.nominalType(of: "ANY", for: expr)
+        case .null: .optional(inferenceState.freshTyVar(for: expr, kind: .general))
         case .true, .false:
             // TODO: Should be INTEGER
             inferenceState.nominalType(of: "BOOLEAN", for: expr)

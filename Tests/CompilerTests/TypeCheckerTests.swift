@@ -141,7 +141,7 @@ class TypeCheckerTests: XCTestCase {
     }
     
     func testCaseWhenThenWithNoCaseExpr() throws {
-        let result = result(for: "CASE WHEN ? + 1 THEN '' WHEN 3.0 THEN '' ELSE '' END")
+        let result = result(for: "CASE 1 WHEN ? + 1 THEN '' WHEN 3.0 THEN '' ELSE '' END")
         XCTAssertEqual(.text, result.type)
         XCTAssertEqual(.real, type(for: 1, in: result))
     }
@@ -173,6 +173,12 @@ class TypeCheckerTests: XCTestCase {
         let result = result(for: "1 IN :bar")
         XCTAssertEqual(.bool, result.type)
         XCTAssertEqual(.row(.unknown(.integer)), type(for: ":bar", in: result))
+    }
+    
+    func testNull() throws {
+        let result = result(for: ":bar > 1 OR :bar == NULL")
+        XCTAssertEqual(.bool, result.type)
+        XCTAssertEqual(.optional(.integer), type(for: ":bar", in: result))
     }
     
     func scope(table: String, schema: String) throws -> Environment {

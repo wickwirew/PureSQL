@@ -77,10 +77,11 @@ struct InferenceState {
             guard let existingType = syntaxTypes[existingId] else {
                 fatalError("Bind Parameter had type assigned, but no type found")
             }
-            return existingType
+            return solution(for: existingType)
         }
         
         let ty: Type = freshTyVar(kind: kind)
+        print(ty, "for syntax: \(param)")
         bindIndexToSyntaxIds[param.index] = param.id
         syntaxTypes[param.id] = ty
         return ty
@@ -118,12 +119,41 @@ struct InferenceState {
         switch result {
         case let .var(tv):
             return tv.defaultType
+        case let .optional(ty):
+            return .optional(solution(for: ty, defaultIfTyVar: defaultIfTyVar))
+        case let .alias(_, alias):
+            return .nominal(alias)
         case let .row(row):
             return .row(row.mapTypes { solution(for: $0, defaultIfTyVar: true) })
         default:
             return result
         }
     }
+    
+    /*
+     [
+     τ6: τ1,
+     τ3: τ0,
+     τ8: BOOL,
+     τ4: τ1?,
+     τ7: BOOL,
+     τ2: BOOL,
+     τ5: BOOL,
+     τ0: τ1
+     ]
+     
+     
+     [
+     τ8: BOOL,
+     τ0: τ1,
+     τ3: τ0,
+     τ5: BOOL,
+     τ6: τ1,
+     τ2: BOOL,
+     τ7: BOOL,
+     τ4: τ1?
+     ]
+     */
     
     /// Gets the list of parameters and their solution type.
     /// If `defaultIfTyVar` is true, the type will be given a
@@ -148,6 +178,7 @@ extension InferenceState {
         with other: Type,
         at range: Range<String.Index>
     ) {
+        print("Unifying:", type, "with", other)
         // If they are the same, no need to unify
         guard type != other else { return }
         
@@ -179,6 +210,16 @@ extension InferenceState {
             default:
                 substitute(tv1, for: other)
             }
+        case let (.var(nonOptional), .optional(.var(optional))):
+            let kind = max(nonOptional.kind, optional.kind)
+            substitute(nonOptional, for: .optional(.var(optional.with(kind: kind))))
+        case let (.optional(.var(optional)), .var(nonOptional)):
+            let kind = max(nonOptional.kind, optional.kind)
+            substitute(nonOptional, for: .optional(.var(optional.with(kind: kind))))
+        case let (.optional(t1), t2):
+            unify(t1, with: t2, at: range)
+        case let (t1, .optional(t2)):
+            unify(t1, with: t2, at: range)
         case let (.var(tv), ty):
             validateCanUnify(type: ty, with: tv.kind, at: range)
             substitute(tv, for: ty)
@@ -192,10 +233,6 @@ extension InferenceState {
         case (.nominal, .nominal):
             guard type != other else { return }
             diagnostics.add(.unableToUnify(type, with: other, at: range))
-        case let (.optional(t1), t2):
-            unify(t1, with: t2, at: range)
-        case let (t1, .optional(t2)):
-            unify(t1, with: t2, at: range)
         case let (.fn(args1, ret1), .fn(args2, ret2)):
             unify(args1, with: args2, at: range)
             unify(ret1.apply(substitution), with: ret2.apply(substitution), at: range)
@@ -312,7 +349,34 @@ extension InferenceState {
         }
     }
     
+    private func whatForWhat(tv1: TypeVariable, tv2: TypeVariable) -> (TypeVariable, TypeVariable) {
+        // Unify to type variables.
+        // We need to prioritize what gets substituded for what
+        // by its kind.
+        // So if we get an `integer` and `float`, we want to promote
+        // the `integer` to a `float`, so we sub the int for the float
+        switch (tv1.kind, tv2.kind) {
+        case (.general, _):
+            // General can always be substitued out
+            return (tv1, for: tv2)
+        case (_, .general):
+            // General can always be substitued out
+            return (tv2, for: tv1)
+        case (.float, .integer):
+            // self: float, other: int
+            // substitute other for self
+            return (tv2, for: tv1)
+        case (.integer, .float):
+            // self: int, other: float
+            // substitute self for other
+            return (tv1, for: tv2)
+        default:
+            return (tv1, for: tv2)
+        }
+    }
+    
     private mutating func substitute(_ tyVar: TypeVariable, for type: Type) {
+        assert(substitution[tyVar] == nil)
         substitution[tyVar] = type
     }
 }
