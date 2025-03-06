@@ -81,6 +81,86 @@ struct NameInferrer {
             return rhs
         }
     }
+    
+    private mutating func infer(select: SelectStmtSyntax) {
+        if let cte = select.cte {
+            infer(select: cte.select)
+        }
+        
+        switch select.selects.value {
+        case .single(let s):
+            switch s {
+            case .select(let select):
+                for column in select.columns {
+                    switch column.kind {
+                    case .expr(let e, _):
+                        _ = e.accept(visitor: &self)
+                    default:
+                        break
+                    }
+                }
+                
+                switch select.from {
+                case .join(let join):
+                    _ = infer(tableOrSubquery: join.tableOrSubquery)
+                case .tableOrSubqueries(let tableOrSubqueries):
+                    for tableOrSubquery in tableOrSubqueries {
+                        _ = infer(tableOrSubquery: tableOrSubquery)
+                    }
+                case nil:
+                    break
+                }
+                
+                if let whereExpr = select.where {
+                    _ = whereExpr.accept(visitor: &self)
+                }
+                
+                if let groupBy = select.groupBy {
+                    for expr in groupBy.expressions {
+                        _ = expr.accept(visitor: &self)
+                    }
+                }
+            case .values(let groups):
+                for group in groups {
+                    for value in group {
+                        _ = value.accept(visitor: &self)
+                    }
+                }
+            }
+        case .compound:
+            fatalError()
+        }
+        
+        for orderBy in select.orderBy {
+            _ = orderBy.expr.accept(visitor: &self)
+        }
+        
+        if let limit = select.limit {
+            _ = limit.expr.accept(visitor: &self)
+        }
+    }
+    
+    private mutating func infer(tableOrSubquery: TableOrSubquerySyntax) -> Name {
+        switch tableOrSubquery.kind {
+        case .table:
+            return .none
+        case .tableFunction(_, _, let args, _):
+            return args.reduce(.none) {
+                unify(names: $0, with: $1.accept(visitor: &self))
+            }
+        case .subquery(let selectStmtSyntax, _):
+            infer(select: selectStmtSyntax)
+            return .none
+        case .join(let joinClauseSyntax):
+            return joinClauseSyntax.joins.reduce(.none) {
+                unify(names: $0, with: infer(tableOrSubquery: $1.tableOrSubquery))
+            }
+        case .subTableOrSubqueries(let tableOrSubqueries, _):
+            return tableOrSubqueries.reduce(.none) {
+                unify(names: $0, with: infer(tableOrSubquery: $1))
+            }
+        }
+    }
 }
 
 extension NameInferrer: ExprSyntaxVisitor {
@@ -130,7 +210,10 @@ extension NameInferrer: ExprSyntaxVisitor {
         return unify(all: expr.exprs.map{ $0.accept(visitor: &self) })
     }
     
-    mutating func visit(_ expr: borrowing SelectExprSyntax) -> Name { fatalError("TODO") }
+    mutating func visit(_ expr: borrowing SelectExprSyntax) -> Name {
+        infer(select: expr.select)
+        return .none
+    }
     
     mutating func visit(_ expr: borrowing ColumnExprSyntax) -> Name {
         .some(expr.column.value)

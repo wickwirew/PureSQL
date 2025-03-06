@@ -40,3 +40,16 @@ SELECT id, bar + 1 FROM foo WHERE bar * 20 > ?;
 -- CHECK:     baz TEXT
 -- CHECK:   OUTPUT_TABLE foo
 SELECT * FROM foo WHERE id = :id AND id = :id AND bar = ?;
+
+-- CHECK: SIGNATURE
+-- CHECK:   PARAMETERS
+-- CHECK:     PARAMETER
+-- CHECK:       TYPE (INTEGER...)
+-- CHECK:       INDEX 1
+-- CHECK:       NAME :theIds
+-- CHECK:   OUTPUT
+-- CHECK:     id INTEGER
+-- CHECK:     bar (INTEGER AS Bool)?
+-- CHECK:     baz TEXT
+-- CHECK:   OUTPUT_TABLE foo
+SELECT * FROM foo WHERE id IN (SELECT subFoo.id FROM foo AS subFoo WHERE subFoo.id IN :theIds);

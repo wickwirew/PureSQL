@@ -679,7 +679,10 @@ extension CaseWhenThenExprSyntax: CustomStringConvertible {
 struct SelectExprSyntax: ExprSyntax {
     let id: SyntaxId
     let select: SelectStmtSyntax
-    let range: Range<String.Index>
+    
+    var range: Range<String.Index> {
+        return select.range
+    }
     
     func accept<V>(visitor: inout V) -> V.ExprOutput where V : ExprSyntaxVisitor {
         return visitor.visit(self)

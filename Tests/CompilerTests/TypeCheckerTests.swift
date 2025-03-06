@@ -44,7 +44,7 @@ class TypeCheckerTests: XCTestCase {
     }
     
     func testTypeCheckBind() throws {
-        let result = result(for: ":foo + 1 > :bar + 2.0 AND :baz")
+        let result = try result(for: ":foo + 1 > :bar + 2.0 AND :baz")
         XCTAssertEqual(.bool, result.type)
         XCTAssertEqual(.real, type(for: ":foo", in: result))
         XCTAssertEqual(.real, type(for: ":bar", in: result))
@@ -52,7 +52,7 @@ class TypeCheckerTests: XCTestCase {
     }
     
     func testTypeCheckBind2() throws {
-        let result = result(for: "1.0 + 2 * 3 * 4 * ?")
+        let result = try result(for: "1.0 + 2 * 3 * 4 * ?")
         XCTAssertEqual(.real, result.type)
         XCTAssertEqual(.real, type(for: 1, in: result))
     }
@@ -62,7 +62,7 @@ class TypeCheckerTests: XCTestCase {
         CREATE TABLE foo(bar INTEGER);
         """)
         
-        let result = result(for: "bar = ?", in: scope)
+        let result = try result(for: "bar = ?", in: scope)
         XCTAssertEqual(.bool, result.type)
         XCTAssertEqual(.optional(.integer), type(for: 1, in: result))
         XCTAssertEqual("bar", name(for: 1, in: result))
@@ -73,7 +73,7 @@ class TypeCheckerTests: XCTestCase {
         CREATE TABLE foo(bar INTEGER NOT NULL);
         """)
         
-        let result = result(for: "bar + 1 = ?", in: scope)
+        let result = try result(for: "bar + 1 = ?", in: scope)
         XCTAssertEqual(.bool, result.type)
         XCTAssertEqual(.integer, type(for: 1, in: result))
         XCTAssertEqual("bar", name(for: 1, in: result))
@@ -84,25 +84,25 @@ class TypeCheckerTests: XCTestCase {
         CREATE TABLE foo(bar INTEGER NOT NULL);
         """)
         
-        let result = result(for: "1 + bar = ?", in: scope)
+        let result = try result(for: "1 + bar = ?", in: scope)
         XCTAssertEqual(.bool, result.type)
         XCTAssertEqual(.integer, type(for: 1, in: result))
         XCTAssertEqual("bar", name(for: 1, in: result))
     }
     
     func testTypeCheckBetween() throws {
-        let result = result(for: "1 BETWEEN 1 AND ?")
+        let result = try result(for: "1 BETWEEN 1 AND ?")
         XCTAssertEqual(.bool, result.type)
         XCTAssertEqual(.integer, type(for: 1, in: result))
     }
     
     func testTypeFunction() throws {
-        XCTAssertEqual(.integer, result(for: "MAX(1)").type)
-        XCTAssertEqual(.real, result(for: "MAX(1.0, 1)").type)
-        XCTAssertEqual(.real, result(for: "MAX(1, 1.0)").type)
-        XCTAssertEqual(.real, result(for: "MAX(1, 1, 1.0)").type)
-        XCTAssertEqual(.real, result(for: "MAX(1, 1, 1.0, 1)").type)
-        XCTAssertEqual(.real, result(for: "MAX(1, 1, 1, 1.0)").type)
+        try XCTAssertEqual(.integer, result(for: "MAX(1)").type)
+        try XCTAssertEqual(.real, result(for: "MAX(1.0, 1)").type)
+        try XCTAssertEqual(.real, result(for: "MAX(1, 1.0)").type)
+        try XCTAssertEqual(.real, result(for: "MAX(1, 1, 1.0)").type)
+        try XCTAssertEqual(.real, result(for: "MAX(1, 1, 1.0, 1)").type)
+        try XCTAssertEqual(.real, result(for: "MAX(1, 1, 1, 1.0)").type)
     }
     
     func testTypeFunctionComplex() throws {
@@ -110,7 +110,7 @@ class TypeCheckerTests: XCTestCase {
         CREATE TABLE foo(bar REAL NOT NULL);
         """)
         
-        let result = result(for: "MAX(1, 1, bar + 1, 1)", in: scope)
+        let result = try result(for: "MAX(1, 1, bar + 1, 1)", in: scope)
         XCTAssertEqual(.real, result.type)
     }
     
@@ -119,64 +119,64 @@ class TypeCheckerTests: XCTestCase {
         CREATE TABLE foo(bar REAL NOT NULL);
         """)
         
-        let result = result(for: "MAX(1, 1, bar + ?, 1)", in: scope)
+        let result = try result(for: "MAX(1, 1, bar + ?, 1)", in: scope)
         XCTAssertEqual(.real, result.type)
         XCTAssertEqual(.real, type(for: 1, in: result))
     }
     
     func testErrors() throws {
-        let result = result(for: "'a' + 'b'")
+        let result = try result(for: "'a' + 'b'")
         XCTAssertEqual(.text, result.type)
     }
     
     func testCast() throws {
-        let result = result(for: "CAST(1 AS TEXT)")
+        let result = try result(for: "CAST(1 AS TEXT)")
         XCTAssertEqual(.text, result.type)
     }
     
     func testCaseWhenThenWithCaseExpr() throws {
-        let result = result(for: "CASE 1 WHEN ? THEN '' WHEN 3 THEN '' ELSE '' END")
+        let result = try result(for: "CASE 1 WHEN ? THEN '' WHEN 3 THEN '' ELSE '' END")
         XCTAssertEqual(.text, result.type)
         XCTAssertEqual(.integer, type(for: 1, in: result))
     }
     
     func testCaseWhenThenWithNoCaseExpr() throws {
-        let result = result(for: "CASE 1 WHEN ? + 1 THEN '' WHEN 3.0 THEN '' ELSE '' END")
+        let result = try result(for: "CASE 1 WHEN ? + 1 THEN '' WHEN 3.0 THEN '' ELSE '' END")
         XCTAssertEqual(.text, result.type)
         XCTAssertEqual(.real, type(for: 1, in: result))
     }
     
     func testRow() throws {
-        let result = result(for: "(1, 'Foo', 2.0)")
+        let result = try result(for: "(1, 'Foo', 2.0)")
         XCTAssertEqual(.row([.integer, .text, .real]), result.type)
     }
     
     func testInRowSingleValue() throws {
-        let result = result(for: ":bar IN (1)")
+        let result = try result(for: ":bar IN (1)")
         XCTAssertEqual(.bool, result.type)
         XCTAssertEqual(.integer, type(for: ":bar", in: result))
     }
     
     func testInRowMultipleValues() throws {
-        let result = result(for: ":bar IN (1, 2.0)")
+        let result = try result(for: ":bar IN (1, 2.0)")
         XCTAssertEqual(.bool, result.type)
         XCTAssertEqual(.real, type(for: ":bar", in: result))
     }
     
     func testInRowManyTypesUnUnifiable() throws {
-        let result = result(for: ":bar IN (1, 'Foo', 2.0)")
+        let result = try result(for: ":bar IN (1, 'Foo', 2.0)")
         XCTAssertEqual(.bool, result.type)
         XCTAssert(!result.diagnostics.elements.isEmpty)
     }
     
     func testInRowInferInputAsRow() throws {
-        let result = result(for: "1 IN :bar")
+        let result = try result(for: "1 IN :bar")
         XCTAssertEqual(.bool, result.type)
         XCTAssertEqual(.row(.unknown(.integer)), type(for: ":bar", in: result))
     }
     
     func testNull() throws {
-        let result = result(for: ":bar > 1 OR :bar == NULL")
+        let result = try result(for: ":bar > 1 OR :bar == NULL")
         XCTAssertEqual(.bool, result.type)
         XCTAssertEqual(.optional(.integer), type(for: ":bar", in: result))
     }
@@ -215,10 +215,10 @@ class TypeCheckerTests: XCTestCase {
     private func result(
         for source: String,
         in scope: Environment = Environment()
-    ) -> Result {
-        let (expr, exprDiags) = Parsers.parse(
+    ) throws -> Result {
+        let (expr, exprDiags) = try Parsers.parse(
             source: source,
-            parser: { Parsers.expr(state: &$0) }
+            parser: { try Parsers.expr(state: &$0) }
         )
         
         var exprTypeChecker = ExprTypeChecker(
@@ -256,6 +256,6 @@ class TypeCheckerTests: XCTestCase {
         _ source: String,
         in scope: Environment = Environment()
     ) throws -> Type? {
-        return result(for: source, in: scope).type
+        return try result(for: source, in: scope).type
     }
 }

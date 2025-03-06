@@ -28,7 +28,7 @@ final class ParserTests: XCTestCase {
     }
     
     func testColumnConstraint() throws {
-        try check(sqlFile: "ParseColumnConstraint", parser: { Parsers.columnConstraint(state: &$0) })
+        try check(sqlFile: "ParseColumnConstraint", parser: { try Parsers.columnConstraint(state: &$0) })
     }
     
     func testColumnDefinition() throws {
@@ -60,7 +60,7 @@ final class ParserTests: XCTestCase {
     }
     
     func testExpression() throws {
-        try check(sqlFile: "ParseExpression", parser: { Parsers.expr(state: &$0) })
+        try check(sqlFile: "ParseExpression", parser: { try Parsers.expr(state: &$0) })
     }
     
     func testSelectStmt() throws {
