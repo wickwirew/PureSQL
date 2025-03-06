@@ -19,6 +19,8 @@ public struct Statement {
     /// The statement source with all extra SQL syntax removed
     /// that is not valid in SQLite but valid in this library
     public let sanitizedSource: String
+    
+    public let sourceSegments: [SourceSegment]
     /// The source syntax
     let syntax: any StmtSyntax
     
@@ -36,6 +38,7 @@ public struct Statement {
             outputCardinality: outputCardinality,
             isReadOnly: isReadOnly,
             sanitizedSource: sanitizedSource,
+            sourceSegments: sourceSegments,
             syntax: syntax
         )
     }
@@ -99,4 +102,9 @@ public enum SourceSegment {
     /// The original source for the bind parameter has already
     /// been removed from the preceding `text` segment
     case rowParam(Parameter<String>)
+    
+    public var text: Substring? {
+        if case let .text(s) = self { return s }
+        return nil
+    }
 }

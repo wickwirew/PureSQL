@@ -9,6 +9,7 @@ import SQLite3
 
 public struct Statement: ~Copyable {
     let raw: OpaquePointer
+    private var bindIndex: Int32 = 1
     
     public enum Step {
         case row
@@ -66,6 +67,13 @@ public struct Statement: ~Copyable {
         to index: Int32
     ) throws(FeatherError) {
         try value.bind(to: raw, at: index)
+    }
+    
+    public mutating func bind<Value: DatabasePrimitive>(
+        value: Value
+    ) throws(FeatherError) {
+        try bind(value: value, to: bindIndex)
+        bindIndex += 1
     }
     
     deinit {

@@ -92,19 +92,22 @@ fileprivate struct CompilerWithSource {
         var cardinalityInferer = CardinalityInferrer(schema: schema)
         let cardinality = cardinalityInferer.cardinality(for: stmt)
         
-        var sanitizer = Sanitizer()
-        let sanitizedSource = sanitizer.sanitize(stmt, in: source)
+        let uniqueParameters = uniquify(parameters: parameters)
+            .reduce(into: [:]) { $0[$1.index] = $1 }
+        
+        var rewriter = Rewriter()
+        let (sanitizedSource, sourceSegments) = rewriter.rewrite(stmt, with: uniqueParameters, in: source)
         
         self.schema = typeChecker.schema
         
         let statement = Statement(
             name: nil,
-            parameters: uniquify(parameters: parameters)
-                .reduce(into: [:]) { $0[$1.index] = $1 },
+            parameters: uniqueParameters,
             resultColumns: type,
             outputCardinality: cardinality,
             isReadOnly: isReadOnly,
             sanitizedSource: sanitizedSource,
+            sourceSegments: sourceSegments,
             syntax: stmt
         )
         

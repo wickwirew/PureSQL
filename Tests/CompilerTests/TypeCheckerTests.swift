@@ -237,7 +237,8 @@ class TypeCheckerTests: XCTestCase {
                 Parameter(
                     type: parameter.type,
                     index: parameter.index,
-                    name: nameInferrer.parameterName(at: parameter.index)
+                    name: nameInferrer.parameterName(at: parameter.index),
+                    ranges: []
                 )
             }
         

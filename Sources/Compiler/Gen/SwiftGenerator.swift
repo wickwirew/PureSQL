@@ -35,6 +35,7 @@ public struct SwiftGenerator: Language {
         statement: Statement,
         name: Substring
     ) throws -> [DeclSyntax] {
+        let parameters = Array(statement.parameters.values.sorted(by: { $0.index < $1.index }))
         var declarations: [DeclSyntax] = []
         
         let inputTypeName = inputType(statement: statement, name: name, declarations: &declarations)
@@ -73,14 +74,25 @@ public struct SwiftGenerator: Language {
                             ClosureShorthandParameterSyntax(name: "transaction")
                         })
                     )
-                ) {
-                    "let statement = try Feather.Statement(\n\"\"\"\n\(raw: statement.sanitizedSource)\n\"\"\", \ntransaction: transaction\n)"
+                ) {                    
+                    let source = statement.sourceSegments.map { segment in
+                        switch segment {
+                        case .text(let text):
+                            return text.description
+                        case .rowParam(let param):
+                            return questionMarks(for: parameters.count > 1 ? param.name : "input")
+                        }
+                    }.joined()
                     
-                    if let first = statement.parameters.values.first, statement.parameters.count == 1 {
-                        "try statement.bind(value: input, to: \(raw: first.index))"
+                    let hasParams = !parameters.isEmpty
+                    
+                    "\(raw: hasParams ? "var" : "let") statement = try Feather.Statement(\n\"\"\"\n\(raw: source)\n\"\"\", \ntransaction: transaction\n)"
+                    
+                    if let first = parameters.first, parameters.count == 1 {
+                        bind(param: first, isField: false)
                     } else {
-                        for parameter in statement.parameters.values {
-                            "try statement.bind(value: input.\(raw: parameter.name), to: \(raw: parameter.index))"
+                        for parameter in parameters {
+                            bind(param: parameter, isField: true)
                         }
                     }
                     
@@ -232,5 +244,32 @@ public struct SwiftGenerator: Language {
         case .alias(_, let alias):
             return alias.description
         }
+    }
+    
+    @CodeBlockItemListBuilder
+    private static func bind(
+        param: Parameter<String>,
+        isField: Bool
+    ) -> CodeBlockItemListSyntax {
+        let paramName = isField ? "input.\(param.name)" : "input"
+        
+        switch param.type {
+        case .row:
+            """
+            for element in \(raw: paramName) {
+                try statement.bind(value: element)
+            }
+            """
+        default:
+            "try statement.bind(value: \(raw: paramName))"
+        }
+    }
+    
+    private static func questionMarks(for param: String) -> String {
+        return "(\(interpolated("\(param).sqlQuestionMarks")))"
+    }
+    
+    private static func interpolated(_ value: String) -> String {
+        return  "\\(\(value))"
     }
 }
