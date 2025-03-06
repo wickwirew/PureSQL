@@ -35,7 +35,7 @@ public struct SwiftGenerator: Language {
         statement: Statement,
         name: Substring
     ) throws -> [DeclSyntax] {
-        let parameters = Array(statement.parameters.values.sorted(by: { $0.index < $1.index }))
+        let parameters = statement.parameters
         var declarations: [DeclSyntax] = []
         
         let inputTypeName = inputType(statement: statement, name: name, declarations: &declarations)
@@ -111,14 +111,14 @@ public struct SwiftGenerator: Language {
         name: Substring,
         declarations: inout [DeclSyntax]
     ) -> String {
-        guard let firstParam = statement.parameters.values.first else {
+        guard let firstParam = statement.parameters.first else {
             return "()"
         }
         
         if statement.parameters.count > 1 {
             let inputTypeName = "\(name.capitalizedFirst)Input"
             let inputType = DeclSyntax(StructDeclSyntax(name: "\(raw: inputTypeName)") {
-                for input in statement.parameters.values {
+                for input in statement.parameters {
                     "let \(raw: input.name): \(raw: swiftType(for: input.type))"
                 }
             })

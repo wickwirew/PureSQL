@@ -13,7 +13,7 @@ struct Rewriter {
     
     mutating func rewrite<S: StmtSyntax>(
         _ stmt: S,
-        with parameters: [Int: Parameter<String>],
+        with parameters: [Parameter<String>],
         in source: String
     ) -> (String, [SourceSegment]) {
         return (
@@ -53,13 +53,13 @@ struct Rewriter {
     /// having a `?` for each element in the list.
     func segment<S: StmtSyntax>(
         _ stmt: S,
-        parameters: [Int: Parameter<String>],
+        parameters: [Parameter<String>],
         source: String
     ) -> [SourceSegment] {
         // All row parameters in order from start to finish associated to the
         // parameter they appeared from.
         let rowRanges: [(Range<Substring.Index>, Parameter<String>)] = parameters
-            .compactMap { _, param -> [(Range<Substring.Index>, Parameter<String>)]? in
+            .compactMap { param -> [(Range<Substring.Index>, Parameter<String>)]? in
                 guard case .row = param.type else { return nil }
                 return param.ranges.map { ($0, param) }
             }

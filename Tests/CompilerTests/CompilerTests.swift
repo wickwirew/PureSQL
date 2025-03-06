@@ -68,7 +68,7 @@ struct CheckSignature: Checkable {
     let outputTable: Substring?
     
     init(_ statement: Statement) {
-        self.parameters = statement.parameters.values.sorted(by: { $0.index < $1.index })
+        self.parameters = statement.parameters
         self.output = statement.resultColumns.columns.map { "\($0) \($1)" }
         self.outputTable = statement.resultColumns.table
     }

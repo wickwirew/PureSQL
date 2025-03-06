@@ -93,7 +93,7 @@ fileprivate struct CompilerWithSource {
         let cardinality = cardinalityInferer.cardinality(for: stmt)
         
         let uniqueParameters = uniquify(parameters: parameters)
-            .reduce(into: [:]) { $0[$1.index] = $1 }
+            .sorted { $0.index < $1.index }
         
         var rewriter = Rewriter()
         let (sanitizedSource, sourceSegments) = rewriter.rewrite(stmt, with: uniqueParameters, in: source)

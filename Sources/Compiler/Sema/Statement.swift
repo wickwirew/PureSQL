@@ -8,7 +8,7 @@
 public struct Statement {
     public let name: Substring?
     /// Any bind parameters for the statement
-    public let parameters: [Int: Parameter<String>]
+    public let parameters: [Parameter<String>]
     /// The return type if any.
     public let resultColumns: ResultColumns
     /// How many possible items will be in the result set.
