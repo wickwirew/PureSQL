@@ -93,10 +93,14 @@ extension NameInferrer: ExprSyntaxVisitor {
         return expr.rhs.accept(visitor: &self)
     }
     mutating func visit(_ expr: borrowing InfixExprSyntax) -> Name {
-        return unify(
-            names: expr.lhs.accept(visitor: &self),
-            with: expr.rhs.accept(visitor: &self)
-        )
+        let lhs = expr.lhs.accept(visitor: &self)
+        let rhs = expr.rhs.accept(visitor: &self)
+        
+        if expr.operator.operator == .in || expr.operator.operator == .not(.in) {
+            return unify(names: lhs.pluralize(), with: rhs)
+        } else {
+            return unify(names: lhs, with: rhs)
+        }
     }
     mutating func visit(_ expr: borrowing PostfixExprSyntax) -> Name {
         return expr.lhs.accept(visitor: &self)
