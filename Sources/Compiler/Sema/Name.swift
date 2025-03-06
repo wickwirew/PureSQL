@@ -22,10 +22,30 @@ enum Name: Equatable {
         return s
     }
     
+    /// Whether or not there is a string for a name
+    var isSome: Bool {
+        guard case .some = self else { return false }
+        return false
+    }
+    
+    /// Whether or a name is needed
+    var isNeeds: Bool {
+        guard case .needed = self else { return false }
+        return false
+    }
+    
     static let vowels: Set<Character> = [
         "A", "E", "I", "O", "U",
         "a", "e", "i", "o", "u"
     ]
+    
+    /// Appends the postfix to the name if it is `some`
+    func append(_ postfix: @autoclosure () -> String) -> Name {
+        return switch self {
+        case .some(let name): .some("\(name)\(postfix())")
+        case .needed, .none: self
+        }
+    }
     
     /// Returns a plural version of the Name if it is `some`
     func pluralize() -> Name {

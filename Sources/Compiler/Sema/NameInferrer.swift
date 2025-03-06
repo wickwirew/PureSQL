@@ -147,11 +147,13 @@ extension NameInferrer: ExprSyntaxVisitor {
     }
     
     mutating func visit(_ expr: borrowing BetweenExprSyntax) -> Name {
-        // TODO: If value has a name, lhs and rhs can be lower/upper.
-        
         let value = expr.value.accept(visitor: &self)
         let lower = expr.lower.accept(visitor: &self)
         let upper = expr.upper.accept(visitor: &self)
-        return unify(names: unify(names: value, with: lower), with: upper)
+
+        return unify(
+            names: unify(names: value.append("Lower"), with: lower),
+            with: unify(names: value.append("Upper"), with: upper)
+        )
     }
 }
