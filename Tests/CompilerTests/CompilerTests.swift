@@ -48,6 +48,10 @@ class CompilerTests: XCTestCase {
         try checkQueries(compile: "CompileFTS5", prefix: "CHECK-QUERIES")
     }
     
+    func testSpecialNames() throws {
+        try checkQueries(compile: "CompileSpecialNames")
+    }
+    
     func testOutputCountInference() throws {
         try check(
             sqlFile: "CompileIsSingleResult",
