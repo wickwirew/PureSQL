@@ -5,18 +5,20 @@
 //  Created by Wes Wickwire on 2/21/25.
 //
 
-public struct QueryObservation<Q: Query>: AsyncSequence, Sendable
-    where Q.Database == ConnectionPool,
-          Q: Sendable,
-          Q.Input: Sendable
+public struct QueryObservation<Input, Output>: AsyncSequence, Sendable
+    where Input: Sendable
 {
-    private let query: Q
-    private let input: Q.Input
+    private let query: any Query<Input, Output, ConnectionPool>
+    private let input: Input
     private let pool: ConnectionPool
     private let stream: AsyncStream<()>
     private let continuation: AsyncStream<()>.Continuation
 
-    init(query: Q, input: Q.Input, pool: ConnectionPool) {
+    init(
+        query: any Query<Input, Output, ConnectionPool>,
+        input: Input,
+        pool: ConnectionPool
+    ) {
         self.query = query
         self.input = input
         self.pool = pool
@@ -31,7 +33,7 @@ public struct QueryObservation<Q: Query>: AsyncSequence, Sendable
         let queryObservation: QueryObservation
         var dbObservation: Observation?
         
-        public mutating func next() async throws -> Q.Output? {
+        public mutating func next() async throws -> Output? {
             if dbObservation == nil {
                 dbObservation = await queryObservation.pool.observe()
                 
@@ -63,19 +65,24 @@ public struct QueryObservation<Q: Query>: AsyncSequence, Sendable
     }
 }
 
-extension Query where Database == ConnectionPool, Input: Sendable {
+extension Query where Database == ConnectionPool {
     public func values(
         with input: Input,
         in database: Database
-    ) -> QueryObservation<Self> {
-        return QueryObservation(query: self, input: input, pool: database)
+    ) -> QueryObservation<Input, Output> {
+        return QueryObservation(
+            query: self,
+            input: input,
+            pool: database
+        )
     }
 }
 
 /// A database query that fetches any array of rows.
 public struct FetchManyQuery<Input, Output>: Query
-    where Output: RangeReplaceableCollection & ExpressibleByArrayLiteral,
-    Output.Element: RowDecodable
+    where Input: Sendable,
+        Output: RangeReplaceableCollection & ExpressibleByArrayLiteral,
+        Output.Element: RowDecodable
 {
     public let transactionKind: TransactionKind
     private let _statement: @Sendable (Input, borrowing Transaction) throws -> Statement
@@ -123,7 +130,7 @@ public struct FetchManyQuery<Input, Output>: Query
 
 /// A database that fetches a single element. Can return `nil`
 public struct FetchSingleQuery<Input, Output>: Query
-    where Output: RowDecodable
+    where Input: Sendable, Output: RowDecodable
 {
     public let transactionKind: TransactionKind
     private let _statement: @Sendable (Input, borrowing Transaction) throws -> Statement
@@ -164,7 +171,7 @@ public struct FetchSingleQuery<Input, Output>: Query
 }
 
 /// A query that has no return value.
-public struct VoidQuery<Input>: Query {
+public struct VoidQuery<Input>: Query where Input: Sendable {
     public typealias Output = ()
     
     public let transactionKind: TransactionKind

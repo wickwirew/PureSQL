@@ -6,7 +6,7 @@
 //
 
 public protocol Query<Input, Output, Database>: Sendable {
-    associatedtype Input
+    associatedtype Input: Sendable
     associatedtype Output
     associatedtype Database: Sendable
     
@@ -26,6 +26,11 @@ public protocol Query<Input, Output, Database>: Sendable {
         with input: Input,
         tx: borrowing Transaction
     ) throws -> Output
+    
+    func values(
+        with input: Input,
+        in database: Database
+    ) -> QueryObservation<Input, Output>
 }
 
 public extension Query {
@@ -51,5 +56,25 @@ public extension Query {
         where Input == ()
     {
         return try execute(with: (), tx: tx)
+    }
+}
+
+public extension Query {
+    func values(with input: Input) -> QueryObservation<Input, Output>
+        where Database == ()
+    {
+        return values(with: input, in: ())
+    }
+    
+    func values(in database: Database) -> QueryObservation<Input, Output>
+        where Input == ()
+    {
+        return values(with: (), in: database)
+    }
+    
+    func values() -> QueryObservation<Input, Output>
+        where Input == (), Database == ()
+    {
+        return values(with: (), in: ())
     }
 }

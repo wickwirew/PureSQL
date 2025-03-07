@@ -44,6 +44,13 @@ public enum Queries {
         ) throws -> Output {
             return try base.execute(with: input, tx: tx)
         }
+        
+        public func values(
+            with input: Input,
+            in _: ()
+        ) -> QueryObservation<Input, Output> {
+            return base.values(with: input, in: database)
+        }
     }
     
     /// Applies a transform to the queries result
@@ -79,6 +86,58 @@ public enum Queries {
             tx: borrowing Transaction
         ) throws -> Output {
             return try transform(base.execute(with: input, tx: tx))
+        }
+        
+        public func values(
+            with input: Input,
+            in database: Base.Database
+        ) -> QueryObservation<Input, Output> {
+            fatalError()
+//            return base.values(with: input, in: database)
+        }
+    }
+    
+    /// Applies a transform to the queries result
+    public struct Just<Input, Output, Database>: Query
+        where Input: Sendable, Output: Sendable, Database: Sendable
+    {
+        let output: Output
+        
+        public init(_ output: Output) {
+            self.output = output
+        }
+        
+        public var transactionKind: TransactionKind {
+            return .read
+        }
+        
+        public func statement(
+            input: Input,
+            transaction: borrowing Transaction
+        ) throws -> Statement {
+            fatalError()
+        }
+        
+        public func execute(
+            with input: Input,
+            in database: Database
+        ) async throws -> Output {
+            return output
+        }
+        
+        public func execute(
+            with input: Input,
+            tx: borrowing Transaction
+        ) throws -> Output {
+            return output
+        }
+        
+        public func values(
+            with input: Input,
+            in database: Database
+        ) -> QueryObservation<Input, Output> {
+            fatalError()
+//            return base.values(with: input, in: database)
         }
     }
 }
