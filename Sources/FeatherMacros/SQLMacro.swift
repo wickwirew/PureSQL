@@ -182,7 +182,3 @@ struct SQLPlugin: CompilerPlugin {
         DatabaseMacro.self,
     ]
 }
-
-struct LogError: Error, CustomStringConvertible {
-    let description: String
-}
