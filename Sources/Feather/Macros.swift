@@ -6,9 +6,9 @@ public macro schema(_ source: [String: String]) = #externalMacro(module: "Feathe
 public macro query(_ source: String) = #externalMacro(module: "FeatherMacros", type: "QueryMacro")
 
 @attached(member, names: arbitrary)
-public macro Database() = #externalMacro(module: "FeatherMacros", type: "DatabaseMacro")
+public macro Schema() = #externalMacro(module: "FeatherMacros", type: "DatabaseMacro")
 
-public protocol Database {
+public protocol Schema {
     static var queries: [String] { get }
     static var migrations: [String] { get }
 }
