@@ -11,11 +11,11 @@ public enum Queries {
     /// Allows for the erasing of the database so a query can be
     /// passed around and be able to be executed without
     /// having the caller worry about by what.
-    public struct WithDatabase<Base: Query>: Query {
+    public struct WithDatabase<Base: Queryable>: Queryable {
         /// The original query that requires a database
         let base: Base
         /// The database to execute the query in
-        let database: Base.Database
+        let database: Base.DB
         
         public var transactionKind: TransactionKind {
             return base.transactionKind
@@ -23,7 +23,7 @@ public enum Queries {
         
         public func execute(
             with input: Base.Input,
-            in _: ()
+            in _: ErasedDatabase
         ) async throws -> Base.Output {
             return try await base.execute(with: input, in: database)
         }
@@ -37,7 +37,7 @@ public enum Queries {
     }
     
     /// Applies a transform to the queries result
-    public struct Map<Base: Query, Output>: Query {
+    public struct Map<Base: Queryable, Output>: Queryable {
         /// The upstream query to transform
         let base: Base
         /// The transform to apply to the output
@@ -49,7 +49,7 @@ public enum Queries {
         
         public func execute(
             with input: Base.Input,
-            in database: Base.Database
+            in database: Base.DB
         ) async throws -> Output {
             return try await transform(base.execute(with: input, in: database))
         }
@@ -63,7 +63,7 @@ public enum Queries {
     }
     
     /// Applies a transform to the queries result
-    public struct Just<Input, Output, Database>: Query
+    public struct Just<Input, Output, Database>: Queryable
         where Input: Sendable, Output: Sendable, Database: Sendable
     {
         let output: Output
@@ -92,8 +92,8 @@ public enum Queries {
     }
 }
 
-public extension Query {
-    func with(database: Database) -> Queries.WithDatabase<Self> {
+public extension Queryable {
+    func with(database: DB) -> Queries.WithDatabase<Self> {
         return Queries.WithDatabase(base: self, database: database)
     }
     

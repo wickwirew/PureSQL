@@ -7,13 +7,13 @@
 
 import SQLite3
 
-struct DatabaseEvent: Sendable {
-    let operation: Operation
-    let databaseName: String?
-    let tableName: String?
-    let rowId: Int64
+public struct DatabaseEvent: Sendable {
+    public let operation: Operation
+    public let databaseName: String?
+    public let tableName: String?
+    public let rowId: Int64
     
-    enum Operation: Int32 {
+    public enum Operation: Int32, Sendable {
         case insert = 18 // SQLITE_INSERT
         case delete = 9 // SQLITE_DELETE
         case update = 23 // SQLITE_UPDATE
@@ -80,7 +80,7 @@ actor DatabaseObserver: @unchecked Sendable {
     }
 }
 
-protocol DatabaseSubscriber: AnyObject {
+public protocol DatabaseSubscriber: AnyObject {
     func receive(event: DatabaseEvent)
     func onCancel()
 }

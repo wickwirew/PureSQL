@@ -80,6 +80,27 @@ public actor ConnectionPool: Sendable {
         }
     }
     
+    
+    
+//    func observe() async -> Observation {
+//        return await observer.observe()
+//    }
+//    
+//    func cancel(observation: Observation) async {
+//        return await observer.cancel(observation: observation)
+//    }
+}
+
+extension ConnectionPool: Database {
+    public func observe(subscriber: any DatabaseSubscriber) {
+        fatalError()
+        
+    }
+    
+    public func cancel(subscriber: any DatabaseSubscriber) {
+        fatalError()
+    }
+    
     /// Starts a transaction.
     public func begin(
         _ kind: TransactionKind
@@ -125,12 +146,4 @@ public actor ConnectionPool: Sendable {
         // before the caller gets its transaction.
         throw .failedToGetConnection
     }
-    
-//    func observe() async -> Observation {
-//        return await observer.observe()
-//    }
-//    
-//    func cancel(observation: Observation) async {
-//        return await observer.cancel(observation: observation)
-//    }
 }

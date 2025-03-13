@@ -5,12 +5,12 @@
 //  Created by Wes Wickwire on 3/10/25.
 //
 
-public final class QueryObservation<Q: Query>: DatabaseSubscriber, Sendable
+public final class QueryObservation<Q: Queryable>: DatabaseSubscriber, Sendable
     where Q.Input: Sendable
 {
     private let query: Q
     private let input: Q.Input
-    private let database: Q.Database
+    private let database: Q.DB
     private let handle: @Sendable (Q.Output) -> Void
     
 //    private var currentTask: Task<Q.Output,
@@ -18,7 +18,7 @@ public final class QueryObservation<Q: Query>: DatabaseSubscriber, Sendable
     init(
         query: Q,
         input: Q.Input,
-        database: Q.Database,
+        database: Q.DB,
         handle: @Sendable @escaping (Q.Output) -> Void
     ) {
         self.query = query
@@ -27,13 +27,13 @@ public final class QueryObservation<Q: Query>: DatabaseSubscriber, Sendable
         self.handle = handle
     }
     
-    func receive(event: DatabaseEvent) {
+    public func receive(event: DatabaseEvent) {
         Task {
             try await handle(query.execute(with: input, in: database))
         }
     }
     
-    func onCancel() {
+    public func onCancel() {
         
     }
     

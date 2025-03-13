@@ -5,7 +5,7 @@
 //  Created by Wes Wickwire on 2/21/25.
 //
 
-extension Query where Database == ConnectionPool {
+extension Queryable where DB == ConnectionPool {
 //    public func values(
 //        with input: Input,
 //        in database: Database
@@ -29,7 +29,7 @@ extension Query where Database == ConnectionPool {
 }
 
 /// A database query that fetches any array of rows.
-public struct FetchManyQuery<Input, Output>: Query
+public struct FetchManyQuery<Input, Output>: Queryable
     where Input: Sendable,
         Output: RangeReplaceableCollection & ExpressibleByArrayLiteral,
         Output.Element: RowDecodable
@@ -69,7 +69,7 @@ public struct FetchManyQuery<Input, Output>: Query
 }
 
 /// A database that fetches a single element. Can return `nil`
-public struct FetchSingleQuery<Input, Output>: Query
+public struct FetchSingleQuery<Input, Output>: Queryable
     where Input: Sendable, Output: RowDecodable
 {
     public let transactionKind: TransactionKind
@@ -101,7 +101,7 @@ public struct FetchSingleQuery<Input, Output>: Query
 }
 
 /// A query that has no return value.
-public struct VoidQuery<Input>: Query where Input: Sendable {
+public struct VoidQuery<Input>: Queryable where Input: Sendable {
     public typealias Output = ()
     
     public let transactionKind: TransactionKind
