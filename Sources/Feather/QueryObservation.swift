@@ -39,7 +39,7 @@ public final class QueryObservation<Q: Queryable>: DatabaseSubscriber, Sendable
     }
     
     public func cancel() {
-//        database.cancel(subscriber: self)
+        database.cancel(subscriber: self)
     }
     
     public func start() async throws {
@@ -54,7 +54,7 @@ public final class QueryObservation<Q: Queryable>: DatabaseSubscriber, Sendable
 }
 
 extension Queryable {
-    func obbbseeerrrvvee(
+    func observe(
         with input: Input,
         in database: DB,
         handle: @Sendable @escaping (Output) -> Void,
@@ -74,7 +74,7 @@ extension Queryable {
         in database: DB
     ) -> AsyncThrowingStream<Output, Error> {
         return AsyncThrowingStream<Output, Error> { continuation in
-            let observation = self.obbbseeerrrvvee(
+            let observation = self.observe(
                 with: input,
                 in: database
             ) { output in

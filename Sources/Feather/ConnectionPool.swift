@@ -79,27 +79,17 @@ public actor ConnectionPool: Sendable {
             Task { await writeLock.unlock() }
         }
     }
-    
-    
-    
-//    func observe() async -> Observation {
-//        return await observer.observe()
-//    }
-//    
-//    func cancel(observation: Observation) async {
-//        return await observer.cancel(observation: observation)
-//    }
 }
 
 extension ConnectionPool: Database {
     public func observe(
         subscriber: any DatabaseSubscriber
     ) throws(FeatherError) {
-        fatalError()
+        try observer.subscribe(subscriber: subscriber)
     }
     
-    public func cancel(subscriber: any DatabaseSubscriber) {
-        fatalError()
+    public nonisolated func cancel(subscriber: any DatabaseSubscriber) {
+        observer.cancel(subscriber: subscriber)
     }
     
     /// Starts a transaction.

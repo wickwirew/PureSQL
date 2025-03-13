@@ -5,6 +5,7 @@
 //  Created by Wes Wickwire on 11/9/24.
 //
 
+/// An injectable query that has the database erased.
 public typealias Query<Input, Output> = Queryable<Input, Output, ErasedDatabase>
 
 public protocol Queryable<Input, Output, DB>: Sendable {
@@ -25,66 +26,59 @@ public protocol Queryable<Input, Output, DB>: Sendable {
     ) throws -> Output
 }
 
-public extension Queryable {
-    func execute(with input: Input) async throws -> Output
-        where DB == ErasedDatabase
-    {
-        return try await execute(with: input, in: .shared)
-    }
-    
-    func execute(in database: DB) async throws -> Output
-        where Input == ()
-    {
+extension Queryable where Input == () {
+    func execute(in database: DB) async throws -> Output {
         return try await execute(with: (), in: database)
     }
     
-    func execute() async throws -> Output
-        where Input == (), DB == ErasedDatabase
-    {
-        return try await execute(with: (), in: .shared)
-    }
-
-    func execute(tx: borrowing Transaction) throws -> Output
-        where Input == ()
-    {
+    func execute(tx: borrowing Transaction) throws -> Output {
         return try execute(with: (), tx: tx)
     }
-}
-
-//public extension Queryable {
-//    func observe(with input: Input) -> QueryObservation {
-//        
-//    }
-//}
-
-
-public protocol Database: Actor {
-    func observe(subscriber: DatabaseSubscriber) throws(FeatherError)
-    func cancel(subscriber: DatabaseSubscriber)
-    func begin(
-        _ transaction: TransactionKind
-    ) async throws(FeatherError) -> sending Transaction
-}
-
-/// Only used when the database has been erased using the `with(database:)` operator.
-/// No methods in this are actually called. The `WithDatabase` query holds the database
-/// that will actually be used.
-public actor ErasedDatabase: Database {
-    static let shared = ErasedDatabase()
     
-    private init() {}
-    
-    public func observe(subscriber: DatabaseSubscriber) throws(FeatherError) {
-        fatalError("Cannot be used directly")
+    func observe(
+        in database: DB,
+        handle: @Sendable @escaping (Output) -> Void,
+        cancelled: @Sendable @escaping () -> Void
+    ) -> QueryObservation<Self> {
+        return observe(with: (), in: database, handle: handle, cancelled: cancelled)
     }
     
-    public func cancel(subscriber: DatabaseSubscriber) {
-        fatalError("Cannot be used directly")
+    func stream(in database: DB) -> AsyncThrowingStream<Output, Error> {
+        return stream(with: (), in: database)
+    }
+}
+
+extension Queryable where Input == (), DB == ErasedDatabase {
+    func execute() async throws -> Output {
+        return try await execute(with: (), in: .shared)
     }
     
-    public func begin(
-        _ transaction: TransactionKind
-    ) async throws(FeatherError) -> sending Transaction {
-        fatalError("Cannot be used directly")
+    func observe(
+        handle: @Sendable @escaping (Output) -> Void,
+        cancelled: @Sendable @escaping () -> Void
+    ) -> QueryObservation<Self> {
+        return observe(with: (), in: .shared, handle: handle, cancelled: cancelled)
+    }
+    
+    func stream() -> AsyncThrowingStream<Output, Error> {
+        return stream(with: (), in: .shared)
+    }
+}
+
+extension Queryable where DB == ErasedDatabase {
+    func execute(with input: Input) async throws -> Output {
+        return try await execute(with: input, in: .shared)
+    }
+    
+    func observe(
+        with input: Input,
+        handle: @Sendable @escaping (Output) -> Void,
+        cancelled: @Sendable @escaping () -> Void
+    ) -> QueryObservation<Self> {
+        return observe(with: input, in: .shared, handle: handle, cancelled: cancelled)
+    }
+    
+    func stream(with input: Input) -> AsyncThrowingStream<Output, Error> {
+        return stream(with: input, in: .shared)
     }
 }

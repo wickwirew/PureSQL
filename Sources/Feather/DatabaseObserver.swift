@@ -6,6 +6,7 @@
 //
 
 import SQLite3
+import Foundation
 
 public struct DatabaseEvent: Sendable {
     public let operation: Operation
@@ -20,10 +21,14 @@ public struct DatabaseEvent: Sendable {
     }
 }
 
-actor DatabaseObserver: @unchecked Sendable {
+class DatabaseObserver: @unchecked Sendable {
+    private let lock = NSLock()
     private var subscribers: [ObjectIdentifier: any DatabaseSubscriber] = [:]
 
     func subscribe(subscriber: any DatabaseSubscriber) throws(FeatherError) {
+        lock.lock()
+        defer { lock.unlock() }
+        
         let id = ObjectIdentifier(subscriber)
         
         guard subscribers[id] == nil else {
@@ -34,11 +39,17 @@ actor DatabaseObserver: @unchecked Sendable {
     }
     
     func cancel(subscriber: any DatabaseSubscriber) {
+        lock.lock()
+        defer { lock.unlock() }
+        
         subscriber.onCancel()
         subscribers[ObjectIdentifier(subscriber)] = nil
     }
     
     func receive(event: DatabaseEvent) {
+        lock.lock()
+        defer { lock.unlock() }
+        
         for subscriber in subscribers.values {
             subscriber.receive(event: event)
         }
@@ -80,9 +91,7 @@ actor DatabaseObserver: @unchecked Sendable {
             rowId: rowId
         )
         
-        Task {
-            await receive(event: event)
-        }
+        receive(event: event)
     }
 }
 
