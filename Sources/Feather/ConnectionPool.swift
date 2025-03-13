@@ -126,11 +126,11 @@ public actor ConnectionPool: Sendable {
         throw .failedToGetConnection
     }
     
-    func observe() async -> Observation {
-        return await observer.observe()
-    }
-    
-    func cancel(observation: Observation) async {
-        return await observer.cancel(observation: observation)
-    }
+//    func observe() async -> Observation {
+//        return await observer.observe()
+//    }
+//    
+//    func cancel(observation: Observation) async {
+//        return await observer.cancel(observation: observation)
+//    }
 }

@@ -12,11 +12,6 @@ public protocol Query<Input, Output, Database>: Sendable {
     
     var transactionKind: TransactionKind { get }
     
-    func statement(
-        input: Input,
-        transaction: borrowing Transaction
-    ) throws -> Statement
-    
     func execute(
         with input: Input,
         in database: Database
@@ -26,11 +21,6 @@ public protocol Query<Input, Output, Database>: Sendable {
         with input: Input,
         tx: borrowing Transaction
     ) throws -> Output
-    
-    func values(
-        with input: Input,
-        in database: Database
-    ) -> QueryObservation<Input, Output>
 }
 
 public extension Query {
@@ -59,22 +49,24 @@ public extension Query {
     }
 }
 
-public extension Query {
-    func values(with input: Input) -> QueryObservation<Input, Output>
-        where Database == ()
-    {
-        return values(with: input, in: ())
-    }
+protocol _Query<Input, Output> {
+    associatedtype Input
+    associatedtype Output
+    associatedtype Database: _Database
     
-    func values(in database: Database) -> QueryObservation<Input, Output>
-        where Input == ()
-    {
-        return values(with: (), in: database)
-    }
+    func execute(
+        with input: Input,
+        in database: Database
+    ) async throws -> Output
     
-    func values() -> QueryObservation<Input, Output>
-        where Input == (), Database == ()
-    {
-        return values(with: (), in: ())
-    }
+    func execute(
+        with input: Input,
+        tx: borrowing Transaction
+    ) throws -> Output
+}
+
+protocol _Database {
+    func observe(subscriber: DatabaseSubscriber)
+    func cancel(subscriber: DatabaseSubscriber)
+    func execute<Q: _Query>(query: Q, input: Q.Input) throws -> Q.Output
 }

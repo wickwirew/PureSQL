@@ -21,21 +21,20 @@ struct DatabaseEvent: Sendable {
 }
 
 actor DatabaseObserver: @unchecked Sendable {
-    private var observations: [Observation.Id: Observation] = [:]
+    private var subscribers: [ObjectIdentifier: any DatabaseSubscriber] = [:]
 
-    func observe() -> Observation {
-        let observation = Observation()
-        observations[observation.id] = observation
-        return observation
+    func subscribe(subscriber: any DatabaseSubscriber) {
+        subscribers[ObjectIdentifier(subscriber)] = subscriber
     }
     
-    func cancel(observation: Observation) {
-        observations[observation.id] = nil
+    func cancel(subscriber: any DatabaseSubscriber) {
+        subscriber.onCancel()
+        subscribers[ObjectIdentifier(subscriber)] = nil
     }
     
     func receive(event: DatabaseEvent) {
-        for observation in observations.values {
-            observation.emit(event: event)
+        for subscriber in subscribers.values {
+            subscriber.receive(event: event)
         }
     }
     
@@ -81,51 +80,7 @@ actor DatabaseObserver: @unchecked Sendable {
     }
 }
 
-//extension Query {
-//    func values(
-//        with input: Input,
-//        in pool: ConnectionPool
-//    ) -> AsyncThrowingStream<Output, Error> {
-//        
-//        
-//        return AsyncThrowingStream<Output, Error> { continuation in
-//            let token = pool.observe {
-//                
-//            }
-//            
-//            continuation.onTermination = {
-//                pool.cancel(observation: token)
-//            }
-//        }
-//    }
-//}
-
-class Observation: Identifiable, AsyncSequence, @unchecked Sendable {
-    private let stream: AsyncStream<DatabaseEvent>
-    private let continuation: AsyncStream<DatabaseEvent>.Continuation
-    
-    struct Id: Hashable, Sendable {
-        let rawValue: ObjectIdentifier
-    }
-    
-    init() {
-        (stream, continuation) = AsyncStream.makeStream()
-    }
-    
-    var id: Id {
-        return Id(rawValue: ObjectIdentifier(self))
-    }
-    
-    func emit(event: DatabaseEvent) {
-        continuation.yield(event)
-    }
-    
-    func cancel() {
-        continuation.finish()
-    }
-
-    func makeAsyncIterator() -> AsyncStream<DatabaseEvent>.Iterator {
-        return stream.makeAsyncIterator()
-    }
+protocol DatabaseSubscriber: AnyObject {
+    func receive(event: DatabaseEvent)
+    func onCancel()
 }
-

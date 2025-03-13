@@ -21,16 +21,6 @@ public enum Queries {
             return base.transactionKind
         }
         
-        public func statement(
-            input: Input,
-            transaction: borrowing Transaction
-        ) throws -> Statement {
-            return try base.statement(
-                input: input,
-                transaction: transaction
-            )
-        }
-        
         public func execute(
             with input: Base.Input,
             in _: ()
@@ -43,13 +33,6 @@ public enum Queries {
             tx: borrowing Transaction
         ) throws -> Output {
             return try base.execute(with: input, tx: tx)
-        }
-        
-        public func values(
-            with input: Input,
-            in _: ()
-        ) -> QueryObservation<Input, Output> {
-            return base.values(with: input, in: database)
         }
     }
     
@@ -64,16 +47,6 @@ public enum Queries {
             return base.transactionKind
         }
         
-        public func statement(
-            input: Input,
-            transaction: borrowing Transaction
-        ) throws -> Statement {
-            return try base.statement(
-                input: input,
-                transaction: transaction
-            )
-        }
-        
         public func execute(
             with input: Base.Input,
             in database: Base.Database
@@ -86,14 +59,6 @@ public enum Queries {
             tx: borrowing Transaction
         ) throws -> Output {
             return try transform(base.execute(with: input, tx: tx))
-        }
-        
-        public func values(
-            with input: Input,
-            in database: Base.Database
-        ) -> QueryObservation<Input, Output> {
-            fatalError()
-//            return base.values(with: input, in: database)
         }
     }
     
@@ -111,13 +76,6 @@ public enum Queries {
             return .read
         }
         
-        public func statement(
-            input: Input,
-            transaction: borrowing Transaction
-        ) throws -> Statement {
-            fatalError()
-        }
-        
         public func execute(
             with input: Input,
             in database: Database
@@ -130,14 +88,6 @@ public enum Queries {
             tx: borrowing Transaction
         ) throws -> Output {
             return output
-        }
-        
-        public func values(
-            with input: Input,
-            in database: Database
-        ) -> QueryObservation<Input, Output> {
-            fatalError()
-//            return base.values(with: input, in: database)
         }
     }
 }
