@@ -37,7 +37,7 @@ public enum Queries {
     }
     
     /// Applies a transform to the queries result
-    public struct Map<Base: Queryable, Output>: Queryable {
+    public struct Map<Base: Queryable, Output: Sendable>: Queryable {
         /// The upstream query to transform
         let base: Base
         /// The transform to apply to the output

@@ -17,4 +17,7 @@ public enum FeatherError: Error {
     case poolCannotHaveZeroConnections
     case alreadyCommited
     case entityWasNotFound
+    /// A query observation was attempted
+    /// to be started twice.
+    case subscriptionAlreadyStarted
 }

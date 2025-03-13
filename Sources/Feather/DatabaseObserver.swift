@@ -23,8 +23,14 @@ public struct DatabaseEvent: Sendable {
 actor DatabaseObserver: @unchecked Sendable {
     private var subscribers: [ObjectIdentifier: any DatabaseSubscriber] = [:]
 
-    func subscribe(subscriber: any DatabaseSubscriber) {
-        subscribers[ObjectIdentifier(subscriber)] = subscriber
+    func subscribe(subscriber: any DatabaseSubscriber) throws(FeatherError) {
+        let id = ObjectIdentifier(subscriber)
+        
+        guard subscribers[id] == nil else {
+            throw .subscriptionAlreadyStarted
+        }
+        
+        subscribers[id] = subscriber
     }
     
     func cancel(subscriber: any DatabaseSubscriber) {

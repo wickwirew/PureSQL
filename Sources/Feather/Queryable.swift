@@ -9,7 +9,7 @@ public typealias Query<Input, Output> = Queryable<Input, Output, ErasedDatabase>
 
 public protocol Queryable<Input, Output, DB>: Sendable {
     associatedtype Input: Sendable
-    associatedtype Output
+    associatedtype Output: Sendable
     associatedtype DB: Database
     
     var transactionKind: TransactionKind { get }
@@ -51,15 +51,15 @@ public extension Queryable {
     }
 }
 
-public extension Queryable {
-    func observe(with input: Input) -> QueryObservation {
-        
-    }
-}
+//public extension Queryable {
+//    func observe(with input: Input) -> QueryObservation {
+//        
+//    }
+//}
 
 
 public protocol Database: Actor {
-    func observe(subscriber: DatabaseSubscriber)
+    func observe(subscriber: DatabaseSubscriber) throws(FeatherError)
     func cancel(subscriber: DatabaseSubscriber)
     func begin(
         _ transaction: TransactionKind
@@ -74,7 +74,7 @@ public actor ErasedDatabase: Database {
     
     private init() {}
     
-    public func observe(subscriber: DatabaseSubscriber) {
+    public func observe(subscriber: DatabaseSubscriber) throws(FeatherError) {
         fatalError("Cannot be used directly")
     }
     
@@ -87,8 +87,4 @@ public actor ErasedDatabase: Database {
     ) async throws(FeatherError) -> sending Transaction {
         fatalError("Cannot be used directly")
     }
-}
-
-func meow(query: any Query<Int, Int>) async throws {
-    let result = try await query.execute(with: 1)
 }

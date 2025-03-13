@@ -12,19 +12,20 @@ public final class QueryObservation<Q: Queryable>: DatabaseSubscriber, Sendable
     private let input: Q.Input
     private let database: Q.DB
     private let handle: @Sendable (Q.Output) -> Void
-    
-//    private var currentTask: Task<Q.Output,
+    private let cancelled: @Sendable () -> Void
     
     init(
         query: Q,
         input: Q.Input,
         database: Q.DB,
-        handle: @Sendable @escaping (Q.Output) -> Void
+        handle: @Sendable @escaping (Q.Output) -> Void,
+        cancelled: @Sendable @escaping () -> Void
     ) {
         self.query = query
         self.input = input
         self.database = database
         self.handle = handle
+        self.cancelled = cancelled
     }
     
     public func receive(event: DatabaseEvent) {
@@ -34,44 +35,57 @@ public final class QueryObservation<Q: Queryable>: DatabaseSubscriber, Sendable
     }
     
     public func onCancel() {
-        
+        cancelled()
     }
     
-//    private func next() async throws -> Q.Output {
-//        return
-//    }
-//
-////    public func makeAsyncIterator() -> Iterator {
-////        Iterator(queryObservation: self)
-////    }
-//
-//    public struct Iterator: AsyncIteratorProtocol {
-//        let queryObservation: QueryObservation
-//        
-//        public mutating func next() async throws -> Q.Output? {
-//            guard let dbObservation else {
-//                dbObservation = await queryObservation.pool.observe()
-//                return try await execute()
-//            }
-//            
-//            for await _ in dbObservation {
-//                guard !Task.isCancelled else {
-//                    await queryObservation.pool.cancel(observation: dbObservation)
-//                    return nil
-//                }
-//                
-//                return try await execute()
-//            }
-//            
-//            await queryObservation.pool.cancel(observation: dbObservation)
-//            return nil
-//        }
-//        
-//        private func execute() async throws -> Output {
-//            return try await queryObservation.query.execute(
-//                with: queryObservation.input,
-//                in: queryObservation.pool
-//            )
-//        }
-//    }
+    public func cancel() {
+//        database.cancel(subscriber: self)
+    }
+    
+    public func start() async throws {
+        try await database.observe(subscriber: self)
+        try await emitNext()
+    }
+    
+    private func emitNext() async throws {
+        let output = try await query.execute(with: input, in: database)
+        handle(output)
+    }
+}
+
+extension Queryable {
+    func obbbseeerrrvvee(
+        with input: Input,
+        in database: DB,
+        handle: @Sendable @escaping (Output) -> Void,
+        cancelled: @Sendable @escaping () -> Void
+    ) -> QueryObservation<Self> {
+        QueryObservation<Self>(
+            query: self,
+            input: input,
+            database: database,
+            handle: handle,
+            cancelled: cancelled
+        )
+    }
+    
+    func stream(
+        with input: Input,
+        in database: DB
+    ) -> AsyncThrowingStream<Output, Error> {
+        return AsyncThrowingStream<Output, Error> { continuation in
+            let observation = self.obbbseeerrrvvee(
+                with: input,
+                in: database
+            ) { output in
+                continuation.yield(output)
+            } cancelled: {
+                // Nothing to do
+            }
+            
+            continuation.onTermination = { _ in
+                observation.cancel()
+            }
+        }
+    }
 }

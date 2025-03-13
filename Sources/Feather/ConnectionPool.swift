@@ -92,9 +92,10 @@ public actor ConnectionPool: Sendable {
 }
 
 extension ConnectionPool: Database {
-    public func observe(subscriber: any DatabaseSubscriber) {
+    public func observe(
+        subscriber: any DatabaseSubscriber
+    ) throws(FeatherError) {
         fatalError()
-        
     }
     
     public func cancel(subscriber: any DatabaseSubscriber) {

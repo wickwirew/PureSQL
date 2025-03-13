@@ -31,8 +31,8 @@ extension Queryable where DB == ConnectionPool {
 /// A database query that fetches any array of rows.
 public struct FetchManyQuery<Input, Output>: Queryable
     where Input: Sendable,
-        Output: RangeReplaceableCollection & ExpressibleByArrayLiteral,
-        Output.Element: RowDecodable
+        Output: RangeReplaceableCollection & ExpressibleByArrayLiteral & Sendable,
+        Output.Element: RowDecodable & Sendable
 {
     public let transactionKind: TransactionKind
     private let _statement: @Sendable (Input, borrowing Transaction) throws -> Statement
@@ -70,7 +70,7 @@ public struct FetchManyQuery<Input, Output>: Queryable
 
 /// A database that fetches a single element. Can return `nil`
 public struct FetchSingleQuery<Input, Output>: Queryable
-    where Input: Sendable, Output: RowDecodable
+    where Input: Sendable, Output: RowDecodable & Sendable
 {
     public let transactionKind: TransactionKind
     private let _statement: @Sendable (Input, borrowing Transaction) throws -> Statement
