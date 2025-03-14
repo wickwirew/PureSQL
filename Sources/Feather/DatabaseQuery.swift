@@ -6,17 +6,6 @@
 //
 
 extension Queryable where DB == ConnectionPool {
-//    public func values(
-//        with input: Input,
-//        in database: Database
-//    ) -> QueryObservation<Input, Output> {
-//        return QueryObservation(
-//            query: self,
-//            input: input,
-//            pool: database
-//        )
-//    }
-    
     public func execute(
         with input: Input,
         in database: ConnectionPool
@@ -34,6 +23,8 @@ public struct FetchManyQuery<Input, Output>: Queryable
         Output: RangeReplaceableCollection & ExpressibleByArrayLiteral & Sendable,
         Output.Element: RowDecodable & Sendable
 {
+    public typealias DB = ConnectionPool
+    
     public let transactionKind: TransactionKind
     private let _statement: @Sendable (Input, borrowing Transaction) throws -> Statement
     
@@ -75,6 +66,8 @@ public struct FetchSingleQuery<Input, Output>: Queryable
     public let transactionKind: TransactionKind
     private let _statement: @Sendable (Input, borrowing Transaction) throws -> Statement
     
+    public typealias DB = ConnectionPool
+    
     public init(
         _ transactionKind: TransactionKind,
         statement: @Sendable @escaping (Input, borrowing Transaction) throws -> Statement
@@ -106,6 +99,8 @@ public struct VoidQuery<Input>: Queryable where Input: Sendable {
     
     public let transactionKind: TransactionKind
     private let _statement: @Sendable (Input, borrowing Transaction) throws -> Statement
+    
+    public typealias DB = ConnectionPool
     
     public init(
         _ transactionKind: TransactionKind,

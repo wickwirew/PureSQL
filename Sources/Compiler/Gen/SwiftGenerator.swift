@@ -173,7 +173,7 @@ public struct SwiftGenerator: Language {
                 table
             }
             
-            try EnumDeclSyntax("enum Queries") {
+            try EnumDeclSyntax("enum DB") {
                 try VariableDeclSyntax("static var migrations: [String]") {
                     ArrayExprSyntax(
                         expressions: migrations.map { SwiftSyntax.ExprSyntax($0) }

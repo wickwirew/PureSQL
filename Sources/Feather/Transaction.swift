@@ -62,7 +62,13 @@ public struct Transaction: ~Copyable {
     }
 }
 
-public enum TransactionKind: Sendable {
+public enum TransactionKind: Int, Sendable {
     case read
     case write
+}
+
+extension TransactionKind: Comparable {
+    public static func < (lhs: TransactionKind, rhs: TransactionKind) -> Bool {
+        return lhs.rawValue < rhs.rawValue
+    }
 }

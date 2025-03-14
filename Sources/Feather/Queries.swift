@@ -63,8 +63,8 @@ public enum Queries {
     }
     
     /// Applies a transform to the queries result
-    public struct Just<Input, Output, Database>: Queryable
-        where Input: Sendable, Output: Sendable, Database: Sendable
+    public struct Just<Input, Output, DB>: Queryable
+        where Input: Sendable, Output: Sendable, DB: Database
     {
         let output: Output
         
@@ -78,7 +78,7 @@ public enum Queries {
         
         public func execute(
             with input: Input,
-            in database: Database
+            in database: DB
         ) async throws -> Output {
             return output
         }
@@ -88,6 +88,39 @@ public enum Queries {
             tx: borrowing Transaction
         ) throws -> Output {
             return output
+        }
+    }
+    
+    public struct Then<First, Second>: Queryable
+        where First: Queryable, Second: Queryable,
+              First.Output == Second.Input,
+              First.DB == Second.DB
+    {
+        let first: First
+        let second: Second
+        
+        public typealias DB = First.DB
+        
+        public var transactionKind: TransactionKind {
+            return max(first.transactionKind, second.transactionKind)
+        }
+        
+        public func execute(
+            with input: First.Input,
+            in database: DB
+        ) async throws -> (First.Output, Second.Output) {
+            let firstOutput = try await first.execute(with: input, in: database)
+            let secondOutput = try await second.execute(with: firstOutput, in: database)
+            return (firstOutput, secondOutput)
+        }
+        
+        public func execute(
+            with input: First.Input,
+            tx: borrowing Transaction
+        ) throws -> (First.Output, Second.Output) {
+            let firstOutput = try first.execute(with: input, tx: tx)
+            let secondOutput = try second.execute(with: firstOutput, tx: tx)
+            return (firstOutput, secondOutput)
         }
     }
 }

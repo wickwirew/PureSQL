@@ -13,6 +13,7 @@ public protocol Queryable<Input, Output, DB>: Sendable {
     associatedtype Output: Sendable
     associatedtype DB: Database
     
+    /// Whether the query requires a read or write transaction.
     var transactionKind: TransactionKind { get }
     
     func execute(
