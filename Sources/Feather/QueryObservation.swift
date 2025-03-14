@@ -5,20 +5,20 @@
 //  Created by Wes Wickwire on 3/10/25.
 //
 
-public final class QueryObservation<Q: Queryable>: DatabaseSubscriber, Sendable
-    where Q.Input: Sendable
+public final class QueryObservation<Input, Output>: DatabaseSubscriber, Sendable
+    where Input: Sendable, Output: Sendable
 {
-    private let query: Q
-    private let input: Q.Input
-    private let database: Q.DB
-    private let handle: @Sendable (Q.Output) -> Void
+    private let query: any Queryable<Input, Output>
+    private let input: Input
+    private let database: any Database
+    private let handle: @Sendable (Output) -> Void
     private let cancelled: @Sendable () -> Void
     
     init(
-        query: Q,
-        input: Q.Input,
-        database: Q.DB,
-        handle: @Sendable @escaping (Q.Output) -> Void,
+        query: any Queryable<Input, Output>,
+        input: Input,
+        database: any Database,
+        handle: @Sendable @escaping (Output) -> Void,
         cancelled: @Sendable @escaping () -> Void
     ) {
         self.query = query
@@ -51,16 +51,17 @@ public final class QueryObservation<Q: Queryable>: DatabaseSubscriber, Sendable
         let output = try await query.execute(with: input, in: database)
         handle(output)
     }
+    
 }
 
 extension Queryable {
     func observe(
         with input: Input,
-        in database: DB,
+        in database: any Database,
         handle: @Sendable @escaping (Output) -> Void,
         cancelled: @Sendable @escaping () -> Void
-    ) -> QueryObservation<Self> {
-        QueryObservation<Self>(
+    ) -> QueryObservation<Input, Output> {
+        QueryObservation<Input, Output>(
             query: self,
             input: input,
             database: database,
@@ -71,7 +72,7 @@ extension Queryable {
     
     func stream(
         with input: Input,
-        in database: DB
+        in database: any Database
     ) -> AsyncThrowingStream<Output, Error> {
         return AsyncThrowingStream<Output, Error> { continuation in
             let observation = self.observe(

@@ -5,26 +5,12 @@
 //  Created by Wes Wickwire on 2/21/25.
 //
 
-extension Queryable where DB == ConnectionPool {
-    public func execute(
-        with input: Input,
-        in database: ConnectionPool
-    ) async throws -> Output {
-        let transaction = try await database.begin(transactionKind)
-        let result = try execute(with: input, tx: transaction)
-        try transaction.commit()
-        return result
-    }
-}
-
 /// A database query that fetches any array of rows.
 public struct FetchManyQuery<Input, Output>: Queryable
     where Input: Sendable,
         Output: RangeReplaceableCollection & ExpressibleByArrayLiteral & Sendable,
         Output.Element: RowDecodable & Sendable
 {
-    public typealias DB = ConnectionPool
-    
     public let transactionKind: TransactionKind
     private let _statement: @Sendable (Input, borrowing Transaction) throws -> Statement
     

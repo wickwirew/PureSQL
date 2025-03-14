@@ -21,13 +21,9 @@ public actor ErasedDatabase: Database {
     
     private init() {}
     
-    public func observe(subscriber: DatabaseSubscriber) throws(FeatherError) {
-        fatalError("Cannot be used directly")
-    }
+    public func observe(subscriber: DatabaseSubscriber) throws(FeatherError) {}
     
-    public nonisolated func cancel(subscriber: DatabaseSubscriber) {
-        fatalError("Cannot be used directly")
-    }
+    public nonisolated func cancel(subscriber: DatabaseSubscriber) {}
     
     public func begin(
         _ transaction: TransactionKind
