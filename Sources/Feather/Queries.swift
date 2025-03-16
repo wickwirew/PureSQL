@@ -50,7 +50,7 @@ public enum Queries {
     }
     
     /// Applies a transform to the queries result
-    public struct Map<Base: Queryable, Output: Sendable>: Queryable {
+    public struct Map<Base: Query, Output: Sendable>: Query {
         /// The upstream query to transform
         let base: Base
         /// The transform to apply to the output
@@ -58,6 +58,23 @@ public enum Queries {
         
         public var transactionKind: TransactionKind {
             return base.transactionKind
+        }
+        
+        public func execute(with input: Base.Input) async throws -> Output {
+            return try await transform(base.execute(with: input))
+        }
+        
+        public func observe(
+            with input: Input,
+            handle: @Sendable @escaping (Output) -> Void,
+            cancelled: @Sendable @escaping () -> Void
+        ) -> QueryObservation<Input, Output> {
+            fatalError()
+//            return base.observe(
+//                with: input,
+//                handle: { handle(transform($0)) },
+//                cancelled: cancelled
+//            )
         }
         
         public func execute(
@@ -132,24 +149,6 @@ public enum Queries {
     }
 }
 
-extension Queries.Map: Query where Base: Query<Input, Output> {
-    public func execute(with input: Base.Input) async throws -> Output {
-        return try await base.execute(with: input)
-    }
-    
-    public func observe(
-        with input: Input,
-        handle: @Sendable @escaping (Output) -> Void,
-        cancelled: @Sendable @escaping () -> Void
-    ) -> QueryObservation<Input, Output> {
-        return base.observe(
-            with: input,
-            handle: handle,
-            cancelled: cancelled
-        )
-    }
-}
-
 public extension Queryable {
     func with(database: any Database) -> Queries.WithDatabase<Self> {
         return Queries.WithDatabase(base: self, database: database)
@@ -179,3 +178,5 @@ public extension Queryable {
         }
     }
 }
+
+

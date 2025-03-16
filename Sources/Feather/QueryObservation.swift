@@ -51,7 +51,6 @@ public final class QueryObservation<Input, Output>: DatabaseSubscriber, Sendable
         let output = try await query.execute(with: input, in: database)
         handle(output)
     }
-    
 }
 
 extension Queryable {

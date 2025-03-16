@@ -98,20 +98,3 @@ public extension Query where Input == () {
         return stream(with: ())
     }
 }
-
-
-func meow<Q: Queryable>(query: Q, database: any Database) async throws
-    where Q.Input == Int, Q.Output == Int
-{
-    for try await result in query.stream(with: 1, in: database) {
-        
-    }
-    
-    try await meow2(query: query.with(database: database))
-}
-
-func meow2(query: any Query<Int, Int>) async throws {
-    for try await result in query.map({ $0 }).stream(with: 1) {
-
-    }
-}
