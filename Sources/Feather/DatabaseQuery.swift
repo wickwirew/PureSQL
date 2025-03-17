@@ -12,28 +12,26 @@ public struct FetchManyQuery<Input, Output>: Queryable
         Output.Element: RowDecodable & Sendable
 {
     public let transactionKind: TransactionKind
-    private let _statement: @Sendable (Input, borrowing Transaction) throws -> Statement
+    private let database: any Database
+    private let statement: @Sendable (Input, borrowing Transaction) throws -> Statement
+    
+    public typealias DB = any Database
     
     public init(
         _ transactionKind: TransactionKind,
+        database: any Database,
         statement: @Sendable @escaping (Input, borrowing Transaction) throws -> Statement
     ){
         self.transactionKind = transactionKind
-        self._statement = statement
+        self.database = database
+        self.statement = statement
     }
-
-    public func statement(
-        input: Input,
-        transaction: borrowing Transaction
-    ) throws -> Statement {
-        return try _statement(input, transaction)
-    }
-    
+   
     public func execute(
         with input: Input,
         tx: borrowing Transaction
     ) throws -> Output {
-        let statement = try statement(input: input, transaction: tx)
+        let statement = try statement(input, tx)
         var cursor = Cursor<Output.Element>(of: statement)
         var result: Output = []
         
@@ -50,30 +48,26 @@ public struct FetchSingleQuery<Input, Output>: Queryable
     where Input: Sendable, Output: RowDecodable & Sendable
 {
     public let transactionKind: TransactionKind
-    private let _statement: @Sendable (Input, borrowing Transaction) throws -> Statement
+    private let database: any Database
+    private let statement: @Sendable (Input, borrowing Transaction) throws -> Statement
     
-    public typealias DB = ConnectionPool
+    public typealias DB = any Database
     
     public init(
         _ transactionKind: TransactionKind,
+        database: any Database,
         statement: @Sendable @escaping (Input, borrowing Transaction) throws -> Statement
     ) {
         self.transactionKind = transactionKind
-        self._statement = statement
-    }
-
-    public func statement(
-        input: Input,
-        transaction: borrowing Transaction
-    ) throws -> Statement {
-        return try _statement(input, transaction)
+        self.database = database
+        self.statement = statement
     }
     
     public func execute(
         with input: Input,
         tx: borrowing Transaction
     ) throws -> Output? {
-        let statement = try statement(input: input, transaction: tx)
+        let statement = try statement(input, tx)
         var cursor = Cursor<Output>(of: statement)
         return try cursor.next()
     }
@@ -84,30 +78,26 @@ public struct VoidQuery<Input>: Queryable where Input: Sendable {
     public typealias Output = ()
     
     public let transactionKind: TransactionKind
-    private let _statement: @Sendable (Input, borrowing Transaction) throws -> Statement
+    private let database: any Database
+    private let statement: @Sendable (Input, borrowing Transaction) throws -> Statement
     
-    public typealias DB = ConnectionPool
+    public typealias DB = any Database
     
     public init(
         _ transactionKind: TransactionKind,
+        database: any Database,
         statement: @Sendable @escaping (Input, borrowing Transaction) throws -> Statement
     ) {
         self.transactionKind = transactionKind
-        self._statement = statement
-    }
-
-    public func statement(
-        input: Input,
-        transaction: borrowing Transaction
-    ) throws -> Statement {
-        return try _statement(input, transaction)
+        self.database = database
+        self.statement = statement
     }
     
     public func execute(
         with input: Input,
         tx: borrowing Transaction
     ) throws {
-        let statement = try statement(input: input, transaction: tx)
+        let statement = try statement(input, tx)
         _ = try statement.step()
     }
 }

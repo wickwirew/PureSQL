@@ -5,12 +5,20 @@
 //  Created by Wes Wickwire on 11/9/24.
 //
 
-public protocol Queryable<Input, Output>: Sendable {
+public typealias Query<Input, Output> = Queryable<Input, Output, ()>
+
+public protocol Queryable<Input, Output, DB>: Sendable {
     associatedtype Input: Sendable
     associatedtype Output: Sendable
+    associatedtype DB: Sendable
     
     /// Whether the query requires a read or write transaction.
     var transactionKind: TransactionKind { get }
+
+    func execute(
+        with input: Input,
+        in database: DB
+    ) async throws -> Output
     
     func execute(
         with input: Input,
@@ -18,10 +26,10 @@ public protocol Queryable<Input, Output>: Sendable {
     ) throws -> Output
 }
 
-extension Queryable {
+extension Queryable where DB == any Database {
     public func execute(
         with input: Input,
-        in database: any Database
+        in database: DB
     ) async throws -> Output {
         let tx = try await database.begin(transactionKind)
         return try execute(with: input, tx: tx)
@@ -29,7 +37,7 @@ extension Queryable {
 }
 
 extension Queryable where Input == () {
-    func execute(in database: any Database) async throws -> Output {
+    func execute(in database: DB) async throws -> Output {
         return try await execute(with: (), in: database)
     }
     
@@ -38,63 +46,53 @@ extension Queryable where Input == () {
     }
     
     func observe(
-        in database: any Database,
+        in database: DB,
         handle: @Sendable @escaping (Output) -> Void,
         cancelled: @Sendable @escaping () -> Void
-    ) -> QueryObservation<Input, Output> {
+    ) -> QueryObservation<Input, Output, DB> {
         return observe(with: (), in: database, handle: handle, cancelled: cancelled)
     }
     
-    func stream(in database: any Database) -> AsyncThrowingStream<Output, Error> {
+    func stream(in database: DB) -> AsyncThrowingStream<Output, Error> {
         return stream(with: (), in: database)
     }
 }
 
+public extension Queryable where Input == (), DB == () {
+    func execute() async throws -> Output {
+        return try await execute(with: (), in: ())
+    }
+}
+
+
 /// An injectable query that can be executed without explicitly
 /// sending in the database.
-public protocol Query<Input, Output>: Queryable {
-    func execute(
-        with input: Input
-    ) async throws -> Output
-    
-    func observe(
-        with input: Input,
-        handle: @Sendable @escaping (Output) -> Void,
-        cancelled: @Sendable @escaping () -> Void
-    ) -> QueryObservation<Input, Output>
-}
+//    func execute(
+//        with input: Input
+//    ) async throws -> Output
+//    
+//    func observe(
+//        with input: Input,
+//        handle: @Sendable @escaping (Output) -> Void,
+//        cancelled: @Sendable @escaping () -> Void
+//    ) -> QueryObservation<Input, Output>
 
-public extension Query {
-    func stream(
-        with input: Input
-    ) -> AsyncThrowingStream<Output, Error> {
-        return AsyncThrowingStream<Output, Error> { continuation in
-            let observation = self.observe(with: input) { output in
-                continuation.yield(output)
-            } cancelled: {
-                // Nothing to do
-            }
-            
-            continuation.onTermination = { _ in
-                observation.cancel()
-            }
-        }
-    }
-}
+//
+//public extension Query {
+//    func stream(
+//        with input: Input
+//    ) -> AsyncThrowingStream<Output, Error> {
+//        return AsyncThrowingStream<Output, Error> { continuation in
+//            let observation = self.observe(with: input) { output in
+//                continuation.yield(output)
+//            } cancelled: {
+//                // Nothing to do
+//            }
+//            
+//            continuation.onTermination = { _ in
+//                observation.cancel()
+//            }
+//        }
+//    }
+//}
 
-public extension Query where Input == () {
-    func execute() async throws -> Output {
-        return try await execute(with: ())
-    }
-    
-    func observe(
-        handle: @Sendable @escaping (Output) -> Void,
-        cancelled: @Sendable @escaping () -> Void
-    ) -> QueryObservation<Input, Output> {
-        return observe(with: (), handle: handle, cancelled: cancelled)
-    }
-    
-    func stream() -> AsyncThrowingStream<Output, Error> {
-        return stream(with: ())
-    }
-}

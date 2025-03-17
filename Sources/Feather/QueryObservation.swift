@@ -5,19 +5,19 @@
 //  Created by Wes Wickwire on 3/10/25.
 //
 
-public final class QueryObservation<Input, Output>: DatabaseSubscriber, Sendable
-    where Input: Sendable, Output: Sendable
+public final class QueryObservation<Input, Output, DB>: DatabaseSubscriber, Sendable
+where Input: Sendable, Output: Sendable, DB: Sendable
 {
-    private let query: any Queryable<Input, Output>
+    private let query: any Queryable<Input, Output, DB>
     private let input: Input
-    private let database: any Database
+    private let database: DB
     private let handle: @Sendable (Output) -> Void
     private let cancelled: @Sendable () -> Void
     
     init(
-        query: any Queryable<Input, Output>,
+        query: any Queryable<Input, Output, DB>,
         input: Input,
-        database: any Database,
+        database: DB,
         handle: @Sendable @escaping (Output) -> Void,
         cancelled: @Sendable @escaping () -> Void
     ) {
@@ -39,11 +39,11 @@ public final class QueryObservation<Input, Output>: DatabaseSubscriber, Sendable
     }
     
     public func cancel() {
-        database.cancel(subscriber: self)
+//        database.cancel(subscriber: self)
     }
     
     public func start() async throws {
-        try await database.observe(subscriber: self)
+//        try await database.observe(subscriber: self)
         try await emitNext()
     }
     
@@ -56,11 +56,11 @@ public final class QueryObservation<Input, Output>: DatabaseSubscriber, Sendable
 extension Queryable {
     func observe(
         with input: Input,
-        in database: any Database,
+        in database: DB,
         handle: @Sendable @escaping (Output) -> Void,
         cancelled: @Sendable @escaping () -> Void
-    ) -> QueryObservation<Input, Output> {
-        QueryObservation<Input, Output>(
+    ) -> QueryObservation<Input, Output, DB> {
+        QueryObservation<Input, Output, DB>(
             query: self,
             input: input,
             database: database,
@@ -71,7 +71,7 @@ extension Queryable {
     
     func stream(
         with input: Input,
-        in database: any Database
+        in database: DB
     ) -> AsyncThrowingStream<Output, Error> {
         return AsyncThrowingStream<Output, Error> { continuation in
             let observation = self.observe(

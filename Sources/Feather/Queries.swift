@@ -11,21 +11,21 @@ public enum Queries {
     /// Allows for the erasing of the database so a query can be
     /// passed around and be able to be executed without
     /// having the caller worry about by what.
-    public struct WithDatabase<Base: Queryable>: Query {
+    public struct WithDatabase<Base: Queryable>: Queryable {
         /// The original query that requires a database
         let base: Base
         /// The database to execute the query in
-        let database: any Database
+        let database: Base.DB
         
         public var transactionKind: TransactionKind {
             return base.transactionKind
         }
         
         public func execute(
-            with input: Base.Input
+            with input: Base.Input,
+            in _: ()
         ) async throws -> Base.Output {
-            let tx = try await database.begin(transactionKind)
-            return try execute(with: input, tx: tx)
+            return try await base.execute(with: input, in: database)
         }
         
         public func execute(
@@ -34,23 +34,10 @@ public enum Queries {
         ) throws -> Base.Output {
             return try base.execute(with: input, tx: tx)
         }
-        
-        public func observe(
-            with input: Input,
-            handle: @Sendable @escaping (Output) -> Void,
-            cancelled: @Sendable @escaping () -> Void
-        ) -> QueryObservation<Input, Output> {
-            return base.observe(
-                with: input,
-                in: database,
-                handle: handle,
-                cancelled: cancelled
-            )
-        }
     }
     
     /// Applies a transform to the queries result
-    public struct Map<Base: Query, Output: Sendable>: Query {
+    public struct Map<Base: Queryable, Output: Sendable>: Queryable {
         /// The upstream query to transform
         let base: Base
         /// The transform to apply to the output
@@ -60,23 +47,13 @@ public enum Queries {
             return base.transactionKind
         }
         
-        public func execute(with input: Base.Input) async throws -> Output {
-            return try await transform(base.execute(with: input))
+        public func execute(
+            with input: Base.Input,
+            in database: Base.DB
+        ) async throws -> Output {
+            return try await transform(base.execute(with: input, in: database))
         }
-        
-        public func observe(
-            with input: Input,
-            handle: @Sendable @escaping (Output) -> Void,
-            cancelled: @Sendable @escaping () -> Void
-        ) -> QueryObservation<Input, Output> {
-            fatalError()
-//            return base.observe(
-//                with: input,
-//                handle: { handle(transform($0)) },
-//                cancelled: cancelled
-//            )
-        }
-        
+
         public func execute(
             with input: Base.Input,
             tx: borrowing Transaction
@@ -86,8 +63,8 @@ public enum Queries {
     }
     
     /// Applies a transform to the queries result
-    public struct Just<Input, Output, DB>: Query
-        where Input: Sendable, Output: Sendable, DB: Database
+    public struct Just<Input, Output>: Queryable
+        where Input: Sendable, Output: Sendable
     {
         let output: Output
         
@@ -100,7 +77,8 @@ public enum Queries {
         }
         
         public func execute(
-            with input: Input
+            with input: Input,
+            in _: ()
         ) async throws -> Output {
             return output
         }
@@ -111,20 +89,6 @@ public enum Queries {
         ) throws -> Output {
             return output
         }
-        
-        public func observe(
-            with input: Input,
-            handle: @Sendable @escaping (Output) -> Void,
-            cancelled: @Sendable @escaping () -> Void
-        ) -> QueryObservation<Input, Output> {
-            QueryObservation<Input, Output>(
-                query: self,
-                input: input,
-                database: ErasedDatabase.shared,
-                handle: handle,
-                cancelled: cancelled
-            )
-        }
     }
     
     public struct Then<First, Second>: Queryable
@@ -133,6 +97,8 @@ public enum Queries {
     {
         let first: First
         let second: Second
+        
+        public typealias DB = any Database
         
         public var transactionKind: TransactionKind {
             return max(first.transactionKind, second.transactionKind)
@@ -150,7 +116,7 @@ public enum Queries {
 }
 
 public extension Queryable {
-    func with(database: any Database) -> Queries.WithDatabase<Self> {
+    func with(database: DB) -> Queries.WithDatabase<Self> {
         return Queries.WithDatabase(base: self, database: database)
     }
     
@@ -178,5 +144,3 @@ public extension Queryable {
         }
     }
 }
-
-
