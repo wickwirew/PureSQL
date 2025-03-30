@@ -11,8 +11,24 @@ import SwiftSyntaxBuilder
 public struct SwiftGenerator: Language {
     public typealias Table = DeclSyntax
     public typealias File = SourceFileSyntax
-    public typealias Query = [DeclSyntax]
     public typealias Migration = StringLiteralExprSyntax
+    
+    public struct Query {
+        public let statement: Statement
+        public let input: GeneratedStruct?
+        public let output: GeneratedStruct?
+        public let query: DeclSyntax
+        
+        public var decls: [DeclSyntax] {
+            [input?.decl, output?.decl, query].compactMap(\.self)
+        }
+    }
+    
+    public struct GeneratedStruct {
+        let decl: DeclSyntax
+        let name: String
+        let fields: [(name: String, type: String)]
+    }
     
     public static func migration(
         source: String
@@ -26,20 +42,19 @@ public struct SwiftGenerator: Language {
     ) throws -> DeclSyntax {
         return try structDecl(
             name: name,
-            columns: columns,
+            fields: columns.map{ ($0.key.description, $0.value) },
             rowDecodable: true
-        )
+        ).decl
     }
     
     public static func query(
         statement: Statement,
         name: Substring
-    ) throws -> [DeclSyntax] {
+    ) throws -> Query {
         let parameters = statement.parameters
-        var declarations: [DeclSyntax] = []
         
-        let inputTypeName = inputType(statement: statement, name: name, declarations: &declarations)
-        let outputTypeName = try outputType(statement: statement, name: name, declarations: &declarations)
+        let (inputTypeName, inputDecl) = try inputType(statement: statement, name: name)
+        let (outputTypeName, outputDecl) = try outputType(statement: statement, name: name)
         
         let queryType: String = if statement.noOutput {
             "VoidQuery<\(inputTypeName)>"
@@ -101,64 +116,65 @@ public struct SwiftGenerator: Language {
             )
         }
         
-        declarations.append(DeclSyntax(query))
-        
-        return declarations
+        return Query(
+            statement: statement,
+            input: inputDecl,
+            output: outputDecl,
+            query: DeclSyntax(query)
+        )
     }
     
     private static func inputType(
         statement: Statement,
-        name: Substring,
-        declarations: inout [DeclSyntax]
-    ) -> String {
+        name: Substring
+    ) throws -> (String, GeneratedStruct?) {
         guard let firstParam = statement.parameters.first else {
-            return "()"
+            return ("()", nil)
         }
         
         if statement.parameters.count > 1 {
             let inputTypeName = "\(name.capitalizedFirst)Input"
-            let inputType = DeclSyntax(StructDeclSyntax(name: "\(raw: inputTypeName)") {
-                for input in statement.parameters {
-                    "let \(raw: input.name): \(raw: swiftType(for: input.type))"
-                }
-            })
-            declarations.append(inputType)
-            return inputTypeName
+            
+            let inputType = try structDecl(
+                name: inputTypeName,
+                fields: statement.parameters.map { ($0.name, $0.type) },
+                rowDecodable: false
+            )
+            
+            return (inputTypeName, inputType)
         } else {
             // Single input parameter, just use the single value as the parameter type
-            return swiftType(for: firstParam.type)
+            return (swiftType(for: firstParam.type), nil)
         }
     }
     
     private static func outputType(
         statement: Statement,
-        name: Substring,
-        declarations: inout [DeclSyntax]
-    ) throws -> String {
+        name: Substring
+    ) throws -> (String, GeneratedStruct?) {
         // Make sure there is at least one column else return void
         guard let first = statement.resultColumns
-            .columns.values.first else { return "()" }
+            .columns.values.first else { return ("()", nil) }
         
         // Output can be mapped to a table struct
         if let table = statement.resultColumns.table {
-            return table.capitalizedFirst
+            return (table.capitalizedFirst, nil)
         }
         
         // Only one column returned, just use it's type
         guard statement.resultColumns.columns.count > 1 else {
-            return swiftType(for: first)
+            return (swiftType(for: first), nil)
         }
         
         let outputTypeName = "\(name.capitalizedFirst)Output"
         
         let outputType = try structDecl(
             name: outputTypeName,
-            columns: statement.resultColumns.columns,
+            fields: statement.resultColumns.columns.map{ ($0.key.description, $0.value) },
             rowDecodable: true
         )
         
-        declarations.append(outputType)
-        return outputTypeName
+        return (outputTypeName, outputType)
     }
     
     public static func file(
@@ -181,8 +197,34 @@ public struct SwiftGenerator: Language {
                 }
                 
                 for query in queries {
-                    for decl in query {
-                        decl
+                    if let input = query.input?.decl {
+                        input
+                    }
+                    
+                    if let output = query.output?.decl {
+                        output
+                    }
+                    
+                    query.query
+                }
+            }
+            
+            for query in queries {
+                if let input = query.input {
+                    try ExtensionDeclSyntax("extension Query where Input == DB.\(raw: input.name)") {
+                        let parameters = input.fields.map { parameter in
+                            "\(parameter.name): \(parameter.type)"
+                        }.joined(separator: ", ")
+                        
+                        let args = input.fields.map { parameter in
+                            "\(parameter.name): \(parameter.name)"
+                        }.joined(separator: ", ")
+                        
+                        """
+                        func execute(\(raw: parameters)) async throws -> Output {
+                            try await execute(with: DB.\(raw: input.name)(\(raw: args)))
+                        }
+                        """
                     }
                 }
             }
@@ -195,12 +237,22 @@ public struct SwiftGenerator: Language {
     
     public static func structDecl<Name: StringProtocol>(
         name: Name,
-        columns: Columns,
+        fields unresolvedFields: [(name: String, type: Type)],
         rowDecodable: Bool
-    ) throws -> DeclSyntax {
+    ) throws -> GeneratedStruct {
         var declName = "\(name.capitalizedFirst): Hashable"
         
-        if columns["id"] != nil {
+        var hasId = false
+        var fields: [(name: String, type: String)] = []
+        for field in unresolvedFields {
+            if field.name == "id" {
+                hasId = true
+            }
+            
+            fields.append((field.name.description, swiftType(for: field.type)))
+        }
+        
+        if hasId {
             declName.append(", Identifiable")
         }
         
@@ -208,11 +260,7 @@ public struct SwiftGenerator: Language {
             declName.append(", RowDecodable")
         }
         
-        let fields = columns.map { (name, type) in
-            (name: name, type: swiftType(for: type))
-        }
-        
-        return try DeclSyntax(StructDeclSyntax(name: "\(raw: declName)") {
+        let decl = try DeclSyntax(StructDeclSyntax(name: "\(raw: declName)") {
             for (column, type) in fields {
                 "let \(raw: column): \(raw: type)"
             }
@@ -221,18 +269,21 @@ public struct SwiftGenerator: Language {
                 try InitializerDeclSyntax("init(row: borrowing Feather.Row) throws(FeatherError)") {
                     "var columns = row.columnIterator()"
                     
-                    for (column, _) in columns {
-                        "self.\(raw: column) = try columns.next()"
+                    for (name, _) in fields {
+                        "self.\(raw: name) = try columns.next()"
+                    }
+                }
+                
+                // Only generate the memberwise init if needed
+                try InitializerDeclSyntax("init(\(raw: fields.map{ "\($0.name): \($0.type)" }.joined(separator: ", ")))") {
+                    for field in fields {
+                        "self.\(raw: field.name) = \(raw: field.name)"
                     }
                 }
             }
-            
-            try InitializerDeclSyntax("init(\(raw: fields.map{ "\($0.name): \($0.type)" }.joined(separator: ", ")))") {
-                for field in fields {
-                    "self.\(raw: field.name) = \(raw: field.name)"
-                }
-            }
         })
+        
+        return GeneratedStruct(decl: decl, name: name.description, fields: fields)
     }
     
     private static func swiftType(for type: Type) -> String {

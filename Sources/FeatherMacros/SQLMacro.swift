@@ -67,7 +67,7 @@ public struct DatabaseMacro: MemberMacro {
             }
         }
         
-        return queries.flatMap(\.self)
+        return queries.map(\.decls).flatMap(\.self)
     }
     
     private static func arrayStrings(
