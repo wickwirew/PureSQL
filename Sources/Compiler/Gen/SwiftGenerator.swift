@@ -208,9 +208,13 @@ public struct SwiftGenerator: Language {
             declName.append(", RowDecodable")
         }
         
+        let fields = columns.map { (name, type) in
+            (name: name, type: swiftType(for: type))
+        }
+        
         return try DeclSyntax(StructDeclSyntax(name: "\(raw: declName)") {
-            for (column, type) in columns {
-                "let \(raw: column): \(raw: swiftType(for: type))"
+            for (column, type) in fields {
+                "let \(raw: column): \(raw: type)"
             }
             
             if rowDecodable {
@@ -220,6 +224,12 @@ public struct SwiftGenerator: Language {
                     for (column, _) in columns {
                         "self.\(raw: column) = try columns.next()"
                     }
+                }
+            }
+            
+            try InitializerDeclSyntax("init(\(raw: fields.map{ "\($0.name): \($0.type)" }.joined(separator: ", ")))") {
+                for field in fields {
+                    "self.\(raw: field.name) = \(raw: field.name)"
                 }
             }
         })
