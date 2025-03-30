@@ -10,10 +10,23 @@ public protocol Query<Input, Output> {
     associatedtype Output
     
     func execute(with input: Input) async throws -> Output
+    
+    func observe(
+        with input: Input,
+        handle: @Sendable @escaping (Output) -> Void,
+        cancelled: @Sendable @escaping () -> Void
+    ) -> QueryObservation<Input, Output>
 }
 
-extension Query where Input == () {
+public extension Query where Input == () {
     func execute() async throws -> Output {
         return try await execute(with: ())
+    }
+    
+    func observe(
+        handle: @Sendable @escaping (Output) -> Void,
+        cancelled: @Sendable @escaping () -> Void
+    ) -> QueryObservation<Input, Output> {
+        return observe(with: (), handle: handle, cancelled: cancelled)
     }
 }

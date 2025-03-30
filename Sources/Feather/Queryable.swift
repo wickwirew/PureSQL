@@ -39,7 +39,7 @@ public extension DatabaseQuery {
         cancelled: @Sendable @escaping () -> Void
     ) -> QueryObservation<Input, Output> {
         return QueryObservation(
-            query: self.with(database: database),
+            query: self,
             input: input,
             database: database,
             handle: handle,

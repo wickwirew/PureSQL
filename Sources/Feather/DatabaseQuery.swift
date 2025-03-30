@@ -12,16 +12,13 @@ public struct FetchManyQuery<Input, Output>: DatabaseQuery
         Output.Element: RowDecodable & Sendable
 {
     public let transactionKind: TransactionKind
-    private let database: any Database
     private let statement: @Sendable (Input, borrowing Transaction) throws -> Statement
     
     public init(
         _ transactionKind: TransactionKind,
-        database: any Database,
         statement: @Sendable @escaping (Input, borrowing Transaction) throws -> Statement
     ){
         self.transactionKind = transactionKind
-        self.database = database
         self.statement = statement
     }
    
@@ -46,18 +43,13 @@ public struct FetchSingleQuery<Input, Output>: DatabaseQuery
     where Input: Sendable, Output: RowDecodable & Sendable
 {
     public let transactionKind: TransactionKind
-    private let database: any Database
     private let statement: @Sendable (Input, borrowing Transaction) throws -> Statement
-    
-    public typealias DB = any Database
-    
+
     public init(
         _ transactionKind: TransactionKind,
-        database: any Database,
         statement: @Sendable @escaping (Input, borrowing Transaction) throws -> Statement
     ) {
         self.transactionKind = transactionKind
-        self.database = database
         self.statement = statement
     }
     
@@ -76,18 +68,15 @@ public struct VoidQuery<Input>: DatabaseQuery where Input: Sendable {
     public typealias Output = ()
     
     public let transactionKind: TransactionKind
-    private let database: any Database
     private let statement: @Sendable (Input, borrowing Transaction) throws -> Statement
     
     public typealias DB = any Database
     
     public init(
         _ transactionKind: TransactionKind,
-        database: any Database,
         statement: @Sendable @escaping (Input, borrowing Transaction) throws -> Statement
     ) {
         self.transactionKind = transactionKind
-        self.database = database
         self.statement = statement
     }
     

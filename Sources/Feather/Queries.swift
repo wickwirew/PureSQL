@@ -11,43 +11,24 @@ public enum Queries {
     /// Allows for the erasing of the database so a query can be
     /// passed around and be able to be executed without
     /// having the caller worry about by what.
-    public struct WithDatabase<Base: DatabaseQuery>: DatabaseQuery, Query {
+    public struct WithDatabase<Base: DatabaseQuery>: Query {
         /// The original query that requires a database
         let base: Base
         /// The database to execute the query in
         let database: any Database
         
-        public var transactionKind: TransactionKind {
-            return base.transactionKind
-        }
-        
-        public func execute(
-            with input: Base.Input,
-            in _: ErasedDatabase
-        ) async throws -> Base.Output {
-            return try await base.execute(with: input, in: database)
-        }
-        
-        public func execute(
-            with input: Base.Input,
-            tx: borrowing Transaction
-        ) throws -> Base.Output {
-            return try base.execute(with: input, tx: tx)
-        }
-        
-        public func observe(
-            with input: Input,
-            in _: ErasedDatabase,
-            handle: @Sendable @escaping (Output) -> Void,
-            cancelled: @Sendable @escaping () -> Void
-        ) -> QueryObservation<Input, Output> {
-            return base.observe(with: input, in: database, handle: handle, cancelled: cancelled)
-        }
-        
         public func execute(
             with input: Base.Input
         ) async throws -> Base.Output {
             return try await base.execute(with: input, in: database)
+        }
+        
+        public func observe(
+            with input: Input,
+            handle: @Sendable @escaping (Output) -> Void,
+            cancelled: @Sendable @escaping () -> Void
+        ) -> QueryObservation<Input, Output> {
+            return base.observe(with: input, in: database, handle: handle, cancelled: cancelled)
         }
     }
     
