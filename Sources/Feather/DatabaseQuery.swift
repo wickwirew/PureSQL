@@ -6,7 +6,7 @@
 //
 
 /// A database query that fetches any array of rows.
-public struct FetchManyQuery<Input, Output>: Queryable
+public struct FetchManyQuery<Input, Output>: DatabaseQuery
     where Input: Sendable,
         Output: RangeReplaceableCollection & ExpressibleByArrayLiteral & Sendable,
         Output.Element: RowDecodable & Sendable
@@ -42,7 +42,7 @@ public struct FetchManyQuery<Input, Output>: Queryable
 }
 
 /// A database that fetches a single element. Can return `nil`
-public struct FetchSingleQuery<Input, Output>: Queryable
+public struct FetchSingleQuery<Input, Output>: DatabaseQuery
     where Input: Sendable, Output: RowDecodable & Sendable
 {
     public let transactionKind: TransactionKind
@@ -72,7 +72,7 @@ public struct FetchSingleQuery<Input, Output>: Queryable
 }
 
 /// A query that has no return value.
-public struct VoidQuery<Input>: Queryable where Input: Sendable {
+public struct VoidQuery<Input>: DatabaseQuery where Input: Sendable {
     public typealias Output = ()
     
     public let transactionKind: TransactionKind

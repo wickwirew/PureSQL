@@ -8,14 +8,14 @@
 public final class QueryObservation<Input, Output>: DatabaseSubscriber, Sendable
     where Input: Sendable, Output: Sendable
 {
-    private let query: any Query<Input, Output>
+    private let query: any DatabaseQuery<Input, Output>
     private let input: Input
     private let database: any Database
     private let handle: @Sendable (Output) -> Void
     private let cancelled: @Sendable () -> Void
     
     init(
-        query: any Query<Input, Output>,
+        query: any DatabaseQuery<Input, Output>,
         input: Input,
         database: any Database,
         handle: @Sendable @escaping (Output) -> Void,

@@ -11,7 +11,7 @@ public enum Queries {
     /// Allows for the erasing of the database so a query can be
     /// passed around and be able to be executed without
     /// having the caller worry about by what.
-    public struct WithDatabase<Base: Queryable>: Queryable {
+    public struct WithDatabase<Base: DatabaseQuery>: DatabaseQuery, Query {
         /// The original query that requires a database
         let base: Base
         /// The database to execute the query in
@@ -43,10 +43,16 @@ public enum Queries {
         ) -> QueryObservation<Input, Output> {
             return base.observe(with: input, in: database, handle: handle, cancelled: cancelled)
         }
+        
+        public func execute(
+            with input: Base.Input
+        ) async throws -> Base.Output {
+            return try await base.execute(with: input, in: database)
+        }
     }
     
     /// Applies a transform to the queries result
-    public struct Map<Base: Queryable, Output: Sendable>: Queryable {
+    public struct Map<Base: DatabaseQuery, Output: Sendable>: DatabaseQuery {
         /// The upstream query to transform
         let base: Base
         /// The transform to apply to the output
@@ -72,7 +78,7 @@ public enum Queries {
     }
     
     /// Applies a transform to the queries result
-    public struct Just<Input, Output>: Queryable
+    public struct Just<Input, Output>: DatabaseQuery
         where Input: Sendable, Output: Sendable
     {
         let output: Output
@@ -100,8 +106,8 @@ public enum Queries {
         }
     }
     
-    public struct Then<First, Second>: Queryable
-        where First: Queryable, Second: Queryable,
+    public struct Then<First, Second>: DatabaseQuery
+        where First: DatabaseQuery, Second: DatabaseQuery,
               First.Output == Second.Input
     {
         let first: First
@@ -124,7 +130,7 @@ public enum Queries {
     }
 }
 
-public extension Queryable {
+public extension DatabaseQuery {
     func with(database: any Database) -> Queries.WithDatabase<Self> {
         return Queries.WithDatabase(base: self, database: database)
     }

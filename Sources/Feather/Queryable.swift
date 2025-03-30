@@ -1,13 +1,11 @@
 //
-//  Queryable.swift
+//  DatabaseQuery.swift
 //  Feather
 //
 //  Created by Wes Wickwire on 11/9/24.
 //
 
-public typealias Query<Input, Output> = Queryable<Input, Output>
-
-public protocol Queryable<Input, Output>: Sendable {
+public protocol DatabaseQuery<Input, Output>: Sendable {
     associatedtype Input: Sendable
     associatedtype Output: Sendable
     
@@ -25,7 +23,7 @@ public protocol Queryable<Input, Output>: Sendable {
     ) throws -> Output
 }
 
-public extension Queryable {
+public extension DatabaseQuery {
     func execute(
         with input: Input,
         in database: any Database
@@ -70,7 +68,7 @@ public extension Queryable {
     }
 }
 
-extension Queryable where Input == () {
+extension DatabaseQuery where Input == () {
     func execute(in database: any Database) async throws -> Output {
         return try await execute(with: (), in: database)
     }
