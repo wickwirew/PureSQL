@@ -5,19 +5,19 @@
 //  Created by Wes Wickwire on 3/10/25.
 //
 
-public final class QueryObservation<Input, Output, DB>: DatabaseSubscriber, Sendable
-where Input: Sendable, Output: Sendable, DB: Sendable
+public final class QueryObservation<Input, Output>: DatabaseSubscriber, Sendable
+    where Input: Sendable, Output: Sendable
 {
-    private let query: any Queryable<Input, Output, DB>
+    private let query: any Query<Input, Output>
     private let input: Input
-    private let database: DB
+    private let database: any Database
     private let handle: @Sendable (Output) -> Void
     private let cancelled: @Sendable () -> Void
     
     init(
-        query: any Queryable<Input, Output, DB>,
+        query: any Query<Input, Output>,
         input: Input,
-        database: DB,
+        database: any Database,
         handle: @Sendable @escaping (Output) -> Void,
         cancelled: @Sendable @escaping () -> Void
     ) {
@@ -39,53 +39,16 @@ where Input: Sendable, Output: Sendable, DB: Sendable
     }
     
     public func cancel() {
-//        database.cancel(subscriber: self)
+        database.cancel(subscriber: self)
     }
     
     public func start() async throws {
-//        try await database.observe(subscriber: self)
+        try await database.observe(subscriber: self)
         try await emitNext()
     }
     
     private func emitNext() async throws {
-        let output = try await query.execute(with: input, in: database)
+        let output = try await query.execute(with: input, in: (database))
         handle(output)
-    }
-}
-
-extension Queryable {
-    func observe(
-        with input: Input,
-        in database: DB,
-        handle: @Sendable @escaping (Output) -> Void,
-        cancelled: @Sendable @escaping () -> Void
-    ) -> QueryObservation<Input, Output, DB> {
-        QueryObservation<Input, Output, DB>(
-            query: self,
-            input: input,
-            database: database,
-            handle: handle,
-            cancelled: cancelled
-        )
-    }
-    
-    func stream(
-        with input: Input,
-        in database: DB
-    ) -> AsyncThrowingStream<Output, Error> {
-        return AsyncThrowingStream<Output, Error> { continuation in
-            let observation = self.observe(
-                with: input,
-                in: database
-            ) { output in
-                continuation.yield(output)
-            } cancelled: {
-                // Nothing to do
-            }
-            
-            continuation.onTermination = { _ in
-                observation.cancel()
-            }
-        }
     }
 }

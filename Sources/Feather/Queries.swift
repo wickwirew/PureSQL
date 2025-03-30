@@ -15,7 +15,7 @@ public enum Queries {
         /// The original query that requires a database
         let base: Base
         /// The database to execute the query in
-        let database: Base.DB
+        let database: any Database
         
         public var transactionKind: TransactionKind {
             return base.transactionKind
@@ -23,7 +23,7 @@ public enum Queries {
         
         public func execute(
             with input: Base.Input,
-            in _: ()
+            in _: ErasedDatabase
         ) async throws -> Base.Output {
             return try await base.execute(with: input, in: database)
         }
@@ -33,6 +33,15 @@ public enum Queries {
             tx: borrowing Transaction
         ) throws -> Base.Output {
             return try base.execute(with: input, tx: tx)
+        }
+        
+        public func observe(
+            with input: Input,
+            in _: ErasedDatabase,
+            handle: @Sendable @escaping (Output) -> Void,
+            cancelled: @Sendable @escaping () -> Void
+        ) -> QueryObservation<Input, Output> {
+            return base.observe(with: input, in: database, handle: handle, cancelled: cancelled)
         }
     }
     
@@ -49,7 +58,7 @@ public enum Queries {
         
         public func execute(
             with input: Base.Input,
-            in database: Base.DB
+            in database: any Database
         ) async throws -> Output {
             return try await transform(base.execute(with: input, in: database))
         }
@@ -116,7 +125,7 @@ public enum Queries {
 }
 
 public extension Queryable {
-    func with(database: DB) -> Queries.WithDatabase<Self> {
+    func with(database: any Database) -> Queries.WithDatabase<Self> {
         return Queries.WithDatabase(base: self, database: database)
     }
     

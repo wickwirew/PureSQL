@@ -15,8 +15,6 @@ public struct FetchManyQuery<Input, Output>: Queryable
     private let database: any Database
     private let statement: @Sendable (Input, borrowing Transaction) throws -> Statement
     
-    public typealias DB = any Database
-    
     public init(
         _ transactionKind: TransactionKind,
         database: any Database,
