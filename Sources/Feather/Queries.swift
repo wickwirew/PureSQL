@@ -23,12 +23,8 @@ public enum Queries {
             return try await base.execute(with: input, in: database)
         }
         
-        public func observe(
-            with input: Input,
-            handle: @Sendable @escaping (Output) -> Void,
-            cancelled: @Sendable @escaping () -> Void
-        ) -> QueryObservation<Input, Output> {
-            return base.observe(with: input, in: database, handle: handle, cancelled: cancelled)
+        public func observe(with input: Input) -> any QueryObservation<Output> {
+            return base.observe(with: input, in: database)
         }
     }
     
@@ -59,7 +55,7 @@ public enum Queries {
     }
     
     /// Applies a transform to the queries result
-    public struct Just<Input, Output>: DatabaseQuery
+    public struct Just<Input, Output>: Query
         where Input: Sendable, Output: Sendable
     {
         let output: Output
@@ -68,22 +64,29 @@ public enum Queries {
             self.output = output
         }
         
-        public var transactionKind: TransactionKind {
-            return .read
-        }
-        
-        public func execute(
-            with input: Input,
-            in _: ()
-        ) async throws -> Output {
+        public func execute(with input: Input) async throws -> Output {
             return output
         }
         
-        public func execute(
-            with input: Input,
-            tx: borrowing Transaction
-        ) throws -> Output {
-            return output
+        public func observe(with input: Input) -> any QueryObservation<Output> {
+            return Observation(output: output)
+        }
+        
+        final class Observation: QueryObservation {
+            let output: Output
+            
+            init(output: Output) {
+                self.output = output
+            }
+            
+            func start(
+                onChange: @escaping (Output) -> Void,
+                onError: @escaping (any Error) -> Void
+            ) {
+                onChange(output)
+            }
+            
+            func cancel() {}
         }
     }
     

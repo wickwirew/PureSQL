@@ -25,14 +25,14 @@ class DatabaseObserver: @unchecked Sendable {
     private let lock = NSLock()
     private var subscribers: [ObjectIdentifier: any DatabaseSubscriber] = [:]
 
-    func subscribe(subscriber: any DatabaseSubscriber) throws(FeatherError) {
+    func subscribe(subscriber: any DatabaseSubscriber) {
         lock.lock()
         defer { lock.unlock() }
         
         let id = ObjectIdentifier(subscriber)
         
         guard subscribers[id] == nil else {
-            throw .subscriptionAlreadyStarted
+            return
         }
         
         subscribers[id] = subscriber
@@ -42,7 +42,6 @@ class DatabaseObserver: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         
-        subscriber.onCancel()
         subscribers[ObjectIdentifier(subscriber)] = nil
     }
     
@@ -55,7 +54,7 @@ class DatabaseObserver: @unchecked Sendable {
         }
     }
     
-    nonisolated func installHooks(into connection: Connection) {
+    func installHooks(into connection: Connection) {
         sqlite3_update_hook(
             connection.sqliteConnection,
             { selfPointer, operation, dbName, tableName, rowId in
@@ -74,7 +73,7 @@ class DatabaseObserver: @unchecked Sendable {
         )
     }
     
-    nonisolated func receiveSqliteUpdateHook(
+    func receiveSqliteUpdateHook(
         operation: Int32,
         dbName: UnsafePointer<CChar>?,
         tableName: UnsafePointer<CChar>?,
@@ -97,5 +96,4 @@ class DatabaseObserver: @unchecked Sendable {
 
 public protocol DatabaseSubscriber: AnyObject {
     func receive(event: DatabaseEvent)
-    func onCancel()
 }

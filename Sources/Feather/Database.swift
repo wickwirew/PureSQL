@@ -6,7 +6,7 @@
 //
 
 public protocol Database: Actor {
-    func observe(subscriber: DatabaseSubscriber) throws(FeatherError)
+    nonisolated func observe(subscriber: DatabaseSubscriber)
     
     nonisolated func cancel(subscriber: DatabaseSubscriber)
     

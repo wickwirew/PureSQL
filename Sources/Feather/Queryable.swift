@@ -34,37 +34,13 @@ public extension DatabaseQuery {
     
     func observe(
         with input: Input,
-        in database: any Database,
-        handle: @Sendable @escaping (Output) -> Void,
-        cancelled: @Sendable @escaping () -> Void
-    ) -> QueryObservation<Input, Output> {
-        return QueryObservation(
+        in database: any Database
+    ) -> any QueryObservation<Output> {
+        return DatabaseQueryObservation(
             query: self,
             input: input,
-            database: database,
-            handle: handle,
-            cancelled: cancelled
+            database: database
         )
-    }
-    
-    func stream(
-        with input: Input,
-        in database: any Database
-    ) -> AsyncThrowingStream<Output, Error> {
-        return AsyncThrowingStream<Output, Error> { continuation in
-            let observation = self.observe(
-                with: input,
-                in: database
-            ) { output in
-                continuation.yield(output)
-            } cancelled: {
-                // Nothing to do
-            }
-            
-            continuation.onTermination = { _ in
-                observation.cancel()
-            }
-        }
     }
 }
 
@@ -75,13 +51,5 @@ extension DatabaseQuery where Input == () {
     
     func execute(tx: borrowing Transaction) throws -> Output {
         return try execute(with: (), tx: tx)
-    }
-    
-    func observe(
-        in database: any Database,
-        handle: @Sendable @escaping (Output) -> Void,
-        cancelled: @Sendable @escaping () -> Void
-    ) -> QueryObservation<Input, Output> {
-        return observe(with: (), in: database, handle: handle, cancelled: cancelled)
     }
 }

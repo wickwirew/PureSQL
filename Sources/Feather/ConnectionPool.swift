@@ -82,10 +82,8 @@ public actor ConnectionPool: Sendable {
 }
 
 extension ConnectionPool: Database {
-    public func observe(
-        subscriber: any DatabaseSubscriber
-    ) throws(FeatherError) {
-        try observer.subscribe(subscriber: subscriber)
+    public nonisolated func observe(subscriber: any DatabaseSubscriber) {
+        observer.subscribe(subscriber: subscriber)
     }
     
     public nonisolated func cancel(subscriber: any DatabaseSubscriber) {

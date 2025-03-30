@@ -11,22 +11,11 @@ public protocol Query<Input, Output> {
     
     func execute(with input: Input) async throws -> Output
     
-    func observe(
-        with input: Input,
-        handle: @Sendable @escaping (Output) -> Void,
-        cancelled: @Sendable @escaping () -> Void
-    ) -> QueryObservation<Input, Output>
+    func observe(with input: Input) -> any QueryObservation<Output>
 }
 
 public extension Query where Input == () {
     func execute() async throws -> Output {
         return try await execute(with: ())
-    }
-    
-    func observe(
-        handle: @Sendable @escaping (Output) -> Void,
-        cancelled: @Sendable @escaping () -> Void
-    ) -> QueryObservation<Input, Output> {
-        return observe(with: (), handle: handle, cancelled: cancelled)
     }
 }
