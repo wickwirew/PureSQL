@@ -25,6 +25,8 @@ class DatabaseObserver: @unchecked Sendable {
     private let lock = NSLock()
     private var subscribers: [ObjectIdentifier: any DatabaseSubscriber] = [:]
 
+    private var pendingEvents: [DatabaseEvent] = []
+    
     func subscribe(subscriber: any DatabaseSubscriber) {
         lock.lock()
         defer { lock.unlock() }
@@ -49,8 +51,20 @@ class DatabaseObserver: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         
+        pendingEvents.append(event)
+    }
+    
+    func didCommit() {
+        lock.lock()
+        defer { lock.unlock() }
+        
+        let events = pendingEvents
+        pendingEvents.removeAll()
+        
         for subscriber in subscribers.values {
-            subscriber.receive(event: event)
+            for event in events {
+                subscriber.receive(event: event)
+            }
         }
     }
     

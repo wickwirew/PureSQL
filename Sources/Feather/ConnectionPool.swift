@@ -34,7 +34,7 @@ public actor ConnectionPool: Sendable {
         let url = try FileManager.default
             .url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
             .appendingPathComponent("\(name).sqlite")
-        
+        print(url.absoluteString)
         try self.init(path: url.absoluteString, limit: limit, migrations: migrations)
     }
     
@@ -88,6 +88,10 @@ extension ConnectionPool: Database {
     
     public nonisolated func cancel(subscriber: any DatabaseSubscriber) {
         observer.cancel(subscriber: subscriber)
+    }
+    
+    public nonisolated func didCommit(transaction: borrowing Transaction) {
+        observer.didCommit()
     }
     
     /// Starts a transaction.

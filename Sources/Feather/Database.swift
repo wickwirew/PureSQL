@@ -13,4 +13,6 @@ public protocol Database: Actor {
     func begin(
         _ transaction: TransactionKind
     ) async throws(FeatherError) -> sending Transaction
+    
+    nonisolated func didCommit(transaction: borrowing Transaction)
 }

@@ -14,11 +14,6 @@ public protocol DatabaseQuery<Input, Output>: Sendable {
 
     func execute(
         with input: Input,
-        in database: any Database
-    ) async throws -> Output
-    
-    func execute(
-        with input: Input,
         tx: borrowing Transaction
     ) throws -> Output
 }
@@ -29,7 +24,9 @@ public extension DatabaseQuery {
         in database: any Database
     ) async throws -> Output {
         let tx = try await database.begin(transactionKind)
-        return try execute(with: input, tx: tx)
+        let output = try execute(with: input, tx: tx)
+        try tx.commit()
+        return output
     }
     
     func observe(
@@ -44,7 +41,7 @@ public extension DatabaseQuery {
     }
 }
 
-extension DatabaseQuery where Input == () {
+public extension DatabaseQuery where Input == () {
     func execute(in database: any Database) async throws -> Output {
         return try await execute(with: (), in: database)
     }

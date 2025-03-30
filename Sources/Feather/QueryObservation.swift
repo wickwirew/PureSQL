@@ -40,6 +40,7 @@ public final class DatabaseQueryObservation<Input, Output>: DatabaseSubscriber, 
         }
         
         database.cancel(subscriber: self)
+        queue.cancel()
     }
     
     public func start(
@@ -104,32 +105,5 @@ extension QueryObservation {
                 cancel()
             }
         }
-    }
-}
-
-final class Queue: Sendable {
-    typealias Action = @Sendable () async -> Void
-    
-    private let task: Task<(), Never>
-    private let stream: AsyncStream<Action>
-    private let continuation: AsyncStream<Action>.Continuation
-    
-    init() {
-        let (stream, continuation) = AsyncStream<Action>.makeStream()
-        self.stream = stream
-        self.continuation = continuation
-        self.task = Task {
-            for await action in stream {
-                await action()
-            }
-        }
-    }
-    
-    deinit {
-        task.cancel()
-    }
-    
-    func enqueue(_ action: @escaping Action) {
-        continuation.yield(action)
     }
 }

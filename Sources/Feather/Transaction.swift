@@ -42,6 +42,8 @@ public struct Transaction: ~Copyable {
         
         didCommit = true
         try connection.execute(sql: "COMMIT")
+        
+        pool.didCommit(transaction: self)
     }
     
     deinit {
