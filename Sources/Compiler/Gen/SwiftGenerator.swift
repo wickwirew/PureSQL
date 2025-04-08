@@ -11,7 +11,7 @@ import SwiftSyntaxBuilder
 public struct SwiftGenerator: Language {
     public typealias Table = DeclSyntax
     public typealias File = SourceFileSyntax
-    public typealias Migration = StringLiteralExprSyntax
+    public typealias Migration = SwiftSyntax.ExprSyntax
     
     public struct Query {
         public let statement: Statement
@@ -32,8 +32,12 @@ public struct SwiftGenerator: Language {
     
     public static func migration(
         source: String
-    ) throws -> StringLiteralExprSyntax {
-        StringLiteralExprSyntax(content: source)
+    ) throws -> SwiftSyntax.ExprSyntax {
+        return """
+        \"\"\"
+        \(raw: source)
+        \"\"\"
+        """
     }
     
     public static func table(
