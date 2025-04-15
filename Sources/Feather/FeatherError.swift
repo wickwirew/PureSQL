@@ -20,4 +20,5 @@ public enum FeatherError: Error {
     /// A query observation was attempted
     /// to be started twice.
     case subscriptionAlreadyStarted
+    case invalidUuidString
 }

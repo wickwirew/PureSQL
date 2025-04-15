@@ -187,8 +187,9 @@ public struct SwiftGenerator: Language {
         queries: [Query]
     ) throws -> SourceFileSyntax {
         return try SourceFileSyntax {
+            try ImportDeclSyntax("import Foundation")
             try ImportDeclSyntax("import Feather")
-            
+
             for table in tables {
                 table
             }
