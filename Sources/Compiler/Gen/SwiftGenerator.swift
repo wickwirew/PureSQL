@@ -15,12 +15,14 @@ public struct SwiftGenerator: Language {
     
     public struct Query {
         public let statement: Statement
-        public let input: GeneratedStruct?
-        public let output: GeneratedStruct?
+        public let inputStruct: GeneratedStruct?
+        public let inputTypeName: String
+        public let outputStruct: GeneratedStruct?
+        public let outputTypeName: String
         public let query: DeclSyntax
         
         public var decls: [DeclSyntax] {
-            [input?.decl, output?.decl, query].compactMap(\.self)
+            [inputStruct?.decl, outputStruct?.decl, query].compactMap(\.self)
         }
     }
     
@@ -57,14 +59,17 @@ public struct SwiftGenerator: Language {
     ) throws -> Query {
         let parameters = statement.parameters
         
-        let (inputTypeName, inputDecl) = try inputType(statement: statement, name: name)
-        let (outputTypeName, outputDecl) = try outputType(statement: statement, name: name)
+        let inputDecl = try generateInputTypeIfNeeded(statement: statement, name: name)
+        let outputDecl = try generateOutputTypeIfNeeded(statement: statement, name: name)
+        
+        let inputTypeName = inputType(statement: statement, generatedInputType: inputDecl)
+        let outputTypeName = outputType(statement: statement, generatedOutputType: outputDecl)
         
         let queryType: String = if statement.noOutput {
             "VoidQuery<\(inputTypeName)>"
         } else {
             switch statement.outputCardinality {
-            case .many: "FetchManyQuery<\(inputTypeName), [\(outputTypeName)]>"
+            case .many: "FetchManyQuery<\(inputTypeName), \(outputTypeName)>"
             case .single: "FetchSingleQuery<\(inputTypeName), \(outputTypeName)>"
             }
         }
@@ -122,63 +127,84 @@ public struct SwiftGenerator: Language {
         
         return Query(
             statement: statement,
-            input: inputDecl,
-            output: outputDecl,
+            inputStruct: inputDecl,
+            inputTypeName: inputTypeName,
+            outputStruct: outputDecl,
+            outputTypeName: outputTypeName,
             query: DeclSyntax(query)
         )
     }
     
-    private static func inputType(
+    private static func generateInputTypeIfNeeded(
         statement: Statement,
         name: Substring
-    ) throws -> (String, GeneratedStruct?) {
+    ) throws -> GeneratedStruct? {
+        guard statement.parameters.count > 1 else { return nil }
+        
+        let inputTypeName = "\(name.capitalizedFirst)Input"
+        
+        let inputType = try structDecl(
+            name: inputTypeName,
+            fields: statement.parameters.map { ($0.name, $0.type) },
+            rowDecodable: false
+        )
+        
+        return inputType
+    }
+    
+    private static func inputType(
+        statement: Statement,
+        generatedInputType: GeneratedStruct?
+    ) -> String {
         guard let firstParam = statement.parameters.first else {
-            return ("()", nil)
+            return "()"
         }
         
-        if statement.parameters.count > 1 {
-            let inputTypeName = "\(name.capitalizedFirst)Input"
-            
-            let inputType = try structDecl(
-                name: inputTypeName,
-                fields: statement.parameters.map { ($0.name, $0.type) },
-                rowDecodable: false
-            )
-            
-            return (inputTypeName, inputType)
-        } else {
-            // Single input parameter, just use the single value as the parameter type
-            return (swiftType(for: firstParam.type), nil)
-        }
+        return generatedInputType?.name ?? swiftType(for: firstParam.type)
     }
     
     private static func outputType(
         statement: Statement,
+        generatedOutputType: GeneratedStruct?
+    ) -> String {
+        guard !statement.noOutput,
+              let firstColumn = statement.resultColumns.columns.values.first else {
+            return "()"
+        }
+        
+        // Returns the entire columns of a table, so we can just return the table
+        if let table = statement.resultColumns.table {
+            return table.capitalizedFirst
+        }
+        
+        let type = generatedOutputType?.name ?? swiftType(for: firstColumn.root)
+        
+        return switch statement.outputCardinality {
+        case .single: type
+        case .many: "[\(type)]"
+        }
+    }
+    
+    private static func generateOutputTypeIfNeeded(
+        statement: Statement,
         name: Substring
-    ) throws -> (String, GeneratedStruct?) {
+    ) throws -> GeneratedStruct? {
         // Make sure there is at least one column else return void
-        guard let first = statement.resultColumns
-            .columns.values.first else { return ("()", nil) }
+        guard !statement.resultColumns.columns.isEmpty  else { return nil }
         
         // Output can be mapped to a table struct
-        if let table = statement.resultColumns.table {
-            return (table.capitalizedFirst, nil)
-        }
+        guard statement.resultColumns.table == nil else { return nil }
         
         // Only one column returned, just use it's type
-        guard statement.resultColumns.columns.count > 1 else {
-            return (swiftType(for: first), nil)
-        }
+        guard statement.resultColumns.columns.count > 1 else { return nil }
         
         let outputTypeName = "\(name.capitalizedFirst)Output"
         
-        let outputType = try structDecl(
+        return try structDecl(
             name: outputTypeName,
             fields: statement.resultColumns.columns.map{ ($0.key.description, $0.value) },
             rowDecodable: true
         )
-        
-        return (outputTypeName, outputType)
     }
     
     public static func file(
@@ -202,11 +228,11 @@ public struct SwiftGenerator: Language {
                 }
                 
                 for query in queries {
-                    if let input = query.input?.decl {
+                    if let input = query.inputStruct?.decl {
                         input
                     }
                     
-                    if let output = query.output?.decl {
+                    if let output = query.outputStruct?.decl {
                         output
                     }
                     
@@ -215,7 +241,11 @@ public struct SwiftGenerator: Language {
             }
             
             for query in queries {
-                if let input = query.input {
+                if let name = query.statement.name?.capitalizedFirst {
+                    try TypeAliasDeclSyntax("typealias \(raw: name)Query = any Query<\(raw: query.inputTypeName), \(raw: query.outputTypeName)>")
+                }
+                
+                if let input = query.inputStruct {
                     try ExtensionDeclSyntax("extension Query where Input == DB.\(raw: input.name)") {
                         let parameters = input.fields.map { parameter in
                             "\(parameter.name): \(parameter.type)"
