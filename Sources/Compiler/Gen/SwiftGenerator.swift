@@ -160,7 +160,7 @@ public struct SwiftGenerator: Language {
             return "()"
         }
         
-        return generatedInputType?.name ?? swiftType(for: firstParam.type)
+        return generatedInputType.map { "DB.\($0.name)" } ?? swiftType(for: firstParam.type)
     }
     
     private static func outputType(
@@ -177,7 +177,7 @@ public struct SwiftGenerator: Language {
             return table.capitalizedFirst
         }
         
-        let type = generatedOutputType?.name ?? swiftType(for: firstColumn.root)
+        let type = generatedOutputType.map { "DB.\($0.name)" } ?? swiftType(for: firstColumn.root)
         
         return switch statement.outputCardinality {
         case .single: type

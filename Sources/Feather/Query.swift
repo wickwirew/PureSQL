@@ -18,4 +18,8 @@ public extension Query where Input == () {
     func execute() async throws -> Output {
         return try await execute(with: ())
     }
+    
+    func observe() -> any QueryObservation<Output> {
+        return observe(with: ())
+    }
 }

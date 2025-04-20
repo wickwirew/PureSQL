@@ -49,4 +49,8 @@ public extension DatabaseQuery where Input == () {
     func execute(tx: borrowing Transaction) throws -> Output {
         return try execute(with: (), tx: tx)
     }
+    
+    func observe(in database: any Database) -> any QueryObservation<Output> {
+        return observe(with: (), in: database)
+    }
 }
