@@ -91,11 +91,11 @@ public enum Queries {
     }
     
     public struct Then<First, Second>: DatabaseQuery
-        where First: DatabaseQuery, Second: DatabaseQuery,
-              First.Output == Second.Input
+        where First: DatabaseQuery, Second: DatabaseQuery
     {
         let first: First
         let second: Second
+        let secondInput: @Sendable (First.Input, First.Output) -> Second.Input
         
         public typealias DB = any Database
         
@@ -108,7 +108,8 @@ public enum Queries {
             tx: borrowing Transaction
         ) throws -> (First.Output, Second.Output) {
             let firstOutput = try first.execute(with: input, tx: tx)
-            let secondOutput = try second.execute(with: firstOutput, tx: tx)
+            let secondInput = secondInput(input, firstOutput)
+            let secondOutput = try second.execute(with: secondInput, tx: tx)
             return (firstOutput, secondOutput)
         }
     }
@@ -141,5 +142,20 @@ public extension DatabaseQuery {
         return Queries.Map(base: self) { entity in
             return entity ?? value()
         }
+    }
+    
+    func then<Next>(_ next: Next) -> Queries.Then<Self, Next>
+        where Next: DatabaseQuery, Self.Input == Next.Input
+    {
+        return Queries.Then(first: self, second: next) { input, _ in input }
+    }
+    
+    func then<Next>(
+        _ next: Next,
+        nextInput: @Sendable @escaping (Output) -> Next.Input
+    ) -> Queries.Then<Self, Next>
+        where Next: DatabaseQuery
+    {
+        return Queries.Then(first: self, second: next) { _, output in nextInput(output) }
     }
 }
