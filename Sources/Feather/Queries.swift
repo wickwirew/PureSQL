@@ -113,6 +113,19 @@ public enum Queries {
             return (firstOutput, secondOutput)
         }
     }
+    
+    public struct None<Input: Sendable>: DatabaseQuery {
+        public init() {}
+        
+        public var transactionKind: TransactionKind {
+            return .read
+        }
+        
+        public func execute(
+            with input: Input,
+            tx: borrowing Transaction
+        ) throws {}
+    }
 }
 
 public extension DatabaseQuery {

@@ -172,12 +172,12 @@ public struct SwiftGenerator: Language {
             return "()"
         }
         
-        // Returns the entire columns of a table, so we can just return the table
-        if let table = statement.resultColumns.table {
-            return table.capitalizedFirst
+        let type = if let table = statement.resultColumns.table {
+            // Returns the entire columns of a table, so we can just return the table
+            table.capitalizedFirst
+        } else {
+            generatedOutputType.map { "DB.\($0.name)" } ?? swiftType(for: firstColumn.root)
         }
-        
-        let type = generatedOutputType.map { "DB.\($0.name)" } ?? swiftType(for: firstColumn.root)
         
         return switch statement.outputCardinality {
         case .single: type

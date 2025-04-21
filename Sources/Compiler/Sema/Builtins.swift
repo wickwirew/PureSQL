@@ -25,4 +25,5 @@ enum Builtins {
     
     /// Functions
     static let max = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)), variadic: true)
+    static let sum = TypeScheme(typeVariables: [TypeVariable(0, kind: .integer)], type: .fn(params: [.var(TypeVariable(0, kind: .integer))], ret: .var(TypeVariable(0, kind: .integer))))
 }

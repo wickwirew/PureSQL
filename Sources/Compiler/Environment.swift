@@ -14,6 +14,7 @@ struct Environment {
     
     private var functions: OrderedDictionary<Substring, TypeScheme> = [
         "MAX": Builtins.max,
+        "SUM": Builtins.sum,
     ]
     
     /// Holds the type in the map.
