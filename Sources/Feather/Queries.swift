@@ -163,12 +163,18 @@ public extension DatabaseQuery {
         return Queries.Then(first: self, second: next) { input, _ in input }
     }
     
+    func then<Next>(_ next: Next) -> Queries.Then<Self, Next>
+        where Next: DatabaseQuery, Next.Input == ()
+    {
+        return Queries.Then(first: self, second: next) { _, _ in () }
+    }
+    
     func then<Next>(
         _ next: Next,
-        nextInput: @Sendable @escaping (Output) -> Next.Input
+        nextInput: @Sendable @escaping (Input, Output) -> Next.Input
     ) -> Queries.Then<Self, Next>
         where Next: DatabaseQuery
     {
-        return Queries.Then(first: self, second: next) { _, output in nextInput(output) }
+        return Queries.Then(first: self, second: next) { input, output in nextInput(input, output) }
     }
 }
