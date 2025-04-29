@@ -212,7 +212,7 @@ public struct SwiftGenerator: Language {
         tables: [Table],
         queries: [Query]
     ) throws -> SourceFileSyntax {
-        return try SourceFileSyntax {
+        return try SourceFileSyntax {            
             try ImportDeclSyntax("import Foundation")
             try ImportDeclSyntax("import Feather")
 

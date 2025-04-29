@@ -26,7 +26,7 @@ struct Feather: ParsableCommand {
     var output: String? = nil
 
     mutating func run() throws {
-        try generate(language: SwiftGenerator.self)
+        try generate2(language: SwiftLanguage.self)
     }
     
     @discardableResult
@@ -101,6 +101,44 @@ struct Feather: ParsableCommand {
         } else {
             // No output directory, just print to stdout
             print(language.string(for: file))
+        }
+    }
+    
+    private func generate2<Lang: Language2>(language: Lang.Type) throws {
+        let path = path ?? FileManager.default.currentDirectoryPath
+        var compiler = Compiler()
+
+        try forEachFile(in: "\(path)/Migrations") { file, fileName in
+            let diags = compiler.compile(migration: file)
+            
+            let numberStr = fileName.split(separator: ".")[0]
+            guard Int(numberStr) != nil else {
+                throw CLIError.migrationFileNameMustBeNumber(fileName)
+            }
+            
+            report(diagnostics: diags, forFile: fileName)
+        }
+        
+        try forEachFile(in: "\(path)/Queries") { file, fileName in
+            let diags = compiler.compile(queries: file)
+            report(diagnostics: diags, forFile: fileName)
+        }
+        
+        let file = try Lang.generate(
+            migrations: compiler.migrations.map(\.sanitizedSource),
+            queries: compiler.queries,
+            schema: compiler.schema,
+            options: []
+        )
+        
+        if let output {
+            try validateIsFile(output)
+            try createDirectoiesIfNeeded(output)
+            
+            try file.write(toFile: output, atomically: true, encoding: .utf8)
+        } else {
+            // No output directory, just print to stdout
+            print(file)
         }
     }
     

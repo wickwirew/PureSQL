@@ -6,11 +6,12 @@
 //
 
 /// A database query that fetches any array of rows.
-public struct FetchManyQuery<Input, Output>: DatabaseQuery
+public struct FetchManyQuery<Input, Element>: DatabaseQuery
     where Input: Sendable,
-        Output: RangeReplaceableCollection & ExpressibleByArrayLiteral & Sendable,
-        Output.Element: RowDecodable & Sendable
+        Element: RowDecodable & Sendable
 {
+    public typealias Output = [Element]
+    
     public let transactionKind: TransactionKind
     private let statement: @Sendable (Input, borrowing Transaction) throws -> Statement
     

@@ -136,6 +136,13 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
         }
     }
     
+    var isRow: Bool {
+        switch self {
+        case .row: true
+        default: false
+        }
+    }
+    
     func apply(_ s : Substitution) -> Type {
         // To apply a substitution to a type:
         switch self {
