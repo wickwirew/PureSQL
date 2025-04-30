@@ -53,15 +53,6 @@ public struct Statement: ~Copyable {
         }
     }
     
-    public func step() throws(FeatherError) -> Step {
-        let code = SQLiteCode(sqlite3_step(raw))
-        switch code {
-        case .sqliteDone: return .done
-        case .sqliteRow: return .row
-        default: throw .sqlite(code, String(cString: sqlite3_errmsg(raw)))
-        }
-    }
-    
     public func bind<Value: DatabasePrimitive>(
         value: Value,
         to index: Int32
@@ -74,6 +65,37 @@ public struct Statement: ~Copyable {
     ) throws(FeatherError) {
         try bind(value: value, to: bindIndex)
         bindIndex += 1
+    }
+    
+    public func step() throws(FeatherError) -> Step {
+        let code = SQLiteCode(sqlite3_step(raw))
+        switch code {
+        case .sqliteDone: return .done
+        case .sqliteRow: return .row
+        default: throw .sqlite(code, String(cString: sqlite3_errmsg(raw)))
+        }
+    }
+    
+    /// Fetches all rows returned by the statement
+    public consuming func fetchAll<Element: RowDecodable>(
+        of _: Element.Type
+    ) throws(FeatherError) -> [Element] {
+        var cursor = Cursor<Element>(of: self)
+        var result: [Element] = []
+        
+        while let element = try cursor.next() {
+            result.append(element)
+        }
+        
+        return result
+    }
+    
+    /// Fetches all rows returned by the statement
+    public consuming func fetchOne<T: RowDecodable>(
+        of _: T.Type
+    ) throws(FeatherError) -> T? {
+        var cursor = Cursor<T>(of: self)
+        return try cursor.next()
     }
     
     deinit {

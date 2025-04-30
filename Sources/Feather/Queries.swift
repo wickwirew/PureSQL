@@ -93,6 +93,8 @@ public enum Queries {
     public struct Then<First, Second>: DatabaseQuery
         where First: DatabaseQuery, Second: DatabaseQuery
     {
+        public typealias Input = First.Input
+        
         let first: First
         let second: Second
         let secondInput: @Sendable (First.Input, First.Output) -> Second.Input

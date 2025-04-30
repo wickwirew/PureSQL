@@ -10,7 +10,7 @@ import Foundation
 public final class DatabaseQueryObservation<Input, Output>: DatabaseSubscriber, QueryObservation, @unchecked Sendable
     where Input: Sendable, Output: Sendable
 {
-    private let query: any DatabaseQuery<Input, Output>
+    private let query: (Input, Database) async throws -> Output
     private let input: Input
     private let database: any Database
     private let lock = NSLock()
@@ -19,12 +19,12 @@ public final class DatabaseQueryObservation<Input, Output>: DatabaseSubscriber, 
     private var onChange: (@Sendable (Output) -> Void)?
     private var onError: (@Sendable (Error) -> Void)?
     
-    init(
-        query: any DatabaseQuery<Input, Output>,
+    init<Query: DatabaseQuery>(
+        query: Query,
         input: Input,
         database: any Database
-    ) {
-        self.query = query
+    ) where Input == Query.Input, Output == Query.Output {
+        self.query = { try await query.execute(with: $0, in: $1) }
         self.input = input
         self.database = database
     }
@@ -62,7 +62,7 @@ public final class DatabaseQueryObservation<Input, Output>: DatabaseSubscriber, 
         }
         
         do {
-            let output = try await query.execute(with: input, in: database)
+            let output = try await query(input, database)
             onChange(output)
         } catch {
             onError?(error)

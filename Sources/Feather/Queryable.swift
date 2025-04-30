@@ -5,13 +5,13 @@
 //  Created by Wes Wickwire on 11/9/24.
 //
 
-public protocol DatabaseQuery<Input, Output>: Sendable {
+public protocol DatabaseQuery: Sendable {
     associatedtype Input: Sendable
     associatedtype Output: Sendable
     
     /// Whether the query requires a read or write transaction.
     var transactionKind: TransactionKind { get }
-
+    
     func execute(
         with input: Input,
         tx: borrowing Transaction

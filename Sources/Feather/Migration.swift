@@ -17,7 +17,7 @@ public struct MigrationRunner {
     public static func execute(migrations: [String], tx: borrowing Transaction) throws {
         try createTableIfNeeded(tx: tx)
         
-        let lastMigration = try lastMigration
+        let lastMigration = try LastMigrationQuery()
             .replaceNil(with: 0)
             .execute(with: (), tx: tx)
         
@@ -41,24 +41,36 @@ public struct MigrationRunner {
     
     static func execute(migration: String, number: Int, tx: borrowing Transaction) throws {
         try tx.execute(sql: migration)
-        try insertMigration.execute(with: number, tx: tx)
+        try InsertMigrationQuery().execute(with: number, tx: tx)
     }
-    
-    private static var lastMigration: FetchSingleQuery<(), Int> {
-        return FetchSingleQuery(.read) { _, transaction in
-            try Statement(in: transaction) {
+
+    struct LastMigrationQuery: DatabaseQuery {
+        var transactionKind: TransactionKind { .read }
+        func execute(
+            with _: (),
+            tx: borrowing Transaction
+        ) throws -> Int? {
+            let statement = try Statement(in: tx) {
                 "SELECT MAX(number) FROM \(MigrationRunner.migrationTableName)"
             }
+            
+            return try statement.fetchOne(of: Int.self)
         }
     }
     
-    private static var insertMigration: VoidQuery<Int> {
-        return VoidQuery(.write) { input, transaction in
-            try Statement(in: transaction) {
+    struct InsertMigrationQuery: DatabaseQuery {
+        var transactionKind: TransactionKind { .write }
+        func execute(
+            with input: Int,
+            tx: borrowing Transaction
+        ) throws {
+            let statement = try Statement(in: tx) {
                 "INSERT INTO \(MigrationRunner.migrationTableName) (number) VALUES (?)"
             } bind: { statement in
                 try statement.bind(value: input, to: 1)
             }
+            
+            _ = try statement.step()
         }
     }
 }
