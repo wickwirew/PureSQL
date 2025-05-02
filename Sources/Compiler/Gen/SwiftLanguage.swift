@@ -59,6 +59,14 @@ public struct SwiftLanguage: Language2 {
                     try declaration(for: query, options: options)
                 }
             }
+            
+            for query in queries {
+                try typealiasFor(query: query)
+                
+                if let input = query.input, case let .model(model) = input {
+                    try inputExtension(for: query, input: model)
+                }
+            }
         }
         
         return file.formatted().description
@@ -166,27 +174,47 @@ public struct SwiftLanguage: Language2 {
         return DeclSyntax(query)
     }
     
-    private static func outputTypeAlias(cardinality: Cardinality) throws -> TypeAliasDeclSyntax {
-        switch cardinality {
-        case .single:
-            try TypeAliasDeclSyntax("typealias Output = Row?")
-        case .many:
-            try TypeAliasDeclSyntax("typealias Output = [Row]")
+    private static func typealiasFor(query: GeneratedQuery) throws -> TypeAliasDeclSyntax {
+        let inputTypeName = inputTypeName(for: query, namespaced: true)
+        let outputTypeName = outputTypeName(for: query, namespaced: true)
+        return try TypeAliasDeclSyntax(
+            "typealias \(raw: query.name.capitalizedFirst)Query = Query<\(raw: inputTypeName), \(raw: outputTypeName)>"
+        )
+    }
+    
+    private static func inputExtension(for query: GeneratedQuery, input: GeneratedModel) throws -> ExtensionDeclSyntax {
+        let inputTypeName = inputTypeName(for: query, namespaced: true)
+        return try ExtensionDeclSyntax("extension Query where Input == \(raw: inputTypeName)") {
+            let parameters = input.fields.map { parameter in
+                "\(parameter.key): \(parameter.value.type)"
+            }.joined(separator: ", ")
+            
+            let args = input.fields.map { parameter in
+                "\(parameter.key): \(parameter.key)"
+            }.joined(separator: ", ")
+            
+            """
+            func execute(\(raw: parameters)) async throws -> Output {
+                try await execute(with: \(raw: inputTypeName)(\(raw: args)))
+            }
+            """
         }
     }
     
-    private static func inputTypeName(for query: GeneratedQuery) -> String {
-        return query.input?.description ?? "()"
+    private static func inputTypeName(for query: GeneratedQuery, namespaced: Bool = false) -> String {
+        guard let input = query.input else { return "()" }
+        return namespaced ? input.namespaced(to: "DB") : input.description
     }
     
-    private static func outputTypeName(for query: GeneratedQuery) -> String {
+    private static func outputTypeName(for query: GeneratedQuery, namespaced: Bool = false) -> String {
         if let output = query.output {
-            switch query.outputCardinality {
-            case .single: "\(output)?"
-            case .many: "[\(output)]"
+            let type = namespaced ? output.namespaced(to: "DB") : output.description
+            return switch query.outputCardinality {
+            case .single: "\(type)?"
+            case .many: "[\(type)]"
             }
         } else {
-            "()"
+            return "()"
         }
     }
     
@@ -333,18 +361,6 @@ public struct SwiftLanguage: Language2 {
             closingQuote: closingQuote,
             trailingTrivia: nil // Seems like a newline is added automatically?
         )
-    }
-    
-    private static func typealiasDecl(
-        named name: String,
-        for type: BuiltinOrGenerated
-    ) throws -> TypeAliasDeclSyntax {
-        return switch type {
-        case .builtin(let type, let isArray):
-            try TypeAliasDeclSyntax("typealias \(raw: name) = \(raw: isArray ? "[\(type)]" : type)")
-        case .model(let model):
-            try TypeAliasDeclSyntax("typealias \(raw: name) = \(raw: model.name)")
-        }
     }
     
     @CodeBlockItemListBuilder

@@ -233,4 +233,11 @@ public enum BuiltinOrGenerated: CustomStringConvertible {
             model.name
         }
     }
+    
+    public func namespaced(to namespace: String) -> String {
+        switch self {
+        case .model: "\(namespace).\(self)"
+        case .builtin: description
+        }
+    }
 }
