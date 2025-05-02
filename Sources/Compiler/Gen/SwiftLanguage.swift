@@ -109,7 +109,7 @@ public struct SwiftLanguage: Language2 {
     ) throws -> DeclSyntax {
         let inputTypeName = inputTypeName(for: query)
         let outputTypeName = outputTypeName(for: query)
-        let queryTypeName = "DatabaseQuery<\(inputTypeName), \(outputTypeName)>"
+        let queryTypeName = "any DatabaseQuery<\(inputTypeName), \(outputTypeName)>"
         
         let query = try VariableDeclSyntax("var \(raw: query.name): \(raw: queryTypeName)") {
             FunctionCallExprSyntax(

@@ -44,12 +44,12 @@ public struct DatabaseQueryImpl<Input, Output>: DatabaseQuery
     public let execute: @Sendable (Input, borrowing Transaction) throws -> Output
     
     public init(
+        _ transactionKind: TransactionKind,
         database: any Database,
-        tx: TransactionKind,
         execute: @escaping @Sendable (Input, borrowing Transaction) throws -> Output
     ) {
         self.database = database
-        self.transactionKind = tx
+        self.transactionKind = transactionKind
         self.execute = execute
     }
     

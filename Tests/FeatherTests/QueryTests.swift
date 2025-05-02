@@ -13,16 +13,17 @@ import Testing
 struct QueryTests {
     @Test func testQuery() async throws {
         let pool = try createDatabase()
+        let insert = insertQuery(database: pool)
         
         let foo1 = Foo(bar: 1, baz: "bar1")
         let foo2 = Foo(bar: 2, baz: "bar2")
         let foo3 = Foo(bar: 3, baz: "bar3")
         
-        try await insert.execute(with: foo1, in: pool)
-        try await insert.execute(with: foo2, in: pool)
-        try await insert.execute(with: foo3, in: pool)
+        try await insert.execute(with: foo1)
+        try await insert.execute(with: foo2)
+        try await insert.execute(with: foo3)
         
-        let foos = try await selectAllFoo.execute(in: pool)
+        let foos = try await selectAllFooQuery(database: pool).execute()
         
         #expect(foos.count == 3)
     }
@@ -53,22 +54,26 @@ struct QueryTests {
         }
     }
     
-    private var selectAllFoo: FetchManyQuery<(), [Foo]> {
-        return FetchManyQuery<(), [Foo]>(.read) { input, transaction in
-            try Statement(in: transaction) {
+    private func selectAllFooQuery(database: any Database) -> any DatabaseQuery<(), [Foo]> {
+        return DatabaseQueryImpl<(), [Foo]>(.read, database: database) { input, transaction in
+            let statement = try Statement(in: transaction) {
                 "SELECT * FROM foo;"
             }
+            
+            return try statement.fetchAll(of: Foo.self)
         }
     }
     
-    private var insert: VoidQuery<Foo> {
-        return VoidQuery<Foo>(.write) { input, transaction in
-            try Statement(in: transaction) {
+    private func insertQuery(database: any Database) -> any DatabaseQuery<Foo, ()> {
+        return DatabaseQueryImpl<Foo, ()>(.write, database: database) { input, transaction in
+            let statement = try Statement(in: transaction) {
                 "INSERT INTO foo (bar, baz) VALUES (?, ?)"
             } bind: { statement in
                 try statement.bind(value: input.bar, to: 1)
                 try statement.bind(value: input.baz, to: 2)
             }
+            
+            _ = try statement.step()
         }
     }
     
