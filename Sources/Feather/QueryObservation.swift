@@ -7,26 +7,23 @@
 
 import Foundation
 
-public final class DatabaseQueryObservation<Input, Output>: DatabaseSubscriber, QueryObservation, @unchecked Sendable
-    where Input: Sendable, Output: Sendable
+public final class DatabaseQueryObservation<Query>: DatabaseSubscriber, QueryObservation, @unchecked Sendable
+    where Query: DatabaseQuery
 {
-    private let query: (Input, Database) async throws -> Output
-    private let input: Input
-    private let database: any Database
+    private let query: Query
+    private let input: Query.Input
     private let lock = NSLock()
     private let queue = Queue()
     
-    private var onChange: (@Sendable (Output) -> Void)?
+    private var onChange: (@Sendable (Query.Output) -> Void)?
     private var onError: (@Sendable (Error) -> Void)?
     
-    init<Query: DatabaseQuery>(
+    init(
         query: Query,
-        input: Input,
-        database: any Database
-    ) where Input == Query.Input, Output == Query.Output {
-        self.query = { try await query.execute(with: $0, in: $1) }
+        input: Query.Input
+    ) {
+        self.query = query
         self.input = input
-        self.database = database
     }
     
     public func receive(event: DatabaseEvent) {
@@ -39,12 +36,12 @@ public final class DatabaseQueryObservation<Input, Output>: DatabaseSubscriber, 
             onError = nil
         }
         
-        database.cancel(subscriber: self)
+        query.database.cancel(subscriber: self)
         queue.cancel()
     }
     
     public func start(
-        onChange: @escaping @Sendable (Output) -> Void,
+        onChange: @escaping @Sendable (Query.Output) -> Void,
         onError: @escaping @Sendable (Error) -> Void
     ) {
         lock.withLock {
@@ -52,7 +49,7 @@ public final class DatabaseQueryObservation<Input, Output>: DatabaseSubscriber, 
             self.onError = onError
         }
         
-        database.observe(subscriber: self)
+        query.database.observe(subscriber: self)
         enqueueNext()
     }
     
@@ -62,7 +59,7 @@ public final class DatabaseQueryObservation<Input, Output>: DatabaseSubscriber, 
         }
         
         do {
-            let output = try await query(input, database)
+            let output = try await query.execute(with: input)
             onChange(output)
         } catch {
             onError?(error)

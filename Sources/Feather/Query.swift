@@ -5,9 +5,9 @@
 //  Created by Wes Wickwire on 3/29/25.
 //
 
-public protocol Query<Input, Output> {
-    associatedtype Input
-    associatedtype Output
+public protocol Query<Input, Output>: Sendable {
+    associatedtype Input: Sendable
+    associatedtype Output: Sendable
     
     func execute(with input: Input) async throws -> Output
     

@@ -6,46 +6,23 @@
 //
 
 public enum Queries {
-    /// Replaces the `Database` associated type with the input
-    /// resulting in a query with a `Void` database.
-    /// Allows for the erasing of the database so a query can be
-    /// passed around and be able to be executed without
-    /// having the caller worry about by what.
-    public struct WithDatabase<Base: DatabaseQuery>: Query {
-        /// The original query that requires a database
-        let base: Base
-        /// The database to execute the query in
-        let database: any Database
-        
-        public func execute(
-            with input: Base.Input
-        ) async throws -> Base.Output {
-            return try await base.execute(with: input, in: database)
-        }
-        
-        public func observe(with input: Input) -> any QueryObservation<Output> {
-            return base.observe(with: input, in: database)
-        }
-    }
-    
     /// Applies a transform to the queries result
     public struct Map<Base: DatabaseQuery, Output: Sendable>: DatabaseQuery {
+        public typealias Input = Base.Input
+        public typealias Output = Output
         /// The upstream query to transform
         let base: Base
         /// The transform to apply to the output
         let transform: @Sendable (Base.Output) throws -> Output
+        /// The database to execute the query on
+        public var database: any Database {
+            return base.database
+        }
         
         public var transactionKind: TransactionKind {
             return base.transactionKind
         }
         
-        public func execute(
-            with input: Base.Input,
-            in database: any Database
-        ) async throws -> Output {
-            return try await transform(base.execute(with: input, in: database))
-        }
-
         public func execute(
             with input: Base.Input,
             tx: borrowing Transaction
@@ -94,12 +71,15 @@ public enum Queries {
         where First: DatabaseQuery, Second: DatabaseQuery
     {
         public typealias Input = First.Input
+        public typealias Output = (First.Output, Second.Output)
         
         let first: First
         let second: Second
         let secondInput: @Sendable (First.Input, First.Output) -> Second.Input
         
-        public typealias DB = any Database
+        public var database: any Database {
+            return first.database
+        }
         
         public var transactionKind: TransactionKind {
             return max(first.transactionKind, second.transactionKind)
@@ -115,26 +95,9 @@ public enum Queries {
             return (firstOutput, secondOutput)
         }
     }
-    
-    public struct None<Input: Sendable>: DatabaseQuery {
-        public init() {}
-        
-        public var transactionKind: TransactionKind {
-            return .read
-        }
-        
-        public func execute(
-            with input: Input,
-            tx: borrowing Transaction
-        ) throws {}
-    }
 }
 
 public extension DatabaseQuery {
-    func with(database: any Database) -> Queries.WithDatabase<Self> {
-        return Queries.WithDatabase(base: self, database: database)
-    }
-    
     func map<NewOutput>(
         _ transform: @Sendable @escaping (Output) throws -> NewOutput
     ) -> Queries.Map<Self, NewOutput> {

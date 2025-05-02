@@ -17,9 +17,7 @@ public struct MigrationRunner {
     public static func execute(migrations: [String], tx: borrowing Transaction) throws {
         try createTableIfNeeded(tx: tx)
         
-        let lastMigration = try LastMigrationQuery()
-            .replaceNil(with: 0)
-            .execute(with: (), tx: tx)
+        let lastMigration = try lastMigration(tx: tx)
         
         let pendingMigrations = migrations.enumerated()
             .map { (number: $0.offset + 1, migration: $0.element) }
@@ -41,36 +39,24 @@ public struct MigrationRunner {
     
     static func execute(migration: String, number: Int, tx: borrowing Transaction) throws {
         try tx.execute(sql: migration)
-        try InsertMigrationQuery().execute(with: number, tx: tx)
-    }
-
-    struct LastMigrationQuery: DatabaseQuery {
-        var transactionKind: TransactionKind { .read }
-        func execute(
-            with _: (),
-            tx: borrowing Transaction
-        ) throws -> Int? {
-            let statement = try Statement(in: tx) {
-                "SELECT MAX(number) FROM \(MigrationRunner.migrationTableName)"
-            }
-            
-            return try statement.fetchOne(of: Int.self)
-        }
+        try insertMigration(version: number, tx: tx)
     }
     
-    struct InsertMigrationQuery: DatabaseQuery {
-        var transactionKind: TransactionKind { .write }
-        func execute(
-            with input: Int,
-            tx: borrowing Transaction
-        ) throws {
-            let statement = try Statement(in: tx) {
-                "INSERT INTO \(MigrationRunner.migrationTableName) (number) VALUES (?)"
-            } bind: { statement in
-                try statement.bind(value: input, to: 1)
-            }
-            
-            _ = try statement.step()
+    private static func lastMigration(tx: borrowing Transaction) throws -> Int {
+        let statement = try Statement(in: tx) {
+            "SELECT MAX(number) FROM \(MigrationRunner.migrationTableName)"
         }
+        
+        return try statement.fetchOne(of: Int.self) ?? 0
+    }
+    
+    private static func insertMigration(version: Int, tx: borrowing Transaction) throws {
+        let statement = try Statement(in: tx) {
+            "INSERT INTO \(MigrationRunner.migrationTableName) (number) VALUES (?)"
+        } bind: { statement in
+            try statement.bind(value: version, to: 1)
+        }
+        
+        _ = try statement.step()
     }
 }

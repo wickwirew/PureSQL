@@ -88,7 +88,7 @@ extension Language2 {
         }.joined()
         
         return GeneratedQuery(
-            name: "\(name.capitalizedFirst)Query",
+            name: "\(name)Query",
             type: type,
             input: input,
             output: output,
@@ -127,7 +127,7 @@ extension Language2 {
             )
         }
         
-        let inputTypeName = "Input"
+        let inputTypeName = "\(name.capitalizedFirst)Input"
         
         let model = GeneratedModel(
             name: inputTypeName,
@@ -164,7 +164,7 @@ extension Language2 {
             return .builtin(builtinType(for: firstColumn), isArray: firstColumn.isRow)
         }
         
-        let outputTypeName = "Row"
+        let outputTypeName = "\(name.capitalizedFirst)Output"
         
         let model = GeneratedModel(
             name: outputTypeName,

@@ -48,6 +48,14 @@ public struct SwiftLanguage: Language2 {
                 try declaration(for: migrations, options: options)
                 
                 for query in queries {
+                    if case let .model(model) = query.input, !model.isTable {
+                        try declaration(for: model, isOutput: false, options: options)
+                    }
+                    
+                    if case let .model(model) = query.output, !model.isTable {
+                        try declaration(for: model, isOutput: true, options: options)
+                    }
+                    
                     try declaration(for: query, options: options)
                 }
             }
@@ -91,88 +99,68 @@ public struct SwiftLanguage: Language2 {
         for query: GeneratedQuery,
         options: GenerationOptions
     ) throws -> DeclSyntax {
-        let query = try StructDeclSyntax(
-            name: TokenSyntax.identifier(query.name),
-            inheritanceClause: InheritanceClauseSyntax {
-                InheritedTypeSyntax(type: TypeSyntax("DatabaseQuery"))
-            }
-        ) {
-            switch query.input {
-            case .model(let model) where !model.isTable:
-                try declaration(for: model, isOutput: false, options: options)
-            case .some(let type):
-                try typealiasDecl(named: "Input", for: type)
-            case nil:
-                try TypeAliasDeclSyntax("typealias Input = ()")
-            }
-            
-            switch query.output {
-            case .model(let model) where !model.isTable:
-                try declaration(for: model, isOutput: true, options: options)
-                try outputTypeAlias(cardinality: query.outputCardinality)
-            case .some(let type):
-                try typealiasDecl(named: "Row", for: type)
-                try outputTypeAlias(cardinality: query.outputCardinality)
-            case nil:
-                try TypeAliasDeclSyntax("typealias Row = ()")
-                try TypeAliasDeclSyntax("typealias Output = ()")
-            }
-            
-            try VariableDeclSyntax("var transactionKind: Feather.TransactionKind") {
-                query.isReadOnly ? ".read" : ".write"
-            }
-            
-            FunctionDeclSyntax(
-                name: "execute",
-                signature: FunctionSignatureSyntax(
-                    parameterClause: FunctionParameterClauseSyntax(
-                        parameters: [
-                            FunctionParameterSyntax(
-                                firstName: "with",
-                                secondName: "input",
-                                type: IdentifierTypeSyntax(name: "Input"),
-                                trailingComma: TokenSyntax.commaToken()
-                            ),
-                            FunctionParameterSyntax(
-                                firstName: "tx",
-                                type: IdentifierTypeSyntax(name: "borrowing Feather.Transaction")
-                            )
-                        ]
-                    ),
-                    effectSpecifiers: FunctionEffectSpecifiersSyntax(
-                        throwsClause: ThrowsClauseSyntax(
-                            throwsSpecifier: TokenSyntax.keyword(.throws)
-                        )
-                    ),
-                    returnClause: ReturnClauseSyntax(type: IdentifierTypeSyntax(name: "Output"))
-                )
-            ) {
-                let sql = stringLiteral(of: query.sourceSql, multiline: true)
-                let statementBinding: TokenSyntax = .keyword(query.input == nil ? .let : .var)
-                "\(statementBinding) statement = try Feather.Statement(\(sql), \ntransaction: tx\n)"
+        let inputTypeName = inputTypeName(for: query)
+        let outputTypeName = outputTypeName(for: query)
+        let queryTypeName = "DatabaseQuery<\(inputTypeName), \(outputTypeName)>"
+        
+        let query = try VariableDeclSyntax("var \(raw: query.name): \(raw: queryTypeName)") {
+            FunctionCallExprSyntax(
+                calledExpression: DeclReferenceExprSyntax(
+                    baseName: .identifier("DatabaseQueryImpl<\(inputTypeName), \(outputTypeName)>")
+                ),
+                leftParen: .leftParenToken(),
+                arguments: LabeledExprListSyntax {
+                    LabeledExprSyntax(
+                        label: nil,
+                        colon: nil,
+                        expression: DeclReferenceExprSyntax(
+                            baseName: query.isReadOnly ? ".read" : ".write"
+                        ),
+                        trailingComma: TokenSyntax.commaToken()
+                    )
+                    LabeledExprSyntax(
+                        label: TokenSyntax.identifier("database"),
+                        colon: TokenSyntax.colonToken(),
+                        expression: DeclReferenceExprSyntax(baseName: .identifier("database")),
+                        trailingComma: nil
+                    )
+                },
+                rightParen: .rightParenToken(),
+                trailingClosure: ClosureExprSyntax(
+                    signature: ClosureSignatureSyntax(
+                        parameterClause: .simpleInput(.init {
+                            ClosureShorthandParameterSyntax(name: "input")
+                            ClosureShorthandParameterSyntax(name: "transaction")
+                        })
+                    )
+                ) {
+                    let sql = stringLiteral(of: query.sourceSql, multiline: true)
+                    let statementBinding: TokenSyntax = .keyword(query.input == nil ? .let : .var)
+                    "\(statementBinding) statement = try Feather.Statement(\(sql), \ntransaction: tx\n)"
 
-                if let input = query.input {
-                    switch input {
-                    case let .builtin(_, isArray):
-                        bind(field: nil, isArray: isArray)
-                    case .model(let model):
-                        for field in model.fields.values {
-                            bind(field: field.name, isArray: field.isArray)
+                    if let input = query.input {
+                        switch input {
+                        case let .builtin(_, isArray):
+                            bind(field: nil, isArray: isArray)
+                        case .model(let model):
+                            for field in model.fields.values {
+                                bind(field: field.name, isArray: field.isArray)
+                            }
+                        }
+                    }
+
+                    if query.output == nil {
+                        "_ = try statement.step()"
+                    } else {
+                        switch query.outputCardinality {
+                        case .single:
+                            "return try statement.fetchOne(of: Row.self)"
+                        case .many:
+                            "return try statement.fetchMany(of: Row.self)"
                         }
                     }
                 }
-
-                if query.output == nil {
-                    "_ = try statement.step()"
-                } else {
-                    switch query.outputCardinality {
-                    case .single:
-                        "return try statement.fetchOne(of: Row.self)"
-                    case .many:
-                        "return try statement.fetchMany(of: Row.self)"
-                    }
-                }
-            }
+            )
         }
         
         return DeclSyntax(query)
@@ -184,6 +172,21 @@ public struct SwiftLanguage: Language2 {
             try TypeAliasDeclSyntax("typealias Output = Row?")
         case .many:
             try TypeAliasDeclSyntax("typealias Output = [Row]")
+        }
+    }
+    
+    private static func inputTypeName(for query: GeneratedQuery) -> String {
+        return query.input?.description ?? "()"
+    }
+    
+    private static func outputTypeName(for query: GeneratedQuery) -> String {
+        if let output = query.output {
+            switch query.outputCardinality {
+            case .single: "\(output)?"
+            case .many: "[\(output)]"
+            }
+        } else {
+            "()"
         }
     }
     
