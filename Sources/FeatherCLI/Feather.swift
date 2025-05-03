@@ -64,14 +64,14 @@ struct Feather: ParsableCommand {
                 throw CLIError.migrationFileNameMustBeNumber(fileName)
             }
             
-            report(diagnostics: diags, forFile: fileName)
+            report(diagnostics: diags, source: file, forFile: fileName)
         }
         
         try migrations.append(contentsOf: compiler.migrations.map { try language.migration(source: $0.sanitizedSource) })
         
         try forEachFile(in: "\(path)/Queries") { file, fileName in
             let diags = compiler.compile(queries: file)
-            report(diagnostics: diags, forFile: fileName)
+            report(diagnostics: diags, source: file, forFile: fileName)
         }
         
         for statement in compiler.queries {
@@ -116,12 +116,12 @@ struct Feather: ParsableCommand {
                 throw CLIError.migrationFileNameMustBeNumber(fileName)
             }
             
-            report(diagnostics: diags, forFile: fileName)
+            report(diagnostics: diags, source: file, forFile: fileName)
         }
         
         try forEachFile(in: "\(path)/Queries") { file, fileName in
             let diags = compiler.compile(queries: file)
-            report(diagnostics: diags, forFile: fileName)
+            report(diagnostics: diags, source: file, forFile: fileName)
         }
         
         let file = try Lang.generate(
@@ -160,9 +160,15 @@ struct Feather: ParsableCommand {
         }
     }
     
-    private func report(diagnostics: Diagnostics, forFile fileName: String) {
-        for diag in diagnostics {
-            print(diag)
+    private func report(
+        diagnostics: Diagnostics,
+        source: String,
+        forFile fileName: String
+    ) {
+        let reporter = StdoutDiagnosticReporter()
+        
+        for diag in diagnostics.elements {
+            reporter.report(diagnostic: diag, source: source, fileName: fileName)
         }
     }
 }
