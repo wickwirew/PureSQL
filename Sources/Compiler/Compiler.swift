@@ -51,7 +51,7 @@ public struct Compiler {
         
         for stmtSyntax in stmtSyntaxes {
             if !stmtSyntax.accept(visitor: &validator) {
-                diagnostics.add(.illegalStatement(in: context, at: stmtSyntax.range))
+                diagnostics.add(.illegalStatement(in: context, at: stmtSyntax.location))
             }
             
             guard let (stmt, diags) = stmtSyntax.accept(visitor: &compiler) else { continue }

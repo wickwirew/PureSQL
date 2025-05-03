@@ -41,7 +41,7 @@ struct Lexer {
     private var eof: Token {
         return Token(
             kind: .eof,
-            range: SourceLocation(
+            location: SourceLocation(
                 range: source.endIndex..<source.endIndex
             )
         )
@@ -87,9 +87,9 @@ struct Lexer {
             advance()
             if self.current == ">" {
                 advance()
-                return Token(kind: .doubleArrow, range: location(from: currentIndex, to: peekIndex))
+                return Token(kind: .doubleArrow, location: location(from: currentIndex, to: peekIndex))
             } else {
-                return Token(kind: .arrow, range: location(from: currentIndex, to: peekIndex))
+                return Token(kind: .arrow, location: location(from: currentIndex, to: peekIndex))
             }
         case ("*", _): return consumeSingle(of: .star)
         case ("=", _): return consumeSingle(of: .equal)
@@ -136,7 +136,7 @@ struct Lexer {
         }
         
         let location = location(from: start, to: currentIndex)
-        return Token(kind: Token.Kind(word: source[location.range]), range: location)
+        return Token(kind: Token.Kind(word: source[location.range]), location: location)
     }
     
     private mutating func parseNumber() -> Token {
@@ -166,7 +166,7 @@ struct Lexer {
             .int(integer(from: string, at: location.range))
         }
         
-        return Token(kind: kind, range: location)
+        return Token(kind: kind, location: location)
     }
     
     private mutating func scientificNotation(
@@ -216,7 +216,7 @@ struct Lexer {
         let value = mantissa * pow(10, exponent)
         return Token(
             kind: .double(value),
-            range: location(from: mantissaRange.lowerBound, to: exponentRange.upperBound)
+            location: location(from: mantissaRange.lowerBound, to: exponentRange.upperBound)
         )
     }
     
@@ -243,10 +243,10 @@ struct Lexer {
         
         guard let value = Int(source[numberRange], radix: 16) else {
             diagnostics.add(.init("Invalid hex number", at: location))
-            return Token(kind: .hex(0), range: location)
+            return Token(kind: .hex(0), location: location)
         }
         
-        return Token(kind: .hex(value), range: location)
+        return Token(kind: .hex(value), location: location)
     }
     
     private mutating func parseString() -> Token {
@@ -266,7 +266,7 @@ struct Lexer {
             diagnostics.add(.init("Unterminated string", at: location(from: start, to: currentIndex)))
         }
         
-        return Token(kind: .string(source[stringRange]), range: location(from: tokenStart, to: currentIndex))
+        return Token(kind: .string(source[stringRange]), location: location(from: tokenStart, to: currentIndex))
     }
     
     private mutating func skipWhitespace() {
@@ -278,14 +278,14 @@ struct Lexer {
     private mutating func consumeSingle(of kind: Token.Kind) -> Token {
         let start = currentIndex
         advance()
-        return Token(kind: kind, range: location(from: start, to: currentIndex))
+        return Token(kind: kind, location: location(from: start, to: currentIndex))
     }
     
     private mutating func consumeDouble(of kind: Token.Kind) -> Token {
         let start = currentIndex
         advance()
         advance()
-        return Token(kind: kind, range: location(from: start, to: currentIndex))
+        return Token(kind: kind, location: location(from: start, to: currentIndex))
     }
     
     private mutating func integer<S: StringProtocol>(

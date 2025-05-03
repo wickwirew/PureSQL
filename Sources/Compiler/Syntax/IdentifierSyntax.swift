@@ -7,12 +7,7 @@
 
 struct IdentifierSyntax: Sendable {
     private(set) var value: Substring
-    private(set) var range: SourceLocation
-
-    init(value: Substring, range: SourceLocation) {
-        self.value = value
-        self.range = range
-    }
+    private(set) var location: SourceLocation
 }
 
 extension IdentifierSyntax: Equatable {
@@ -43,11 +38,11 @@ extension IdentifierSyntax: CustomStringConvertible {
 extension IdentifierSyntax {
     mutating func append(_ identifier: IdentifierSyntax) {
         value += identifier.value
-        range = range.with(upperbound: identifier.range.range.upperBound)
+        location = location.with(upperbound: identifier.location.range.upperBound)
     }
 
     mutating func append(_ string: String, upperBound: String.Index) {
         value += string
-        range = range.with(upperbound: upperBound)
+        location = location.with(upperbound: upperBound)
     }
 }

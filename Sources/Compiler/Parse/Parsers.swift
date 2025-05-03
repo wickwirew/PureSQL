@@ -97,15 +97,15 @@ enum Parsers {
                     cte: cte.cte
                 )
             default:
-                state.diagnostics.add(.unexpectedToken(of: state.current.kind, at: state.range))
-                return EmptyStmtSyntax(id: state.nextId(), range: state.current.range)
+                state.diagnostics.add(.unexpectedToken(of: state.current.kind, at: state.location))
+                return EmptyStmtSyntax(id: state.nextId(), location: state.current.location)
             }
         case (.semiColon, _), (.eof, _):
             state.skip()
-            return EmptyStmtSyntax(id: state.nextId(), range: state.current.range)
+            return EmptyStmtSyntax(id: state.nextId(), location: state.current.location)
         default:
-            state.diagnostics.add(.unexpectedToken(of: state.current.kind, at: state.range))
-            return EmptyStmtSyntax(id: state.nextId(), range: state.current.range)
+            state.diagnostics.add(.unexpectedToken(of: state.current.kind, at: state.location))
+            return EmptyStmtSyntax(id: state.nextId(), location: state.current.location)
         }
     }
     
@@ -145,7 +145,7 @@ enum Parsers {
             columns: columns,
             values: values,
             returningClause: returningClause,
-            range: state.range(from: start)
+            location: state.location(from: start)
         )
     }
     
@@ -176,11 +176,11 @@ enum Parsers {
         case .replace: kind = .replace
         case .insert: kind = .insert(take(if: .or, state: &state, parse: or))
         default:
-            state.diagnostics.add(.unexpectedToken(of: token.kind, at: token.range))
+            state.diagnostics.add(.unexpectedToken(of: token.kind, at: token.location))
             kind = .insert(nil)
         }
         
-        return InsertStmtSyntax.Action(id: state.nextId(), kind: kind, range: token.range)
+        return InsertStmtSyntax.Action(id: state.nextId(), kind: kind, location: token.location)
     }
     
     /// Example: OR ABORT
@@ -196,10 +196,10 @@ enum Parsers {
         case .replace: kind = .replace
         case .rollback: kind = .rollback
         default:
-            state.diagnostics.add(.unexpectedToken(of: token.kind, at: token.range))
+            state.diagnostics.add(.unexpectedToken(of: token.kind, at: token.location))
             kind = .ignore
         }
-        return OrSyntax(id: state.nextId(),kind: kind, range: token.range)
+        return OrSyntax(id: state.nextId(),kind: kind, location: token.location)
     }
     
     /// https://www.sqlite.org/pragma.html
@@ -234,7 +234,7 @@ enum Parsers {
             state.diagnostics.add(.unexpectedToken(
                 of: state.current.kind,
                 expectedAnyOf: .equal, .openParen,
-                at: state.current.range
+                at: state.current.location
             ))
             // Still try to parse the value
             value = try expr(state: &state)
@@ -247,7 +247,7 @@ enum Parsers {
             name: name,
             value: value,
             isFunctionCall: isFunctionCall,
-            range: state.range(from: start)
+            location: state.location(from: start)
         )
     }
     
@@ -281,7 +281,7 @@ enum Parsers {
             table: tableName,
             indexedColumns: indexedColumns,
             whereExpr: whereExpr,
-            range: state.range(from: create)
+            location: state.location(from: create)
         )
     }
     
@@ -306,7 +306,7 @@ enum Parsers {
             ifExists: ifExists,
             schemaName: schema,
             name: indexName,
-            range: state.range(from: drop)
+            location: state.location(from: drop)
         )
     }
     
@@ -327,7 +327,7 @@ enum Parsers {
             id: state.nextId(),
             schemaName: schema,
             name: name,
-            range: state.range(from: reindex)
+            location: state.location(from: reindex)
         )
     }
     
@@ -360,7 +360,7 @@ enum Parsers {
             name: name,
             columnNames: columns,
             select: select,
-            range: state.range(from: create)
+            location: state.location(from: create)
         )
     }
     
@@ -395,7 +395,7 @@ enum Parsers {
                 id: state.nextId(),
                 confictTarget: conflictTarget,
                 doAction: .nothing,
-                range: on.range.spanning(state.current.range)
+                location: on.location.spanning(state.current.location)
             )
         }
         
@@ -414,7 +414,7 @@ enum Parsers {
             id: state.nextId(),
             confictTarget: conflictTarget,
             doAction: .updateSet(sets: sets, where: whereExpr),
-            range: on.range.spanning(state.current.range)
+            location: on.location.spanning(state.current.location)
         )
     }
     
@@ -476,12 +476,12 @@ enum Parsers {
             }
         }
         
-        return ReturningClauseSyntax(id: state.nextId(), values: values, range: state.range(from: start))
+        return ReturningClauseSyntax(id: state.nextId(), values: values, location: state.location(from: start))
     }
     
     /// https://www.sqlite.org/lang_update.html
     static func updateStmt(state: inout ParserState) throws -> UpdateStmtSyntax {
-        let start = state.range
+        let start = state.location
         let cte = try withCte(state: &state)
         state.consume(.update)
         let or = take(if: .or, state: &state, parse: or)
@@ -504,7 +504,7 @@ enum Parsers {
             from: from,
             whereExpr: whereExpr,
             returningClause: returningClause,
-            range: state.range(from: start)
+            location: state.location(from: start)
         )
     }
     
@@ -539,7 +539,7 @@ enum Parsers {
             table: table,
             whereExpr: whereExpr,
             returningClause: returningClause,
-            range: state.range(from: start)
+            location: state.location(from: start)
         )
     }
     
@@ -566,7 +566,7 @@ enum Parsers {
             tableName: tableName,
             alias: alias,
             indexed: indexed,
-            range: state.range(from: tableName.range)
+            location: state.location(from: tableName.location)
         )
     }
     
@@ -636,13 +636,13 @@ enum Parsers {
             columns: columns ?? [],
             materialized: materialized,
             select: select,
-            range: state.range(from: start)
+            location: state.location(from: start)
         )
     }
     
     /// https://www.sqlite.org/syntax/join-constraint.html
     static func joinConstraint(state: inout ParserState) throws -> JoinConstraintSyntax {
-        let start = state.range
+        let start = state.location
         
         let kind: JoinConstraintSyntax.Kind
         if state.take(if: .on) {
@@ -660,7 +660,7 @@ enum Parsers {
         return JoinConstraintSyntax(
             id: state.nextId(),
             kind: kind,
-            range: state.range(from: start)
+            location: state.location(from: start)
         )
     }
     
@@ -694,7 +694,7 @@ enum Parsers {
                 state.consume(.join)
                 kind = .full(natural: true)
             default:
-                state.diagnostics.add(.unexpectedToken(of: token.kind, at: token.range))
+                state.diagnostics.add(.unexpectedToken(of: token.kind, at: token.location))
                 kind = .full(natural: true, outer: false)
             }
         case .left:
@@ -718,14 +718,14 @@ enum Parsers {
             state.consume(.join)
             kind = .full()
         default:
-            state.diagnostics.add(.init("Invalid join operator", at: state.current.range))
+            state.diagnostics.add(.init("Invalid join operator", at: state.current.location))
             kind = .full()
         }
         
         return JoinOperatorSyntax(
             id: state.nextId(),
             kind: kind,
-            range: state.range(from: token)
+            location: state.location(from: token)
         )
     }
     
@@ -795,7 +795,7 @@ enum Parsers {
             selects: .init(.single(selects!.first!)), // TODO: Fix this and do it properly
             orderBy: orderBy,
             limit: limit,
-            range: state.range(from: start)
+            location: state.location(from: start)
         )
     }
     
@@ -839,7 +839,7 @@ enum Parsers {
                 state.diagnostics.add(.unexpectedToken(
                     of: state.current.kind,
                     expectedAnyOf: .first, .last,
-                    at: state.range
+                    at: state.location
                 ))
                 nulls = .first
             }
@@ -852,7 +852,7 @@ enum Parsers {
             expr: expr,
             order: order,
             nulls: nulls,
-            range: state.range(from: expr.range)
+            location: state.location(from: expr.location)
         )
     }
     
@@ -961,24 +961,24 @@ enum Parsers {
     
     /// https://www.sqlite.org/syntax/result-column.html
     static func resultColumn(state: inout ParserState) throws -> ResultColumnSyntax {
-        let start = state.current.range
+        let start = state.current.location
         switch state.current.kind {
         case .star:
             state.skip()
             return ResultColumnSyntax(
                 id: state.nextId(),
                 kind: .all(table: nil),
-                range: state.range(from: start)
+                location: state.location(from: start)
             )
         case let .symbol(table) where state.peek.kind == .dot && state.peek2.kind == .star:
-            let table = IdentifierSyntax(value: table, range: state.current.range)
+            let table = IdentifierSyntax(value: table, location: state.current.location)
             state.skip()
             state.consume(.dot)
             state.consume(.star)
             return ResultColumnSyntax(
                 id: state.nextId(),
                 kind: .all(table: table),
-                range: state.range(from: start)
+                location: state.location(from: start)
             )
         default:
             let expr = try expr(state: &state)
@@ -986,13 +986,13 @@ enum Parsers {
             return ResultColumnSyntax(
                 id: state.nextId(),
                 kind: .expr(expr, as: alias),
-                range: state.range(from: start)
+                location: state.location(from: start)
             )
         }
     }
     
     static func tableOrSubquery(state: inout ParserState) throws -> TableOrSubquerySyntax {
-        let start = state.range
+        let start = state.location
         let kind: TableOrSubquerySyntax.Kind
         
         switch state.current.kind {
@@ -1046,13 +1046,13 @@ enum Parsers {
                 }
             }
         default:
-            throw state.diagnostics.add(.init("Expected table or subquery", at: state.current.range))
+            throw state.diagnostics.add(.init("Expected table or subquery", at: state.current.location))
         }
         
         return TableOrSubquerySyntax(
             id: state.nextId(),
             kind: kind,
-            range: state.range(from: start)
+            location: state.location(from: start)
         )
     }
     
@@ -1061,7 +1061,7 @@ enum Parsers {
         tableOrSubquery: TableOrSubquerySyntax
     ) throws -> JoinClauseSyntax {
         let joinOperatorStarts: Set<Token.Kind> = [.natural, .comma, .left, .right, .full, .inner, .cross, .join]
-        let start = state.range
+        let start = state.location
         
         var joins: [JoinClauseSyntax.Join] = []
         while joinOperatorStarts.contains(state.current.kind) {
@@ -1071,7 +1071,7 @@ enum Parsers {
             id: state.nextId(),
             tableOrSubquery: tableOrSubquery,
             joins: joins,
-            range: state.range(from: start)
+            location: state.location(from: start)
         )
     }
     
@@ -1102,14 +1102,14 @@ enum Parsers {
             return AliasSyntax(
                 id: state.nextId(),
                 identifier: ident,
-                range: state.range(from: start)
+                location: state.location(from: start)
             )
         case .symbol where !asRequired:
             let ident = identifier(state: &state)
             return AliasSyntax(
                 id: state.nextId(),
                 identifier: ident,
-                range: ident.range
+                location: ident.location
             )
         default:
             return nil
@@ -1118,7 +1118,7 @@ enum Parsers {
     
     /// https://www.sqlite.org/syntax/table-options.html
     static func tableOptions(state: inout ParserState) -> TableOptionsSyntax {
-        let start = state.range
+        let start = state.location
         var options: TableOptionsSyntax.Kind = []
         
         repeat {
@@ -1136,13 +1136,13 @@ enum Parsers {
                 state.diagnostics.add(.unexpectedToken(
                     of: state.current.kind,
                     expectedAnyOf: .without, .strict,
-                    at: state.current.range
+                    at: state.current.location
                 ))
                 break
             }
         } while state.take(if: .comma)
         
-        return TableOptionsSyntax(id: state.nextId(), kind: options, range: state.range(from: start))
+        return TableOptionsSyntax(id: state.nextId(), kind: options, location: state.location(from: start))
     }
     
     /// https://www.sqlite.org/syntax/type-name.html
@@ -1157,7 +1157,7 @@ enum Parsers {
                 break
             }
             
-            let upperBound = state.current.range.upperBound
+            let upperBound = state.current.location.upperBound
             state.skip()
             name.append(" \(s)", upperBound: upperBound)
         }
@@ -1175,7 +1175,7 @@ enum Parsers {
                     arg1: first,
                     arg2: second,
                     alias: alias,
-                    range: state.range(from: name.range)
+                    location: state.location(from: name.location)
                 )
             } else {
                 state.consume(.closeParen)
@@ -1186,7 +1186,7 @@ enum Parsers {
                     arg1: first,
                     arg2: nil,
                     alias: alias,
-                    range: state.range(from: name.range)
+                    location: state.location(from: name.location)
                 )
             }
         } else {
@@ -1197,7 +1197,7 @@ enum Parsers {
                 arg1: nil,
                 arg2: nil,
                 alias: alias,
-                range: state.range(from: name.range)
+                location: state.location(from: name.location)
             )
         }
     }
@@ -1213,7 +1213,7 @@ enum Parsers {
             name: names.table,
             schemaName: names.schema,
             kind: kind,
-            range: alter.range.spanning(state.current.range)
+            location: alter.location.spanning(state.current.location)
         )
     }
     
@@ -1247,7 +1247,7 @@ enum Parsers {
             throw state.diagnostics.add(.unexpectedToken(
                 of: token.kind,
                 expectedAnyOf: .rename, .add, .add, .drop,
-                at: token.range
+                at: token.location
             ))
         }
     }
@@ -1282,7 +1282,7 @@ enum Parsers {
                 kind: .columns(columns),
                 constraints: constraints,
                 options: options,
-                range: create.range.spanning(state.current.range)
+                location: create.location.spanning(state.current.location)
             )
         }
     }
@@ -1313,7 +1313,7 @@ enum Parsers {
             module: module,
             moduleName: moduleName,
             arguments: arguments,
-            range: state.range(from: create)
+            location: state.location(from: create)
         )
     }
     
@@ -1340,7 +1340,7 @@ enum Parsers {
                 if state.current.kind == .not {
                     let not = state.take(.not)
                     state.consume(.null)
-                    notNull = state.range(from: not)
+                    notNull = state.location(from: not)
                 } else {
                     notNull = nil
                 }
@@ -1395,7 +1395,7 @@ enum Parsers {
     
     /// https://www.sqlite.org/syntax/table-constraint.html
     static func tableConstraint(state: inout ParserState) throws -> TableConstraintSyntax? {
-        let start = state.current.range
+        let start = state.current.location
         let name: IdentifierSyntax? = if state.take(if: .constraint) {
             identifier(state: &state)
         } else {
@@ -1433,7 +1433,7 @@ enum Parsers {
             id: state.nextId(),
             name: name,
             kind: kind,
-            range: state.range(from: start)
+            location: state.location(from: start)
         )
     }
     
@@ -1460,7 +1460,7 @@ enum Parsers {
         state: inout ParserState,
         name: IdentifierSyntax? = nil
     ) throws -> ColumnConstraintSyntax? {
-        let start = state.current.range
+        let start = state.current.location
         switch state.current.kind {
         case .constraint:
             state.skip()
@@ -1476,7 +1476,7 @@ enum Parsers {
                 id: state.nextId(),
                 name: name,
                 kind: .notNull(conflictClause),
-                range: state.range(from: start)
+                location: state.location(from: start)
             )
         case .unique:
             state.skip()
@@ -1485,7 +1485,7 @@ enum Parsers {
                 id: state.nextId(),
                 name: name,
                 kind: .unique(conflictClause),
-                range: state.range(from: start)
+                location: state.location(from: start)
             )
         case .check:
             state.skip()
@@ -1494,7 +1494,7 @@ enum Parsers {
                 id: state.nextId(),
                 name: name,
                 kind: .check(expr),
-                range: state.range(from: start)
+                location: state.location(from: start)
             )
         case .default:
             state.skip()
@@ -1504,14 +1504,14 @@ enum Parsers {
                     id: state.nextId(),
                     name: name,
                     kind: .default(expr),
-                    range: state.range(from: start)
+                    location: state.location(from: start)
                 )
             } else {
                 return try ColumnConstraintSyntax(
                     id: state.nextId(),
                     name: name,
                     kind: .default(expr(state: &state)),
-                    range: state.range(from: start)
+                    location: state.location(from: start)
                 )
             }
         case .collate:
@@ -1521,7 +1521,7 @@ enum Parsers {
                 id: state.nextId(),
                 name: name,
                 kind: .collate(collation),
-                range: state.range(from: start)
+                location: state.location(from: start)
             )
         case .references:
             let fk = foreignKeyClause(state: &state)
@@ -1529,7 +1529,7 @@ enum Parsers {
                 id: state.nextId(),
                 name: name,
                 kind: .foreignKey(fk),
-                range: state.range(from: start)
+                location: state.location(from: start)
             )
         case .generated:
             state.skip()
@@ -1542,7 +1542,7 @@ enum Parsers {
                 id: state.nextId(),
                 name: name,
                 kind: .generated(expr, generated),
-                range: state.range(from: start)
+                location: state.location(from: start)
             )
         case .as:
             let expr = try parens(state: &state) { try Parsers.expr(state: &$0) }
@@ -1551,10 +1551,10 @@ enum Parsers {
                 id: state.nextId(),
                 name: name,
                 kind: .generated(expr, generated),
-                range: state.range(from: start)
+                location: state.location(from: start)
             )
         default:
-            state.diagnostics.add(.unexpectedToken(of: state.current.kind, at: state.range))
+            state.diagnostics.add(.unexpectedToken(of: state.current.kind, at: state.location))
             state.skip()
             return nil
         }
@@ -1588,7 +1588,7 @@ enum Parsers {
             id: state.nextId(),
             name: name,
             kind: .primaryKey(order: order, conflictClause, autoincrement: autoincrement),
-            range: state.range(from: start)
+            location: state.location(from: start)
         )
     }
     
@@ -1629,7 +1629,7 @@ enum Parsers {
             foreignTable: table,
             foreignColumns: columns ?? [],
             actions: actions,
-            range: state.range(from: references)
+            location: state.location(from: references)
         )
     }
     
@@ -1661,7 +1661,7 @@ enum Parsers {
             } else if state.take(if: .update) {
                 on = .update
             } else {
-                state.diagnostics.add(.init("Expected 'UPDATE' or 'DELETE'", at: state.current.range))
+                state.diagnostics.add(.init("Expected 'UPDATE' or 'DELETE'", at: state.current.location))
                 on = .update
             }
             
@@ -1699,7 +1699,7 @@ enum Parsers {
                 state.diagnostics.add(.unexpectedToken(
                     of: token.kind,
                     expectedAnyOf: .null, .default,
-                    at: token.range
+                    at: token.location
                 ))
                 return .noAction
             }
@@ -1714,7 +1714,7 @@ enum Parsers {
             state.diagnostics.add(.unexpectedToken(
                 of: token.kind,
                 expectedAnyOf: .set, .cascade, .restrict,
-                at: token.range
+                at: token.location
             ))
             return .noAction
         }
@@ -1735,7 +1735,7 @@ enum Parsers {
                 state.diagnostics.add(.unexpectedToken(
                     of: token.kind,
                     expectedAnyOf: .deferred, .immediate,
-                    at: token.range
+                    at: token.location
                 ))
                 return .initiallyDeferred
             }
@@ -1756,7 +1756,7 @@ enum Parsers {
             id: state.nextId(),
             ifExists: ifExists,
             tableName: table,
-            range: state.range(from: drop)
+            location: state.location(from: drop)
         )
     }
     
@@ -1777,7 +1777,7 @@ enum Parsers {
                     table: column.table,
                     name: column.column,
                     args: args,
-                    range: state.range(from: expr.range))
+                    location: state.location(from: expr.location))
                 )
             }
             
@@ -1833,25 +1833,25 @@ enum Parsers {
             return .bindParameter(bindParameter(state: &state))
         case .plus:
             let token = state.take()
-            let op = OperatorSyntax(id: state.nextId(), operator: .plus, range: token.range)
+            let op = OperatorSyntax(id: state.nextId(), operator: .plus, location: token.location)
             return try .prefix(PrefixExprSyntax(id: state.nextId(), operator: op, rhs: expr(state: &state, precedence: precedence)))
         case .tilde:
             let token = state.take()
-            let op = OperatorSyntax(id: state.nextId(), operator: .tilde, range: token.range)
+            let op = OperatorSyntax(id: state.nextId(), operator: .tilde, location: token.location)
             return try .prefix(PrefixExprSyntax(id: state.nextId(), operator: op, rhs: expr(state: &state, precedence: precedence)))
         case .minus:
             let token = state.take()
-            let op = OperatorSyntax(id: state.nextId(), operator: .minus, range: token.range)
+            let op = OperatorSyntax(id: state.nextId(), operator: .minus, location: token.location)
             return try .prefix(PrefixExprSyntax(id: state.nextId(), operator: op, rhs: expr(state: &state, precedence: precedence)))
         case .null:
             let token = state.take()
-            return .literal(LiteralExprSyntax(id: state.nextId(),kind: .null, range: token.range))
+            return .literal(LiteralExprSyntax(id: state.nextId(),kind: .null, location: token.location))
         case .openParen:
-            let start = state.current.range
+            let start = state.current.location
             let expr = try parens(state: &state) { state in
                 try commaDelimited(state: &state) { try Parsers.expr(state: &$0) }
             }
-            return .grouped(GroupedExprSyntax(id: state.nextId(), exprs: expr, range: state.range(from: start)))
+            return .grouped(GroupedExprSyntax(id: state.nextId(), exprs: expr, location: state.location(from: start)))
         case .cast:
             let start = state.take()
             state.consume(.openParen)
@@ -1859,7 +1859,7 @@ enum Parsers {
             state.consume(.as)
             let type = typeName(state: &state)
             state.consume(.closeParen)
-            return .cast(CastExprSyntax(id: state.nextId(), expr: expr, ty: type, range: state.range(from: start.range)))
+            return .cast(CastExprSyntax(id: state.nextId(), expr: expr, ty: type, location: state.location(from: start.location)))
         case .select:
             let select = try selectStmt(state: &state)
             return .select(SelectExprSyntax(id: state.nextId(), select: select))
@@ -1887,15 +1887,15 @@ enum Parsers {
                 case: `case`,
                 whenThen: whenThens,
                 else: el,
-                range: state.range(from: start.range)
+                location: state.location(from: start.location)
             ))
         default:
             let tok = state.take()
             state.diagnostics.add(.init(
                 "Expected expression, but got '\(tok.kind)' instead",
-                at: state.range
+                at: state.location
             ))
-            return .invalid(InvalidExprSyntax(id: state.nextId(), range: tok.range))
+            return .invalid(InvalidExprSyntax(id: state.nextId(), location: tok.location))
         }
     }
     
@@ -1971,28 +1971,28 @@ enum Parsers {
                 id: state.nextId(),
                 kind: .unnamed,
                 index: state.indexForUnnamedParam(),
-                range: token.range
+                location: token.location
             )
         case .colon:
             let symbol = identifier(state: &state)
-            let range = token.range.spanning(symbol.range)
-            let name = IdentifierSyntax(value: ":\(symbol)", range: range)
+            let location = token.location.spanning(symbol.location)
+            let name = IdentifierSyntax(value: ":\(symbol)", location: location)
             let index = state.indexForParam(named: name.value)
             return BindParameterSyntax(
                 id: state.nextId(),
                 kind: .named(name),
                 index: index,
-                range: range
+                location: location
             )
         case .at:
             let symbol = identifier(state: &state)
-            let range = token.range.spanning(symbol.range)
-            let name = IdentifierSyntax(value: "@\(symbol)", range: range)
+            let location = token.location.spanning(symbol.location)
+            let name = IdentifierSyntax(value: "@\(symbol)", location: location)
             let index = state.indexForParam(named: name.value)
-            return BindParameterSyntax(id: state.nextId(), kind: .named(name), index: index, range: range)
+            return BindParameterSyntax(id: state.nextId(), kind: .named(name), index: index, location: location)
         case .dollarSign:
             let segments = delimited(by: .colon, and: .colon, state: &state, element: identifier)
-            let nameRange = token.range.spanning(segments.last?.range ?? state.current.range)
+            let nameRange = token.location.spanning(segments.last?.location ?? state.current.location)
             let fullName = segments.map(\.value)
                 .joined(separator: "::")[...]
             let suffix = take(if: .openParen, state: &state) { state in
@@ -2000,22 +2000,22 @@ enum Parsers {
             }
             
             if let suffix {
-                let range = token.range.spanning(suffix.range)
-                let name = IdentifierSyntax(value: "$\(fullName)(\(suffix))", range: range)
+                let location = token.location.spanning(suffix.location)
+                let name = IdentifierSyntax(value: "$\(fullName)(\(suffix))", location: location)
                 let index = state.indexForParam(named: name.value)
-                return BindParameterSyntax(id: state.nextId(), kind: .named(name), index: index, range: range)
+                return BindParameterSyntax(id: state.nextId(), kind: .named(name), index: index, location: location)
             } else {
-                let name = IdentifierSyntax(value: "$\(fullName)", range: nameRange)
+                let name = IdentifierSyntax(value: "$\(fullName)", location: nameRange)
                 let index = state.indexForParam(named: name.value)
-                return BindParameterSyntax(id: state.nextId(), kind: .named(name), index: index, range: nameRange)
+                return BindParameterSyntax(id: state.nextId(), kind: .named(name), index: index, location: nameRange)
             }
         default:
-            state.diagnostics.add(.init("Invalid bind parameter", at: token.range))
+            state.diagnostics.add(.init("Invalid bind parameter", at: token.location))
             return BindParameterSyntax(
                 id: state.nextId(),
                 kind: .unnamed,
                 index: state.indexForUnnamedParam(),
-                range: token.range
+                location: token.location
             )
         }
     }
@@ -2025,11 +2025,11 @@ enum Parsers {
             for: state.current.kind,
             after: state.peek.kind
         ) else {
-            state.diagnostics.add(.init("Invalid operator", at: state.range))
-            return .init(id: state.nextId(), operator: .plus, range: state.current.range)
+            state.diagnostics.add(.init("Invalid operator", at: state.location))
+            return .init(id: state.nextId(), operator: .plus, location: state.current.location)
         }
         
-        let start = state.current.range
+        let start = state.current.location
         op.skip(state: &state)
         
         switch op {
@@ -2037,13 +2037,13 @@ enum Parsers {
              .mod, .plus, .minus, .bitwiseAnd, .bitwuseOr, .shl, .shr, .escape,
              .lt, .gt, .lte, .gte, .eq, .eq2, .neq, .neq2, .match, .like, .regexp,
              .glob, .or, .and, .between, .not, .in, .isnull, .notnull, .notNull, .isDistinctFrom:
-            return OperatorSyntax(id: state.nextId(), operator: op, range: start)
+            return OperatorSyntax(id: state.nextId(), operator: op, location: start)
         case .is:
             if state.take(if: .distinct) {
                 let from = state.take(.from)
-                return OperatorSyntax(id: state.nextId(), operator: .isDistinctFrom, range: start.spanning(from.range))
+                return OperatorSyntax(id: state.nextId(), operator: .isDistinctFrom, location: start.spanning(from.location))
             } else {
-                return OperatorSyntax(id: state.nextId(), operator: .is, range: start)
+                return OperatorSyntax(id: state.nextId(), operator: .is, location: start)
             }
         case .isNot:
             if state.take(if: .distinct) {
@@ -2051,13 +2051,13 @@ enum Parsers {
                 return OperatorSyntax(
                     id: state.nextId(),
                     operator: .isNotDistinctFrom,
-                    range: start.spanning(from.range)
+                    location: start.spanning(from.location)
                 )
             } else {
                 return OperatorSyntax(
                     id: state.nextId(),
                     operator: .isNot,
-                    range: start.spanning(state.current.range)
+                    location: start.spanning(state.current.location)
                 )
             }
         case .isNotDistinctFrom:
@@ -2076,7 +2076,7 @@ enum Parsers {
             id: state.nextId(),
             name: name,
             statement: stmt,
-            range: define.range.spanning(state.current.range)
+            location: define.location.spanning(state.current.location)
         )
     }
     
@@ -2159,11 +2159,11 @@ enum Parsers {
         let token = state.take()
         
         guard case let .symbol(ident) = token.kind else {
-            state.diagnostics.add(.init("Expected identifier", at: token.range))
-            return IdentifierSyntax(value: "<<error>>", range: token.range)
+            state.diagnostics.add(.init("Expected identifier", at: token.location))
+            return IdentifierSyntax(value: "<<error>>", location: token.location)
         }
         
-        return IdentifierSyntax(value: ident, range: token.range)
+        return IdentifierSyntax(value: ident, location: token.location)
     }
     
     /// https://www.sqlite.org/syntax/numeric-literal.html
@@ -2178,7 +2178,7 @@ enum Parsers {
         case let .hex(value):
             return Double(value)
         default:
-            state.diagnostics.add(.init("Expected numeric", at: token.range))
+            state.diagnostics.add(.init("Expected numeric", at: token.location))
             return 0
         }
     }
@@ -2199,7 +2199,7 @@ enum Parsers {
         case .minus:
             return -numericLiteral(state: &state)
         default:
-            state.diagnostics.add(.init("Expected signed number", at: token.range))
+            state.diagnostics.add(.init("Expected signed number", at: token.location))
             return 0
         }
     }
@@ -2228,21 +2228,21 @@ enum Parsers {
         case .currentTimestamp:
             kind = .currentTimestamp
         default:
-            state.diagnostics.add(.init("Invalid literal", at: token.range))
+            state.diagnostics.add(.init("Invalid literal", at: token.location))
             kind = .invalid
         }
         
-        return LiteralExprSyntax(id: state.nextId(), kind: kind, range: token.range)
+        return LiteralExprSyntax(id: state.nextId(), kind: kind, location: token.location)
     }
     
     static func order(state: inout ParserState) -> OrderSyntax? {
         switch state.current.kind {
         case .asc:
             let token = state.take()
-            return OrderSyntax(id: state.nextId(), kind: .asc, range: token.range)
+            return OrderSyntax(id: state.nextId(), kind: .asc, location: token.location)
         case .desc:
             let token = state.take()
-            return OrderSyntax(id: state.nextId(), kind: .desc, range: token.range)
+            return OrderSyntax(id: state.nextId(), kind: .desc, location: token.location)
         default:
             return nil
         }

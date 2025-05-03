@@ -105,7 +105,7 @@ struct IsStaticallyTrue: ExprSyntaxVisitor {
     private mutating func emitNotBoolDiag<S: Syntax>(for syntax: S) {
         diagnostics.add(.init(
             "Value is not a static boolean, expected TRUE, FALSE, 1 or 0",
-            at: syntax.range
+            at: syntax.location
         ))
     }
 }

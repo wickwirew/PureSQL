@@ -40,12 +40,12 @@ public struct Diagnostics {
     
     public mutating func trying<Output>(
         _ action: () throws -> Output,
-        at range: SourceLocation
+        at location: SourceLocation
     ) -> Output? {
         do {
             return try action()
         } catch {
-            add(.init("\(error)", at: range))
+            add(.init("\(error)", at: location))
             return nil
         }
     }

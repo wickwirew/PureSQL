@@ -26,10 +26,10 @@ struct InferenceState {
     /// type for a bind param, we first have to ask this for the syntax id
     /// the bind parameter
     private(set) var bindIndexToSyntaxIds: [BindParameterSyntax.Index: SyntaxId] = [:]
-    /// Any ranges the bind parameters show up in.
+    /// Any locations the bind parameters show up in.
     /// This really isnt the most sensible place for this. May likely break out into its
     /// own thing but keeping it here for now since its so simple.
-    private(set) var bindIndexRanges: [BindParameterSyntax.Index: [SourceLocation]] = [:]
+    private(set) var bindIndexLocations: [BindParameterSyntax.Index: [SourceLocation]] = [:]
     
     /// Instantiates a type scheme by substituting all free type variables
     /// for new fresh type variables.
@@ -74,7 +74,7 @@ struct InferenceState {
         forParam param: borrowing BindParameterSyntax,
         kind: TypeVariable.Kind = .general
     ) -> Type {
-        bindIndexRanges[param.index, default: []].append(param.range)
+        bindIndexLocations[param.index, default: []].append(param.location)
         
         // If there is already a type var for the parameter just reuse it.
         // Named bind parameters can be referenced more than once which
@@ -140,11 +140,11 @@ struct InferenceState {
     /// default value if it is a type var.
     func parameterSolutions(
         defaultIfTyVar: Bool = false
-    ) -> [(index: BindParameterSyntax.Index, type: Type, ranges: [SourceLocation])] {
+    ) -> [(index: BindParameterSyntax.Index, type: Type, locations: [SourceLocation])] {
         return bindIndexToSyntaxIds.map { (index, syntaxId) in
             let type = self.syntaxTypes[syntaxId] ?? .error
-            let ranges = self.bindIndexRanges[index] ?? []
-            return (index, solution(for: type, defaultIfTyVar: defaultIfTyVar), ranges)
+            let locations = self.bindIndexLocations[index] ?? []
+            return (index, solution(for: type, defaultIfTyVar: defaultIfTyVar), locations)
         }
     }
 }
@@ -157,7 +157,7 @@ extension InferenceState {
     mutating func unify(
         _ type: Type,
         with other: Type,
-        at range: SourceLocation
+        at location: SourceLocation
     ) {
         // If they are the same, no need to unify
         guard type != other else { return }
@@ -178,7 +178,7 @@ extension InferenceState {
                 substitute(tv1, for: other)
             }
         case let (.optional(t1), .optional(t2)):
-            unify(t1, with: t2, at: range)
+            unify(t1, with: t2, at: location)
         case let (.var(nonOptional), .optional(.var(optional))):
             let kind = max(nonOptional.kind, optional.kind)
             substitute(nonOptional, for: .optional(.var(optional.with(kind: kind))))
@@ -186,57 +186,57 @@ extension InferenceState {
             let kind = max(nonOptional.kind, optional.kind)
             substitute(nonOptional, for: .optional(.var(optional.with(kind: kind))))
         case let (.var(tv), ty):
-            validateCanUnify(type: ty, with: tv.kind, at: range)
+            validateCanUnify(type: ty, with: tv.kind, at: location)
             substitute(tv, for: ty)
         case let (ty, .var(tv)):
-            validateCanUnify(type: ty, with: tv.kind, at: range)
+            validateCanUnify(type: ty, with: tv.kind, at: location)
             substitute(tv, for: ty)
         case (.integer, .real):
             return // Not equal but valid to use together
         case (.real, .integer):
             return // Not equal but valid to use together
         case let (.fn(args1, ret1), .fn(args2, ret2)):
-            unify(args1, with: args2, at: range)
-            unify(ret1.apply(substitution), with: ret2.apply(substitution), at: range)
+            unify(args1, with: args2, at: location)
+            unify(ret1.apply(substitution), with: ret2.apply(substitution), at: location)
         case let (.row(.unknown(ty)), .row(rhs)):
-            return unify(all: rhs.types, with: ty, at: range)
+            return unify(all: rhs.types, with: ty, at: location)
         case let (.row(lhs), .row(.unknown(ty))):
-            return unify(all: lhs.types, with: ty, at: range)
+            return unify(all: lhs.types, with: ty, at: location)
         case let (.row(rhs), .row(lhs)) where lhs.count == rhs.count:
-            return unify(rhs.types, with: lhs.types, at: range)
+            return unify(rhs.types, with: lhs.types, at: location)
         case let (.row(row), t):
             if row.count == 1, let first = row.first {
-                unify(first, with: t, at: range)
+                unify(first, with: t, at: location)
             } else {
-                diagnostics.add(.unableToUnify(type, with: other, at: range))
+                diagnostics.add(.unableToUnify(type, with: other, at: location))
             }
         case let (t, .row(row)):
             if row.count == 1, let first = row.first {
-                unify(first, with: t, at: range)
+                unify(first, with: t, at: location)
             } else {
-                diagnostics.add(.unableToUnify(type, with: other, at: range))
+                diagnostics.add(.unableToUnify(type, with: other, at: location))
             }
         case let (.alias(t1, _), t2):
-            return unify(t1, with: t2, at: range)
+            return unify(t1, with: t2, at: location)
         case let (t1, .alias(t2, _)):
-            return unify(t2, with: t1, at: range)
+            return unify(t2, with: t1, at: location)
         default:
             guard type.root != other.root else { return }
-            diagnostics.add(.unableToUnify(type, with: other, at: range))
+            diagnostics.add(.unableToUnify(type, with: other, at: location))
         }
     }
     
     /// Unifies all types together.
     mutating func unify(
         all tys: [Type],
-        at range: SourceLocation
+        at location: SourceLocation
     ) {
         var tys = tys.makeIterator()
         
         guard var lastTy = tys.next() else { return }
         
         while let ty = tys.next() {
-            unify(lastTy, with: ty, at: range)
+            unify(lastTy, with: ty, at: location)
             lastTy = ty.apply(substitution)
         }
     }
@@ -249,7 +249,7 @@ extension InferenceState {
     private mutating func unify<T1: Collection, T2: Collection>(
         _ tys: T1,
         with others: T2,
-        at range: SourceLocation
+        at location: SourceLocation
     )
         where T1.Element == Type, T2.Element == Type
     {
@@ -262,7 +262,7 @@ extension InferenceState {
             unify(
                 ty1.apply(substitution),
                 with: ty2.apply(substitution),
-                at: range
+                at: location
             )
         }
     }
@@ -271,12 +271,12 @@ extension InferenceState {
     private mutating func unify<T1: Collection>(
         all tys: T1,
         with ty1: Type,
-        at range: SourceLocation
+        at location: SourceLocation
     )
         where T1.Element == Type
     {
         for ty2 in tys {
-            unify(ty1.apply(substitution), with: ty2.apply(substitution), at: range)
+            unify(ty1.apply(substitution), with: ty2.apply(substitution), at: location)
         }
     }
     
@@ -284,14 +284,14 @@ extension InferenceState {
     private mutating func validateCanUnify(
         type: Type,
         with tvKind: TypeVariable.Kind,
-        at range: SourceLocation
+        at location: SourceLocation
     ) {
         if case let .alias(t, _) = type {
-            return validateCanUnify(type: t, with: tvKind, at: range)
+            return validateCanUnify(type: t, with: tvKind, at: location)
         }
         
         if case let .optional(t) = type {
-            return validateCanUnify(type: t, with: tvKind, at: range)
+            return validateCanUnify(type: t, with: tvKind, at: location)
         }
         
         switch tvKind {
@@ -301,13 +301,13 @@ extension InferenceState {
             switch type {
             case .int, .integer, .real: return
             default:
-                diagnostics.add(.unableToUnify(type, with: .integer, at: range))
+                diagnostics.add(.unableToUnify(type, with: .integer, at: location))
             }
         case .float:
             switch type {
             case .int, .integer, .real: return
             default:
-                diagnostics.add(.unableToUnify(type, with: .real, at: range))
+                diagnostics.add(.unableToUnify(type, with: .real, at: location))
             }
         }
     }

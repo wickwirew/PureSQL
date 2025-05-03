@@ -22,16 +22,20 @@ struct ParserState {
         self.peek2 = self.lexer.next()
     }
 
-    var range: SourceLocation {
-        return current.range
+    var location: SourceLocation {
+        return current.location
     }
     
-    func range(from range: borrowing SourceLocation) -> SourceLocation {
-        return range.upTo(current.range)
+    /// Returns the source location from the starting `range` up to, but not
+    /// including the `current` token of the parser
+    func location(from range: borrowing SourceLocation) -> SourceLocation {
+        return range.upTo(current.location)
     }
     
-    func range(from token: borrowing Token) -> SourceLocation {
-        return token.range.upTo(current.range)
+    /// Returns the source location from the starting `token` up to, but not
+    /// including the `current` token of the parser
+    func location(from token: borrowing Token) -> SourceLocation {
+        return token.location.upTo(current.location)
     }
     
     func skippingOne() -> ParserState {
@@ -78,7 +82,7 @@ struct ParserState {
     /// Consumes the next token and validates it is of the input kind
     mutating func consume(_ kind: Token.Kind) {
         guard current.kind == kind else {
-            diagnostics.add(.unexpectedToken(of: current.kind, expected: kind, at: range))
+            diagnostics.add(.unexpectedToken(of: current.kind, expected: kind, at: location))
             return
         }
         
@@ -88,8 +92,8 @@ struct ParserState {
     /// Consumes the next token and validates it is of the input kind
     mutating func take(_ kind: Token.Kind) -> Token {
         guard current.kind == kind else {
-            diagnostics.add(.unexpectedToken(of: current.kind, expected: kind, at: range))
-            return Token(kind: kind, range: current.range)
+            diagnostics.add(.unexpectedToken(of: current.kind, expected: kind, at: location))
+            return Token(kind: kind, location: current.location)
         }
         
         return take()
@@ -97,7 +101,7 @@ struct ParserState {
     
     mutating func skip(_ kind: Token.Kind) {
         if current.kind != kind {
-            diagnostics.add(.unexpectedToken(of: current.kind, expected: kind, at: range))
+            diagnostics.add(.unexpectedToken(of: current.kind, expected: kind, at: location))
         }
         
         skip()

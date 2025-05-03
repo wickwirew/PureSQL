@@ -15,7 +15,7 @@ struct SyntaxId: Hashable, Sendable {
 
 protocol Syntax {
     var id: SyntaxId { get }
-    var range: SourceLocation { get }
+    var location: SourceLocation { get }
 }
 
 struct InsertStmtSyntax: StmtSyntax, Syntax {
@@ -28,16 +28,16 @@ struct InsertStmtSyntax: StmtSyntax, Syntax {
     let columns: [IdentifierSyntax]?
     let values: Values? // if nil, default values
     let returningClause: ReturningClauseSyntax?
-    let range: SourceLocation
+    let location: SourceLocation
 
     struct Values: Syntax {
         let id: SyntaxId
         let select: SelectStmtSyntax
         let upsertClause: UpsertClauseSyntax?
         
-        var range: SourceLocation {
-            let lower = select.range
-            let upper = upsertClause?.range ?? select.range
+        var location: SourceLocation {
+            let lower = select.location
+            let upper = upsertClause?.location ?? select.location
             return lower.spanning(upper)
         }
     }
@@ -45,7 +45,7 @@ struct InsertStmtSyntax: StmtSyntax, Syntax {
     struct Action: Syntax {
         let id: SyntaxId
         let kind: Kind
-        let range: SourceLocation
+        let location: SourceLocation
         
         enum Kind {
             case replace
@@ -61,7 +61,7 @@ struct InsertStmtSyntax: StmtSyntax, Syntax {
 struct OrSyntax: Syntax, CustomStringConvertible {
     let id: SyntaxId
     let kind: Kind
-    let range: SourceLocation
+    let location: SourceLocation
     
     enum Kind: String {
         case abort
@@ -79,7 +79,7 @@ struct OrSyntax: Syntax, CustomStringConvertible {
 struct ReturningClauseSyntax: Syntax {
     let id: SyntaxId
     let values: [Value]
-    let range: SourceLocation
+    let location: SourceLocation
 
     enum Value {
         case expr(expr: ExpressionSyntax, alias: AliasSyntax?)
@@ -91,7 +91,7 @@ struct UpsertClauseSyntax: Syntax {
     let id: SyntaxId
     let confictTarget: ConflictTarget?
     let doAction: Do
-    let range: SourceLocation
+    let location: SourceLocation
 
     struct ConflictTarget {
         let columns: [IndexedColumnSyntax]
@@ -109,20 +109,20 @@ struct SetActionSyntax: Syntax {
     let column: Column
     let expr: ExpressionSyntax
     
-    var range: SourceLocation {
-        return column.range.spanning(expr.range)
+    var location: SourceLocation {
+        return column.location.spanning(expr.location)
     }
 
     enum Column {
         case single(IdentifierSyntax)
         case list([IdentifierSyntax])
         
-        var range: SourceLocation {
+        var location: SourceLocation {
             switch self {
-            case .single(let i): return i.range
+            case .single(let i): return i.location
             case .list(let l):
-                guard let lower = l.first?.range,
-                      let upper = l.last?.range else {
+                guard let lower = l.first?.location,
+                      let upper = l.last?.location else {
                     return .empty
                 }
                 
@@ -142,7 +142,7 @@ struct UpdateStmtSyntax: StmtSyntax {
     let from: FromSyntax?
     let whereExpr: ExpressionSyntax?
     let returningClause: ReturningClauseSyntax?
-    let range: SourceLocation
+    let location: SourceLocation
     
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
         return visitor.visit(self)
@@ -154,7 +154,7 @@ struct QualifiedTableNameSyntax: Syntax {
     let tableName: TableNameSyntax
     let alias: AliasSyntax?
     let indexed: Indexed?
-    let range: SourceLocation
+    let location: SourceLocation
 
     enum Indexed {
         case not

@@ -72,14 +72,14 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
             guard let result = env[tableName.value] else {
                 diagnostics.add(.init(
                     "Table named '\(expr)' does not exist",
-                    at: expr.range
+                    at: expr.location
                 ))
                 return inferenceState.errorType(for: expr)
             }
             
             // TODO: Maybe put this in the scheme instantiation?
             if result.isAmbiguous {
-                diagnostics.add(.ambiguous(tableName.value, at: tableName.range))
+                diagnostics.add(.ambiguous(tableName.value, at: tableName.location))
             }
             
             // Table may be optionally included
@@ -92,7 +92,7 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
             guard case let .row(.named(columns)) = tableTy else {
                 diagnostics.add(.init(
                     "'\(tableName)' is not a row, got \(tableTy)",
-                    at: expr.range
+                    at: expr.location
                 ))
                 return inferenceState.errorType(for: expr)
             }
@@ -100,7 +100,7 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
             guard let type = columns[expr.column.value] else {
                 diagnostics.add(.init(
                     "Table '\(tableName)' has no column '\(expr.column)'",
-                    at: expr.range
+                    at: expr.location
                 ))
                 return inferenceState.errorType(for: expr)
             }
@@ -110,14 +110,14 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
             guard let result = env[expr.column.value] else {
                 diagnostics.add(.init(
                     "Column '\(expr.column)' does not exist",
-                    at: expr.range
+                    at: expr.location
                 ))
                 return inferenceState.errorType(for: expr)
             }
             
             // TODO: Maybe put this in the scheme instantiation?
             if result.isAmbiguous {
-                diagnostics.add(.ambiguous(expr.column.value, at: expr.column.range))
+                diagnostics.add(.ambiguous(expr.column.value, at: expr.column.location))
             }
             
             // Make sure to record the type in the inference state since
@@ -133,14 +133,14 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         guard let scheme = env[prefix: expr.operator.operator] else {
             diagnostics.add(.init(
                 "'\(expr.operator.operator)' is not a valid prefix operator",
-                at: expr.operator.range
+                at: expr.operator.location
             ))
             return inferenceState.errorType(for: expr)
         }
         
         let tv = inferenceState.freshTyVar(for: expr)
         let fnType = inferenceState.instantiate(scheme)
-        inferenceState.unify(fnType, with: .fn(params: [rhs], ret: tv), at: expr.range)
+        inferenceState.unify(fnType, with: .fn(params: [rhs], ret: tv), at: expr.location)
         return inferenceState.solution(for: tv)
     }
     
@@ -151,14 +151,14 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         guard let scheme = env[infix: expr.operator.operator] else {
             diagnostics.add(.init(
                 "'\(expr.operator.operator)' is not a valid infix operator",
-                at: expr.operator.range
+                at: expr.operator.location
             ))
             return .error
         }
         
         let tv = inferenceState.freshTyVar(for: expr)
         let fnType = inferenceState.instantiate(scheme)
-        inferenceState.unify(fnType, with: .fn(params: [inferenceState.solution(for: lTy), rTy], ret: tv), at: expr.range)
+        inferenceState.unify(fnType, with: .fn(params: [inferenceState.solution(for: lTy), rTy], ret: tv), at: expr.location)
         return inferenceState.solution(for: tv)
     }
     
@@ -168,14 +168,14 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         guard let scheme = env[postfix: expr.operator.operator] else {
             diagnostics.add(.init(
                 "'\(expr.operator.operator)' is not a valid postfix operator",
-                at: expr.operator.range
+                at: expr.operator.location
             ))
             return .error
         }
         
         let tv = inferenceState.freshTyVar(for: expr)
         let fnType = inferenceState.instantiate(scheme)
-        inferenceState.unify(fnType, with: .fn(params: [lhs], ret: tv), at: expr.range)
+        inferenceState.unify(fnType, with: .fn(params: [lhs], ret: tv), at: expr.location)
         return inferenceState.solution(for: tv)
     }
     
@@ -185,10 +185,10 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         let upper = expr.upper.accept(visitor: &self)
         let allTypes = [value, lower, upper]
         
-        inferenceState.unify(all: allTypes, at: expr.range)
+        inferenceState.unify(all: allTypes, at: expr.location)
         
         let between = inferenceState.instantiate(Builtins.between)
-        inferenceState.unify(between, with: .fn(params: allTypes, ret: .bool), at: expr.range)
+        inferenceState.unify(between, with: .fn(params: allTypes, ret: .bool), at: expr.location)
         return .bool
     }
     
@@ -196,12 +196,12 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         let argTys = typeCheck(expr.args)
         
         guard let scheme = env[function: expr.name.value, argCount: argTys.count] else {
-            diagnostics.add(.init("No such function '\(expr.name)' exits", at: expr.range))
+            diagnostics.add(.init("No such function '\(expr.name)' exits", at: expr.location))
             return .error
         }
         
         let tv = inferenceState.freshTyVar(for: expr)
-        inferenceState.unify(inferenceState.instantiate(scheme), with: .fn(params: argTys, ret: tv), at: expr.range)
+        inferenceState.unify(inferenceState.instantiate(scheme), with: .fn(params: argTys, ret: tv), at: expr.location)
         return inferenceState.solution(for: tv)
     }
     
@@ -234,8 +234,8 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
             thenTys.append(elseType)
         }
         
-        inferenceState.unify(all: whenTys, at: expr.range)
-        inferenceState.unify(all: thenTys, at: expr.range)
+        inferenceState.unify(all: whenTys, at: expr.location)
+        inferenceState.unify(all: thenTys, at: expr.location)
         
         return inferenceState.solution(for: ret)
     }

@@ -53,14 +53,14 @@ public struct Parameter<Name> {
     /// The explicit or inferred name of the parameter.
     public let name: Name
     /// Any place in the source the parameter exists
-    public let ranges: [SourceLocation]
+    public let locations: [SourceLocation]
     
     func with<NewName>(name: NewName) -> Parameter<NewName> {
         return Parameter<NewName>(
             type: type,
             index: index,
             name: name,
-            ranges: ranges
+            locations: locations
         )
     }
 }

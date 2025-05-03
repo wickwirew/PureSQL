@@ -60,10 +60,10 @@ extension ExprSyntaxVisitor {
     }
 }
 
-struct OperatorSyntax: CustomStringConvertible {
+struct OperatorSyntax: CustomStringConvertible, Syntax {
     let id: SyntaxId
     let `operator`: Operator
-    let range: SourceLocation
+    let location: SourceLocation
     
     var description: String {
         return `operator`.description
@@ -73,7 +73,7 @@ struct OperatorSyntax: CustomStringConvertible {
 struct LiteralExprSyntax: ExprSyntax {
     let id: SyntaxId
     let kind: Kind
-    let range: SourceLocation
+    let location: SourceLocation
     
     enum Kind {
         case numeric(NumericSyntax, isInt: Bool)
@@ -161,21 +161,21 @@ indirect enum ExpressionSyntax: ExprSyntax {
         }
     }
     
-    var range: SourceLocation {
+    var location: SourceLocation {
         return switch self {
-        case let .literal(expr): expr.range
-        case let .bindParameter(expr): expr.range
-        case let .column(expr): expr.range
-        case let .prefix(expr): expr.range
-        case let .infix(expr): expr.range
-        case let .postfix(expr): expr.range
-        case let .between(expr): expr.range
-        case let .fn(expr): expr.range
-        case let .cast(expr): expr.range
-        case let .grouped(expr): expr.range
-        case let .caseWhenThen(expr): expr.range
-        case let .select(expr): expr.range
-        case let .invalid(expr): expr.range
+        case let .literal(expr): expr.location
+        case let .bindParameter(expr): expr.location
+        case let .column(expr): expr.location
+        case let .prefix(expr): expr.location
+        case let .infix(expr): expr.location
+        case let .postfix(expr): expr.location
+        case let .between(expr): expr.location
+        case let .fn(expr): expr.location
+        case let .cast(expr): expr.location
+        case let .grouped(expr): expr.location
+        case let .caseWhenThen(expr): expr.location
+        case let .select(expr): expr.location
+        case let .invalid(expr): expr.location
         }
     }
     
@@ -225,7 +225,7 @@ extension ExpressionSyntax: CustomStringConvertible {
 struct GroupedExprSyntax: ExprSyntax, CustomStringConvertible {
     let id: SyntaxId
     let exprs: [ExpressionSyntax]
-    let range: SourceLocation
+    let location: SourceLocation
     
     var description: String {
         return "(\(exprs.map(\.description).joined(separator: ", ")))"
@@ -245,8 +245,8 @@ struct PrefixExprSyntax: ExprSyntax, CustomStringConvertible {
         return "(\(`operator`)\(rhs))"
     }
     
-    var range: SourceLocation {
-        return `operator`.range.spanning(rhs.range)
+    var location: SourceLocation {
+        return `operator`.location.spanning(rhs.location)
     }
     
     func accept<V: ExprSyntaxVisitor>(visitor: inout V) -> V.ExprOutput {
@@ -263,8 +263,8 @@ struct PostfixExprSyntax: ExprSyntax, CustomStringConvertible {
         return "(\(lhs) \(`operator`))"
     }
     
-    var range: SourceLocation {
-        return lhs.range.spanning(`operator`.range)
+    var location: SourceLocation {
+        return lhs.location.spanning(`operator`.location)
     }
     
     func accept<V: ExprSyntaxVisitor>(visitor: inout V) -> V.ExprOutput {
@@ -278,8 +278,8 @@ struct InfixExprSyntax: ExprSyntax, CustomStringConvertible {
     let `operator`: OperatorSyntax
     let rhs: ExpressionSyntax
     
-    var range: SourceLocation {
-        return lhs.range.spanning(rhs.range)
+    var location: SourceLocation {
+        return lhs.location.spanning(rhs.location)
     }
     
     var description: String {
@@ -298,8 +298,8 @@ struct BetweenExprSyntax: ExprSyntax, CustomStringConvertible {
     let lower: ExpressionSyntax
     let upper: ExpressionSyntax
     
-    var range: SourceLocation {
-        return value.range.spanning(upper.range)
+    var location: SourceLocation {
+        return value.location.spanning(upper.location)
     }
     
     var description: String {
@@ -316,7 +316,7 @@ struct FunctionExprSyntax: ExprSyntax, CustomStringConvertible {
     let table: IdentifierSyntax?
     let name: IdentifierSyntax
     let args: [ExpressionSyntax]
-    let range: SourceLocation
+    let location: SourceLocation
     
     var description: String {
         return "\(table.map { "\($0)." } ?? "")\(name)(\(args.map(\.description).joined(separator: ", ")))"
@@ -331,7 +331,7 @@ struct CastExprSyntax: ExprSyntax, CustomStringConvertible {
     let id: SyntaxId
     let expr: ExpressionSyntax
     let ty: TypeNameSyntax
-    let range: SourceLocation
+    let location: SourceLocation
     
     var description: String {
         return "CAST(\(expr) AS \(ty))"
@@ -346,7 +346,7 @@ struct BindParameterSyntax: ExprSyntax, Hashable, CustomStringConvertible {
     let id: SyntaxId
     let kind: Kind
     let index: Index
-    let range: SourceLocation
+    let location: SourceLocation
     
     typealias Index = Int
     
@@ -632,9 +632,9 @@ struct ColumnExprSyntax: ExprSyntax, CustomStringConvertible {
             .joined(separator: ".")
     }
     
-    var range: SourceLocation {
+    var location: SourceLocation {
         let first = schema ?? table ?? column
-        return first.range.spanning(column.range)
+        return first.location.spanning(column.location)
     }
     
     func accept<V: ExprSyntaxVisitor>(visitor: inout V) -> V.ExprOutput {
@@ -647,7 +647,7 @@ struct CaseWhenThenExprSyntax: ExprSyntax {
     let `case`: ExpressionSyntax?
     let whenThen: [WhenThen]
     let `else`: ExpressionSyntax?
-    let range: SourceLocation
+    let location: SourceLocation
     
     struct WhenThen {
         let when: ExpressionSyntax
@@ -680,8 +680,8 @@ struct SelectExprSyntax: ExprSyntax {
     let id: SyntaxId
     let select: SelectStmtSyntax
     
-    var range: SourceLocation {
-        return select.range
+    var location: SourceLocation {
+        return select.location
     }
     
     func accept<V>(visitor: inout V) -> V.ExprOutput where V : ExprSyntaxVisitor {
@@ -691,7 +691,7 @@ struct SelectExprSyntax: ExprSyntax {
 
 struct InvalidExprSyntax: ExprSyntax, CustomStringConvertible {
     let id: SyntaxId
-    let range: SourceLocation
+    let location: SourceLocation
     
     var description: String {
         return "<<invalid>>"

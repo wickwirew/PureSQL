@@ -76,7 +76,7 @@ struct StmtTypeChecker {
                     type: parameter.type,
                     index: parameter.index,
                     name: nameInferrer.parameterName(at: parameter.index),
-                    ranges: parameter.ranges
+                    locations: parameter.locations
                 )
             }
         
@@ -186,7 +186,7 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
         if let firstName = stmt.columnNames.first, select.columns.count != stmt.columnNames.count {
             diagnostics.add(.init(
                 "SELECT returns \(select.columns.count) columns but only have \(stmt.columnNames.count) names defined",
-                at: firstName.range
+                at: firstName.location
             ))
         }
         
@@ -224,7 +224,7 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
         case .fts5:
             typeCheck(fts5Table: stmt)
         case .unknown:
-            diagnostics.add(.init("Unknown virtual table module name", at: stmt.moduleName.range))
+            diagnostics.add(.init("Unknown virtual table module name", at: stmt.moduleName.location))
         }
         
         return .empty
@@ -244,7 +244,7 @@ extension StmtTypeChecker {
         case let .single(selectCore):
              typeCheck(
                 select: selectCore,
-                at: select.range,
+                at: select.location,
                 potentialNames: potentialNames
             )
         case .compound:
@@ -291,7 +291,7 @@ extension StmtTypeChecker {
         
         if let values = insert.values {
             let resultColumns = typeCheck(select: values.select, potentialNames: insert.columns)
-            inferenceState.unify(inputType, with: .row(.named(resultColumns.columns)), at: insert.range)
+            inferenceState.unify(inputType, with: .row(.named(resultColumns.columns)), at: insert.location)
         } else {
             // TODO: Using 'DEFALUT VALUES' make sure all columns
             // TODO: actually have default values or null
@@ -331,13 +331,13 @@ extension StmtTypeChecker {
                     return .empty
                 }
                 
-                inferenceState.unify(column, with: valueType, at: set.range)
+                inferenceState.unify(column, with: valueType, at: set.location)
             // SET (column1, column2) = (value1, value2)
             case let .list(columnNames):
                 // TODO: Names will not be inferred here. Names only handles
                 // TODO: one value at a time. Not an array of values.
                 let columns = columns(for: columnNames, from: table)
-                inferenceState.unify(columns, with: valueType, at: set.range)
+                inferenceState.unify(columns, with: valueType, at: set.location)
             }
         }
         
@@ -413,7 +413,7 @@ extension StmtTypeChecker {
                 let (type, names) = typeCheck(expr)
                 
                 guard let name = alias?.identifier.value ?? names.proposedName else {
-                    diagnostics.add(.nameRequired(at: expr.range))
+                    diagnostics.add(.nameRequired(at: expr.location))
                     continue
                 }
                 
@@ -438,7 +438,7 @@ extension StmtTypeChecker {
             if columnTypes.count != cte.columns.count {
                 diagnostics.add(.init(
                     "CTE expected \(cte.columns.count) columns, but got \(columnTypes.count)",
-                    at: cte.range
+                    at: cte.location
                 ))
             }
             
@@ -527,7 +527,7 @@ extension StmtTypeChecker {
                 if type != .bool, type != .integer {
                     diagnostics.add(.init(
                         "HAVING clause should return a 'BOOL' or 'INTEGER', got '\(type)'",
-                        at: having.range
+                        at: having.location
                     ))
                 }
             }
@@ -553,7 +553,7 @@ extension StmtTypeChecker {
         if type != .bool, type != .integer {
             diagnostics.add(.init(
                 "WHERE clause should return a 'BOOL' or 'INTEGER', got '\(type)'",
-                at: expr.range
+                at: expr.location
             ))
         }
     }
@@ -581,7 +581,7 @@ extension StmtTypeChecker {
                 if let name = alias?.identifier.value ?? names.proposedName {
                     columns[name] = type
                 } else {
-                    diagnostics.add(.nameRequired(at: expr.range))
+                    diagnostics.add(.nameRequired(at: expr.location))
                 }
                 
                 // We selected a single column, so clear out the table
@@ -591,7 +591,7 @@ extension StmtTypeChecker {
                 if let tableName {
                     if let table = env[tableName.value]?.type {
                         guard case let .row(.named(tableColumns)) = table else {
-                            diagnostics.add(.init("'\(tableName)' is not a table", at: tableName.range))
+                            diagnostics.add(.init("'\(tableName)' is not a table", at: tableName.location))
                             continue
                         }
                         
@@ -601,7 +601,7 @@ extension StmtTypeChecker {
                         
                         setTableIfEmpty(to: tableName.value)
                     } else {
-                        diagnostics.add(.init("Table '\(tableName)' does not exist", at: tableName.range))
+                        diagnostics.add(.init("Table '\(tableName)' does not exist", at: tableName.location))
                     }
                 } else {
                     for (name, type) in env {
@@ -635,7 +635,7 @@ extension StmtTypeChecker {
             if type != .bool, type != .integer {
                 diagnostics.add(.init(
                     "JOIN clause should return a 'BOOL' or 'INTEGER', got '\(type)'",
-                    at: expression.range
+                    at: expression.location
                 ))
             }
         case let .using(columns):
@@ -740,7 +740,7 @@ extension StmtTypeChecker {
             && !createTable.options.kind.contains(.strict) {
             diagnostics.add(.init(
                 "Missing STRICT table option",
-                at: createTable.range,
+                at: createTable.location,
                 suggestion: .append(" STRICT")
             ))
         }
@@ -777,10 +777,10 @@ extension StmtTypeChecker {
 
         switch table.kind {
         case .fts5:
-            diagnostics.add(.init("Cannot alter virtual table", at: alterTable.name.range))
+            diagnostics.add(.init("Cannot alter virtual table", at: alterTable.name.location))
             return
         case .view:
-            diagnostics.add(.init("Cannot alter view", at: alterTable.name.range))
+            diagnostics.add(.init("Cannot alter view", at: alterTable.name.location))
             return
         default:
             break
@@ -858,7 +858,7 @@ extension StmtTypeChecker {
             if let constraint = byTableConstraints.first {
                 diagnostics.add(.init(
                     "CREATE TABLE AS SELECT cannot have any constraints",
-                    at: constraint.1.range
+                    at: constraint.1.location
                 ))
             }
             
@@ -868,11 +868,11 @@ extension StmtTypeChecker {
         // Make sure only 1 primary key constraint is added.
         // This allows for PRIMARY KEY(foo, bar) but not for multiple of those constraints
         if !byColumnConstraints.isEmpty, let constraint = byTableConstraints.first {
-            diagnostics.add(.alreadyHasPrimaryKey(stmt.name.value, at: constraint.1.range))
+            diagnostics.add(.alreadyHasPrimaryKey(stmt.name.value, at: constraint.1.location))
         } else if byColumnConstraints.count > 1, let constraint = byColumnConstraints.last {
-            diagnostics.add(.alreadyHasPrimaryKey(stmt.name.value, at: constraint.range))
+            diagnostics.add(.alreadyHasPrimaryKey(stmt.name.value, at: constraint.location))
         } else if byTableConstraints.count > 1, let constraint = byTableConstraints.last {
-            diagnostics.add(.alreadyHasPrimaryKey(stmt.name.value, at: constraint.1.range))
+            diagnostics.add(.alreadyHasPrimaryKey(stmt.name.value, at: constraint.1.location))
         }
         
         if !byColumnConstraints.isEmpty && byTableConstraints.isEmpty {
@@ -902,7 +902,7 @@ extension StmtTypeChecker {
             switch argument {
             case let .fts5Column(name, typeName, notNull, _):
                 guard let typeName = typeName?.name.value else {
-                    diagnostics.add(.init("Missing column type", at: name.range))
+                    diagnostics.add(.init("Missing column type", at: name.location))
                     continue
                 }
                 

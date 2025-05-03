@@ -40,7 +40,7 @@ struct PragmaAnalyzer {
         switch pragma.name.value {
         case FeatherPragmas.Keys.requireStrictTables:
             guard let expr = pragma.value else {
-                diagnostics.add(.init("Missing value, expected boolean", at: pragma.range))
+                diagnostics.add(.init("Missing value, expected boolean", at: pragma.location))
                 return
             }
             
@@ -52,7 +52,7 @@ struct PragmaAnalyzer {
         case "journal_mode":
             diagnostics.add(.init(
                 "Cannot set 'journal_mode', this is set by database connection",
-                at: pragma.range
+                at: pragma.location
             ))
         default:
             // TODO: Eventually analyze all pragmas but initially out of scope

@@ -25,10 +25,10 @@ struct Rewriter {
     mutating func removeNonSql<S: StmtSyntax>(_ stmt: S, in source: String) -> String {
         let rangesToRemove = stmt.accept(visitor: &self)
         
-        guard !rangesToRemove.isEmpty else { return "\(source[stmt.range.range]);" }
+        guard !rangesToRemove.isEmpty else { return "\(source[stmt.location.range]);" }
         
         var final = ""
-        var start = stmt.range.lowerBound
+        var start = stmt.location.lowerBound
         
         // Remove in reverse so the range start does not change.
         for range in rangesToRemove.sorted(by: { $0.lowerBound < $1.lowerBound }) {
@@ -36,8 +36,8 @@ struct Rewriter {
             start = range.upperBound
         }
         
-        if start < stmt.range.upperBound {
-            final.append(contentsOf: source[start..<stmt.range.upperBound])
+        if start < stmt.location.upperBound {
+            final.append(contentsOf: source[start..<stmt.location.upperBound])
         }
         
         return "\(final.trimmingCharacters(in: .whitespaces));"
@@ -61,13 +61,13 @@ struct Rewriter {
         let rowRanges: [(Range<Substring.Index>, Parameter<String>)] = parameters
             .compactMap { param -> [(Range<Substring.Index>, Parameter<String>)]? in
                 guard case .row = param.type else { return nil }
-                return param.ranges.map { ($0.range, param) }
+                return param.locations.map { ($0.range, param) }
             }
             .flatMap(\.self)
             .sorted { $0.0.lowerBound < $1.0.lowerBound }
         
         guard !rowRanges.isEmpty else {
-            return [.text(source[stmt.range.range])]
+            return [.text(source[stmt.location.range])]
         }
         
         guard rangesToRemove.isEmpty else {
@@ -83,7 +83,7 @@ struct Rewriter {
         }
         
         var segments: [SourceSegment] = []
-        var startIndex = stmt.range.lowerBound
+        var startIndex = stmt.location.lowerBound
         
         for (rowRange, param) in rowRanges {
             let textRange = startIndex..<rowRange.lowerBound
@@ -95,8 +95,8 @@ struct Rewriter {
         
         // If the last range wasnt to the end of the string
         // then make sure to append the rest
-        if startIndex < stmt.range.upperBound {
-            let textRange = startIndex..<stmt.range.upperBound
+        if startIndex < stmt.location.upperBound {
+            let textRange = startIndex..<stmt.location.upperBound
             let text = source[textRange]
             segments.append(.text(text))
         }
@@ -109,7 +109,7 @@ extension Rewriter: StmtSyntaxVisitor {
     func visit(_ stmt: borrowing CreateTableStmtSyntax) -> [Range<Substring.Index>] {
         switch stmt.kind {
         case .columns(let columns):
-            return columns.values.compactMap { $0.type.alias?.range.range }
+            return columns.values.compactMap { $0.type.alias?.location.range }
         case .select:
             return []
         }
@@ -117,7 +117,7 @@ extension Rewriter: StmtSyntaxVisitor {
     
     func visit(_ stmt: borrowing AlterTableStmtSyntax) -> [Range<Substring.Index>] {
         return switch stmt.kind {
-        case .addColumn(let c): c.type.alias.map { [$0.range.range] } ?? []
+        case .addColumn(let c): c.type.alias.map { [$0.location.range] } ?? []
         default: []
         }
     }
@@ -134,7 +134,7 @@ extension Rewriter: StmtSyntaxVisitor {
     
     func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> [Range<Substring.Index>] {
         // Remove the `DEFINE QUERY name AS`
-        return [stmt.range.lowerBound..<stmt.statement.range.lowerBound]
+        return [stmt.location.lowerBound..<stmt.statement.location.lowerBound]
     }
     
     func visit(_ stmt: borrowing PragmaStmt) -> [Range<Substring.Index>] { [] }
@@ -152,8 +152,8 @@ extension Rewriter: StmtSyntaxVisitor {
     func visit(_ stmt: borrowing CreateVirtualTableStmtSyntax) -> [Range<Substring.Index>] {
         return stmt.arguments.flatMap { argument -> [Range<Substring.Index>] in
             guard case let .fts5Column(_, typeName, notNull, _) = argument else { return [] }
-            if let typeName, let notNull { return [typeName.range.range, notNull.range] }
-            if let typeName { return [typeName.range.range] }
+            if let typeName, let notNull { return [typeName.location.range, notNull.range] }
+            if let typeName { return [typeName.location.range] }
             if let notNull { return [notNull.range] }
             return []
         }
