@@ -395,7 +395,7 @@ enum Parsers {
                 id: state.nextId(),
                 confictTarget: conflictTarget,
                 doAction: .nothing,
-                range: on.range.lowerBound ..< state.current.range.lowerBound
+                range: on.range.spanning(state.current.range)
             )
         }
         
@@ -414,7 +414,7 @@ enum Parsers {
             id: state.nextId(),
             confictTarget: conflictTarget,
             doAction: .updateSet(sets: sets, where: whereExpr),
-            range: on.range.lowerBound ..< state.current.range.lowerBound
+            range: on.range.spanning(state.current.range)
         )
     }
     
@@ -1213,7 +1213,7 @@ enum Parsers {
             name: names.table,
             schemaName: names.schema,
             kind: kind,
-            range: alter.range.lowerBound..<state.current.range.lowerBound
+            range: alter.range.spanning(state.current.range)
         )
     }
     
@@ -1282,7 +1282,7 @@ enum Parsers {
                 kind: .columns(columns),
                 constraints: constraints,
                 options: options,
-                range: create.range.lowerBound..<state.current.range.lowerBound
+                range: create.range.spanning(state.current.range)
             )
         }
     }
@@ -1336,7 +1336,7 @@ enum Parsers {
                 
                 // This isnt allowed in FTS5, however will will allow it
                 // so we can better generate the column types
-                let notNull: Range<Substring.Index>?
+                let notNull: SourceLocation?
                 if state.current.kind == .not {
                     let not = state.take(.not)
                     state.consume(.null)
@@ -1975,7 +1975,7 @@ enum Parsers {
             )
         case .colon:
             let symbol = identifier(state: &state)
-            let range = token.range.lowerBound..<symbol.range.upperBound
+            let range = token.range.spanning(symbol.range)
             let name = IdentifierSyntax(value: ":\(symbol)", range: range)
             let index = state.indexForParam(named: name.value)
             return BindParameterSyntax(
@@ -1986,13 +1986,13 @@ enum Parsers {
             )
         case .at:
             let symbol = identifier(state: &state)
-            let range = token.range.lowerBound..<symbol.range.upperBound
+            let range = token.range.spanning(symbol.range)
             let name = IdentifierSyntax(value: "@\(symbol)", range: range)
             let index = state.indexForParam(named: name.value)
             return BindParameterSyntax(id: state.nextId(), kind: .named(name), index: index, range: range)
         case .dollarSign:
             let segments = delimited(by: .colon, and: .colon, state: &state, element: identifier)
-            let nameRange = token.range.lowerBound..<(segments.last?.range.upperBound ?? state.current.range.upperBound)
+            let nameRange = token.range.spanning(segments.last?.range ?? state.current.range)
             let fullName = segments.map(\.value)
                 .joined(separator: "::")[...]
             let suffix = take(if: .openParen, state: &state) { state in
@@ -2000,7 +2000,7 @@ enum Parsers {
             }
             
             if let suffix {
-                let range = token.range.lowerBound..<suffix.range.upperBound
+                let range = token.range.spanning(suffix.range)
                 let name = IdentifierSyntax(value: "$\(fullName)(\(suffix))", range: range)
                 let index = state.indexForParam(named: name.value)
                 return BindParameterSyntax(id: state.nextId(), kind: .named(name), index: index, range: range)
@@ -2041,7 +2041,7 @@ enum Parsers {
         case .is:
             if state.take(if: .distinct) {
                 let from = state.take(.from)
-                return OperatorSyntax(id: state.nextId(), operator: .isDistinctFrom, range: start.lowerBound..<from.range.upperBound)
+                return OperatorSyntax(id: state.nextId(), operator: .isDistinctFrom, range: start.spanning(from.range))
             } else {
                 return OperatorSyntax(id: state.nextId(), operator: .is, range: start)
             }
@@ -2051,13 +2051,13 @@ enum Parsers {
                 return OperatorSyntax(
                     id: state.nextId(),
                     operator: .isNotDistinctFrom,
-                    range: start.lowerBound..<from.range.upperBound
+                    range: start.spanning(from.range)
                 )
             } else {
                 return OperatorSyntax(
                     id: state.nextId(),
                     operator: .isNot,
-                    range: start.lowerBound..<state.current.range.upperBound
+                    range: start.spanning(state.current.range)
                 )
             }
         case .isNotDistinctFrom:
@@ -2076,7 +2076,7 @@ enum Parsers {
             id: state.nextId(),
             name: name,
             statement: stmt,
-            range: define.range.lowerBound..<state.current.range.lowerBound
+            range: define.range.spanning(state.current.range)
         )
     }
     

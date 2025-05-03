@@ -7,7 +7,7 @@
 
 struct Token {
     let kind: Kind
-    let range: Range<String.Index>
+    let range: SourceLocation
     
     static let keywords: [String: Kind] = [
         .abort,

@@ -15,7 +15,7 @@ struct SyntaxId: Hashable, Sendable {
 
 protocol Syntax {
     var id: SyntaxId { get }
-    var range: Range<Substring.Index> { get }
+    var range: SourceLocation { get }
 }
 
 struct InsertStmtSyntax: StmtSyntax, Syntax {
@@ -28,24 +28,24 @@ struct InsertStmtSyntax: StmtSyntax, Syntax {
     let columns: [IdentifierSyntax]?
     let values: Values? // if nil, default values
     let returningClause: ReturningClauseSyntax?
-    let range: Range<Substring.Index>
+    let range: SourceLocation
 
     struct Values: Syntax {
         let id: SyntaxId
         let select: SelectStmtSyntax
         let upsertClause: UpsertClauseSyntax?
         
-        var range: Range<Substring.Index> {
-            let lower = select.range.lowerBound
-            let upper = upsertClause?.range.upperBound ?? select.range.upperBound
-            return lower..<upper
+        var range: SourceLocation {
+            let lower = select.range
+            let upper = upsertClause?.range ?? select.range
+            return lower.spanning(upper)
         }
     }
 
     struct Action: Syntax {
         let id: SyntaxId
         let kind: Kind
-        let range: Range<Substring.Index>
+        let range: SourceLocation
         
         enum Kind {
             case replace
@@ -61,7 +61,7 @@ struct InsertStmtSyntax: StmtSyntax, Syntax {
 struct OrSyntax: Syntax, CustomStringConvertible {
     let id: SyntaxId
     let kind: Kind
-    let range: Range<Substring.Index>
+    let range: SourceLocation
     
     enum Kind: String {
         case abort
@@ -79,7 +79,7 @@ struct OrSyntax: Syntax, CustomStringConvertible {
 struct ReturningClauseSyntax: Syntax {
     let id: SyntaxId
     let values: [Value]
-    let range: Range<Substring.Index>
+    let range: SourceLocation
 
     enum Value {
         case expr(expr: ExpressionSyntax, alias: AliasSyntax?)
@@ -91,7 +91,7 @@ struct UpsertClauseSyntax: Syntax {
     let id: SyntaxId
     let confictTarget: ConflictTarget?
     let doAction: Do
-    let range: Range<Substring.Index>
+    let range: SourceLocation
 
     struct ConflictTarget {
         let columns: [IndexedColumnSyntax]
@@ -109,24 +109,24 @@ struct SetActionSyntax: Syntax {
     let column: Column
     let expr: ExpressionSyntax
     
-    var range: Range<Substring.Index> {
-        return column.range.lowerBound..<expr.range.upperBound
+    var range: SourceLocation {
+        return column.range.spanning(expr.range)
     }
 
     enum Column {
         case single(IdentifierSyntax)
         case list([IdentifierSyntax])
         
-        var range: Range<Substring.Index> {
+        var range: SourceLocation {
             switch self {
             case .single(let i): return i.range
             case .list(let l):
-                guard let lower = l.first?.range.lowerBound,
-                      let upper = l.last?.range.upperBound else {
+                guard let lower = l.first?.range,
+                      let upper = l.last?.range else {
                     return .empty
                 }
                 
-                return lower..<upper
+                return lower.spanning(upper)
             }
         }
     }
@@ -142,7 +142,7 @@ struct UpdateStmtSyntax: StmtSyntax {
     let from: FromSyntax?
     let whereExpr: ExpressionSyntax?
     let returningClause: ReturningClauseSyntax?
-    let range: Range<Substring.Index>
+    let range: SourceLocation
     
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
         return visitor.visit(self)
@@ -154,7 +154,7 @@ struct QualifiedTableNameSyntax: Syntax {
     let tableName: TableNameSyntax
     let alias: AliasSyntax?
     let indexed: Indexed?
-    let range: Range<Substring.Index>
+    let range: SourceLocation
 
     enum Indexed {
         case not

@@ -39,7 +39,7 @@ struct CreateTableStmtSyntax: StmtSyntax {
     let kind: Kind
     let constraints: [TableConstraintSyntax]
     let options: TableOptionsSyntax
-    let range: Range<String.Index>
+    let range: SourceLocation
 
     typealias Columns = OrderedDictionary<IdentifierSyntax, ColumnDefSyntax>
     
@@ -58,7 +58,7 @@ struct AlterTableStmtSyntax: StmtSyntax {
     let name: IdentifierSyntax
     let schemaName: IdentifierSyntax?
     let kind: Kind
-    let range: Range<String.Index>
+    let range: SourceLocation
 
     enum Kind {
         case rename(IdentifierSyntax)
@@ -76,7 +76,7 @@ struct QueryDefinitionStmtSyntax: StmtSyntax {
     let id: SyntaxId
     let name: IdentifierSyntax
     let statement: any StmtSyntax
-    let range: Range<String.Index>
+    let range: SourceLocation
     
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
         return visitor.visit(self)
@@ -86,7 +86,7 @@ struct QueryDefinitionStmtSyntax: StmtSyntax {
 /// Just an empty `;` statement. Silly but useful in the parser.
 struct EmptyStmtSyntax: Equatable, StmtSyntax {
     let id: SyntaxId
-    let range: Range<String.Index>
+    let range: SourceLocation
     
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
         visitor.visit(self)
@@ -99,7 +99,7 @@ struct TypeNameSyntax: Syntax, CustomStringConvertible, Sendable {
     let arg1: SignedNumberSyntax?
     let arg2: SignedNumberSyntax?
     let alias: AliasSyntax?
-    let range: Range<Substring.Index>
+    let range: SourceLocation
 
     var description: String {
         let type = if let arg1, let arg2 {
@@ -134,7 +134,7 @@ enum ConfictClauseSyntax {
 struct OrderSyntax: Syntax, CustomStringConvertible {
     let id: SyntaxId
     let kind: Kind
-    let range: Range<Substring.Index>
+    let range: SourceLocation
     
     enum Kind: String {
         case asc
@@ -149,7 +149,7 @@ struct OrderSyntax: Syntax, CustomStringConvertible {
 struct AliasSyntax: Syntax, CustomStringConvertible {
     let id: SyntaxId
     let identifier: IdentifierSyntax
-    let range: Range<Substring.Index>
+    let range: SourceLocation
     
     var description: String {
         return identifier.description
@@ -162,9 +162,9 @@ struct IndexedColumnSyntax: Syntax {
     let collation: IdentifierSyntax?
     let order: OrderSyntax?
     
-    var range: Range<Substring.Index> {
-        let upper = order?.range.upperBound ?? collation?.range.upperBound ?? expr.range.upperBound
-        return expr.range.lowerBound..<upper
+    var range: SourceLocation {
+        let upper = order?.range ?? collation?.range ?? expr.range
+        return expr.range.spanning(upper)
     }
     
     var columnName: IdentifierSyntax? {
@@ -178,7 +178,7 @@ struct ForeignKeyClauseSyntax: Syntax {
     let foreignTable: IdentifierSyntax
     let foreignColumns: [IdentifierSyntax]
     let actions: [Action]
-    let range: Range<Substring.Index>
+    let range: SourceLocation
 
     enum Action {
         case onDo(On, Do)
@@ -264,7 +264,7 @@ struct SelectStmtSyntax: StmtSyntax {
     let selects: Indirect<Selects>
     let orderBy: [OrderingTermSyntax]
     let limit: Limit?
-    let range: Range<Substring.Index>
+    let range: SourceLocation
 
     enum Selects {
         case single(SelectCoreSyntax)
@@ -288,7 +288,7 @@ struct DeleteStmtSyntax: StmtSyntax {
     let table: QualifiedTableNameSyntax
     let whereExpr: ExpressionSyntax?
     let returningClause: ReturningClauseSyntax?
-    let range: Range<Substring.Index>
+    let range: SourceLocation
     
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
         return visitor.visit(self)
@@ -298,7 +298,7 @@ struct DeleteStmtSyntax: StmtSyntax {
 struct ResultColumnSyntax: Syntax {
     let id: SyntaxId
     let kind: Kind
-    let range: Range<Substring.Index>
+    let range: SourceLocation
     
     enum Kind {
         /// Note: This will represent even just a single column select
@@ -313,7 +313,7 @@ struct OrderingTermSyntax: Syntax {
     let expr: ExpressionSyntax
     let order: OrderSyntax?
     let nulls: Nulls?
-    let range: Range<Substring.Index>
+    let range: SourceLocation
 
     enum Nulls {
         case first
@@ -324,7 +324,7 @@ struct OrderingTermSyntax: Syntax {
 struct CompoundOperatorSyntax: Syntax {
     let id: SyntaxId
     let kind: Kind
-    let range: Range<Substring.Index>
+    let range: SourceLocation
     
     enum Kind {
         case union
@@ -338,7 +338,7 @@ struct JoinClauseSyntax: Syntax {
     let id: SyntaxId
     let tableOrSubquery: TableOrSubquerySyntax
     let joins: [Join]
-    let range: Range<Substring.Index>
+    let range: SourceLocation
 
     struct Join {
         let op: JoinOperatorSyntax
@@ -350,7 +350,7 @@ struct JoinClauseSyntax: Syntax {
 struct JoinOperatorSyntax: Syntax {
     let id: SyntaxId
     let kind: Kind
-    let range: Range<Substring.Index>
+    let range: SourceLocation
     
     enum Kind {
         case comma
@@ -367,7 +367,7 @@ struct JoinOperatorSyntax: Syntax {
 struct JoinConstraintSyntax: Syntax {
     let id: SyntaxId
     let kind: Kind
-    let range: Range<Substring.Index>
+    let range: SourceLocation
     
     enum Kind {
         case on(ExpressionSyntax)
@@ -384,7 +384,7 @@ struct JoinConstraintSyntax: Syntax {
 struct TableOrSubquerySyntax: Syntax {
     let id: SyntaxId
     let kind: Kind
-    let range: Range<Substring.Index>
+    let range: SourceLocation
     
     enum Kind {
         case table(Table)
@@ -405,7 +405,7 @@ struct TableOrSubquerySyntax: Syntax {
 // TODO: Implement windows
 struct WindowDefinitionSyntax: Syntax {
     let id: SyntaxId
-    let range: Range<Substring.Index>
+    let range: SourceLocation
 }
 
 struct CommonTableExpressionSyntax: Syntax {
@@ -414,14 +414,14 @@ struct CommonTableExpressionSyntax: Syntax {
     let columns: [IdentifierSyntax]
     let materialized: Bool
     let select: SelectStmtSyntax
-    let range: Range<Substring.Index>
+    let range: SourceLocation
 }
 
 struct TableConstraintSyntax: Syntax {
     let id: SyntaxId
     let name: IdentifierSyntax?
     let kind: Kind
-    let range: Range<Substring.Index>
+    let range: SourceLocation
 
     enum Kind {
         case primaryKey([IndexedColumnSyntax], ConfictClauseSyntax)
@@ -435,7 +435,7 @@ struct ColumnConstraintSyntax: Syntax {
     let id: SyntaxId
     let name: IdentifierSyntax?
     let kind: Kind
-    let range: Range<Substring.Index>
+    let range: SourceLocation
 
     enum Kind {
         case primaryKey(order: OrderSyntax?, ConfictClauseSyntax, autoincrement: Bool)
@@ -474,16 +474,16 @@ struct ColumnDefSyntax: Syntax {
     var type: TypeNameSyntax
     var constraints: [ColumnConstraintSyntax]
     
-    var range: Range<Substring.Index> {
-        let upper = constraints.last?.range.upperBound ?? type.range.upperBound
-        return name.range.lowerBound..<upper
+    var range: SourceLocation {
+        let upper = constraints.last?.range ?? type.range
+        return name.range.spanning(upper)
     }
 }
 
 struct TableOptionsSyntax: Syntax, Sendable, CustomStringConvertible {
     let id: SyntaxId
     let kind: Kind
-    let range: Range<Substring.Index>
+    let range: SourceLocation
 
     struct Kind: OptionSet {
         let rawValue: UInt8
@@ -524,10 +524,10 @@ struct TableNameSyntax: Syntax, Hashable, CustomStringConvertible {
         }
     }
 
-    var range: Range<Substring.Index> {
+    var range: SourceLocation {
         return switch schema {
         case .main: name.range
-        case let .other(schema): schema.range.lowerBound..<name.range.upperBound
+        case let .other(schema): schema.range.spanning(name.range)
         }
     }
 }
@@ -538,7 +538,7 @@ struct PragmaStmt: StmtSyntax {
     let name: IdentifierSyntax
     let value: ExprSyntax?
     let isFunctionCall: Bool
-    let range: Range<Substring.Index>
+    let range: SourceLocation
     
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
         return visitor.visit(self)
@@ -549,7 +549,7 @@ struct DropTableStmtSyntax: StmtSyntax {
     let id: SyntaxId
     let ifExists: Bool
     let tableName: TableNameSyntax
-    let range: Range<Substring.Index>
+    let range: SourceLocation
     
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
         return visitor.visit(self)
@@ -565,7 +565,7 @@ struct CreateIndexStmtSyntax: StmtSyntax {
     let table: IdentifierSyntax
     let indexedColumns: [IndexedColumnSyntax]
     let whereExpr: ExprSyntax?
-    let range: Range<Substring.Index>
+    let range: SourceLocation
     
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
         return visitor.visit(self)
@@ -577,7 +577,7 @@ struct DropIndexStmtSyntax: StmtSyntax {
     let ifExists: Bool
     let schemaName: IdentifierSyntax?
     let name: IdentifierSyntax
-    let range: Range<Substring.Index>
+    let range: SourceLocation
     
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
         return visitor.visit(self)
@@ -589,7 +589,7 @@ struct ReindexStmtSyntax: StmtSyntax {
     let schemaName: IdentifierSyntax?
     // Note: This can be the collation, index or table name
     let name: IdentifierSyntax?
-    let range: Range<Substring.Index>
+    let range: SourceLocation
     
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
         return visitor.visit(self)
@@ -604,7 +604,7 @@ struct CreateViewStmtSyntax: StmtSyntax {
     let name: IdentifierSyntax
     let columnNames: [IdentifierSyntax]
     let select: SelectStmtSyntax
-    let range: Range<Substring.Index>
+    let range: SourceLocation
     
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
         return visitor.visit(self)
@@ -618,7 +618,7 @@ struct CreateVirtualTableStmtSyntax: StmtSyntax {
     let module: Module
     let moduleName: IdentifierSyntax
     let arguments: [ModuleArgument]
-    let range: Range<Substring.Index>
+    let range: SourceLocation
     
     enum Module {
         case fts5
@@ -629,7 +629,7 @@ struct CreateVirtualTableStmtSyntax: StmtSyntax {
         case fts5Column(
             name: IdentifierSyntax,
             typeName: TypeNameSyntax?,
-            notNull: Range<Substring.Index>?,
+            notNull: SourceLocation?,
             unindexed: Bool
         )
         case fts5Option(name: IdentifierSyntax, value: ExprSyntax)

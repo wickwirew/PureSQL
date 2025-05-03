@@ -25,7 +25,7 @@ struct Rewriter {
     mutating func removeNonSql<S: StmtSyntax>(_ stmt: S, in source: String) -> String {
         let rangesToRemove = stmt.accept(visitor: &self)
         
-        guard !rangesToRemove.isEmpty else { return "\(source[stmt.range]);" }
+        guard !rangesToRemove.isEmpty else { return "\(source[stmt.range.range]);" }
         
         var final = ""
         var start = stmt.range.lowerBound
@@ -61,13 +61,13 @@ struct Rewriter {
         let rowRanges: [(Range<Substring.Index>, Parameter<String>)] = parameters
             .compactMap { param -> [(Range<Substring.Index>, Parameter<String>)]? in
                 guard case .row = param.type else { return nil }
-                return param.ranges.map { ($0, param) }
+                return param.ranges.map { ($0.range, param) }
             }
             .flatMap(\.self)
             .sorted { $0.0.lowerBound < $1.0.lowerBound }
         
         guard !rowRanges.isEmpty else {
-            return [.text(source[stmt.range])]
+            return [.text(source[stmt.range.range])]
         }
         
         guard rangesToRemove.isEmpty else {
@@ -109,7 +109,7 @@ extension Rewriter: StmtSyntaxVisitor {
     func visit(_ stmt: borrowing CreateTableStmtSyntax) -> [Range<Substring.Index>] {
         switch stmt.kind {
         case .columns(let columns):
-            return columns.values.compactMap { $0.type.alias?.range }
+            return columns.values.compactMap { $0.type.alias?.range.range }
         case .select:
             return []
         }
@@ -117,7 +117,7 @@ extension Rewriter: StmtSyntaxVisitor {
     
     func visit(_ stmt: borrowing AlterTableStmtSyntax) -> [Range<Substring.Index>] {
         return switch stmt.kind {
-        case .addColumn(let c): c.type.alias.map { [$0.range] } ?? []
+        case .addColumn(let c): c.type.alias.map { [$0.range.range] } ?? []
         default: []
         }
     }
@@ -152,9 +152,9 @@ extension Rewriter: StmtSyntaxVisitor {
     func visit(_ stmt: borrowing CreateVirtualTableStmtSyntax) -> [Range<Substring.Index>] {
         return stmt.arguments.flatMap { argument -> [Range<Substring.Index>] in
             guard case let .fts5Column(_, typeName, notNull, _) = argument else { return [] }
-            if let typeName, let notNull { return [typeName.range, notNull] }
-            if let typeName { return [typeName.range] }
-            if let notNull { return [notNull] }
+            if let typeName, let notNull { return [typeName.range.range, notNull.range] }
+            if let typeName { return [typeName.range.range] }
+            if let notNull { return [notNull.range] }
             return []
         }
     }

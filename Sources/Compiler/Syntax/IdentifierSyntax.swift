@@ -7,9 +7,9 @@
 
 struct IdentifierSyntax: Sendable {
     private(set) var value: Substring
-    private(set) var range: Range<String.Index>
+    private(set) var range: SourceLocation
 
-    init(value: Substring, range: Range<String.Index>) {
+    init(value: Substring, range: SourceLocation) {
         self.value = value
         self.range = range
     }
@@ -33,21 +33,21 @@ extension IdentifierSyntax: CustomStringConvertible {
     }
 }
 
-extension IdentifierSyntax: ExpressibleByStringLiteral {
-    init(stringLiteral value: String) {
-        self.value = value[...]
-        self.range = value.startIndex..<value.endIndex
-    }
-}
+//extension IdentifierSyntax: ExpressibleByStringLiteral {
+//    init(stringLiteral value: String) {
+//        self.value = value[...]
+//        self.range = value.startIndex..<value.endIndex
+//    }
+//}
 
 extension IdentifierSyntax {
     mutating func append(_ identifier: IdentifierSyntax) {
         value += identifier.value
-        range = range.lowerBound..<identifier.range.upperBound
+        range = range.with(upperbound: identifier.range.range.upperBound)
     }
 
     mutating func append(_ string: String, upperBound: String.Index) {
         value += string
-        range = range.lowerBound..<upperBound
+        range = range.with(upperbound: upperBound)
     }
 }

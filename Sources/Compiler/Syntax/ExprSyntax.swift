@@ -63,7 +63,7 @@ extension ExprSyntaxVisitor {
 struct OperatorSyntax: CustomStringConvertible {
     let id: SyntaxId
     let `operator`: Operator
-    let range: Range<String.Index>
+    let range: SourceLocation
     
     var description: String {
         return `operator`.description
@@ -73,7 +73,7 @@ struct OperatorSyntax: CustomStringConvertible {
 struct LiteralExprSyntax: ExprSyntax {
     let id: SyntaxId
     let kind: Kind
-    let range: Range<String.Index>
+    let range: SourceLocation
     
     enum Kind {
         case numeric(NumericSyntax, isInt: Bool)
@@ -161,7 +161,7 @@ indirect enum ExpressionSyntax: ExprSyntax {
         }
     }
     
-    var range: Range<String.Index> {
+    var range: SourceLocation {
         return switch self {
         case let .literal(expr): expr.range
         case let .bindParameter(expr): expr.range
@@ -225,7 +225,7 @@ extension ExpressionSyntax: CustomStringConvertible {
 struct GroupedExprSyntax: ExprSyntax, CustomStringConvertible {
     let id: SyntaxId
     let exprs: [ExpressionSyntax]
-    let range: Range<String.Index>
+    let range: SourceLocation
     
     var description: String {
         return "(\(exprs.map(\.description).joined(separator: ", ")))"
@@ -245,8 +245,8 @@ struct PrefixExprSyntax: ExprSyntax, CustomStringConvertible {
         return "(\(`operator`)\(rhs))"
     }
     
-    var range: Range<String.Index> {
-        return `operator`.range.lowerBound..<rhs.range.upperBound
+    var range: SourceLocation {
+        return `operator`.range.spanning(rhs.range)
     }
     
     func accept<V: ExprSyntaxVisitor>(visitor: inout V) -> V.ExprOutput {
@@ -263,8 +263,8 @@ struct PostfixExprSyntax: ExprSyntax, CustomStringConvertible {
         return "(\(lhs) \(`operator`))"
     }
     
-    var range: Range<String.Index> {
-        return lhs.range.lowerBound..<`operator`.range.upperBound
+    var range: SourceLocation {
+        return lhs.range.spanning(`operator`.range)
     }
     
     func accept<V: ExprSyntaxVisitor>(visitor: inout V) -> V.ExprOutput {
@@ -278,8 +278,8 @@ struct InfixExprSyntax: ExprSyntax, CustomStringConvertible {
     let `operator`: OperatorSyntax
     let rhs: ExpressionSyntax
     
-    var range: Range<String.Index> {
-        return lhs.range.lowerBound..<rhs.range.upperBound
+    var range: SourceLocation {
+        return lhs.range.spanning(rhs.range)
     }
     
     var description: String {
@@ -298,8 +298,8 @@ struct BetweenExprSyntax: ExprSyntax, CustomStringConvertible {
     let lower: ExpressionSyntax
     let upper: ExpressionSyntax
     
-    var range: Range<String.Index> {
-        return value.range.lowerBound..<upper.range.upperBound
+    var range: SourceLocation {
+        return value.range.spanning(upper.range)
     }
     
     var description: String {
@@ -316,7 +316,7 @@ struct FunctionExprSyntax: ExprSyntax, CustomStringConvertible {
     let table: IdentifierSyntax?
     let name: IdentifierSyntax
     let args: [ExpressionSyntax]
-    let range: Range<String.Index>
+    let range: SourceLocation
     
     var description: String {
         return "\(table.map { "\($0)." } ?? "")\(name)(\(args.map(\.description).joined(separator: ", ")))"
@@ -331,7 +331,7 @@ struct CastExprSyntax: ExprSyntax, CustomStringConvertible {
     let id: SyntaxId
     let expr: ExpressionSyntax
     let ty: TypeNameSyntax
-    let range: Range<String.Index>
+    let range: SourceLocation
     
     var description: String {
         return "CAST(\(expr) AS \(ty))"
@@ -346,7 +346,7 @@ struct BindParameterSyntax: ExprSyntax, Hashable, CustomStringConvertible {
     let id: SyntaxId
     let kind: Kind
     let index: Index
-    let range: Range<String.Index>
+    let range: SourceLocation
     
     typealias Index = Int
     
@@ -632,9 +632,9 @@ struct ColumnExprSyntax: ExprSyntax, CustomStringConvertible {
             .joined(separator: ".")
     }
     
-    var range: Range<String.Index> {
+    var range: SourceLocation {
         let first = schema ?? table ?? column
-        return first.range.lowerBound..<column.range.upperBound
+        return first.range.spanning(column.range)
     }
     
     func accept<V: ExprSyntaxVisitor>(visitor: inout V) -> V.ExprOutput {
@@ -647,7 +647,7 @@ struct CaseWhenThenExprSyntax: ExprSyntax {
     let `case`: ExpressionSyntax?
     let whenThen: [WhenThen]
     let `else`: ExpressionSyntax?
-    let range: Range<String.Index>
+    let range: SourceLocation
     
     struct WhenThen {
         let when: ExpressionSyntax
@@ -680,7 +680,7 @@ struct SelectExprSyntax: ExprSyntax {
     let id: SyntaxId
     let select: SelectStmtSyntax
     
-    var range: Range<String.Index> {
+    var range: SourceLocation {
         return select.range
     }
     
@@ -691,7 +691,7 @@ struct SelectExprSyntax: ExprSyntax {
 
 struct InvalidExprSyntax: ExprSyntax, CustomStringConvertible {
     let id: SyntaxId
-    let range: Range<String.Index>
+    let range: SourceLocation
     
     var description: String {
         return "<<invalid>>"

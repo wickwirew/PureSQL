@@ -39,7 +39,12 @@ struct Lexer {
     }
     
     private var eof: Token {
-        return Token(kind: .eof, range: source.endIndex..<source.endIndex)
+        return Token(
+            kind: .eof,
+            range: SourceLocation(
+                range: source.endIndex..<source.endIndex
+            )
+        )
     }
     
     mutating func next() -> Token {
@@ -82,9 +87,9 @@ struct Lexer {
             advance()
             if self.current == ">" {
                 advance()
-                return Token(kind: .doubleArrow, range: currentIndex..<peekIndex)
+                return Token(kind: .doubleArrow, range: location(from: currentIndex, to: peekIndex))
             } else {
-                return Token(kind: .arrow, range: currentIndex..<peekIndex)
+                return Token(kind: .arrow, range: location(from: currentIndex, to: peekIndex))
             }
         case ("*", _): return consumeSingle(of: .star)
         case ("=", _): return consumeSingle(of: .equal)
@@ -109,7 +114,7 @@ struct Lexer {
         case ("~", _): return consumeSingle(of: .tilde)
         case ("'", _): return parseString()
         default:
-            diagnostics.add(.init("Unexpected character: '\(current)'", at: currentIndex..<peekIndex))
+            diagnostics.add(.init("Unexpected character: '\(current)'", at: location(from: currentIndex, to: peekIndex)))
             advance()
             return next()
         }
@@ -130,8 +135,8 @@ struct Lexer {
             advance()
         }
         
-        let range = start..<currentIndex
-        return Token(kind: Token.Kind(word: source[range]), range: range)
+        let location = location(from: start, to: currentIndex)
+        return Token(kind: Token.Kind(word: source[location.range]), range: location)
     }
     
     private mutating func parseNumber() -> Token {
@@ -152,16 +157,16 @@ struct Lexer {
             return scientificNotation(mantissa: start..<currentIndex)
         }
         
-        let range = start..<currentIndex
-        let string = source[range]
+        let location = location(from: start, to: currentIndex)
+        let string = source[location.range]
         
         let kind: Token.Kind = if hasSeenDecimal {
-            .double(double(from: string, at: range))
+            .double(double(from: string, at: location.range))
         } else {
-            .int(integer(from: string, at: range))
+            .int(integer(from: string, at: location.range))
         }
         
-        return Token(kind: kind, range: range)
+        return Token(kind: kind, range: location)
     }
     
     private mutating func scientificNotation(
@@ -209,7 +214,10 @@ struct Lexer {
         let exponentUnsigned = double(from: source[exponentRange], at: exponentRange)
         let exponent = isExpoinentPositive ? exponentUnsigned : -exponentUnsigned
         let value = mantissa * pow(10, exponent)
-        return Token(kind: .double(value), range: mantissaRange.lowerBound..<exponentRange.upperBound)
+        return Token(
+            kind: .double(value),
+            range: location(from: mantissaRange.lowerBound, to: exponentRange.upperBound)
+        )
     }
     
     private mutating func consumeDigits() {
@@ -231,13 +239,14 @@ struct Lexer {
         }
         
         let numberRange = numberStart..<currentIndex
+        let location = location(from: tokenStart, to: currentIndex)
         
         guard let value = Int(source[numberRange], radix: 16) else {
-            diagnostics.add(.init("Invalid hex number", at: tokenStart..<currentIndex))
-            return Token(kind: .hex(0), range: tokenStart..<currentIndex)
+            diagnostics.add(.init("Invalid hex number", at: location))
+            return Token(kind: .hex(0), range: location)
         }
         
-        return Token(kind: .hex(value), range: tokenStart..<currentIndex)
+        return Token(kind: .hex(value), range: location)
     }
     
     private mutating func parseString() -> Token {
@@ -254,10 +263,10 @@ struct Lexer {
         if current == "'" {
             advance()
         } else {
-            diagnostics.add(.init("Unterminated string", at: start..<currentIndex))
+            diagnostics.add(.init("Unterminated string", at: location(from: start, to: currentIndex)))
         }
         
-        return Token(kind: .string(source[stringRange]), range: tokenStart..<currentIndex)
+        return Token(kind: .string(source[stringRange]), range: location(from: tokenStart, to: currentIndex))
     }
     
     private mutating func skipWhitespace() {
@@ -269,14 +278,14 @@ struct Lexer {
     private mutating func consumeSingle(of kind: Token.Kind) -> Token {
         let start = currentIndex
         advance()
-        return Token(kind: kind, range: start..<currentIndex)
+        return Token(kind: kind, range: location(from: start, to: currentIndex))
     }
     
     private mutating func consumeDouble(of kind: Token.Kind) -> Token {
         let start = currentIndex
         advance()
         advance()
-        return Token(kind: kind, range: start..<currentIndex)
+        return Token(kind: kind, range: location(from: start, to: currentIndex))
     }
     
     private mutating func integer<S: StringProtocol>(
@@ -284,7 +293,7 @@ struct Lexer {
         at range: Range<String.Index>
     ) -> Int {
         guard let int = Int(source.replacingOccurrences(of: "_", with: "")) else {
-            diagnostics.add(.init("Invalid integer '\(source)'", at: range))
+            diagnostics.add(.init("Invalid integer '\(source)'", at: SourceLocation(range: range)))
             return 0
         }
         
@@ -296,7 +305,7 @@ struct Lexer {
         at range: Range<String.Index>
     ) -> Double {
         guard let double = Double(source.replacingOccurrences(of: "_", with: "")) else {
-            diagnostics.add(.init("Invalid double '\(source)'", at: range))
+            diagnostics.add(.init("Invalid double '\(source)'", at: SourceLocation(range: range)))
             return 0
         }
         
@@ -310,5 +319,12 @@ struct Lexer {
         while let current, !current.isNewline {
             advance()
         }
+    }
+    
+    private func location(
+        from lowerBound: Substring.Index,
+        to upperBound: Substring.Index
+    ) -> SourceLocation {
+        return SourceLocation(range: lowerBound ..< upperBound)
     }
 }

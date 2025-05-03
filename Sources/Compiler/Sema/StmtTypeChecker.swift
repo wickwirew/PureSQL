@@ -459,7 +459,7 @@ extension StmtTypeChecker {
     /// 2 parameters named `bar` and `baz`
     private mutating func typeCheck(
         select: SelectCoreSyntax,
-        at range: Range<Substring.Index>,
+        at range: SourceLocation,
         potentialNames: [IdentifierSyntax]? = nil
     ) -> ResultColumns {
         switch select {

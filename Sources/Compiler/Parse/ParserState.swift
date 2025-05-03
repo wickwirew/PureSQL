@@ -22,16 +22,16 @@ struct ParserState {
         self.peek2 = self.lexer.next()
     }
 
-    var range: Range<String.Index> {
+    var range: SourceLocation {
         return current.range
     }
     
-    func range(from range: borrowing Range<String.Index>) -> Range<String.Index> {
-        return range.lowerBound..<current.range.lowerBound
+    func range(from range: borrowing SourceLocation) -> SourceLocation {
+        return range.upTo(current.range)
     }
     
-    func range(from token: borrowing Token) -> Range<String.Index> {
-        return token.range.lowerBound..<current.range.lowerBound
+    func range(from token: borrowing Token) -> SourceLocation {
+        return token.range.upTo(current.range)
     }
     
     func skippingOne() -> ParserState {

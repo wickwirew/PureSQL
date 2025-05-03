@@ -7,7 +7,7 @@
 
 public struct Diagnostic: Error {
     public let message: String
-    public let range: Range<String.Index>
+    public let range: SourceLocation
     public let suggestion: Suggestion?
     
     public enum Suggestion: Sendable {
@@ -17,7 +17,7 @@ public struct Diagnostic: Error {
     
     public init(
         _ message: String,
-        at range: Range<String.Index>,
+        at range: SourceLocation,
         suggestion: Suggestion? = nil
     ) {
         self.message = message
@@ -28,7 +28,7 @@ public struct Diagnostic: Error {
     init(
         expected: TypeNameSyntax,
         got actual: TypeNameSyntax,
-        at range: Range<String.Index>
+        at range: SourceLocation
     ) {
         self.message = "Incorrect type, expected '\(expected.name)' got '\(actual.name)'"
         self.range = range
@@ -45,7 +45,7 @@ extension Diagnostic {
     static func incorrectType(
         _ actual: TypeNameSyntax,
         expected: TypeNameSyntax,
-        at range: Range<String.Index>
+        at range: SourceLocation
     ) -> Diagnostic {
         Diagnostic(
             "Incorrect type, expected '\(expected.name)' got '\(actual.name)'",
@@ -56,7 +56,7 @@ extension Diagnostic {
     
     static func expectedNumber(
         _ actual: TypeNameSyntax,
-        at range: Range<String.Index>
+        at range: SourceLocation
     ) -> Diagnostic {
         Diagnostic(
             "Incorrect type, expected number got '\(actual.name)'",
@@ -66,7 +66,7 @@ extension Diagnostic {
     
     static func ambiguous(
         _ identifier: Substring,
-        at range: Range<String.Index>
+        at range: SourceLocation
     ) -> Diagnostic {
         Diagnostic(
             "'\(identifier)' is ambigious in the current context",
@@ -95,7 +95,7 @@ extension Diagnostic {
         )
     }
     
-    static func nameRequired(at range: Range<Substring.Index>) -> Diagnostic {
+    static func nameRequired(at range: SourceLocation) -> Diagnostic {
         return Diagnostic(
             "Name required, add via 'AS'",
             at: range,
@@ -106,7 +106,7 @@ extension Diagnostic {
     static func unexpectedToken(
         of kind: Token.Kind,
         expected: Token.Kind? = nil,
-        at range: Range<Substring.Index>
+        at range: SourceLocation
     ) -> Diagnostic {
         if let expected {
             return Diagnostic("Unexpected token \(kind), expected '\(expected)'", at: range)
@@ -122,7 +122,7 @@ extension Diagnostic {
     static func unexpectedToken(
         of kind: Token.Kind,
         expectedAnyOf expected: Token.Kind...,
-        at range: Range<Substring.Index>
+        at range: SourceLocation
     ) -> Diagnostic {
         var expectedMessage = ""
         for (index, kind) in expected.enumerated() {
@@ -140,14 +140,14 @@ extension Diagnostic {
     
     static func illegalStatement(
         in context: String,
-        at range: Range<Substring.Index>
+        at range: SourceLocation
     ) -> Diagnostic {
         return Diagnostic("Statement is not allowed in \(context)", at: range)
     }
     
     static func alreadyHasPrimaryKey(
         _ table: Substring,
-        at range: Range<Substring.Index>
+        at range: SourceLocation
     ) -> Diagnostic {
         return Diagnostic("Table '\(table)' already has a primary key", at: range)
     }
@@ -155,7 +155,7 @@ extension Diagnostic {
     static func unableToUnify(
         _ t1: Type,
         with t2: Type,
-        at range: Range<Substring.Index>
+        at range: SourceLocation
     ) -> Diagnostic {
         return Diagnostic("Unable to unify types '\(t1)' and '\(t2)'", at: range)
     }

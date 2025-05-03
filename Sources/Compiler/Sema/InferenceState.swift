@@ -29,7 +29,7 @@ struct InferenceState {
     /// Any ranges the bind parameters show up in.
     /// This really isnt the most sensible place for this. May likely break out into its
     /// own thing but keeping it here for now since its so simple.
-    private(set) var bindIndexRanges: [BindParameterSyntax.Index: [Range<Substring.Index>]] = [:]
+    private(set) var bindIndexRanges: [BindParameterSyntax.Index: [SourceLocation]] = [:]
     
     /// Instantiates a type scheme by substituting all free type variables
     /// for new fresh type variables.
@@ -140,7 +140,7 @@ struct InferenceState {
     /// default value if it is a type var.
     func parameterSolutions(
         defaultIfTyVar: Bool = false
-    ) -> [(index: BindParameterSyntax.Index, type: Type, ranges: [Range<Substring.Index>])] {
+    ) -> [(index: BindParameterSyntax.Index, type: Type, ranges: [SourceLocation])] {
         return bindIndexToSyntaxIds.map { (index, syntaxId) in
             let type = self.syntaxTypes[syntaxId] ?? .error
             let ranges = self.bindIndexRanges[index] ?? []
@@ -157,7 +157,7 @@ extension InferenceState {
     mutating func unify(
         _ type: Type,
         with other: Type,
-        at range: Range<String.Index>
+        at range: SourceLocation
     ) {
         // If they are the same, no need to unify
         guard type != other else { return }
@@ -229,7 +229,7 @@ extension InferenceState {
     /// Unifies all types together.
     mutating func unify(
         all tys: [Type],
-        at range: Range<String.Index>
+        at range: SourceLocation
     ) {
         var tys = tys.makeIterator()
         
@@ -249,7 +249,7 @@ extension InferenceState {
     private mutating func unify<T1: Collection, T2: Collection>(
         _ tys: T1,
         with others: T2,
-        at range: Range<String.Index>
+        at range: SourceLocation
     )
         where T1.Element == Type, T2.Element == Type
     {
@@ -271,7 +271,7 @@ extension InferenceState {
     private mutating func unify<T1: Collection>(
         all tys: T1,
         with ty1: Type,
-        at range: Range<String.Index>
+        at range: SourceLocation
     )
         where T1.Element == Type
     {
@@ -284,7 +284,7 @@ extension InferenceState {
     private mutating func validateCanUnify(
         type: Type,
         with tvKind: TypeVariable.Kind,
-        at range: Range<Substring.Index>
+        at range: SourceLocation
     ) {
         if case let .alias(t, _) = type {
             return validateCanUnify(type: t, with: tvKind, at: range)

@@ -40,7 +40,7 @@ public struct Diagnostics {
     
     public mutating func trying<Output>(
         _ action: () throws -> Output,
-        at range: Range<Substring.Index>
+        at range: SourceLocation
     ) -> Output? {
         do {
             return try action()

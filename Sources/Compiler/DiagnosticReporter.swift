@@ -13,7 +13,7 @@ public struct StdoutDiagnosticReporter: DiagnosticReporter {
     public init() {}
     
     public func report(diagnostic: Diagnostic, source: String, fileName: String) {
-        let source = source[diagnostic.range]
+        let source = source[diagnostic.range.range]
         
         print("""
         \(source)
