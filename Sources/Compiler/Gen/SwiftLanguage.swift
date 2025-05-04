@@ -8,7 +8,7 @@
 import SwiftSyntax
 import SwiftSyntaxBuilder
 
-public struct SwiftLanguage: Language2 {
+public struct SwiftLanguage: Language {
     public static func interpolatedQuestionMarks(for param: String) -> String {
         return  "\\(\(param).sqlQuestionMarks)"
     }
@@ -138,7 +138,7 @@ public struct SwiftLanguage: Language2 {
                     signature: ClosureSignatureSyntax(
                         parameterClause: .simpleInput(.init {
                             ClosureShorthandParameterSyntax(name: "input")
-                            ClosureShorthandParameterSyntax(name: "transaction")
+                            ClosureShorthandParameterSyntax(name: "tx")
                         })
                     )
                 ) {
@@ -164,7 +164,7 @@ public struct SwiftLanguage: Language2 {
                         case .single:
                             "return try statement.fetchOne(of: Row.self)"
                         case .many:
-                            "return try statement.fetchMany(of: Row.self)"
+                            "return try statement.fetchAll(of: Row.self)"
                         }
                     }
                 }

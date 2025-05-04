@@ -26,7 +26,7 @@ struct Feather: ParsableCommand {
     var output: String? = nil
 
     mutating func run() throws {
-        try generate2(language: SwiftLanguage.self)
+        try generate(language: SwiftLanguage.self)
     }
     
     @discardableResult
@@ -50,61 +50,6 @@ struct Feather: ParsableCommand {
     }
     
     private func generate<Lang: Language>(language: Lang.Type) throws {
-        let path = path ?? FileManager.default.currentDirectoryPath
-        var compiler = Compiler()
-
-        var migrations: [Lang.Migration] = []
-        var queries: [Lang.Query] = []
-        
-        try forEachFile(in: "\(path)/Migrations") { file, fileName in
-            let diags = compiler.compile(migration: file)
-            
-            let numberStr = fileName.split(separator: ".")[0]
-            guard Int(numberStr) != nil else {
-                throw CLIError.migrationFileNameMustBeNumber(fileName)
-            }
-            
-            report(diagnostics: diags, source: file, forFile: fileName)
-        }
-        
-        try migrations.append(contentsOf: compiler.migrations.map { try language.migration(source: $0.sanitizedSource) })
-        
-        try forEachFile(in: "\(path)/Queries") { file, fileName in
-            let diags = compiler.compile(queries: file)
-            report(diagnostics: diags, source: file, forFile: fileName)
-        }
-        
-        for statement in compiler.queries {
-            guard let name = statement.name else {
-                // Should have been caught up stream
-                assertionFailure("Statement in queries has no name")
-                continue
-            }
-            try queries.append(language.query(statement: statement, name: name))
-        }
-        
-        let tables = try compiler.schema
-            .map { try language.table(name: $0.key, columns: $0.value.columns) }
-        
-        let file = try language.file(
-            migrations: migrations,
-            tables: tables,
-            queries: queries
-        )
-        
-        if let output {
-            try validateIsFile(output)
-            try createDirectoiesIfNeeded(output)
-            
-            try language.string(for: file)
-                .write(toFile: output, atomically: true, encoding: .utf8)
-        } else {
-            // No output directory, just print to stdout
-            print(language.string(for: file))
-        }
-    }
-    
-    private func generate2<Lang: Language2>(language: Lang.Type) throws {
         let path = path ?? FileManager.default.currentDirectoryPath
         var compiler = Compiler()
 
