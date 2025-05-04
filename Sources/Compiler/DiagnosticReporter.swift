@@ -12,6 +12,9 @@ public protocol DiagnosticReporter {
 public struct StdoutDiagnosticReporter: DiagnosticReporter {
     public init() {}
     
+    public let red = (open: "\u{001B}[31m", close: "\u{001B}[0m")
+    public let bold = (open: "\u{001B}[1m", close: "\u{001B}[22m")
+    
     public func report(diagnostic: Diagnostic, source: String, fileName: String) {
         let range = diagnostic.location.range
         let start = startOfLine(index: range.lowerBound, source: source)
@@ -22,13 +25,14 @@ public struct StdoutDiagnosticReporter: DiagnosticReporter {
         let indent = String(repeating: " ", count: distanceToStart)
         let underline = String(repeating: "^", count: source.distance(from: range.lowerBound, to: range.upperBound))
         
+        let line = diagnostic.location.line
+        let column = diagnostic.location.column
+        
         print("""
-        Error in \(fileName)
+        \(fileName):\(line):\(column): \(bold.open)\(red.open)error\(red.close)\(bold.close)
         
         \(source)
-        \(indent)\(underline)
-        
-        \(diagnostic.message)
+        \(indent)\(red.open)\(underline)\(red.close) - \(bold.open)\(diagnostic.message)\(bold.close)
         """)
     }
     

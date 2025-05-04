@@ -12,9 +12,17 @@ struct Lexer {
     var currentIndex: String.Index
     var peekIndex: String.Index
     var diagnostics: Diagnostics
+    var currentLine: Int = 1
+    var currentColumn: Int = 1
     
     static let hexDigits: Set<Character> = ["0","1","2","3","4","5","6","7","8","9","a","b",
                                             "c","d","e","f","A","B","C","D","E","F"]
+    
+    struct Start {
+        let index: String.Index
+        let line: Int
+        let column: Int
+    }
     
     init(
         source: String,
@@ -42,7 +50,9 @@ struct Lexer {
         return Token(
             kind: .eof,
             location: SourceLocation(
-                range: source.endIndex..<source.endIndex
+                range: source.endIndex..<source.endIndex,
+                line: currentLine,
+                column: currentColumn
             )
         )
     }
@@ -83,13 +93,14 @@ struct Lexer {
         case ("!", "="): return consumeDouble(of: .notEqual)
         case ("<", ">"): return consumeDouble(of: .notEqual2)
         case ("-", ">"):
+            let start = startLocation()
             advance()
             advance()
             if self.current == ">" {
                 advance()
-                return Token(kind: .doubleArrow, location: location(from: currentIndex, to: peekIndex))
+                return Token(kind: .doubleArrow, location: location(from: start, to: peekIndex))
             } else {
-                return Token(kind: .arrow, location: location(from: currentIndex, to: peekIndex))
+                return Token(kind: .arrow, location: location(from: start, to: peekIndex))
             }
         case ("*", _): return consumeSingle(of: .star)
         case ("=", _): return consumeSingle(of: .equal)
@@ -114,7 +125,10 @@ struct Lexer {
         case ("~", _): return consumeSingle(of: .tilde)
         case ("'", _): return parseString()
         default:
-            diagnostics.add(.init("Unexpected character: '\(current)'", at: location(from: currentIndex, to: peekIndex)))
+            diagnostics.add(.init(
+                "Unexpected character: '\(current)'",
+                at: location(from: startLocation(), to: peekIndex)
+            ))
             advance()
             return next()
         }
@@ -126,21 +140,28 @@ struct Lexer {
         if peekIndex < source.endIndex {
             peekIndex = source.index(after: peekIndex)
         }
+        
+        if current?.isNewline == true {
+            currentLine += 1
+            currentColumn = 0
+        } else {
+            currentColumn += 1
+        }
     }
     
     private mutating func parseWord() -> Token {
-        let start = currentIndex
+        let start = startLocation()
         
         while let current, current.isLetter || current.isNumber || current == "_" {
             advance()
         }
         
-        let location = location(from: start, to: currentIndex)
+        let location = location(from: start)
         return Token(kind: Token.Kind(word: source[location.range]), location: location)
     }
     
     private mutating func parseNumber() -> Token {
-        let start = currentIndex
+        let start = startLocation()
         var hasSeenDecimal = current == "."
         
         consumeDigits()
@@ -154,10 +175,13 @@ struct Lexer {
         
         // Check if its in scientific notation
         if let maybeE = current, maybeE == "e" || maybeE == "E" {
-            return scientificNotation(mantissa: start..<currentIndex)
+            return scientificNotation(
+                mantissa: start.index..<currentIndex,
+                start: start
+            )
         }
         
-        let location = location(from: start, to: currentIndex)
+        let location = location(from: start)
         let string = source[location.range]
         
         let kind: Token.Kind = if hasSeenDecimal {
@@ -170,7 +194,8 @@ struct Lexer {
     }
     
     private mutating func scientificNotation(
-        mantissa mantissaRange: Range<String.Index>
+        mantissa mantissaRange: Range<String.Index>,
+        start: Start
     ) -> Token {
         advance() // E or e
         
@@ -180,7 +205,8 @@ struct Lexer {
             return scientificNotation(
                 mantissa: mantissaRange,
                 exponent: exponentStart..<currentIndex,
-                isExpoinentPositive: true
+                isExpoinentPositive: true,
+                start: start
             )
         } else {
             let isPositive: Bool
@@ -200,7 +226,8 @@ struct Lexer {
             return scientificNotation(
                 mantissa: mantissaRange,
                 exponent: exponentStart..<currentIndex,
-                isExpoinentPositive: isPositive
+                isExpoinentPositive: isPositive,
+                start: start
             )
         }
     }
@@ -208,7 +235,8 @@ struct Lexer {
     private mutating func scientificNotation(
         mantissa mantissaRange: Range<String.Index>,
         exponent exponentRange: Range<String.Index>,
-        isExpoinentPositive: Bool
+        isExpoinentPositive: Bool,
+        start: Start
     ) -> Token {
         let mantissa = double(from: source[mantissaRange], at: mantissaRange)
         let exponentUnsigned = double(from: source[exponentRange], at: exponentRange)
@@ -216,7 +244,10 @@ struct Lexer {
         let value = mantissa * pow(10, exponent)
         return Token(
             kind: .double(value),
-            location: location(from: mantissaRange.lowerBound, to: exponentRange.upperBound)
+            location: location(
+                from: start,
+                to: exponentRange.upperBound
+            )
         )
     }
     
@@ -227,7 +258,7 @@ struct Lexer {
     }
     
     private mutating func hexLiteral() -> Token {
-        let tokenStart = currentIndex
+        let tokenStart = startLocation()
         
         advance() // 0
         advance() // x or X
@@ -239,7 +270,7 @@ struct Lexer {
         }
         
         let numberRange = numberStart..<currentIndex
-        let location = location(from: tokenStart, to: currentIndex)
+        let location = location(from: tokenStart)
         
         guard let value = Int(source[numberRange], radix: 16) else {
             diagnostics.add(.init("Invalid hex number", at: location))
@@ -250,23 +281,23 @@ struct Lexer {
     }
     
     private mutating func parseString() -> Token {
-        let tokenStart = currentIndex
+        let tokenStart = startLocation()
         advance()
-        let start = currentIndex
+        let stringStart = currentIndex
         
         while let current, current != "'" {
             advance()
         }
         
-        let stringRange = start..<currentIndex
+        let stringRange = stringStart..<currentIndex
         
         if current == "'" {
             advance()
         } else {
-            diagnostics.add(.init("Unterminated string", at: location(from: start, to: currentIndex)))
+            diagnostics.add(.init("Unterminated string", at: location(from: tokenStart)))
         }
         
-        return Token(kind: .string(source[stringRange]), location: location(from: tokenStart, to: currentIndex))
+        return Token(kind: .string(source[stringRange]), location: location(from: tokenStart))
     }
     
     private mutating func skipWhitespace() {
@@ -276,16 +307,16 @@ struct Lexer {
     }
     
     private mutating func consumeSingle(of kind: Token.Kind) -> Token {
-        let start = currentIndex
+        let start = startLocation()
         advance()
-        return Token(kind: kind, location: location(from: start, to: currentIndex))
+        return Token(kind: kind, location: location(from: start))
     }
     
     private mutating func consumeDouble(of kind: Token.Kind) -> Token {
-        let start = currentIndex
+        let start = startLocation()
         advance()
         advance()
-        return Token(kind: kind, location: location(from: start, to: currentIndex))
+        return Token(kind: kind, location: location(from: start))
     }
     
     private mutating func integer<S: StringProtocol>(
@@ -293,7 +324,14 @@ struct Lexer {
         at range: Range<String.Index>
     ) -> Int {
         guard let int = Int(source.replacingOccurrences(of: "_", with: "")) else {
-            diagnostics.add(.init("Invalid integer '\(source)'", at: SourceLocation(range: range)))
+            diagnostics.add(.init(
+                "Invalid integer '\(source)'",
+                at: SourceLocation(
+                    range: range,
+                    line: currentLine,
+                    column: currentColumn
+                )
+            ))
             return 0
         }
         
@@ -305,7 +343,14 @@ struct Lexer {
         at range: Range<String.Index>
     ) -> Double {
         guard let double = Double(source.replacingOccurrences(of: "_", with: "")) else {
-            diagnostics.add(.init("Invalid double '\(source)'", at: SourceLocation(range: range)))
+            diagnostics.add(.init(
+                "Invalid double '\(source)'",
+                at: SourceLocation(
+                    range: range,
+                    line: currentLine,
+                    column: currentColumn
+                )
+            ))
             return 0
         }
         
@@ -322,9 +367,31 @@ struct Lexer {
     }
     
     private func location(
-        from lowerBound: Substring.Index,
+        from start: Start,
         to upperBound: Substring.Index
     ) -> SourceLocation {
-        return SourceLocation(range: lowerBound ..< upperBound)
+        return SourceLocation(
+            range: start.index ..< upperBound,
+            line: start.line,
+            column: start.column
+        )
+    }
+    
+    private func location(
+        from start: Start
+    ) -> SourceLocation {
+        return SourceLocation(
+            range: start.index ..< currentIndex,
+            line: start.line,
+            column: start.column
+        )
+    }
+    
+    private func startLocation() -> Start {
+        return Start(
+            index: currentIndex,
+            line: currentLine,
+            column: currentColumn
+        )
     }
 }

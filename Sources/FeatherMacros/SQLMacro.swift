@@ -45,29 +45,31 @@ public struct DatabaseMacro: MemberMacro {
             return []
         }
         
-        var compiler = Compiler()
-        var queries: [SwiftGenerator.Query] = []
+        fatalError()
         
-        for (contents, syntax) in migrationsSyntax {
-            for diagnostic in compiler.compile(migration: contents).elements {
-                context.addDiagnostics(from: diagnostic, node: syntax)
-            }
-        }
-        
-        for (contents, syntax) in queriesSyntax {
-            let diagnostics = compiler.compile(queries: contents)
-            
-            for statement in compiler.queries {
-                guard let name = statement.name else { continue }
-                try queries.append(SwiftGenerator.query(statement: statement, name: name))
-            }
-            
-            for diagnostic in diagnostics.elements {
-                context.addDiagnostics(from: diagnostic, node: syntax)
-            }
-        }
-        
-        return queries.map(\.decls).flatMap(\.self)
+//        var compiler = Compiler()
+//        var queries: [SwiftGenerator.Query] = []
+//        
+//        for (contents, syntax) in migrationsSyntax {
+//            for diagnostic in compiler.compile(migration: contents).elements {
+//                context.addDiagnostics(from: diagnostic, node: syntax)
+//            }
+//        }
+//        
+//        for (contents, syntax) in queriesSyntax {
+//            let diagnostics = compiler.compile(queries: contents)
+//            
+//            for statement in compiler.queries {
+//                guard let name = statement.name else { continue }
+//                try queries.append(SwiftGenerator.query(statement: statement, name: name))
+//            }
+//            
+//            for diagnostic in diagnostics.elements {
+//                context.addDiagnostics(from: diagnostic, node: syntax)
+//            }
+//        }
+//        
+//        return queries.map(\.decls).flatMap(\.self)
     }
     
     private static func arrayStrings(
