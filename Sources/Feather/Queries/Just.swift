@@ -7,6 +7,20 @@
 
 extension Queries {
     /// A query that returns just one result that does not fail.
+    /// This can be really useful for dependency injection. So if
+    /// a model takes a query, if it is abstracted to an `any Query`
+    /// or one of the generated `typealias`'s this can be sent in
+    /// its place during a test or preview.
+    ///
+    /// ```swift
+    /// class ListModel {
+    ///     let fetchAllItems: any FetchAllItemsQuery
+    /// }
+    ///
+    /// let model = ListModel(
+    ///     fetchAllItems: Queries.Just([.mock(), .mock()])
+    /// )
+    /// ```
     public struct Just<Input, Output>: Query
         where Input: Sendable, Output: Sendable
     {

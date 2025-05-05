@@ -31,32 +31,11 @@ public extension DatabaseQuery {
 }
 
 public extension DatabaseQuery where Input == () {
+    func execute(tx: borrowing Transaction) throws -> Output {
+        return try execute(with: (), tx: tx)
+    }
+    
     func observe() -> any QueryObservation<Output> {
         return observe(with: ())
-    }
-}
-
-public struct DatabaseQueryImpl<Input, Output>: DatabaseQuery
-    where Input: Sendable, Output: Sendable
-{
-    public let connection: any Connection
-    public let transactionKind: TransactionKind
-    public let execute: @Sendable (Input, borrowing Transaction) throws -> Output
-    
-    public init(
-        _ transactionKind: TransactionKind,
-        connection: any Connection,
-        execute: @escaping @Sendable (Input, borrowing Transaction) throws -> Output
-    ) {
-        self.connection = connection
-        self.transactionKind = transactionKind
-        self.execute = execute
-    }
-    
-    public func execute(
-        with input: Input,
-        tx: borrowing Transaction
-    ) throws -> Output {
-        try execute(input, tx)
     }
 }

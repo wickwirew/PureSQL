@@ -111,12 +111,12 @@ public struct SwiftLanguage: Language {
     ) throws -> DeclSyntax {
         let inputTypeName = inputTypeName(for: query)
         let outputTypeName = outputTypeName(for: query)
-        let queryTypeName = "any DatabaseQuery<\(inputTypeName), \(outputTypeName)>"
+        let queryTypeName = "AnyDatabaseQuery<\(inputTypeName), \(outputTypeName)>"
         
         let query = try VariableDeclSyntax("var \(raw: query.name): \(raw: queryTypeName)") {
             FunctionCallExprSyntax(
                 calledExpression: DeclReferenceExprSyntax(
-                    baseName: .identifier("DatabaseQueryImpl<\(inputTypeName), \(outputTypeName)>")
+                    baseName: .identifier("AnyDatabaseQuery<\(inputTypeName), \(outputTypeName)>")
                 ),
                 leftParen: .leftParenToken(),
                 arguments: LabeledExprListSyntax {

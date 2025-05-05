@@ -47,6 +47,7 @@ public extension Query {
     /// - Parameter transform: The closure to transform the input
     /// - Returns: A query with a input type of the resulting closure.
     func mapInput<NewInput>(
+        to _: NewInput.Type = NewInput.self,
         _ transform: @Sendable @escaping (NewInput) -> Input
     ) -> Queries.MapInput<Self, NewInput> {
         return Queries.MapInput(base: self, transform: transform)
