@@ -54,7 +54,7 @@ struct Feather: ParsableCommand {
         var compiler = Compiler()
 
         try forEachFile(in: "\(path)/Migrations") { file, fileName in
-            let diags = compiler.compile(migration: file)
+            let diags = compiler.compile(migration: file, namespace: .file(fileName))
             
             let numberStr = fileName.split(separator: ".")[0]
             guard Int(numberStr) != nil else {
@@ -65,7 +65,7 @@ struct Feather: ParsableCommand {
         }
         
         try forEachFile(in: "\(path)/Queries") { file, fileName in
-            let diags = compiler.compile(queries: file)
+            let diags = compiler.compile(queries: file, namespace: .file(fileName))
             report(diagnostics: diags, source: file, forFile: fileName)
         }
         
@@ -75,6 +75,10 @@ struct Feather: ParsableCommand {
             schema: compiler.schema,
             options: []
         )
+        
+        guard !compiler.hasDiagnostics else {
+            return
+        }
         
         if let output {
             try validateIsFile(output)

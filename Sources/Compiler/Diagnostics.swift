@@ -13,6 +13,10 @@ public struct Diagnostics {
         self.elements = diagnostics
     }
     
+    public var isEmpty: Bool {
+        return elements.isEmpty
+    }
+    
     @discardableResult
     public mutating func add(_ diagnostic: Diagnostic) -> Diagnostic {
         elements.append(diagnostic)

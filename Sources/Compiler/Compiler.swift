@@ -9,28 +9,40 @@ public struct Compiler {
     public private(set) var schema = Schema()
     public private(set) var queries: [Statement] = []
     public private(set) var migrations: [Statement] = []
+    public private(set) var diagnostics: [Namespace: Diagnostics] = [:]
     
     private var pragmas = PragmaAnalyzer()
     
+    public enum Namespace: Hashable {
+        case global
+        case file(String)
+    }
+    
     public init() {}
     
-    public mutating func compile(migration: String) -> Diagnostics {
+    public var hasDiagnostics: Bool {
+        return diagnostics.isEmpty || diagnostics.allSatisfy { !$0.value.isEmpty }
+    }
+    
+    public mutating func compile(migration: String, namespace: Namespace) -> Diagnostics {
         let (stmts, diagnostics) = compile(
             source: migration,
             validator: IsValidForMigrations(),
             context: "migrations"
         )
         self.migrations.append(contentsOf: stmts)
+        self.diagnostics[namespace] = diagnostics
         return diagnostics
     }
     
-    public mutating func compile(queries: String) -> Diagnostics {
+    public mutating func compile(queries: String, namespace: Namespace) -> Diagnostics {
         let (stmts, diagnostics) = compile(
             source: queries,
             validator: IsValidForQueries(),
             context: "queries"
         )
         self.queries.append(contentsOf: stmts)
+        self.diagnostics[namespace] = diagnostics
         return diagnostics
     }
     

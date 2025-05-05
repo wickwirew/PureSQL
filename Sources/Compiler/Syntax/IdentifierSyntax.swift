@@ -28,13 +28,6 @@ extension IdentifierSyntax: CustomStringConvertible {
     }
 }
 
-//extension IdentifierSyntax: ExpressibleByStringLiteral {
-//    init(stringLiteral value: String) {
-//        self.value = value[...]
-//        self.range = value.startIndex..<value.endIndex
-//    }
-//}
-
 extension IdentifierSyntax {
     mutating func append(_ identifier: IdentifierSyntax) {
         value += identifier.value
