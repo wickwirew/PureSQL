@@ -26,6 +26,24 @@ public struct AnyQuery<Input: Sendable, Output: Sendable>: Query {
 }
 
 public extension Query {
+    /// Earases a query to an `AnyQuery`. With Swifts `any` keyword
+    /// this should not really be needed most of the time. However some
+    /// of the operators like `Map` take `Self` as a generic disallowing
+    /// any query typed as `any Query` to be used. Erasing to a concrete
+    /// `AnyQuery` can get around this however.
+    ///
+    /// ```swift
+    /// func example(query: any Query<(), Int>) {
+    ///     // Not allowed because `any`
+    ///     query.map { $0 + 1 }
+    ///
+    ///     // Since type is now `AnyQuery` `map` can be used.
+    ///     query.eraseToAnyQuery()
+    ///         .map { $0 + 1 }
+    /// }
+    /// ```
+    ///
+    /// - Returns: An erased query.
     func eraseToAnyQuery() -> AnyQuery<Input, Output> {
         return AnyQuery(self)
     }

@@ -1,42 +1,42 @@
 //
-//  Just.swift
+//  Fail.swift
 //  Feather
 //
-//  Created by Wes Wickwire on 5/4/25.
+//  Created by Wes Wickwire on 5/5/25.
 //
 
 extension Queries {
-    /// A query that returns just one result that does not fail.
-    public struct Just<Input, Output>: Query
+    /// A query that always fails with the given error.
+    public struct Fail<Input, Output>: Query
         where Input: Sendable, Output: Sendable
     {
-        /// The output to return each time.
-        let output: Output
+        /// The error to throw on execution
+        let error: any Error
         
-        public init(_ output: Output) {
-            self.output = output
+        public init(_ error: any Error) {
+            self.error = error
         }
         
         public func execute(with input: Input) async throws -> Output {
-            return output
+            throw error
         }
         
         public func observe(with input: Input) -> any QueryObservation<Output> {
-            return Observation(output: output)
+            return Observation(error: error)
         }
         
         final class Observation: QueryObservation {
-            let output: Output
+            let error: any Error
             
-            init(output: Output) {
-                self.output = output
+            init(error: any Error) {
+                self.error = error
             }
             
             func start(
                 onChange: @escaping (Output) -> Void,
                 onError: @escaping (any Error) -> Void
             ) {
-                onChange(output)
+                onError(error)
             }
             
             func cancel() {}

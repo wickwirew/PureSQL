@@ -37,24 +37,44 @@ extension Queries {
 }
 
 public extension DatabaseQuery {
+    /// After the this query, the `next` query will be executed with the
+    /// same input as the first. Each query is executed within the same
+    /// transaction.
+    ///
+    /// - Parameter next: The query to execute next
+    /// - Returns: A query that execute `self` then the `next` query
     func then<Next>(_ next: Next) -> Queries.Then<Self, Next>
         where Next: DatabaseQuery, Self.Input == Next.Input
     {
         return Queries.Then(first: self, second: next) { input, _ in input }
     }
     
+    /// After the this query, the `next` query will be executed.
+    /// Each query is executed within the same transaction.
+    ///
+    /// - Parameter next: The query to execute next
+    /// - Returns: A query that execute `self` then the `next` query
     func then<Next>(_ next: Next) -> Queries.Then<Self, Next>
         where Next: DatabaseQuery, Next.Input == ()
     {
         return Queries.Then(first: self, second: next) { _, _ in () }
     }
     
+    /// After the this query, the `next` query will be executed.
+    /// Each query is executed within the same transaction.
+    ///
+    /// - Parameter next: The query to execute next
+    /// - Parameter nextInput: A closure to map the input and output
+    /// of the first query to the input of the `next`.
+    /// - Returns: A query that execute `self` then the `next` query
     func then<Next>(
         _ next: Next,
         nextInput: @Sendable @escaping (Input, Output) -> Next.Input
     ) -> Queries.Then<Self, Next>
         where Next: DatabaseQuery
     {
-        return Queries.Then(first: self, second: next) { input, output in nextInput(input, output) }
+        return Queries.Then(first: self, second: next) { input, output
+            in nextInput(input, output)
+        }
     }
 }

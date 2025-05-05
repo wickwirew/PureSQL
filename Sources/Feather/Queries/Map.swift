@@ -68,12 +68,21 @@ extension Queries.Map: DatabaseQuery where Base: DatabaseQuery {
 }
 
 public extension Query {
+    /// Transforms the output of the query.
+    ///
+    /// - Parameter transform: Closure to transform the output
+    /// - Returns: A query with the output type of the closure result.
     func map<NewOutput>(
         _ transform: @Sendable @escaping (Output) throws -> NewOutput
     ) -> Queries.Map<Self, NewOutput> {
         return Queries.Map(base: self, transform: transform)
     }
     
+    
+    /// If a `nil` value is returned from the query, then a `FeatherError.entityWasNotFound`
+    /// will be thrown instead.
+    ///
+    /// - Returns: A query with a non optional result type, that will throw in case of an error.
     func throwIfNotFound<Wrapped>() -> Queries.Map<Self, Wrapped> where Output == Wrapped? {
         return Queries.Map(base: self) { entity in
             guard let entity else {
@@ -84,6 +93,13 @@ public extension Query {
         }
     }
     
+    
+    /// Will replace any `nil` value with the given input value.
+    /// The `value` closure will be called for each `nil` value
+    /// received from the upstream query.
+    ///
+    /// - Parameter value: The value to return instead of `nil`
+    /// - Returns: A query with a non optional result type, that default the value if `nil`
     func replaceNil<Wrapped>(
         with value: @Sendable @autoclosure @escaping () -> Wrapped
     ) -> Queries.Map<Self, Wrapped> where Output == Wrapped? {
