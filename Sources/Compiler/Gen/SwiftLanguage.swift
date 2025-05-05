@@ -44,7 +44,9 @@ public struct SwiftLanguage: Language {
                 try declaration(for: table, isOutput: true, options: options)
             }
             
-            try EnumDeclSyntax("enum DB") {
+            try StructDeclSyntax("struct DB") {
+                "let database: any Feather.Database"
+                
                 try declaration(for: migrations, options: options)
                 
                 for query in queries {
@@ -162,9 +164,9 @@ public struct SwiftLanguage: Language {
                     } else {
                         switch query.outputCardinality {
                         case .single:
-                            "return try statement.fetchOne(of: Row.self)"
+                            "return try statement.fetchOne()"
                         case .many:
-                            "return try statement.fetchAll(of: Row.self)"
+                            "return try statement.fetchAll()"
                         }
                     }
                 }

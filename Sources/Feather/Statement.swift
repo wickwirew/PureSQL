@@ -77,6 +77,11 @@ public struct Statement: ~Copyable {
     }
     
     /// Fetches all rows returned by the statement
+    public consuming func fetchAll<Element: RowDecodable>() throws(FeatherError) -> [Element] {
+        return try fetchAll(of: Element.self)
+    }
+    
+    /// Fetches all rows returned by the statement
     public consuming func fetchAll<Element: RowDecodable>(
         of _: Element.Type
     ) throws(FeatherError) -> [Element] {
@@ -90,7 +95,12 @@ public struct Statement: ~Copyable {
         return result
     }
     
-    /// Fetches all rows returned by the statement
+    /// Fetches a single row returned by the statement
+    public consuming func fetchOne<T: RowDecodable>() throws(FeatherError) -> T? {
+        return try fetchOne(of: T.self)
+    }
+    
+    /// Fetches a single row returned by the statement
     public consuming func fetchOne<T: RowDecodable>(
         of _: T.Type
     ) throws(FeatherError) -> T? {
