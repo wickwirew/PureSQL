@@ -236,8 +236,8 @@ public enum BuiltinOrGenerated: CustomStringConvertible {
     
     public func namespaced(to namespace: String) -> String {
         switch self {
-        case .model: "\(namespace).\(self)"
-        case .builtin: description
+        case .model(let model) where !model.isTable: "\(namespace).\(self)"
+        default: description
         }
     }
 }

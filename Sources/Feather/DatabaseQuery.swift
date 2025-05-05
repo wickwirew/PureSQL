@@ -9,7 +9,7 @@ public protocol DatabaseQuery<Input, Output>: Query {
     /// Whether the query requires a read or write transaction.
     var transactionKind: TransactionKind { get }
     
-    var database: any Database { get }
+    var connection: any Connection { get }
     
     func execute(
         with input: Input,
@@ -19,7 +19,7 @@ public protocol DatabaseQuery<Input, Output>: Query {
 
 public extension DatabaseQuery {
     func execute(with input: Input) async throws -> Output {
-        let tx = try await database.begin(transactionKind)
+        let tx = try await connection.begin(transactionKind)
         let output = try execute(with: input, tx: tx)
         try tx.commit()
         return output
@@ -39,16 +39,16 @@ public extension DatabaseQuery where Input == () {
 public struct DatabaseQueryImpl<Input, Output>: DatabaseQuery
     where Input: Sendable, Output: Sendable
 {
-    public let database: any Database
+    public let connection: any Connection
     public let transactionKind: TransactionKind
     public let execute: @Sendable (Input, borrowing Transaction) throws -> Output
     
     public init(
         _ transactionKind: TransactionKind,
-        database: any Database,
+        connection: any Connection,
         execute: @escaping @Sendable (Input, borrowing Transaction) throws -> Output
     ) {
-        self.database = database
+        self.connection = connection
         self.transactionKind = transactionKind
         self.execute = execute
     }

@@ -2,45 +2,23 @@
 //  Connection.swift
 //  Feather
 //
-//  Created by Wes Wickwire on 11/9/24.
+//  Created by Wes Wickwire on 3/13/25.
 //
 
-import Collections
-import SQLite3
-import Foundation
-
-/// Holds a raw SQLite database connection.
-/// `@unchecked Sendable` Thread safety is managed by
-/// the `ConnectionPool`
-class Connection: @unchecked Sendable {
-    let sqliteConnection: OpaquePointer
+/// A connection is an interface into the database. This is not
+/// directly mapped to a default SQLite connection like `SQLiteConnection`
+/// but is a much more high level of abstraction that allows for safe
+/// communication to a database.
+public protocol Connection: Actor {
+    /// Starts observation for the given subscriber
+    nonisolated func observe(subscriber: DatabaseSubscriber)
     
-    init(
-        path: String,
-        flags: Int32 = SQLITE_OPEN_CREATE
-            | SQLITE_OPEN_READWRITE
-            | SQLITE_OPEN_NOMUTEX
-            | SQLITE_OPEN_URI
-    ) throws(FeatherError) {
-        var raw: OpaquePointer?
-        try throwing(sqlite3_open_v2(path, &raw, flags, nil))
-        
-        guard let raw else {
-            throw .failedToOpenConnection(path: path)
-        }
-        
-        self.sqliteConnection = raw
-    }
+    /// Cancels the observation for the given subscriber
+    nonisolated func cancel(subscriber: DatabaseSubscriber)
     
-    func execute(sql: String) throws(FeatherError) {
-        try throwing(sqlite3_exec(sqliteConnection, sql, nil, nil, nil))
-    }
-
-    deinit {
-        do {
-            try throwing(sqlite3_close_v2(sqliteConnection))
-        } catch {
-            assertionFailure("Failed to close connection: \(error)")
-        }
-    }
+    func begin(
+        _ transaction: TransactionKind
+    ) async throws(FeatherError) -> sending Transaction
+    
+    nonisolated func didCommit(transaction: borrowing Transaction)
 }

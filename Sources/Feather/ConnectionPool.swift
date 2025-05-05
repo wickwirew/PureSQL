@@ -7,12 +7,6 @@
 
 import Foundation
 
-public enum DatabaseLocation {
-    case inMemory
-    case applicationDirectory(name: String)
-    case path(String)
-}
-
 public actor ConnectionPool: Sendable {
     private let path: String
     private var count: Int = 1
@@ -21,26 +15,12 @@ public actor ConnectionPool: Sendable {
     
     private var writeLock = Lock()
     
-    private let connectionStream: AsyncStream<Connection>
-    private let connectionContinuation: AsyncStream<Connection>.Continuation
-    
-    public static let defaultLimit = 5
-    
-    public init(
-        name: String,
-        limit: Int = ConnectionPool.defaultLimit,
-        migrations: [String]
-    ) throws {
-        let url = try FileManager.default
-            .url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-            .appendingPathComponent("\(name).sqlite")
-        print(url.absoluteString)
-        try self.init(path: url.absoluteString, limit: limit, migrations: migrations)
-    }
+    private let connectionStream: AsyncStream<SQLiteConnection>
+    private let connectionContinuation: AsyncStream<SQLiteConnection>.Continuation
     
     public init(
         path: String,
-        limit: Int = ConnectionPool.defaultLimit,
+        limit: Int,
         migrations: [String]
     ) throws {
         guard limit > 0 else {
@@ -49,9 +29,9 @@ public actor ConnectionPool: Sendable {
         
         self.path = path
         self.limit = limit
-        (connectionStream, connectionContinuation) = AsyncStream<Connection>.makeStream()
+        (connectionStream, connectionContinuation) = AsyncStream<SQLiteConnection>.makeStream()
         
-        let connection = try Connection(path: path)
+        let connection = try SQLiteConnection(path: path)
         self.observer.installHooks(into: connection)
         
         // Turn on WAL mode
@@ -69,7 +49,7 @@ public actor ConnectionPool: Sendable {
     
     /// Gives the connection back to the pool.
     nonisolated func reclaim(
-        connection: Connection,
+        connection: SQLiteConnection,
         txKind: TransactionKind
     ) {
         connectionContinuation.yield(connection)
@@ -81,7 +61,7 @@ public actor ConnectionPool: Sendable {
     }
 }
 
-extension ConnectionPool: Database {
+extension ConnectionPool: Connection {
     public nonisolated func observe(subscriber: any DatabaseSubscriber) {
         observer.subscribe(subscriber: subscriber)
     }
@@ -105,7 +85,7 @@ extension ConnectionPool: Database {
         
         // Helper function to create a transaction and set the
         // write signal if needed
-        func tx(connection: Connection) throws(FeatherError) -> sending Transaction {
+        func tx(connection: SQLiteConnection) throws(FeatherError) -> sending Transaction {
             return try Transaction(
                 connection: connection,
                 kind: kind,
@@ -125,7 +105,7 @@ extension ConnectionPool: Database {
         // Check if we have any capacity to create a new connection
         if count < limit {
             count += 1
-            let connection = try Connection(path: path)
+            let connection = try SQLiteConnection(path: path)
             observer.installHooks(into: connection)
             return try tx(connection: connection)
         }

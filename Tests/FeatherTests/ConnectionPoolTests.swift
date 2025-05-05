@@ -11,7 +11,7 @@ import Testing
 @Suite
 struct ConnectionPoolTests {
     @Test func canOpenConnectionToPool() async throws {
-        _ = try ConnectionPool(path: ":memory:", migrations: [])
+        _ = try ConnectionPool(path: ":memory:", limit: 1, migrations: [])
     }
 
     @Test func poolRunsMigrationsOnInit() async throws {

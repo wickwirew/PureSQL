@@ -6,7 +6,7 @@
 //
 
 public struct Transaction: ~Copyable {
-    let connection: Connection
+    let connection: SQLiteConnection
     let kind: TransactionKind
     let behavior: Behavior
     private var didCommit = false
@@ -19,7 +19,7 @@ public struct Transaction: ~Copyable {
     }
     
     init(
-        connection: Connection,
+        connection: SQLiteConnection,
         kind: TransactionKind,
         behavior: Behavior = .deferred,
         pool: ConnectionPool

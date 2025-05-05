@@ -34,11 +34,15 @@ final actor Lock {
         switch state {
         case .unlocked:
             return
-        case .locked(let continuations):
-            for continuation in continuations {
-                continuation.resume()
+        case .locked(var continuations):
+            guard !continuations.isEmpty else {
+                state = .unlocked
+                return
             }
-            state = .unlocked
+            
+            let first = continuations.removeFirst()
+            state = .locked(continuations)
+            first.resume()
         }
     }
 }

@@ -36,7 +36,7 @@ public final class DatabaseQueryObservation<Query>: DatabaseSubscriber, QueryObs
             onError = nil
         }
         
-        query.database.cancel(subscriber: self)
+        query.connection.cancel(subscriber: self)
         queue.cancel()
     }
     
@@ -49,7 +49,7 @@ public final class DatabaseQueryObservation<Query>: DatabaseSubscriber, QueryObs
             self.onError = onError
         }
         
-        query.database.observe(subscriber: self)
+        query.connection.observe(subscriber: self)
         enqueueNext()
     }
     

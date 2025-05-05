@@ -16,8 +16,8 @@ extension Queries {
         let second: Second
         let secondInput: @Sendable (First.Input, First.Output) -> Second.Input
         
-        public var database: any Database {
-            return first.database
+        public var connection: any Connection {
+            return first.connection
         }
         
         public var transactionKind: TransactionKind {

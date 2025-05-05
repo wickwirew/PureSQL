@@ -44,8 +44,8 @@ public struct SwiftLanguage: Language {
                 try declaration(for: table, isOutput: true, options: options)
             }
             
-            try StructDeclSyntax("struct DB") {
-                "let database: any Feather.Database"
+            try StructDeclSyntax("struct DB: Database") {
+                "let connection: any Feather.Connection"
                 
                 try declaration(for: migrations, options: options)
                 
@@ -129,9 +129,9 @@ public struct SwiftLanguage: Language {
                         trailingComma: TokenSyntax.commaToken()
                     )
                     LabeledExprSyntax(
-                        label: TokenSyntax.identifier("database"),
+                        label: TokenSyntax.identifier("connection"),
                         colon: TokenSyntax.colonToken(),
-                        expression: DeclReferenceExprSyntax(baseName: .identifier("database")),
+                        expression: DeclReferenceExprSyntax(baseName: .identifier("connection")),
                         trailingComma: nil
                     )
                 },

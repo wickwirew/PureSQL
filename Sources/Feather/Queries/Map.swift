@@ -51,8 +51,8 @@ extension Queries {
 }
 
 extension Queries.Map: DatabaseQuery where Base: DatabaseQuery {
-    public var database: any Database {
-        return base.database
+    public var connection: any Connection {
+        return base.connection
     }
     
     public var transactionKind: TransactionKind {

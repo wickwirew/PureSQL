@@ -68,7 +68,7 @@ class DatabaseObserver: @unchecked Sendable {
         }
     }
     
-    func installHooks(into connection: Connection) {
+    func installHooks(into connection: SQLiteConnection) {
         sqlite3_update_hook(
             connection.sqliteConnection,
             { selfPointer, operation, dbName, tableName, rowId in
