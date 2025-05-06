@@ -26,7 +26,7 @@ public struct Statement {
     
     /// If `true` the query returns nothing.
     public var noOutput: Bool {
-        return resultColumns.columns.isEmpty
+        return resultColumns.isEmpty
     }
     
     /// Replaces the name with the given input
@@ -67,23 +67,83 @@ public struct Parameter<Name> {
 
 /// The output of a statement
 public struct ResultColumns: Sendable {
-    /// The list of columns returned
-    public let columns: Columns
-    /// The source table this should be mapped too.
-    /// If the user does a `SELECT * FROM foo` we can
-    /// just return a `Foo` object rather than generate
-    /// a specific type for the output of the `SELECT`.
-    /// If the `SELECT` does not map directly to a table
-    /// due to selecting from many columns from many tables
-    /// this will be `nil`.
-    public let table: Substring?
+    public let chunks: [Chunk]
+    
+    public static let empty = ResultColumns(chunks: [])
+   
+    /// A group of columns in the result that can be grouped together.
+    /// Each group is either a `table.*` or an explicit list of columns
+    /// before or after.
+    ///
+    /// Allows us to return the table model nested within the output.
+    ///
+    /// Example:
+    /// ```
+    /// SELECT foo.*, bar.*, bar.baz + 1 AS extra FROM ...
+    /// ```
+    ///
+    /// Would generate:
+    /// ```
+    /// struct Output {
+    ///     let foo: Foo
+    ///     let bar: Bar
+    ///     let extra: Int
+    /// }
+    /// ```
+    ///
+    /// Where `foo.*`, `bar.*`, and `extra` are each their own chunk.
+    public struct Chunk: Sendable {
+        /// The list of columns returned
+        public let columns: Columns
+        /// The source table this should be mapped too.
+        /// If the user does a `SELECT * FROM foo` we can
+        /// just return a `Foo` object rather than generate
+        /// a specific type for the output of the `SELECT`.
+        /// If the `SELECT` does not map directly to a table
+        /// due to selecting from many columns from many tables
+        /// this will be `nil`.
+        public let table: Substring?
+    }
+    
+    public init(chunks: [Chunk]) {
+        self.chunks = chunks
+    }
+    
+    public init(columns: Columns, table: Substring?) {
+        self.chunks = [Chunk(columns: columns, table: table)]
+    }
     
     /// The columns as a row type.
     public var type: Type {
-        return .row(.named(columns))
+        return .row(.named(allColumns))
     }
     
-    public static let empty = ResultColumns(columns: [:], table: nil)
+    /// Whether or not there are any columns returned
+    public var isEmpty: Bool {
+        return chunks.isEmpty || chunks.allSatisfy { $0.columns.isEmpty }
+    }
+    
+    /// All of the columns in all of the chunks
+    public var allColumns: Columns {
+        // If there is only one chunk just hand back its columns
+        if chunks.count == 1, let onlyChunk = chunks.first {
+            return onlyChunk.columns
+        }
+        
+        return chunks.reduce(into: [:]) { result, chunk in
+            for column in chunk.columns {
+                result[column.key] = column.value
+            }
+        }
+    }
+    
+    public func mapTypes(_ transform: (Type) -> Type) -> ResultColumns {
+        return ResultColumns(
+            chunks: chunks.map { chunk in
+                Chunk(columns: chunk.columns.mapValues(transform), table: chunk.table)
+            }
+        )
+    }
 }
 
 /// The different segments of the source SQL.

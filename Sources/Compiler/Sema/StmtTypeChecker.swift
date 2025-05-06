@@ -82,11 +82,9 @@ struct StmtTypeChecker {
         
         return (
             parameters,
-            ResultColumns(
-                columns: resultColumns.columns
-                    .mapValues { ty in inferenceState.solution(for: ty, defaultIfTyVar: true) },
-                table: resultColumns.table
-            )
+            resultColumns.mapTypes { ty in
+                inferenceState.solution(for: ty, defaultIfTyVar: true)
+            }
         )
     }
     
@@ -182,10 +180,11 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
         }
         
         let select = typeCheck(select: stmt.select)
+        let resultColumns = select.allColumns
         
-        if let firstName = stmt.columnNames.first, select.columns.count != stmt.columnNames.count {
+        if let firstName = stmt.columnNames.first, resultColumns.count != stmt.columnNames.count {
             diagnostics.add(.init(
-                "SELECT returns \(select.columns.count) columns but only have \(stmt.columnNames.count) names defined",
+                "SELECT returns \(resultColumns.count) columns but only have \(stmt.columnNames.count) names defined",
                 at: firstName.location
             ))
         }
@@ -193,11 +192,11 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
         let columns: Columns
         if stmt.columnNames.isEmpty {
             // Don't have explicit names, just return the column names.
-            columns = select.columns
+            columns = resultColumns
         } else {
             // If the counts do not match a diagnostic will already have been emitted
             // so just for safety choose the minimum of the two.
-            let types = select.columns.values
+            let types = resultColumns.values
             let minCount = min(stmt.columnNames.count, types.count)
             columns = (0..<minCount).reduce(into: [:]) { columns, index in
                 columns[stmt.columnNames[index].value] = types[index]
@@ -291,7 +290,7 @@ extension StmtTypeChecker {
         
         if let values = insert.values {
             let resultColumns = typeCheck(select: values.select, potentialNames: insert.columns)
-            inferenceState.unify(inputType, with: .row(.named(resultColumns.columns)), at: insert.location)
+            inferenceState.unify(inputType, with: resultColumns.type, at: insert.location)
         } else {
             // TODO: Using 'DEFALUT VALUES' make sure all columns
             // TODO: actually have default values or null
@@ -432,9 +431,9 @@ extension StmtTypeChecker {
 
         let columns: Columns
         if cte.columns.isEmpty {
-            columns = resultColumns.columns
+            columns = resultColumns.allColumns
         } else {
-            let columnTypes = resultColumns.columns.values
+            let columnTypes = resultColumns.allColumns.values
             if columnTypes.count != cte.columns.count {
                 diagnostics.add(.init(
                     "CTE expected \(cte.columns.count) columns, but got \(columnTypes.count)",
@@ -561,16 +560,16 @@ extension StmtTypeChecker {
     private mutating func typeCheck(resultColumns: [ResultColumnSyntax]) -> ResultColumns {
         var columns: OrderedDictionary<Substring, Type> = [:]
         var table: Substring?
+        var chunks: [ResultColumns.Chunk] = []
         
-        func setTableIfEmpty(to name: Substring) {
-            if columns.isEmpty {
-                table = name
-            } else {
-                // Two expressions tried to set the table which means
-                // the result columns do not represent a single table.
-                // Example: `SELECT foo.*, bar.* FROM ...`
-                table = nil
-            }
+        func breakOffCurrentChunkIfNeeded() {
+            guard !columns.isEmpty else { return }
+            
+            let chunk = ResultColumns.Chunk(columns: columns, table: table)
+            chunks.append(chunk)
+            
+            columns = [:]
+            table = nil
         }
         
         for resultColumn in resultColumns {
@@ -589,32 +588,56 @@ extension StmtTypeChecker {
                 table = nil
             case let .all(tableName):
                 if let tableName {
+                    // Was a `table.*`, import every column from the table.
                     if let table = env[tableName.value]?.type {
                         guard case let .row(.named(tableColumns)) = table else {
                             diagnostics.add(.init("'\(tableName)' is not a table", at: tableName.location))
                             continue
                         }
                         
-                        for (name, type) in tableColumns {
-                            columns[name] = type
-                        }
+                        // Insert any columns that have been defined before the `table.*`
+                        breakOffCurrentChunkIfNeeded()
                         
-                        setTableIfEmpty(to: tableName.value)
+                        // Add table columns as a chunk
+                        chunks.append(ResultColumns.Chunk(
+                            columns: tableColumns,
+                            table: tableName.value
+                        ))
                     } else {
                         diagnostics.add(.init("Table '\(tableName)' does not exist", at: tableName.location))
                     }
                 } else {
+                    // No table specified so import everything in from the environment.
+                    
+                    // As we iterate over the environment we will count the number of tables
+                    var numberOfTables = 0
+                    var lastTable: Substring?
+                    let columnsBeforeThis = columns.isEmpty
+                    
                     for (name, type) in env {
                         switch type {
-                        case .row: setTableIfEmpty(to: name)
-                        default: columns[name] = type
+                        case .row:
+                            lastTable = name
+                            numberOfTables += 1
+                        default:
+                            columns[name] = type
                         }
+                    }
+                    
+                    // If there was only 1 table in the environment, and there were
+                    // no columns defined before this `*` then so far we will assume
+                    // that the overall result can be mapped to this table.
+                    if numberOfTables == 1, columnsBeforeThis {
+                        table = lastTable
                     }
                 }
             }
         }
         
-        return ResultColumns(columns: columns, table: table)
+        // Insert any remaining columns.
+        breakOffCurrentChunkIfNeeded()
+        
+        return ResultColumns(chunks: chunks)
     }
     
     private mutating func typeCheck(joinClause: JoinClauseSyntax) {
@@ -689,7 +712,7 @@ extension StmtTypeChecker {
             
             // Also insert each column into the env. So you dont
             // have to do `alias.column`
-            for (name, type) in resultColumns.columns {
+            for (name, type) in resultColumns.allColumns {
                 env.insert(name, ty: type)
             }
         case let .join(joinClause):
@@ -748,11 +771,11 @@ extension StmtTypeChecker {
         switch createTable.kind {
         case let .select(selectStmt):
             let signature = signature(for: selectStmt)
-            
+            let columns = signature.output.allColumns
             schema[createTable.name.value] = Table(
                 name: createTable.name.value,
-                columns: signature.output.columns,
-                primaryKey: primaryKey(of: createTable, columns: signature.output.columns),
+                columns: columns,
+                primaryKey: primaryKey(of: createTable, columns: columns),
                 kind: .normal
             )
         case let .columns(columns):

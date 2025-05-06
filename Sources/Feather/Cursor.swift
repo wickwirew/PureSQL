@@ -19,7 +19,7 @@ public struct Cursor<Element: RowDecodable>: ~Copyable {
         switch try statement.step() {
         case .row:
             let row = Row(sqliteStatement: statement.raw)
-            return try Element(row: row)
+            return try Element(row: row, startingAt: 0)
         case .done:
             return nil
         }
@@ -28,6 +28,10 @@ public struct Cursor<Element: RowDecodable>: ~Copyable {
 
 public struct Row: ~Copyable {
     let sqliteStatement: OpaquePointer
+    
+    public func value<Value: DatabasePrimitive>(at column: Int32) throws(FeatherError) -> Value {
+        return try Value(from: sqliteStatement, at: column)
+    }
     
     /// Gets an interator to enumerate all of the columns for the `Row`
     public func columnIterator() -> ColumnIterator {

@@ -6,12 +6,11 @@
 //
 
 public protocol RowDecodable {
-    init(row: borrowing Row) throws(FeatherError)
+    init(row: borrowing Row, startingAt column: Int32) throws(FeatherError)
 }
 
 extension Optional: RowDecodable where Wrapped: DatabasePrimitive {
-    public init(row: borrowing Row) throws(FeatherError) {
-        var columns = row.columnIterator()
-        self = try columns.next()
+    public init(row: borrowing Row, startingAt start: Int32) throws(FeatherError) {
+        self = try row.value(at: start)
     }
 }

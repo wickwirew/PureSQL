@@ -16,9 +16,8 @@ public protocol DatabasePrimitive: RowDecodable {
 }
 
 extension DatabasePrimitive {
-    public init(row: borrowing Row) throws(FeatherError) {
-        var columns = row.columnIterator()
-        self = try columns.next()
+    public init(row: borrowing Row, startingAt start: Int32) throws(FeatherError) {
+        self = try row.value(at: start)
     }
 }
 

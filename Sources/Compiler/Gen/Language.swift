@@ -152,18 +152,20 @@ extension Language {
         name: Substring,
         tables: OrderedDictionary<Substring, GeneratedModel>
     ) -> BuiltinOrGenerated? {
+        guard let resultColumns = statement.resultColumns.chunks.first else { return nil }
+        
         // Output can be mapped to a table struct
-        if let tableName = statement.resultColumns.table, let table = tables[tableName] {
+        if let tableName = resultColumns.table, let table = tables[tableName] {
             return .model(table)
         }
         
         // Make sure there is at least one column else return void
-        guard let firstColumn = statement.resultColumns.columns.values.first else {
+        guard let firstColumn = resultColumns.columns.values.first else {
             return nil
         }
         
         // Only one column returned, just use it's type
-        guard statement.resultColumns.columns.count > 1 else {
+        guard resultColumns.columns.count > 1 else {
             return .builtin(builtinType(for: firstColumn), isArray: firstColumn.isRow)
         }
         
@@ -171,7 +173,7 @@ extension Language {
         
         let model = GeneratedModel(
             name: outputTypeName,
-            fields: statement.resultColumns.columns.reduce(into: [:]) { fields, parameter in
+            fields: resultColumns.columns.reduce(into: [:]) { fields, parameter in
                 let name = parameter.key.description
                 let type = parameter.value
                 fields[name] = GeneratedField(

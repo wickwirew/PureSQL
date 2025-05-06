@@ -300,7 +300,13 @@ public struct SwiftLanguage: Language {
                     parameters: [
                         FunctionParameterSyntax(
                             firstName: "row",
-                            type: IdentifierTypeSyntax(name: "borrowing Feather.Row")
+                            type: IdentifierTypeSyntax(name: "borrowing Feather.Row"),
+                            trailingComma: TokenSyntax.commaToken()
+                        ),
+                        FunctionParameterSyntax(
+                            firstName: "startingAt",
+                            secondName: "start",
+                            type: IdentifierTypeSyntax(name: "Int32")
                         )
                     ]
                 ),
@@ -314,10 +320,8 @@ public struct SwiftLanguage: Language {
                 )
             )
         ) {
-            "var columns = row.columnIterator()"
-            
-            for field in model.fields.values {
-                "self.\(raw: field.name) = try columns.next()"
+            for (index, field) in model.fields.values.enumerated() {
+                "self.\(raw: field.name) = try row.value(at: start + \(raw: index))"
             }
         }
     }

@@ -247,7 +247,7 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
     mutating func visit(_ expr: borrowing SelectExprSyntax) -> Type {
         var typeChecker = StmtTypeChecker(env: env, schema: schema, inferenceState: inferenceState, pragmas: pragmas)
         let signature = typeChecker.signature(for: expr.select)
-        let type: Type = .row(.named(signature.output.columns))
+        let type: Type = .row(.named(signature.output.allColumns))
         // Make sure to update our inference state
         inferenceState = typeChecker.inferenceState
         // Using typeCheckers `allDiagnostics` would include diags
