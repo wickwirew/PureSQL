@@ -31,6 +31,7 @@ public struct SwiftLanguage: Language {
     }
     
     public static func file(
+        databaseName: String,
         migrations: [String],
         tables: [GeneratedModel],
         queries: [GeneratedQuery],
@@ -44,34 +45,57 @@ public struct SwiftLanguage: Language {
                 try declaration(for: table, isOutput: true, options: options)
             }
             
-            try StructDeclSyntax("struct DB: Database") {
+            if !options.contains(.namespaceGeneratedModels) {
+                for query in queries {
+                    for model in try modelsFor(query: query, options: options) {
+                        model
+                    }
+                }
+            }
+            
+            try StructDeclSyntax("struct \(raw: databaseName): Database") {
                 "let connection: any Feather.Connection"
                 
                 try declaration(for: migrations, options: options)
                 
                 for query in queries {
-                    if case let .model(model) = query.input, !model.isTable {
-                        try declaration(for: model, isOutput: false, options: options)
+                    if options.contains(.namespaceGeneratedModels) {
+                        for model in try modelsFor(query: query, options: options) {
+                            model
+                        }
                     }
                     
-                    if case let .model(model) = query.output, !model.isTable {
-                        try declaration(for: model, isOutput: true, options: options)
-                    }
-                    
-                    try declaration(for: query, options: options)
+                    try declaration(for: query, databaseName: databaseName, options: options)
                 }
             }
             
             for query in queries {
-                try typealiasFor(query: query)
+                try typealiasFor(query: query, databaseName: databaseName, options: options)
                 
                 if let input = query.input, case let .model(model) = input {
-                    try inputExtension(for: query, input: model)
+                    try inputExtension(for: query, input: model, databaseName: databaseName, options: options)
                 }
             }
         }
         
         return file.formatted().description
+    }
+    
+    private static func modelsFor(
+        query: GeneratedQuery,
+        options: GenerationOptions
+    ) throws -> [DeclSyntax] {
+        var decls: [DeclSyntax] = []
+        
+        if case let .model(model) = query.input, !model.isTable {
+            try decls.append(declaration(for: model, isOutput: false, options: options))
+        }
+        
+        if case let .model(model) = query.output, !model.isTable {
+            try decls.append(declaration(for: model, isOutput: true, options: options))
+        }
+        
+        return decls
     }
     
     public static func queryType(
@@ -107,10 +131,11 @@ public struct SwiftLanguage: Language {
     
     private static func declaration(
         for query: GeneratedQuery,
+        databaseName: String,
         options: GenerationOptions
     ) throws -> DeclSyntax {
-        let inputTypeName = inputTypeName(for: query)
-        let outputTypeName = outputTypeName(for: query)
+        let inputTypeName = inputTypeName(for: query, databaseName: databaseName)
+        let outputTypeName = outputTypeName(for: query, databaseName: databaseName)
         let queryTypeName = "AnyDatabaseQuery<\(inputTypeName), \(outputTypeName)>"
         
         let query = try VariableDeclSyntax("var \(raw: query.name): \(raw: queryTypeName)") {
@@ -129,7 +154,7 @@ public struct SwiftLanguage: Language {
                         trailingComma: TokenSyntax.commaToken()
                     )
                     LabeledExprSyntax(
-                        label: TokenSyntax.identifier("connection"),
+                        label: TokenSyntax.identifier("in"),
                         colon: TokenSyntax.colonToken(),
                         expression: DeclReferenceExprSyntax(baseName: .identifier("connection")),
                         trailingComma: nil
@@ -176,16 +201,27 @@ public struct SwiftLanguage: Language {
         return DeclSyntax(query)
     }
     
-    private static func typealiasFor(query: GeneratedQuery) throws -> TypeAliasDeclSyntax {
-        let inputTypeName = inputTypeName(for: query, namespaced: true)
-        let outputTypeName = outputTypeName(for: query, namespaced: true)
+    private static func typealiasFor(
+        query: GeneratedQuery,
+        databaseName: String,
+        options: GenerationOptions
+    ) throws -> TypeAliasDeclSyntax {
+        let namespace = options.contains(.namespaceGeneratedModels)
+        let inputTypeName = inputTypeName(for: query, namespaced: namespace, databaseName: databaseName)
+        let outputTypeName = outputTypeName(for: query, namespaced: namespace, databaseName: databaseName)
         return try TypeAliasDeclSyntax(
             "typealias \(raw: query.name.capitalizedFirst)Query = Query<\(raw: inputTypeName), \(raw: outputTypeName)>"
         )
     }
     
-    private static func inputExtension(for query: GeneratedQuery, input: GeneratedModel) throws -> ExtensionDeclSyntax {
-        let inputTypeName = inputTypeName(for: query, namespaced: true)
+    private static func inputExtension(
+        for query: GeneratedQuery,
+        input: GeneratedModel,
+        databaseName: String,
+        options: GenerationOptions
+    ) throws -> ExtensionDeclSyntax {
+        let namespace = options.contains(.namespaceGeneratedModels)
+        let inputTypeName = inputTypeName(for: query, namespaced: namespace, databaseName: databaseName)
         return try ExtensionDeclSyntax("extension Query where Input == \(raw: inputTypeName)") {
             let parameters = input.fields.map { parameter in
                 "\(parameter.key): \(parameter.value.type)"
@@ -203,14 +239,14 @@ public struct SwiftLanguage: Language {
         }
     }
     
-    private static func inputTypeName(for query: GeneratedQuery, namespaced: Bool = false) -> String {
+    private static func inputTypeName(for query: GeneratedQuery, namespaced: Bool = false, databaseName: String) -> String {
         guard let input = query.input else { return "()" }
-        return namespaced ? input.namespaced(to: "DB") : input.description
+        return namespaced ? input.namespaced(to: databaseName) : input.description
     }
     
-    private static func outputTypeName(for query: GeneratedQuery, namespaced: Bool = false) -> String {
+    private static func outputTypeName(for query: GeneratedQuery, namespaced: Bool = false, databaseName: String) -> String {
         if let output = query.output {
-            let type = namespaced ? output.namespaced(to: "DB") : output.description
+            let type = namespaced ? output.namespaced(to: databaseName) : output.description
             return switch query.outputCardinality {
             case .single: "\(type)?"
             case .many: "[\(type)]"

@@ -18,7 +18,7 @@ public struct AnyDatabaseQuery<Input, Output>: DatabaseQuery
     /// the input and transaction when execute is called.
     ///
     /// ```swift
-    /// AnyDatabaseQuery<In, Out>(.read, connection: connection) { input, tx in
+    /// AnyDatabaseQuery<In, Out>(.read, in: connection) { input, tx in
     ///     ...
     /// }
     /// ```
@@ -29,7 +29,7 @@ public struct AnyDatabaseQuery<Input, Output>: DatabaseQuery
     ///   - execute: A closure to run on `execute`.
     public init(
         _ transactionKind: TransactionKind,
-        connection: any Connection,
+        in connection: any Connection,
         execute: @escaping @Sendable (Input, borrowing Transaction) throws -> Output
     ) {
         self.connection = connection
@@ -52,7 +52,7 @@ public extension DatabaseQuery {
     ///
     /// - Returns: `self` erased to a `AnyDatabaseQuery`
     func eraseToAnyDatabaseQuery() -> AnyDatabaseQuery<Input, Output> {
-        AnyDatabaseQuery(transactionKind, connection: connection) { input, tx in
+        AnyDatabaseQuery(transactionKind, in: connection) { input, tx in
             try self.execute(with: input, tx: tx)
         }
     }

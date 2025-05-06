@@ -24,6 +24,12 @@ struct Feather: ParsableCommand {
     
     @Option(name: .shortAndLong, help: "The output file path. Default is to stdout")
     var output: String? = nil
+    
+    @Option(name: .shortAndLong, help: "The database name")
+    var databaseName: String = "DB"
+    
+    @Flag(name: .long, help: "Whether or not the generated models should be namespace under the DB struct")
+    var namespaceModels: Bool = false
 
     mutating func run() throws {
         try generate(language: SwiftLanguage.self)
@@ -70,10 +76,11 @@ struct Feather: ParsableCommand {
         }
         
         let file = try Lang.generate(
+            databaseName: databaseName,
             migrations: compiler.migrations.map(\.sanitizedSource),
             queries: compiler.queries,
             schema: compiler.schema,
-            options: []
+            options: gatherOptions()
         )
         
         guard !compiler.hasDiagnostics else {
@@ -89,6 +96,16 @@ struct Feather: ParsableCommand {
             // No output directory, just print to stdout
             print(file)
         }
+    }
+    
+    private func gatherOptions() -> GenerationOptions {
+        var options: GenerationOptions = []
+        
+        if namespaceModels {
+            options.insert(.namespaceGeneratedModels)
+        }
+        
+        return options
     }
     
     private func createDirectoiesIfNeeded(_ output: String) throws {

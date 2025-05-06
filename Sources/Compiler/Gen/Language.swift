@@ -22,6 +22,7 @@ public protocol Language {
     
     /// A file source code containing all of the generated tables, queries and migrations.
     static func file(
+        databaseName: String,
         migrations: [String],
         tables: [GeneratedModel],
         queries: [GeneratedQuery],
@@ -41,6 +42,7 @@ public protocol Language {
 
 extension Language {
     public static func generate(
+        databaseName: String,
         migrations: [String],
         queries: [Statement],
         schema: Schema,
@@ -50,6 +52,7 @@ extension Language {
         let queries = queries.map { query(for: $0, tables: tables) }
         
         return try file(
+            databaseName: databaseName,
             migrations: migrations,
             tables: Array(tables.values),
             queries: queries,
@@ -188,7 +191,6 @@ extension Language {
 public typealias GenerationOptions = Set<GenerationOption>
 
 public enum GenerationOption: Hashable {
-    case namespace(String)
     case namespaceGeneratedModels
 }
 
