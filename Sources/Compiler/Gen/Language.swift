@@ -64,12 +64,12 @@ extension Language {
         for statement: Statement,
         tables: OrderedDictionary<Substring, GeneratedModel>
     ) -> GeneratedQuery {
-        guard let name = statement.name else {
+        guard let definition = statement.definition else {
             fatalError("Upstream error should have caught this")
         }
         
-        let input = inputTypeIfNeeded(statement: statement, name: name)
-        let output = outputTypeIfNeeded(statement: statement, name: name, tables: tables)
+        let input = inputTypeIfNeeded(statement: statement, definition: definition)
+        let output = outputTypeIfNeeded(statement: statement, definition: definition, tables: tables)
         
         let type = queryType(
             for: statement.noOutput ? nil : statement.outputCardinality,
@@ -91,7 +91,7 @@ extension Language {
         }.joined()
         
         return GeneratedQuery(
-            name: "\(name)Query",
+            name: "\(definition.name)Query",
             type: type,
             input: input,
             output: output,
@@ -119,7 +119,7 @@ extension Language {
     
     private static func inputTypeIfNeeded(
         statement: Statement,
-        name: Substring
+        definition: Definition
     ) -> BuiltinOrGenerated? {
         guard let firstParameter = statement.parameters.first else { return nil }
         
@@ -130,7 +130,7 @@ extension Language {
             )
         }
         
-        let inputTypeName = "\(name.capitalizedFirst)Input"
+        let inputTypeName = definition.input?.description ?? "\(definition.name.capitalizedFirst)Input"
         
         let model = GeneratedModel(
             name: inputTypeName,
@@ -149,7 +149,7 @@ extension Language {
     
     private static func outputTypeIfNeeded(
         statement: Statement,
-        name: Substring,
+        definition: Definition,
         tables: OrderedDictionary<Substring, GeneratedModel>
     ) -> BuiltinOrGenerated? {
         guard let firstResultColumns = statement.resultColumns.chunks.first else { return nil }
@@ -171,7 +171,7 @@ extension Language {
             return .builtin(builtinType(for: firstColumn), isArray: firstColumn.isRow)
         }
         
-        let outputTypeName = "\(name.capitalizedFirst)Output"
+        let outputTypeName = definition.output?.description ?? "\(definition.name.capitalizedFirst)Output"
         
         let model = GeneratedModel(
             name: outputTypeName,

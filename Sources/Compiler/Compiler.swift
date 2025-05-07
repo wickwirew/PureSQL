@@ -113,7 +113,7 @@ fileprivate struct CompilerWithSource {
         self.schema = typeChecker.schema
         
         let statement = Statement(
-            name: nil,
+            definition: nil,
             parameters: uniqueParameters,
             resultColumns: type,
             outputCardinality: cardinality,
@@ -190,7 +190,14 @@ extension CompilerWithSource: StmtSyntaxVisitor {
     
     mutating func visit(_ stmt: QueryDefinitionStmtSyntax) -> (Statement, Diagnostics)? {
         guard let (innerStmt, diagnostics) = stmt.statement.accept(visitor: &self) else { return nil }
-        return (innerStmt.with(name: stmt.name.value), diagnostics)
+        
+        let definition = Definition(
+            name: stmt.name.value,
+            input: stmt.input?.value,
+            output: stmt.output?.value
+        )
+        
+        return (innerStmt.with(definition: definition), diagnostics)
     }
     
     mutating func visit(_ stmt: PragmaStmt) -> (Statement, Diagnostics)? {

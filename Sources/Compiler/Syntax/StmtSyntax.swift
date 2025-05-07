@@ -115,6 +115,8 @@ struct InsertStmtSyntax: StmtSyntax, Syntax {
 struct QueryDefinitionStmtSyntax: StmtSyntax {
     let id: SyntaxId
     let name: IdentifierSyntax
+    let input: IdentifierSyntax?
+    let output: IdentifierSyntax?
     let statement: any StmtSyntax
     let location: SourceLocation
     

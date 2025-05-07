@@ -6,7 +6,8 @@
 //
 
 public struct Statement {
-    public let name: Substring?
+    /// The information in the `DEFINE` statement if it exists
+    public let definition: Definition?
     /// Any bind parameters for the statement
     public let parameters: [Parameter<String>]
     /// The return type if any.
@@ -29,10 +30,15 @@ public struct Statement {
         return resultColumns.isEmpty
     }
     
-    /// Replaces the name with the given input
-    public func with(name: Substring?) -> Statement {
+    /// The name if one was defined
+    public var name: Substring? {
+        return definition?.name
+    }
+    
+    /// Replaces the definition with the given input
+    public func with(definition: Definition?) -> Statement {
         return Statement(
-            name: name,
+            definition: definition,
             parameters: parameters,
             resultColumns: resultColumns,
             outputCardinality: outputCardinality,
@@ -63,6 +69,13 @@ public struct Parameter<Name> {
             locations: locations
         )
     }
+}
+
+/// The values from a `DEFINE QUERY` statement
+public struct Definition {
+    public let name: Substring
+    public let input: Substring?
+    public let output: Substring?
 }
 
 /// The output of a statement

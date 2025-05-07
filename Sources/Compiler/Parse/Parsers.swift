@@ -2070,11 +2070,28 @@ enum Parsers {
         let define = state.take(.define)
         state.skip(.query)
         let name = identifier(state: &state)
+        
+        let params: [Substring: IdentifierSyntax]? = take(if: .openParen, state: &state) { state in
+            parens(state: &state) { state in
+                delimited(by: .comma, state: &state, reduceInto: [:]) { params, param in
+                    params[param.name.value] = param.value
+                } element: { state in
+                    let name = identifier(state: &state)
+                    state.skip(.colon)
+                    let value = identifier(state: &state)
+                    return (name: name, value: value)
+                }
+            }
+        }
+        
         state.skip(.as)
         let stmt = try stmt(state: &state)
+        
         return QueryDefinitionStmtSyntax(
             id: state.nextId(),
             name: name,
+            input: params?["input"],
+            output: params?["output"],
             statement: stmt,
             location: define.location.spanning(state.current.location)
         )
@@ -2139,6 +2156,22 @@ enum Parsers {
         repeat {
             try elements.append(element(&state))
         } while state.take(if: kind, and: otherKind)
+        
+        return elements
+    }
+    
+    static func delimited<Element, Output>(
+        by kind: Token.Kind,
+        state: inout ParserState,
+        reduceInto elements: Output,
+        reduce: (inout Output, Element) -> Void,
+        element: (inout ParserState) throws -> Element
+    ) rethrows -> Output {
+        var elements = elements
+
+        repeat {
+            try reduce(&elements, element(&state))
+        } while state.take(if: kind)
         
         return elements
     }
