@@ -61,3 +61,29 @@ SELECT * FROM foo WHERE id = :id AND id = :id AND bar = ?;
 -- CHECK:         baz TEXT
 -- CHECK:       OUTPUT_TABLE foo
 SELECT * FROM foo WHERE id IN (SELECT subFoo.id FROM foo AS subFoo WHERE subFoo.id IN :theIds);
+
+-- CHECK: SIGNATURE
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         id INTEGER
+-- CHECK:         bar (INTEGER AS Bool)?
+-- CHECK:         baz TEXT
+-- CHECK:       OUTPUT_TABLE foo
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         bazWithPostfix TEXT
+SELECT foo.*, foo.baz || 'postfix' AS bazWithPostfix FROM foo;
+
+-- CHECK: SIGNATURE
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         bazButOnItsOwn TEXT
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         id INTEGER
+-- CHECK:         bar (INTEGER AS Bool)?
+-- CHECK:         baz TEXT
+-- CHECK:       OUTPUT_TABLE foo
+SELECT foo.baz AS bazButOnItsOwn, foo.* FROM foo;
