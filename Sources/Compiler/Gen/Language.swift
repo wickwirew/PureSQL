@@ -109,7 +109,7 @@ extension Language {
                 let type = column.value
                 fields[name] = GeneratedField(
                     name: name,
-                    type: builtinType(for: type),
+                    type: .builtin(builtinType(for: type), isArray: false),
                     isArray: type.isRow
                 )
             },
@@ -137,7 +137,7 @@ extension Language {
             fields: statement.parameters.reduce(into: [:]) { fields, parameter in
                 fields[parameter.name] = GeneratedField(
                     name: parameter.name,
-                    type: builtinType(for: parameter.type),
+                    type: .builtin(builtinType(for: parameter.type), isArray: false),
                     isArray: parameter.type.isRow
                 )
             },
@@ -152,20 +152,22 @@ extension Language {
         name: Substring,
         tables: OrderedDictionary<Substring, GeneratedModel>
     ) -> BuiltinOrGenerated? {
-        guard let resultColumns = statement.resultColumns.chunks.first else { return nil }
+        guard let firstResultColumns = statement.resultColumns.chunks.first else { return nil }
         
         // Output can be mapped to a table struct
-        if let tableName = resultColumns.table, let table = tables[tableName] {
+        if statement.resultColumns.chunks.count == 1,
+           let tableName = firstResultColumns.table,
+            let table = tables[tableName] {
             return .model(table)
         }
         
         // Make sure there is at least one column else return void
-        guard let firstColumn = resultColumns.columns.values.first else {
+        guard let firstColumn = firstResultColumns.columns.values.first else {
             return nil
         }
         
         // Only one column returned, just use it's type
-        guard resultColumns.columns.count > 1 else {
+        guard statement.resultColumns.count > 1 else {
             return .builtin(builtinType(for: firstColumn), isArray: firstColumn.isRow)
         }
         
@@ -173,14 +175,25 @@ extension Language {
         
         let model = GeneratedModel(
             name: outputTypeName,
-            fields: resultColumns.columns.reduce(into: [:]) { fields, parameter in
-                let name = parameter.key.description
-                let type = parameter.value
-                fields[name] = GeneratedField(
-                    name: name,
-                    type: builtinType(for: type),
-                    isArray: type.isRow
-                )
+            fields: statement.resultColumns.chunks.reduce(into: [:]) { fields, chunk in
+                if let tableName = chunk.table, let table = tables[tableName] {
+                    let name = tableName.description
+                    fields[name] = GeneratedField(
+                        name: name,
+                        type: .model(table),
+                        isArray: false
+                    )
+                } else {
+                    for column in chunk.columns {
+                        let name = column.key.description
+                        let type = column.value
+                        fields[name] = GeneratedField(
+                            name: name,
+                            type: .builtin(builtinType(for: type), isArray: false),
+                            isArray: type.isRow
+                        )
+                    }
+                }
             },
             isTable: false
         )
@@ -205,7 +218,7 @@ public struct GeneratedModel {
 
 public struct GeneratedField {
     let name: String
-    let type: String
+    let type: BuiltinOrGenerated
     let isArray: Bool
 }
 

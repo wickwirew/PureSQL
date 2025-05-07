@@ -123,6 +123,11 @@ public struct ResultColumns: Sendable {
         return chunks.isEmpty || chunks.allSatisfy { $0.columns.isEmpty }
     }
     
+    /// How many columns there are total
+    public var count: Int {
+        return chunks.reduce(0, { $0 + $1.columns.count })
+    }
+    
     /// All of the columns in all of the chunks
     public var allColumns: Columns {
         // If there is only one chunk just hand back its columns

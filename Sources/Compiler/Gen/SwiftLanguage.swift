@@ -210,7 +210,7 @@ public struct SwiftLanguage: Language {
         let inputTypeName = inputTypeName(for: query, namespaced: namespace, databaseName: databaseName)
         let outputTypeName = outputTypeName(for: query, namespaced: namespace, databaseName: databaseName)
         return try TypeAliasDeclSyntax(
-            "typealias \(raw: query.name.capitalizedFirst)Query = Query<\(raw: inputTypeName), \(raw: outputTypeName)>"
+            "typealias \(raw: query.name.capitalizedFirst) = Query<\(raw: inputTypeName), \(raw: outputTypeName)>"
         )
     }
     
@@ -320,8 +320,16 @@ public struct SwiftLanguage: Language {
                 )
             )
         ) {
-            for (index, field) in model.fields.values.enumerated() {
-                "self.\(raw: field.name) = try row.value(at: start + \(raw: index))"
+            var index = 0
+            for field in model.fields.values {
+                switch field.type {
+                case .builtin:
+                    "self.\(raw: field.name) = try row.value(at: start + \(raw: index))"
+                    let _ = index += 1
+                case .model(let model):
+                    "self.\(raw: field.name) = try \(raw: field.type)(row: row, startingAt: start + \(raw: index))"
+                    let _ = index += model.fields.count
+                }
             }
         }
     }
@@ -338,7 +346,7 @@ public struct SwiftLanguage: Language {
                             .map { (position, field) in
                                 FunctionParameterSyntax(
                                     firstName: .identifier(field.name),
-                                    type: IdentifierTypeSyntax(name: .identifier(field.type)),
+                                    type: IdentifierTypeSyntax(name: .identifier(field.type.description)),
                                     trailingComma: position == .last ? nil : TokenSyntax.commaToken()
                                 )
                             }
@@ -355,13 +363,13 @@ public struct SwiftLanguage: Language {
     private static func variableDecl(
         binding: Keyword = .let,
         name: String,
-        type: String
+        type: BuiltinOrGenerated
     ) -> VariableDeclSyntax {
         VariableDeclSyntax(
             .let,
             name: "\(raw: name)",
             type: TypeAnnotationSyntax(
-                type: IdentifierTypeSyntax(name: .identifier(type))
+                type: IdentifierTypeSyntax(name: .identifier(type.description))
             )
         )
     }
