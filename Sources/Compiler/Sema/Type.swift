@@ -230,4 +230,12 @@ public struct TypeVariable: Hashable, CustomStringConvertible, ExpressibleByInte
     func with(kind: Kind) -> TypeVariable {
         return TypeVariable(n, kind: kind)
     }
+    
+    static func integer(_ n: Int) -> TypeVariable {
+        return TypeVariable(n, kind: .integer)
+    }
+    
+    static func float(_ n: Int) -> TypeVariable {
+        return TypeVariable(n, kind: .float)
+    }
 }

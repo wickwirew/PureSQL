@@ -12,11 +12,6 @@ import OrderedCollections
 struct Environment {
     private var identifiers: OrderedDictionary<Substring, TypeContainer> = [:]
     
-    private var functions: OrderedDictionary<Substring, TypeScheme> = [
-        "MAX": Builtins.max,
-        "SUM": Builtins.sum,
-    ]
-    
     /// Holds the type in the map.
     struct TypeContainer {
         let type: Type
@@ -81,7 +76,7 @@ struct Environment {
     
     subscript(function name: Substring, argCount argCount: Int) -> TypeScheme? {
         // TODO: Move this out of the env
-        guard let scheme = self.functions[name],
+        guard let scheme = Builtins.functions[name],
               case let .fn(params, ret) = scheme.type else { return nil }
         
         // This is how variadics are handled. If a variadic function is called
@@ -120,7 +115,7 @@ struct Environment {
              .isNotDistinctFrom, .between, .and, .or, .isnull, .not:
             Builtins.comparison
         case .in: Builtins.in
-        case .concat: Builtins.concat
+        case .concat: Builtins.concatOp
         case .doubleArrow: Builtins.extract
         case .match: Builtins.match
         case .regexp: Builtins.regexp
@@ -132,7 +127,7 @@ struct Environment {
     
     subscript(postfix op: Operator) -> TypeScheme? {
         return switch op {
-        case .collate: Builtins.concat
+        case .collate: Builtins.concatOp
         case .escape: Builtins.escape
         default: nil
         }

@@ -97,12 +97,12 @@ class TypeCheckerTests: XCTestCase {
     }
     
     func testTypeFunction() throws {
-        try XCTAssertEqual(.integer, result(for: "MAX(1)").type)
-        try XCTAssertEqual(.real, result(for: "MAX(1.0, 1)").type)
-        try XCTAssertEqual(.real, result(for: "MAX(1, 1.0)").type)
-        try XCTAssertEqual(.real, result(for: "MAX(1, 1, 1.0)").type)
-        try XCTAssertEqual(.real, result(for: "MAX(1, 1, 1.0, 1)").type)
-        try XCTAssertEqual(.real, result(for: "MAX(1, 1, 1, 1.0)").type)
+        try XCTAssertEqual(.integer, result(for: "max(1)").type)
+        try XCTAssertEqual(.real, result(for: "max(1.0, 1)").type)
+        try XCTAssertEqual(.real, result(for: "max(1, 1.0)").type)
+        try XCTAssertEqual(.real, result(for: "max(1, 1, 1.0)").type)
+        try XCTAssertEqual(.real, result(for: "max(1, 1, 1.0, 1)").type)
+        try XCTAssertEqual(.real, result(for: "max(1, 1, 1, 1.0)").type)
     }
     
     func testTypeFunctionComplex() throws {
@@ -110,7 +110,7 @@ class TypeCheckerTests: XCTestCase {
         CREATE TABLE foo(bar REAL NOT NULL);
         """)
         
-        let result = try result(for: "MAX(1, 1, bar + 1, 1)", in: scope)
+        let result = try result(for: "max(1, 1, bar + 1, 1)", in: scope)
         XCTAssertEqual(.real, result.type)
     }
     
@@ -119,7 +119,7 @@ class TypeCheckerTests: XCTestCase {
         CREATE TABLE foo(bar REAL NOT NULL);
         """)
         
-        let result = try result(for: "MAX(1, 1, bar + ?, 1)", in: scope)
+        let result = try result(for: "max(1, 1, bar + ?, 1)", in: scope)
         XCTAssertEqual(.real, result.type)
         XCTAssertEqual(.real, type(for: 1, in: result))
     }
