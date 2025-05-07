@@ -47,15 +47,14 @@ struct QueryTests {
             self.baz = baz
         }
         
-        init(row: borrowing Row) throws(FeatherError) {
-            var columns = row.columnIterator()
-            self.bar = try columns.next()
-            self.baz = try columns.next()
+        init(row: borrowing Row, startingAt start: Int32) throws(FeatherError) {
+            self.bar = try row.value(at: 0)
+            self.baz = try row.value(at: 1)
         }
     }
     
     private func selectAllFooQuery(database: any Connection) -> any DatabaseQuery<(), [Foo]> {
-        return AnyDatabaseQuery<(), [Foo]>(.read, database: database) { input, transaction in
+        return AnyDatabaseQuery<(), [Foo]>(.read, in: database) { input, transaction in
             let statement = try Statement(in: transaction) {
                 "SELECT * FROM foo;"
             }
@@ -65,7 +64,7 @@ struct QueryTests {
     }
     
     private func insertQuery(database: any Connection) -> any DatabaseQuery<Foo, ()> {
-        return AnyDatabaseQuery<Foo, ()>(.write, database: database) { input, transaction in
+        return AnyDatabaseQuery<Foo, ()>(.write, in: database) { input, transaction in
             let statement = try Statement(in: transaction) {
                 "INSERT INTO foo (bar, baz) VALUES (?, ?)"
             } bind: { statement in

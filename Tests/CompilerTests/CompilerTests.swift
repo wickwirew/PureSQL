@@ -57,7 +57,7 @@ class CompilerTests: XCTestCase {
             sqlFile: "CompileIsSingleResult",
             parse: { contents in
                 var compiler = Compiler()
-                _ = compiler.compile(queries: contents)
+                _ = compiler.compile(queries: contents, namespace: .global)
                 return compiler.queries
                     .filter{ !($0.syntax is CreateTableStmtSyntax) }
                     .map { $0.outputCardinality.rawValue.uppercased() }
@@ -73,8 +73,8 @@ struct CheckSignature: Checkable {
     
     init(_ statement: Statement) {
         self.parameters = statement.parameters
-        self.output = statement.resultColumns.columns.map { "\($0) \($1)" }
-        self.outputTable = statement.resultColumns.table
+        self.output = statement.resultColumns.allColumns.map { "\($0) \($1)" }
+        self.outputTable = statement.resultColumns.chunks.compactMap(\.table).first
     }
     
     var typeName: String {
