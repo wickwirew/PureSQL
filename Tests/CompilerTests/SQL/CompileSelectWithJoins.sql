@@ -18,18 +18,22 @@ CREATE TABLE pet (
 -- CHECK:       TYPE INTEGER
 -- CHECK:       INDEX 1
 -- CHECK:       NAME id
--- CHECK:   OUTPUT
--- CHECK:     id INTEGER
--- CHECK:     fullName TEXT
--- CHECK:     name TEXT?
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         id INTEGER
+-- CHECK:         fullName TEXT
+-- CHECK:         name TEXT?
 SELECT user.id, fullName, pet.name FROM user
 JOIN pet ON user.id = pet.ownerId
 WHERE user.id = ?;
 
 -- CHECK: SIGNATURE
--- CHECK:   OUTPUT
--- CHECK:     id INTEGER
--- CHECK:     petName TEXT
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         id INTEGER
+-- CHECK:         petName TEXT
 -- CHECK-ERROR: 'id' is ambigious in the current context
 SELECT id, pet.name AS petName FROM user
 INNER JOIN pet ON user.id = pet.ownerId;

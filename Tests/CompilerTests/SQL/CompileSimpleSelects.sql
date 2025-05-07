@@ -6,11 +6,13 @@ CREATE TABLE foo (id INTEGER PRIMARY KEY, bar INTEGER AS Bool, baz TEXT NOT NULL
 -- CHECK:       TYPE INTEGER
 -- CHECK:       INDEX 1
 -- CHECK:       NAME id
--- CHECK:   OUTPUT
--- CHECK:     id INTEGER
--- CHECK:     bar (INTEGER AS Bool)?
--- CHECK:     baz TEXT
--- CHECK:   OUTPUT_TABLE foo
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         id INTEGER
+-- CHECK:         bar (INTEGER AS Bool)?
+-- CHECK:         baz TEXT
+-- CHECK:       OUTPUT_TABLE foo
 SELECT * FROM foo WHERE id = ?;
 
 -- CHECK: SIGNATURE
@@ -19,9 +21,11 @@ SELECT * FROM foo WHERE id = ?;
 -- CHECK:       TYPE (INTEGER AS Bool)?
 -- CHECK:       INDEX 1
 -- CHECK:       NAME bar
--- CHECK:   OUTPUT
--- CHECK:     id INTEGER
--- CHECK:     bar (INTEGER AS Bool)?
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         id INTEGER
+-- CHECK:         bar (INTEGER AS Bool)?
 SELECT id, bar + 1 FROM foo WHERE bar * 20 > ?;
 
 -- CHECK: SIGNATURE
@@ -34,11 +38,13 @@ SELECT id, bar + 1 FROM foo WHERE bar * 20 > ?;
 -- CHECK:       TYPE (INTEGER AS Bool)?
 -- CHECK:       INDEX 2
 -- CHECK:       NAME bar
--- CHECK:   OUTPUT
--- CHECK:     id INTEGER
--- CHECK:     bar (INTEGER AS Bool)?
--- CHECK:     baz TEXT
--- CHECK:   OUTPUT_TABLE foo
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         id INTEGER
+-- CHECK:         bar (INTEGER AS Bool)?
+-- CHECK:         baz TEXT
+-- CHECK:       OUTPUT_TABLE foo
 SELECT * FROM foo WHERE id = :id AND id = :id AND bar = ?;
 
 -- CHECK: SIGNATURE
@@ -47,9 +53,11 @@ SELECT * FROM foo WHERE id = :id AND id = :id AND bar = ?;
 -- CHECK:       TYPE (INTEGER...)
 -- CHECK:       INDEX 1
 -- CHECK:       NAME :theIds
--- CHECK:   OUTPUT
--- CHECK:     id INTEGER
--- CHECK:     bar (INTEGER AS Bool)?
--- CHECK:     baz TEXT
--- CHECK:   OUTPUT_TABLE foo
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         id INTEGER
+-- CHECK:         bar (INTEGER AS Bool)?
+-- CHECK:         baz TEXT
+-- CHECK:       OUTPUT_TABLE foo
 SELECT * FROM foo WHERE id IN (SELECT subFoo.id FROM foo AS subFoo WHERE subFoo.id IN :theIds);

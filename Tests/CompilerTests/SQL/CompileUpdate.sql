@@ -43,7 +43,9 @@ UPDATE foo SET (bar, baz) = (?, ?);
 -- CHECK:       TYPE INTEGER?
 -- CHECK:       INDEX 1
 -- CHECK:       NAME bar
--- CHECK:   OUTPUT
--- CHECK:     bar INTEGER?
--- CHECK:     baz INTEGER?
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         bar INTEGER?
+-- CHECK:         baz INTEGER?
 UPDATE foo SET bar = ? RETURNING *;

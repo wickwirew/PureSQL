@@ -68,13 +68,18 @@ class CompilerTests: XCTestCase {
 
 struct CheckSignature: Checkable {
     let parameters: [Parameter<String>]
-    let output: [String]
-    let outputTable: Substring?
+    let outputChunks: [Chunk]
+    
+    struct Chunk {
+        let output: [String]
+        let outputTable: Substring?
+    }
     
     init(_ statement: Statement) {
         self.parameters = statement.parameters
-        self.output = statement.resultColumns.allColumns.map { "\($0) \($1)" }
-        self.outputTable = statement.resultColumns.chunks.compactMap(\.table).first
+        self.outputChunks = statement.resultColumns.chunks.map { chunk in
+            Chunk(output: chunk.columns.map{ "\($0) \($1)" }, outputTable: chunk.table)
+        }
     }
     
     var typeName: String {

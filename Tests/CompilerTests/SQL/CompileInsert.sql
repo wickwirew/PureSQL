@@ -22,9 +22,11 @@ INSERT INTO user (id, name) VALUES (?, ?);
 -- CHECK:       TYPE TEXT?
 -- CHECK:       INDEX 2
 -- CHECK:       NAME name
--- CHECK:   OUTPUT
--- CHECK:     id INTEGER?
--- CHECK:     name TEXT?
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         id INTEGER?
+-- CHECK:         name TEXT?
 INSERT INTO user (id, name) VALUES (?, ?) RETURNING *;
 
 -- CHECK: SIGNATURE
@@ -53,7 +55,9 @@ INSERT INTO user (id, name) VALUES (?, ?) RETURNING *;
 -- CHECK:       TYPE TEXT?
 -- CHECK:       INDEX 6
 -- CHECK:       NAME name3
--- CHECK:   OUTPUT
--- CHECK:     id INTEGER?
--- CHECK:     name TEXT?
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         id INTEGER?
+-- CHECK:         name TEXT?
 INSERT INTO user (id, name) VALUES (?, ?), (?, ?), (?, ?) RETURNING *;

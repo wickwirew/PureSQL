@@ -12,7 +12,9 @@ DELETE FROM foo;
 DELETE FROM foo WHERE bar = ?;
 
 -- CHECK: SIGNATURE
--- CHECK:   OUTPUT
--- CHECK:     bar INTEGER?
--- CHECK:     baz INTEGER?
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         bar INTEGER?
+-- CHECK:         baz INTEGER?
 DELETE FROM foo RETURNING *;
