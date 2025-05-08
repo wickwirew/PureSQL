@@ -51,17 +51,9 @@ public actor ConnectionPool: Sendable {
         // Turn on WAL mode
         try connection.execute(sql: "PRAGMA journal_mode=WAL;")
         
-        let tx = try Transaction(
-            connection: connection,
-            kind: .write,
-            pool: nil
-        )
-        
+        let tx = try Transaction(connection: connection, kind: .write)
         try MigrationRunner.execute(migrations: migrations, tx: tx)
-        
-        // We don't want an async inti so we can skip the reclaim to remove the await
-        // and manually add it to the availableConnections manually.
-        try tx.commitWithoutReclaim()
+        try tx.commit()
         
         self.availableConnections = [connection]
     }
@@ -71,47 +63,26 @@ public actor ConnectionPool: Sendable {
         return count >= limit
     }
     
-    /// Gives the connection back to the pool.
-    func reclaim(
-        connection: SQLiteConnection,
-        txKind: TransactionKind
-    ) async {
-        availableConnections.append(connection)
-        alertAnyWaitersOfAvailableConnection()
-        
-        if txKind == .write {
-            await writeLock.unlock()
-        }
-    }
-}
-
-extension ConnectionPool: Connection {
-    public nonisolated func observe(subscriber: any DatabaseSubscriber) {
-        observer.subscribe(subscriber: subscriber)
-    }
-    
-    public nonisolated func cancel(subscriber: any DatabaseSubscriber) {
-        observer.cancel(subscriber: subscriber)
-    }
-    
-    public nonisolated func didCommit(transaction: borrowing Transaction) {
-        observer.didCommit()
-    }
-    
     /// Starts a transaction.
-    public func begin(
-        _ kind: TransactionKind
+    private func begin(
+        _ kind: Transaction.Kind
     ) async throws(FeatherError) -> sending Transaction {
         // Writes must be exclusive, make sure to wait on any pending writes.
         if kind == .write {
             await writeLock.lock()
         }
         
-        return try await Transaction(
-            connection: getConnection(),
-            kind: kind,
-            pool: self
-        )
+        return try await Transaction(connection: getConnection(), kind: kind)
+    }
+    
+    /// Gives the connection back to the pool.
+    private func reclaim(tx: borrowing Transaction) async {
+        availableConnections.append(tx.connection)
+        alertAnyWaitersOfAvailableConnection()
+        
+        if tx.kind == .write {
+            await writeLock.unlock()
+        }
     }
     
     /// Will get, wait or create a connection to the database
@@ -145,5 +116,43 @@ extension ConnectionPool: Connection {
         let waiter = waitingForConnection.removeFirst()
         let connection = availableConnections.removeFirst()
         waiter.resume(with: .success(connection))
+    }
+}
+
+extension ConnectionPool: Connection {
+    public nonisolated func observe(subscriber: any DatabaseSubscriber) {
+        observer.subscribe(subscriber: subscriber)
+    }
+    
+    public nonisolated func cancel(subscriber: any DatabaseSubscriber) {
+        observer.cancel(subscriber: subscriber)
+    }
+    
+    /// Starts a transaction.
+    public func begin<Output>(
+        _ kind: Transaction.Kind,
+        execute: (borrowing Transaction) throws -> Output
+    ) async throws -> Output {
+        let tx = try await begin(kind)
+        
+        // The `Result` wrapper seems weird, but allows us to keep
+        // tx functions consuming. Cause we cannot call `commit` in
+        // the `do` and on failure call `rollback` since it would
+        // have been consumed in the `commit`.
+        let result = Result {
+            try execute(tx)
+        }
+        
+        await reclaim(tx: tx)
+        
+        switch result {
+        case .success(let output):
+            try tx.commit()
+            observer.didCommit()
+            return output
+        case .failure(let error):
+            try tx.commitOrRollback()
+            throw error
+        }
     }
 }

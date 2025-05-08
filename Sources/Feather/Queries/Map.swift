@@ -55,7 +55,7 @@ extension Queries.Map: DatabaseQuery where Base: DatabaseQuery {
         return base.connection
     }
     
-    public var transactionKind: TransactionKind {
+    public var transactionKind: Transaction.Kind {
         return base.transactionKind
     }
     

@@ -30,6 +30,10 @@ public struct SQL: ExpressibleByStringLiteral, ExpressibleByStringInterpolation,
             output.append("(\(primitives.map { _ in "?" }.joined(separator: ",")))")
             parameters.append(contentsOf: primitives)
         }
+        
+        public mutating func appendInterpolation<T>(raw: T) {
+            output.append("\(raw)")
+        }
     }
 
     public init(stringLiteral value: String) {

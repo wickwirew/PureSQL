@@ -23,8 +23,9 @@ struct ConnectionPoolTests {
             ]
         )
         
-        let tx = try await pool.begin(.read)
-        _ = try Statement("SELECT * FROM foo", transaction: tx)
+        try await pool.begin(.read) { tx in
+            _ = try Statement("SELECT * FROM foo", transaction: tx)
+        }
     }
     
     @Test func poolReusesConnections() async throws {
@@ -38,8 +39,9 @@ struct ConnectionPoolTests {
         
         // Will hang indefinitely if a connection isnt recycled
         for _ in 0..<10 {
-            let tx = try await pool.begin(.read)
-            _ = try Statement("SELECT * FROM foo", transaction: tx)
+            try await pool.begin(.read) { tx in
+                _ = try Statement("SELECT * FROM foo", transaction: tx)
+            }
         }
     }
 }

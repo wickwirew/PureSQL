@@ -16,9 +16,8 @@ public protocol Connection: Actor {
     /// Cancels the observation for the given subscriber
     nonisolated func cancel(subscriber: DatabaseSubscriber)
     
-    func begin(
-        _ transaction: TransactionKind
-    ) async throws(FeatherError) -> sending Transaction
-    
-    func didCommit(transaction: borrowing Transaction)
+    func begin<Output>(
+        _ kind: Transaction.Kind,
+        execute: (borrowing Transaction) throws -> Output
+    ) async throws -> Output
 }

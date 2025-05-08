@@ -9,9 +9,9 @@ public struct MigrationRunner {
     static let migrationTableName = "__featherMigrations"
     
     public static func execute(migrations: [String], pool: ConnectionPool) async throws {
-        let tx = try await pool.begin(.write)
-        try execute(migrations: migrations, tx: tx)
-        try tx.commit()
+        try await pool.begin(.write) { tx in
+            try execute(migrations: migrations, tx: tx)
+        }
     }
     
     public static func execute(migrations: [String], tx: borrowing Transaction) throws {

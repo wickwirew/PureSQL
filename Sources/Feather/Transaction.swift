@@ -8,10 +8,8 @@
 /// A SQLite transaction.
 public struct Transaction: ~Copyable {
     let connection: SQLiteConnection
-    let kind: TransactionKind
+    let kind: Kind
     let behavior: Behavior
-    private var didCommit = false
-    private let pool: ConnectionPool?
     
     public enum Behavior: String, Sendable {
         case deferred = "DEFERRED"
@@ -19,77 +17,44 @@ public struct Transaction: ~Copyable {
         case exclusive = "EXCLUSIVE"
     }
     
+    public enum Kind: Int, Sendable, Comparable {
+        case read
+        case write
+        
+        public static func < (lhs: Kind, rhs: Kind) -> Bool {
+            return lhs.rawValue < rhs.rawValue
+        }
+    }
+    
     init(
         connection: SQLiteConnection,
-        kind: TransactionKind,
-        behavior: Behavior = .deferred,
-        pool: ConnectionPool?
+        kind: Kind,
+        behavior: Behavior = .deferred
     ) throws(FeatherError) {
         self.connection = connection
         self.kind = kind
         self.behavior = behavior
-        self.pool = pool
         try connection.execute(sql: "BEGIN \(behavior.rawValue) TRANSACTION;")
     }
     
+    /// Executes the raw SQL
     public func execute(sql: String) throws(FeatherError) {
         try connection.execute(sql: sql)
     }
     
-    public consuming func commit() async throws(FeatherError) {
-        guard !didCommit else {
-            // This should never happen since its ~Copyable in a consuming
-            // function but cant hurt to double check
-            throw .alreadyCommited
-        }
-        
-        didCommit = true
-        try connection.execute(sql: "COMMIT")
-        
-        pool?.didCommit(transaction: self)
-        
-        await pool?.reclaim(connection: connection, txKind: kind)
-    }
-    
-    consuming func commitWithoutReclaim() throws(FeatherError) {
-        guard !didCommit else {
-            throw .alreadyCommited
-        }
-        
-        didCommit = true
+    /// Commits any changes to the db
+    public consuming func commit() throws(FeatherError) {
         try connection.execute(sql: "COMMIT")
     }
     
-    deinit {
-        guard didCommit else { return }
-        
-        do {
-            // Did not commit, need to either auto commit or rollback the changes.
-            switch kind {
-            case .read:
-                try connection.execute(sql: "COMMIT")
-            case .write:
-                try connection.execute(sql: "ROLLBACK")
-            }
-            
-            // Feels dirty having this task here but it cannot be done
-            // in a synchronous way...
-            Task { [pool, connection, kind] in
-                await pool?.reclaim(connection: connection, txKind: kind)
-            }
-        } catch {
-            assertionFailure("Failed to commit or rollback")
+    /// Should be called on error. If it is a read then it will just commit
+    /// but writes will be rolled back.
+    public consuming func commitOrRollback() throws(FeatherError) {
+        switch kind {
+        case .read:
+            try connection.execute(sql: "COMMIT")
+        case .write:
+            try connection.execute(sql: "ROLLBACK")
         }
-    }
-}
-
-public enum TransactionKind: Int, Sendable {
-    case read
-    case write
-}
-
-extension TransactionKind: Comparable {
-    public static func < (lhs: TransactionKind, rhs: TransactionKind) -> Bool {
-        return lhs.rawValue < rhs.rawValue
     }
 }

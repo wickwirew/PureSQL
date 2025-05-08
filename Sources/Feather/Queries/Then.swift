@@ -20,7 +20,7 @@ extension Queries {
             return first.connection
         }
         
-        public var transactionKind: TransactionKind {
+        public var transactionKind: Transaction.Kind {
             return max(first.transactionKind, second.transactionKind)
         }
         

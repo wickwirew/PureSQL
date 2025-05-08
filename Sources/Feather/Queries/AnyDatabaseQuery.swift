@@ -10,7 +10,7 @@ public struct AnyDatabaseQuery<Input, Output>: DatabaseQuery
     where Input: Sendable, Output: Sendable
 {
     public let connection: any Connection
-    public let transactionKind: TransactionKind
+    public let transactionKind: Transaction.Kind
     public let execute: @Sendable (Input, borrowing Transaction) throws -> Output
     
     
@@ -28,7 +28,7 @@ public struct AnyDatabaseQuery<Input, Output>: DatabaseQuery
     ///   - connection: The connection to execute the query with
     ///   - execute: A closure to run on `execute`.
     public init(
-        _ transactionKind: TransactionKind,
+        _ transactionKind: Transaction.Kind,
         in connection: any Connection,
         execute: @escaping @Sendable (Input, borrowing Transaction) throws -> Output
     ) {
