@@ -5,6 +5,7 @@
 //  Created by Wes Wickwire on 5/4/25.
 //
 
+/// https://www.sqlite.org/lang_expr.html
 enum Operator: Equatable {
     case tilde
     case collate(Substring)

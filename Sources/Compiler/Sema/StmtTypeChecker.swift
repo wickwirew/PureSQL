@@ -137,7 +137,7 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
         return stmt.statement.accept(visitor: &self)
     }
     
-    mutating func visit(_ stmt: borrowing PragmaStmt) -> ResultColumns {
+    mutating func visit(_ stmt: borrowing PragmaStmtSyntax) -> ResultColumns {
         return .empty
     }
     

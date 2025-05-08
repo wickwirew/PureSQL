@@ -36,7 +36,7 @@ struct PragmaAnalyzer {
         return featherPragmas.contains(pragma)
     }
     
-    mutating func handle(pragma: PragmaStmt) {
+    mutating func handle(pragma: PragmaStmtSyntax) {
         switch pragma.name.value {
         case FeatherPragmas.Keys.requireStrictTables:
             guard let expr = pragma.value else {

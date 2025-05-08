@@ -203,7 +203,7 @@ enum Parsers {
     }
     
     /// https://www.sqlite.org/pragma.html
-    static func pragma(state: inout ParserState) throws -> PragmaStmt {
+    static func pragma(state: inout ParserState) throws -> PragmaStmtSyntax {
         let start = state.take(.pragma)
         
         let schema: IdentifierSyntax?
@@ -241,7 +241,7 @@ enum Parsers {
             isFunctionCall = false
         }
         
-        return PragmaStmt(
+        return PragmaStmtSyntax(
             id: state.nextId(),
             schema: schema,
             name: name,

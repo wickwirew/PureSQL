@@ -137,7 +137,7 @@ extension Rewriter: StmtSyntaxVisitor {
         return [stmt.location.lowerBound..<stmt.statement.location.lowerBound]
     }
     
-    func visit(_ stmt: borrowing PragmaStmt) -> [Range<Substring.Index>] { [] }
+    func visit(_ stmt: borrowing PragmaStmtSyntax) -> [Range<Substring.Index>] { [] }
     
     func visit(_ stmt: borrowing DropTableStmtSyntax) -> [Range<Substring.Index>] { [] }
     

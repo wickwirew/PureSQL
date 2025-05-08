@@ -200,7 +200,7 @@ extension CompilerWithSource: StmtSyntaxVisitor {
         return (innerStmt.with(definition: definition), diagnostics)
     }
     
-    mutating func visit(_ stmt: PragmaStmt) -> (Statement, Diagnostics)? {
+    mutating func visit(_ stmt: PragmaStmtSyntax) -> (Statement, Diagnostics)? {
         pragmas.handle(pragma: stmt)
         // TODO: Figure out what to do with these
         // TODO: Emit diags from pragmas
@@ -245,7 +245,7 @@ struct IsValidForMigrations: StmtSyntaxVisitor {
     func visit(_ stmt: borrowing UpdateStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing DeleteStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> Bool { false }
-    func visit(_ stmt: borrowing PragmaStmt) -> Bool { true }
+    func visit(_ stmt: borrowing PragmaStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing EmptyStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing DropTableStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing CreateIndexStmtSyntax) -> Bool { true }
@@ -264,7 +264,7 @@ struct IsValidForQueries: StmtSyntaxVisitor {
     func visit(_ stmt: borrowing UpdateStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing DeleteStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing PragmaStmt) -> Bool { true }
+    func visit(_ stmt: borrowing PragmaStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing EmptyStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing DropTableStmtSyntax) -> Bool { false }
     func visit(_ stmt: borrowing CreateIndexStmtSyntax) -> Bool { false }
@@ -283,7 +283,7 @@ struct IsAlwaysValid: StmtSyntaxVisitor {
     func visit(_ stmt: borrowing UpdateStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing DeleteStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing PragmaStmt) -> Bool { true }
+    func visit(_ stmt: borrowing PragmaStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing EmptyStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing DropTableStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing CreateIndexStmtSyntax) -> Bool { true }

@@ -41,7 +41,7 @@ extension CardinalityInferrer: StmtSyntaxVisitor {
     
     mutating func visit(_ stmt: borrowing EmptyStmtSyntax) -> Cardinality { .many }
     
-    mutating func visit(_ stmt: borrowing PragmaStmt) -> Cardinality { .many }
+    mutating func visit(_ stmt: borrowing PragmaStmtSyntax) -> Cardinality { .many }
     
     mutating func visit(_ stmt: borrowing DropTableStmtSyntax) -> Cardinality { .many }
     
