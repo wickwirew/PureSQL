@@ -5,12 +5,13 @@
 //  Created by Wes Wickwire on 2/16/25.
 //
 
+/// A SQLite transaction.
 public struct Transaction: ~Copyable {
     let connection: SQLiteConnection
     let kind: TransactionKind
     let behavior: Behavior
     private var didCommit = false
-    private let pool: ConnectionPool
+    private let pool: ConnectionPool?
     
     public enum Behavior: String, Sendable {
         case deferred = "DEFERRED"
@@ -22,7 +23,7 @@ public struct Transaction: ~Copyable {
         connection: SQLiteConnection,
         kind: TransactionKind,
         behavior: Behavior = .deferred,
-        pool: ConnectionPool
+        pool: ConnectionPool?
     ) throws(FeatherError) {
         self.connection = connection
         self.kind = kind
@@ -35,32 +36,50 @@ public struct Transaction: ~Copyable {
         try connection.execute(sql: sql)
     }
     
-    public consuming func commit() throws(FeatherError) {
+    public consuming func commit() async throws(FeatherError) {
         guard !didCommit else {
+            // This should never happen since its ~Copyable in a consuming
+            // function but cant hurt to double check
             throw .alreadyCommited
         }
         
         didCommit = true
         try connection.execute(sql: "COMMIT")
         
-        pool.didCommit(transaction: self)
+        pool?.didCommit(transaction: self)
+        
+        await pool?.reclaim(connection: connection, txKind: kind)
+    }
+    
+    consuming func commitWithoutReclaim() throws(FeatherError) {
+        guard !didCommit else {
+            throw .alreadyCommited
+        }
+        
+        didCommit = true
+        try connection.execute(sql: "COMMIT")
     }
     
     deinit {
-        if !didCommit {
-            do {
-                switch kind {
-                case .read:
-                    try connection.execute(sql: "COMMIT")
-                case .write:
-                    try connection.execute(sql: "ROLLBACK")
-                }
-            } catch {
-                assertionFailure("Failed to commit or rollback")
-            }
-        }
+        guard didCommit else { return }
         
-        pool.reclaim(connection: connection, txKind: kind)
+        do {
+            // Did not commit, need to either auto commit or rollback the changes.
+            switch kind {
+            case .read:
+                try connection.execute(sql: "COMMIT")
+            case .write:
+                try connection.execute(sql: "ROLLBACK")
+            }
+            
+            // Feels dirty having this task here but it cannot be done
+            // in a synchronous way...
+            Task { [pool, connection, kind] in
+                await pool?.reclaim(connection: connection, txKind: kind)
+            }
+        } catch {
+            assertionFailure("Failed to commit or rollback")
+        }
     }
 }
 

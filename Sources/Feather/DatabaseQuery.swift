@@ -21,7 +21,7 @@ public extension DatabaseQuery {
     func execute(with input: Input) async throws -> Output {
         let tx = try await connection.begin(transactionKind)
         let output = try execute(with: input, tx: tx)
-        try tx.commit()
+        try await tx.commit()
         return output
     }
     

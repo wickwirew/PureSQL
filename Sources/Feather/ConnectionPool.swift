@@ -7,16 +7,31 @@
 
 import Foundation
 
+/// Manages a pool of connections to the database. Will automatically
+/// Create, get, or wait for a connection from the `begin` call.
+///
+/// `WAL` mode is turned on automatically allowing for concurrent reads
+/// while a write is happening. It will automatically make any other
+/// write transactions wait if one is going on without blocking using
+/// swift's async await.
 public actor ConnectionPool: Sendable {
+    /// The path to the database
     private let path: String
+    /// The current connection count. This is not the available count
+    /// but how many we have created
     private var count: Int = 1
+    /// The maximum number of connections we can create
     private let limit: Int
+    /// Any connections available for use
+    private var availableConnections: [SQLiteConnection]
+    /// Any caller waiting for a connection
+    private var waitingForConnection: [WaiterContinuation] = []
+    /// A lock to synchronize writes.
+    private var writeLock = Lock()
+    /// Manages alerting any subscribers of any database changes.
     private nonisolated let observer = DatabaseObserver()
     
-    private var writeLock = Lock()
-    
-    private let connectionStream: AsyncStream<SQLiteConnection>
-    private let connectionContinuation: AsyncStream<SQLiteConnection>.Continuation
+    typealias WaiterContinuation = CheckedContinuation<SQLiteConnection, Never>
     
     public init(
         path: String,
@@ -29,7 +44,6 @@ public actor ConnectionPool: Sendable {
         
         self.path = path
         self.limit = limit
-        (connectionStream, connectionContinuation) = AsyncStream<SQLiteConnection>.makeStream()
         
         let connection = try SQLiteConnection(path: path)
         self.observer.installHooks(into: connection)
@@ -40,23 +54,33 @@ public actor ConnectionPool: Sendable {
         let tx = try Transaction(
             connection: connection,
             kind: .write,
-            pool: self
+            pool: nil
         )
         
         try MigrationRunner.execute(migrations: migrations, tx: tx)
-        try tx.commit()
+        
+        // We don't want an async inti so we can skip the reclaim to remove the await
+        // and manually add it to the availableConnections manually.
+        try tx.commitWithoutReclaim()
+        
+        self.availableConnections = [connection]
+    }
+    
+    /// Whether or not we have created all the connections we are allowed too
+    private var isAtConnectionLimit: Bool {
+        return count >= limit
     }
     
     /// Gives the connection back to the pool.
-    nonisolated func reclaim(
+    func reclaim(
         connection: SQLiteConnection,
         txKind: TransactionKind
-    ) {
-        connectionContinuation.yield(connection)
+    ) async {
+        availableConnections.append(connection)
+        alertAnyWaitersOfAvailableConnection()
         
         if txKind == .write {
-            // TODO: Find a better way to do this.
-            Task { await writeLock.unlock() }
+            await writeLock.unlock()
         }
     }
 }
@@ -83,40 +107,43 @@ extension ConnectionPool: Connection {
             await writeLock.lock()
         }
         
-        // Helper function to create a transaction and set the
-        // write signal if needed
-        func tx(connection: SQLiteConnection) throws(FeatherError) -> sending Transaction {
-            return try Transaction(
-                connection: connection,
-                kind: kind,
-                pool: self
-            )
+        return try await Transaction(
+            connection: getConnection(),
+            kind: kind,
+            pool: self
+        )
+    }
+    
+    /// Will get, wait or create a connection to the database
+    private func getConnection() async throws(FeatherError) -> SQLiteConnection {
+        guard availableConnections.isEmpty else {
+            // Have an available connection, just use it
+            return availableConnections.removeFirst()
         }
         
-        // Check if there is an available connection.
-        // We could recieve a connection from the `for await`
-        // below but we would have to eagerly create connections
-        // even if one is all that is ever needed
-//        var connections = connectionStream.makeAsyncIterator()
-//        if let connection = await connections.next() {
-//            return try tx(connection: connection)
-//        }
-        
-        // Check if we have any capacity to create a new connection
-        if count < limit {
-            count += 1
-            let connection = try SQLiteConnection(path: path)
-            observer.installHooks(into: connection)
-            return try tx(connection: connection)
+        guard !isAtConnectionLimit else {
+            // At the limit, need to wait for one
+            return await withCheckedContinuation { continuation in
+                waitingForConnection.append(continuation)
+            }
         }
         
-        // Wait for an available connection
-        for await connection in connectionStream {
-            return try tx(connection: connection)
-        }
-        
-        // Can happen if the pool dies and the stream is closed
-        // before the caller gets its transaction.
-        throw .failedToGetConnection
+        return try newConnection()
+    }
+    
+    /// Initializes a new SQL connection
+    private func newConnection() throws(FeatherError) -> SQLiteConnection {
+        assert(count < limit)
+        count += 1
+        return try SQLiteConnection(path: path)
+    }
+    
+    /// Called when we receive a connection back into the pool
+    /// and we need to alert anybody waiting for one.
+    private func alertAnyWaitersOfAvailableConnection() {
+        guard !waitingForConnection.isEmpty, !availableConnections.isEmpty else { return }
+        let waiter = waitingForConnection.removeFirst()
+        let connection = availableConnections.removeFirst()
+        waiter.resume(with: .success(connection))
     }
 }

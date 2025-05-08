@@ -20,5 +20,5 @@ public protocol Connection: Actor {
         _ transaction: TransactionKind
     ) async throws(FeatherError) -> sending Transaction
     
-    nonisolated func didCommit(transaction: borrowing Transaction)
+    func didCommit(transaction: borrowing Transaction)
 }
