@@ -21,4 +21,8 @@ public enum FeatherError: Error {
     /// to be started twice.
     case subscriptionAlreadyStarted
     case invalidUuidString
+    case cannotDecode(Any.Type, from: Any.Type)
+    case cannotEncode(Any.Type, to: Any.Type)
+    case decodingError(String)
+    case encodingError(String)
 }

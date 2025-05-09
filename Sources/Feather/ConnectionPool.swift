@@ -139,6 +139,9 @@ extension ConnectionPool: Connection {
         // tx functions consuming. Cause we cannot call `commit` in
         // the `do` and on failure call `rollback` since it would
         // have been consumed in the `commit`.
+        //
+        // Keeping them is consuming is nice since it stops callers
+        // from calling `commit` manually since its borrowed
         let result = Result {
             try execute(tx)
         }

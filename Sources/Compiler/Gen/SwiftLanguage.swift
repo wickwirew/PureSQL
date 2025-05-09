@@ -21,6 +21,7 @@ public struct SwiftLanguage: Language {
             case "INT": "Int"
             case "INTEGER": "Int"
             case "TEXT": "String"
+            case "BLOB": "Data"
             default: "Any"
             }
         case let .optional(ty): "\(builtinType(for: ty))?"
@@ -175,11 +176,11 @@ public struct SwiftLanguage: Language {
 
                     if let input = query.input {
                         switch input {
-                        case let .builtin(_, isArray):
-                            bind(field: nil, isArray: isArray)
+                        case let .builtin(_, isArray, encodedAs):
+                            bind(field: nil, encodeToType: encodedAs, isArray: isArray)
                         case .model(let model):
                             for field in model.fields.values {
-                                bind(field: field.name, isArray: field.isArray)
+                                bind(field: field.name, encodeToType: field.encodedAsType, isArray: field.isArray)
                             }
                         }
                     }
@@ -323,8 +324,13 @@ public struct SwiftLanguage: Language {
             var index = 0
             for field in model.fields.values {
                 switch field.type {
-                case .builtin:
-                    "self.\(raw: field.name) = try row.value(at: start + \(raw: index))"
+                case .builtin(_, _, let encodedAs):
+                    if let encodedAs {
+                        "self.\(raw: field.name) = try \(raw: field.type)(primitive: row.value(at: start + \(raw: index), as: \(raw: encodedAs).self))"
+                    } else {
+                        "self.\(raw: field.name) = try row.value(at: start + \(raw: index))"
+                    }
+
                     let _ = index += 1
                 case .model(let model):
                     "self.\(raw: field.name) = try \(raw: field.type)(row: row, startingAt: start + \(raw: index))"
@@ -416,6 +422,7 @@ public struct SwiftLanguage: Language {
     @CodeBlockItemListBuilder
     private static func bind(
         field: String?,
+        encodeToType: String?,
         isArray: Bool
     ) -> CodeBlockItemListSyntax {
         let paramName = if let field {
@@ -424,14 +431,20 @@ public struct SwiftLanguage: Language {
             "input"
         }
         
+        let encode = if let encodeToType {
+            ".encodeTo\(encodeToType)()"
+        } else {
+            ""
+        }
+        
         if isArray {
             """
             for element in \(raw: paramName) {
-                try statement.bind(value: element)
+                try statement.bind(value: element\(raw: encode))
             }
             """
         } else {
-            "try statement.bind(value: \(raw: paramName))"
+            "try statement.bind(value: \(raw: paramName)\(raw: encode))"
         }
     }
 }

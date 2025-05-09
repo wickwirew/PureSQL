@@ -109,12 +109,23 @@ extension Language {
                 let type = column.value
                 fields[name] = GeneratedField(
                     name: name,
-                    type: .builtin(builtinType(for: type), isArray: false),
+                    type: .builtin(
+                        builtinType(for: type),
+                        isArray: false,
+                        encodedAs: builtinForAliasedType(for: type)
+                    ),
                     isArray: type.isRow
                 )
             },
             isTable: true
         )
+    }
+    
+    /// If the column type was aliased then this will return the `builtin`
+    /// type for the root type of the alias.
+    private static func builtinForAliasedType(for type: Type) -> String? {
+        guard case let .alias(root, _) = type else { return nil }
+        return builtinType(for: root)
     }
     
     private static func inputTypeIfNeeded(
@@ -126,7 +137,8 @@ extension Language {
         guard statement.parameters.count > 1 else {
             return .builtin(
                 builtinType(for: firstParameter.type),
-                isArray: firstParameter.type.isRow
+                isArray: firstParameter.type.isRow,
+                encodedAs: builtinForAliasedType(for: firstParameter.type)
             )
         }
         
@@ -137,7 +149,11 @@ extension Language {
             fields: statement.parameters.reduce(into: [:]) { fields, parameter in
                 fields[parameter.name] = GeneratedField(
                     name: parameter.name,
-                    type: .builtin(builtinType(for: parameter.type), isArray: false),
+                    type: .builtin(
+                        builtinType(for: parameter.type),
+                        isArray: false,
+                        encodedAs: builtinForAliasedType(for: parameter.type)
+                    ),
                     isArray: parameter.type.isRow
                 )
             },
@@ -168,7 +184,11 @@ extension Language {
         
         // Only one column returned, just use it's type
         guard statement.resultColumns.count > 1 else {
-            return .builtin(builtinType(for: firstColumn), isArray: firstColumn.isRow)
+            return .builtin(
+                builtinType(for: firstColumn),
+                isArray: firstColumn.isRow,
+                encodedAs: builtinForAliasedType(for: firstColumn)
+            )
         }
         
         let outputTypeName = definition.output?.description ?? "\(definition.name.capitalizedFirst)Output"
@@ -189,7 +209,11 @@ extension Language {
                         let type = column.value
                         fields[name] = GeneratedField(
                             name: name,
-                            type: .builtin(builtinType(for: type), isArray: false),
+                            type: .builtin(
+                                builtinType(for: type),
+                                isArray: false,
+                                encodedAs: builtinForAliasedType(for: type)
+                            ),
                             isArray: type.isRow
                         )
                     }
@@ -217,9 +241,21 @@ public struct GeneratedModel {
 }
 
 public struct GeneratedField {
+    /// The column name
     let name: String
+    /// The type of the field.
+    /// If it is a `model` that means the user selected
+    /// all columns from a table `foo.*`
     let type: BuiltinOrGenerated
+    /// Whether or not it is an array. Some fields can take a list
+    /// as an input for a query like `foo IN :bar`
     let isArray: Bool
+    
+    /// The underlying storage type if it is aliased
+    var encodedAsType: String? {
+        guard case let .builtin(_, _, encodedAs) = type else { return nil }
+        return encodedAs
+    }
 }
 
 public struct GeneratedQuery {
@@ -239,12 +275,17 @@ public struct GeneratedResult<Decl> {
 }
 
 public enum BuiltinOrGenerated: CustomStringConvertible {
-    case builtin(String, isArray: Bool)
+    /// Types can be aliased. So `TEXT AS UUID`. `encodedAs`
+    /// would be the `TEXT`. It will allow us to tell the
+    /// `bind` functions to actually encode to the underlying
+    /// type rather than just having `UUID` always go to `TEXT`
+    /// when some users may want a `BLOB`.
+    case builtin(String, isArray: Bool, encodedAs: String?)
     case model(GeneratedModel)
     
     public var description: String {
         switch self {
-        case .builtin(let builtin, let isArray):
+        case .builtin(let builtin, let isArray, _):
             isArray ? "[\(builtin)]" : builtin
         case .model(let model):
             model.name

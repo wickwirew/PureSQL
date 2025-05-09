@@ -45,16 +45,6 @@ extension Int: DatabasePrimitive {
     }
 }
 
-extension UInt: DatabasePrimitive {
-    @inlinable public init(from cursor: OpaquePointer, at index: Int32) throws(FeatherError) {
-        self = try UInt(bitPattern: Int(from: cursor, at: index))
-    }
-
-    @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(FeatherError) {
-        sqlite3_bind_int(statement, index, Int32(bitPattern: UInt32(self)))
-    }
-}
-
 extension Double: DatabasePrimitive {
     @inlinable public init(from cursor: OpaquePointer, at index: Int32) throws(FeatherError) {
         self = sqlite3_column_double(cursor, index)
@@ -65,23 +55,16 @@ extension Double: DatabasePrimitive {
     }
 }
 
-extension Float: DatabasePrimitive {
+extension Data: DatabasePrimitive {
     @inlinable public init(from cursor: OpaquePointer, at index: Int32) throws(FeatherError) {
-        self = Float(sqlite3_column_double(cursor, index))
+        let count = Int(sqlite3_column_bytes(cursor, index))
+        self = Data(bytes: sqlite3_column_blob(cursor, index), count: count)
     }
 
     @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(FeatherError) {
-        sqlite3_bind_double(statement, index, Double(self))
-    }
-}
-
-extension Bool: DatabasePrimitive {
-    @inlinable public init(from cursor: OpaquePointer, at index: Int32) throws(FeatherError) {
-        self = sqlite3_column_int64(cursor, index) == 1
-    }
-
-    @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(FeatherError) {
-        sqlite3_bind_int(statement, index, self ? 1 : 0)
+        _ = withUnsafeBytes {
+            sqlite3_bind_blob(statement, index, $0.baseAddress, CInt($0.count), SQLITE_TRANSIENT)
+        }
     }
 }
 
@@ -100,23 +83,5 @@ extension Optional: DatabasePrimitive where Wrapped: DatabasePrimitive {
         } else {
             sqlite3_bind_null(statement, index)
         }
-    }
-}
-
-extension UUID: DatabasePrimitive {
-    @inlinable public init(from cursor: OpaquePointer, at index: Int32) throws(FeatherError) {
-        guard let ptr = sqlite3_column_text(cursor, index) else {
-            throw .columnIsNil(index)
-        }
-
-        guard let value = UUID(uuidString: String(cString: ptr)) else {
-            throw .invalidUuidString
-        }
-        
-        self = value
-    }
-
-    @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(FeatherError) {
-        try uuidString.bind(to: statement, at: index)
     }
 }
