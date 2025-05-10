@@ -191,9 +191,7 @@ extension InferenceState {
         case let (ty, .var(tv)):
             validateCanUnify(type: ty, with: tv.kind, at: location)
             substitute(tv, for: ty)
-        case (.integer, .real):
-            return // Not equal but valid to use together
-        case (.real, .integer):
+        case (.integer, .real), (.real, .integer), (.any, _), (_, .any):
             return // Not equal but valid to use together
         case let (.fn(args1, ret1), .fn(args2, ret2)):
             unify(args1, with: args2, at: location)
