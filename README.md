@@ -86,3 +86,39 @@ class ViewModel {
   let query: any LatestExpensesQuery
 }
 ```
+
+## Swift Macros
+> TLDR; Don't use for larger projects ⚠️
+
+Otter can even run within a Swift macro by adding the `@Database` macro to a `struct`. As of now it is not recommended for larger projects. 
+There are quite a few limitations that won't scale well beyond a fairly simple schema and a handfull of queries.
+
+```swift
+@Database
+struct DB {
+    @Query("SELECT * FROM foo")
+    var selectFooQuery: SelectFooDatabaseQuery
+
+    @Query("INSERT INTO foo (bar, baz) VALUES (?, ?)", inputName: "FooInput")
+    var insertFooQuery: InsertFooDatabaseQuery
+    
+    static var migrations: [String] {
+        return [
+            "CREATE TABLE foo (bar INTEGER, baz TEXT);"
+        ]
+    }
+}
+
+func main() async throws {
+    let database = try DB.inMemory()
+    try await database.insertFooQuery.execute(with: .init(bar: 1, baz: "Baz"))
+    let foos = try await database.selectFooQuery.execute()
+    print(foos)
+}
+```
+
+### Current Limitations
+* Since macros operate purely on the syntax, all queries must be within the `@Database` itself so the schema can be inferred properly.
+* All generated types will be nested under the `@Database` struct.
+* All `@Query` definitions must define their type as the generated `typealias` by the `@Database` macro.
+* Any diagnostics will be on the entire string rather than the part that actually failed.
