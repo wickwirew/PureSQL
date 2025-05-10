@@ -56,7 +56,13 @@ public struct Diagnostics {
 }
 
 extension Diagnostics: Sequence {
-    public func makeIterator() -> some IteratorProtocol {
+    public func makeIterator() -> [Diagnostic].Iterator {
         return elements.makeIterator()
+    }
+}
+
+extension Diagnostics: ExpressibleByArrayLiteral {
+    public init(arrayLiteral elements: Diagnostic...) {
+        self = Diagnostics(diagnostics: elements)
     }
 }

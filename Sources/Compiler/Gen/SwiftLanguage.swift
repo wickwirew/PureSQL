@@ -82,6 +82,37 @@ public struct SwiftLanguage: Language {
         return file.formatted().description
     }
     
+    public static func macro(
+        databaseName: String,
+        tables: [GeneratedModel],
+        queries: [GeneratedQuery],
+        options: GenerationOptions,
+        addConnection: Bool
+    ) throws -> [DeclSyntax] {
+        var decls: [DeclSyntax] = []
+        
+        if addConnection {
+            decls.append("let connection: any Feather.Connection")
+        }
+        
+        for table in tables {
+            try decls.append(declaration(for: table, isOutput: true, options: options))
+        }
+        
+        // Always do this at the top level since it will automatically namespaced under the
+        // struct that the macro is attached too.
+        for query in queries {
+            try decls.append(contentsOf: modelsFor(query: query, options: options))
+            try decls.append(declaration(for: query, underscoreName: true, databaseName: databaseName, options: options))
+            try decls.append(DeclSyntax(dbTypealiasFor(query: query, databaseName: databaseName, options: options)))
+            try decls.append(DeclSyntax(typealiasFor(query: query, databaseName: databaseName, options: options)))
+        }
+        
+        // TODO: Generate extensions if this can be done.
+        
+        return decls
+    }
+    
     private static func modelsFor(
         query: GeneratedQuery,
         options: GenerationOptions
@@ -98,22 +129,7 @@ public struct SwiftLanguage: Language {
         
         return decls
     }
-    
-    public static func queryType(
-        for cardinality: Cardinality?,
-        input: BuiltinOrGenerated?,
-        output: BuiltinOrGenerated?
-    ) -> String {
-        let input = input?.description ?? "()"
-        let output = output?.description ?? "()"
-        
-        return switch cardinality {
-        case .single: "FetchSingleQuery<\(input), \(output)>"
-        case .many: "FetchManyQuery<\(input), \(output)>"
-        default: "VoidQuery<\(input)>"
-        }
-    }
-    
+
     private static func declaration(
         for migrations: [String],
         options: GenerationOptions
@@ -132,14 +148,16 @@ public struct SwiftLanguage: Language {
     
     private static func declaration(
         for query: GeneratedQuery,
+        underscoreName: Bool = false,
         databaseName: String,
         options: GenerationOptions
     ) throws -> DeclSyntax {
         let inputTypeName = inputTypeName(for: query, databaseName: databaseName)
         let outputTypeName = outputTypeName(for: query, databaseName: databaseName)
         let queryTypeName = "AnyDatabaseQuery<\(inputTypeName), \(outputTypeName)>"
+        let variableName = underscoreName ? "_\(query.name)" : query.name
         
-        let query = try VariableDeclSyntax("var \(raw: query.name): \(raw: queryTypeName)") {
+        let query = try VariableDeclSyntax("var \(raw: variableName): \(raw: queryTypeName)") {
             FunctionCallExprSyntax(
                 calledExpression: DeclReferenceExprSyntax(
                     baseName: .identifier("AnyDatabaseQuery<\(inputTypeName), \(outputTypeName)>")
@@ -212,6 +230,20 @@ public struct SwiftLanguage: Language {
         let outputTypeName = outputTypeName(for: query, namespaced: namespace, databaseName: databaseName)
         return try TypeAliasDeclSyntax(
             "typealias \(raw: query.name.capitalizedFirst) = Query<\(raw: inputTypeName), \(raw: outputTypeName)>"
+        )
+    }
+    
+    private static func dbTypealiasFor(
+        query: GeneratedQuery,
+        databaseName: String,
+        options: GenerationOptions
+    ) throws -> TypeAliasDeclSyntax {
+        let namespace = options.contains(.namespaceGeneratedModels)
+        let inputTypeName = inputTypeName(for: query, namespaced: namespace, databaseName: databaseName)
+        let outputTypeName = outputTypeName(for: query, namespaced: namespace, databaseName: databaseName)
+        let name = query.name.capitalizedFirst.replacingOccurrences(of: "Query", with: "DatabaseQuery")
+        return try TypeAliasDeclSyntax(
+            "typealias \(raw: name) = AnyDatabaseQuery<\(raw: inputTypeName), \(raw: outputTypeName)>"
         )
     }
     

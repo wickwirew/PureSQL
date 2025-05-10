@@ -53,6 +53,13 @@ struct DatabasePrimitiveConvertibeTests {
         #expect(value == decoded)
     }
     
+    @Test(arguments: [UInt64.min, UInt64.max])
+    func uint64CanBeConvertedToInt(value: UInt64) throws {
+        let stored = try value.encodeToInt()
+        let decoded = try UInt64(primitive: stored)
+        #expect(value == decoded)
+    }
+    
     @Test(arguments: [Float.leastNormalMagnitude, Float.greatestFiniteMagnitude])
     func floatCanBeConvertedToDouble(value: Float) throws {
         let stored = try value.encodeToDouble()

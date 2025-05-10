@@ -13,13 +13,6 @@ public protocol Language {
     /// Returns the Language builtin for the given SQL type
     static func builtinType(for type: Type) -> String
     
-    /// The query type name with the given cardinality, input and output
-    static func queryType(
-        for cardinality: Cardinality?,
-        input: BuiltinOrGenerated?,
-        output: BuiltinOrGenerated?
-    ) -> String
-    
     /// A file source code containing all of the generated tables, queries and migrations.
     static func file(
         databaseName: String,
@@ -48,16 +41,27 @@ extension Language {
         schema: Schema,
         options: GenerationOptions
     ) throws -> String {
-        let tables = schema.mapValues(model(for:))
-        let queries = queries.map { query(for: $0, tables: tables) }
+        let values = try assemble(queries: queries, schema: schema)
         
         return try file(
             databaseName: databaseName,
             migrations: migrations,
-            tables: Array(tables.values),
-            queries: queries,
+            tables: values.tables,
+            queries: values.queries,
             options: options
         )
+    }
+    
+    public static func assemble(
+        queries: [Statement],
+        schema: Schema
+    ) throws -> (
+        tables: [GeneratedModel],
+        queries: [GeneratedQuery]
+    ) {
+        let tables = schema.mapValues(model(for:))
+        let queries = queries.map { query(for: $0, tables: tables) }
+        return (Array(tables.values), queries)
     }
     
     private static func query(
@@ -70,12 +74,6 @@ extension Language {
         
         let input = inputTypeIfNeeded(statement: statement, definition: definition)
         let output = outputTypeIfNeeded(statement: statement, definition: definition, tables: tables)
-        
-        let type = queryType(
-            for: statement.noOutput ? nil : statement.outputCardinality,
-            input: input,
-            output: output
-        )
         
         // Join the source segments together inserting the code to assemble the
         // question marks for any input.
@@ -92,7 +90,6 @@ extension Language {
         
         return GeneratedQuery(
             name: "\(definition.name)Query",
-            type: type,
             input: input,
             output: output,
             outputCardinality: statement.outputCardinality,
@@ -260,7 +257,6 @@ public struct GeneratedField {
 
 public struct GeneratedQuery {
     let name: String
-    let type: String
     let input: BuiltinOrGenerated?
     let output: BuiltinOrGenerated?
     let outputCardinality: Cardinality

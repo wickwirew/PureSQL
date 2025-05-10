@@ -41,6 +41,12 @@ public struct Diagnostic: Error {
     }
 }
 
+extension Diagnostic: CustomStringConvertible {
+    public var description: String {
+        return message
+    }
+}
+
 extension Diagnostic {
     static func incorrectType(
         _ actual: TypeNameSyntax,

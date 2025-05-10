@@ -46,6 +46,39 @@ public struct Compiler {
         return diagnostics
     }
     
+    public mutating func compile(
+        query: String,
+        named name: String,
+        inputType: String?,
+        outputType: String?,
+        namespace: Namespace
+    ) -> Diagnostics {
+        var (stmts, diagnostics) = compile(
+            source: query,
+            validator: IsValidForQueries(),
+            context: "queries"
+        )
+        
+        guard let stmt = stmts.first else {
+            let loc = SourceLocation(range: query.startIndex..<query.endIndex, line: 0, column: 0)
+            diagnostics.add(.init("Query has no statements", at: loc))
+            self.diagnostics[namespace] = diagnostics
+            return diagnostics
+        }
+        
+        let stmtWithDef = stmt.with(
+            definition: Definition(
+                name: name[...],
+                input: inputType?[...],
+                output: outputType?[...]
+            )
+        )
+        
+        self.queries.append(stmtWithDef)
+        self.diagnostics[namespace] = diagnostics
+        return diagnostics
+    }
+    
     mutating func compile<Validator>(
         source: String,
         validator: Validator,
