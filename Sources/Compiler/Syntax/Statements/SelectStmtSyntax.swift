@@ -16,7 +16,7 @@ struct SelectStmtSyntax: StmtSyntax {
 
     enum Selects {
         case single(SelectCoreSyntax)
-        indirect case compound(Selects, CompoundOperatorSyntax, SelectCoreSyntax)
+        indirect case compound(SelectCoreSyntax, CompoundOperatorSyntax, Selects)
     }
 
     struct Limit {

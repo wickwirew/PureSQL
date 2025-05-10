@@ -781,10 +781,7 @@ enum Parsers {
         cteRecursive: Bool,
         cte: CommonTableExpressionSyntax?
     ) throws -> SelectStmtSyntax {
-        let selects: [SelectCoreSyntax]? = state.current.kind == .select || state.current.kind == .values
-            ? try commaDelimited(state: &state, element: selectCore)
-            : nil
-        
+        let selects = try selects(state: &state)
         let orderBy = try orderingTerms(state: &state)
         let limit = try limit(state: &state)
         
@@ -792,10 +789,45 @@ enum Parsers {
             id: state.nextId(),
             cte: cte.map(Indirect.init),
             cteRecursive: cteRecursive,
-            selects: .init(.single(selects!.first!)), // TODO: Fix this and do it properly
+            selects: .init(selects),
             orderBy: orderBy,
             limit: limit,
             location: state.location(from: start)
+        )
+    }
+    
+    static func selects(state: inout ParserState) throws -> SelectStmtSyntax.Selects {
+        let core = try selectCore(state: &state)
+        
+        return if let op = compoundOperator(state: &state) {
+            try .compound(core, op, selects(state: &state))
+        } else {
+            .single(core)
+        }
+    }
+    
+    static func compoundOperator(state: inout ParserState) -> CompoundOperatorSyntax? {
+        let start = state.location
+        let kind: CompoundOperatorSyntax.Kind
+        switch (state.current.kind, state.peek.kind) {
+        case (.union, .all): kind = .unionAll
+        case (.union, _): kind = .union
+        case (.intersect, _): kind = .intersect
+        case (.except, _): kind = .except
+        default: return nil
+        }
+        
+        state.skip()
+        if kind == .unionAll {
+            state.skip()
+        }
+        
+        return CompoundOperatorSyntax(
+            id: state.nextId(),
+            kind: kind,
+            location: state.location(
+                from: start
+            )
         )
     }
     

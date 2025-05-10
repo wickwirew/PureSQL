@@ -87,49 +87,7 @@ struct NameInferrer {
             infer(select: cte.select)
         }
         
-        switch select.selects.value {
-        case .single(let s):
-            switch s {
-            case .select(let select):
-                for column in select.columns {
-                    switch column.kind {
-                    case .expr(let e, _):
-                        _ = e.accept(visitor: &self)
-                    default:
-                        break
-                    }
-                }
-                
-                switch select.from {
-                case .join(let join):
-                    _ = infer(tableOrSubquery: join.tableOrSubquery)
-                case .tableOrSubqueries(let tableOrSubqueries):
-                    for tableOrSubquery in tableOrSubqueries {
-                        _ = infer(tableOrSubquery: tableOrSubquery)
-                    }
-                case nil:
-                    break
-                }
-                
-                if let whereExpr = select.where {
-                    _ = whereExpr.accept(visitor: &self)
-                }
-                
-                if let groupBy = select.groupBy {
-                    for expr in groupBy.expressions {
-                        _ = expr.accept(visitor: &self)
-                    }
-                }
-            case .values(let groups):
-                for group in groups {
-                    for value in group {
-                        _ = value.accept(visitor: &self)
-                    }
-                }
-            }
-        case .compound:
-            fatalError()
-        }
+        infer(selects: select.selects.value)
         
         for orderBy in select.orderBy {
             _ = orderBy.expr.accept(visitor: &self)
@@ -137,6 +95,61 @@ struct NameInferrer {
         
         if let limit = select.limit {
             _ = limit.expr.accept(visitor: &self)
+        }
+    }
+    
+    private mutating func infer(selects: SelectStmtSyntax.Selects) {
+        switch selects {
+        case let .single(select):
+            infer(select: select)
+        case let .compound(first, _, second):
+            infer(select: first)
+            infer(selects: second)
+        }
+    }
+    
+    private mutating func infer(select: SelectCoreSyntax) {
+        switch select {
+        case .select(let select):
+            for column in select.columns {
+                switch column.kind {
+                case let .expr(e, alias):
+                    let eName = e.accept(visitor: &self)
+                    
+                    if let alias {
+                        _ = unify(names: eName, with: .some(alias.identifier.value))
+                    }
+                default:
+                    break
+                }
+            }
+            
+            switch select.from {
+            case .join(let join):
+                _ = infer(tableOrSubquery: join.tableOrSubquery)
+            case .tableOrSubqueries(let tableOrSubqueries):
+                for tableOrSubquery in tableOrSubqueries {
+                    _ = infer(tableOrSubquery: tableOrSubquery)
+                }
+            case nil:
+                break
+            }
+            
+            if let whereExpr = select.where {
+                _ = whereExpr.accept(visitor: &self)
+            }
+            
+            if let groupBy = select.groupBy {
+                for expr in groupBy.expressions {
+                    _ = expr.accept(visitor: &self)
+                }
+            }
+        case .values(let groups):
+            for group in groups {
+                for value in group {
+                    _ = value.accept(visitor: &self)
+                }
+            }
         }
     }
     

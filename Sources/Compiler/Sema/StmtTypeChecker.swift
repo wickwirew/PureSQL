@@ -98,6 +98,7 @@ struct StmtTypeChecker {
         let result = action(&inferrer)
         diagnostics = inferrer.diagnostics
         nameInferrer = inferrer.nameInferrer
+        inferenceState = inferrer.inferenceState
         return result
     }
 }
@@ -239,16 +240,11 @@ extension StmtTypeChecker {
             typeCheck(cte: cte)
         }
         
-        let resultColumns = switch select.selects.value {
-        case let .single(selectCore):
-             typeCheck(
-                select: selectCore,
-                at: select.location,
-                potentialNames: potentialNames
-            )
-        case .compound:
-            fatalError()
-        }
+        let resultColumns = typeCheck(
+            selects: select.selects.value,
+            at: select.location,
+            potentialNames: potentialNames
+        )
         
         for term in select.orderBy {
             _ = typeCheck(term.expr)
@@ -259,6 +255,54 @@ extension StmtTypeChecker {
         }
         
         return resultColumns
+    }
+    
+    mutating func typeCheck(
+        selects: SelectStmtSyntax.Selects,
+        at location: SourceLocation,
+        potentialNames: [IdentifierSyntax]? = nil
+    ) -> ResultColumns {
+        switch selects {
+        case let .single(selectCore):
+            return typeCheck(
+                select: selectCore,
+                at: location,
+                potentialNames: potentialNames
+            )
+        case let .compound(first, op, second):
+            // SQLite:
+            // * Does not care about types
+            // * Uses names of first
+            // * Cares about # of columns
+            
+            let firstResult = inNewEnvironment { typeChecker in
+                typeChecker.typeCheck(
+                    select: first,
+                    at: location,
+                    potentialNames: potentialNames
+                )
+            }
+            
+            let secondResult = inNewEnvironment { typeChecker in
+                typeChecker.typeCheck(selects: second, at: location)
+            }
+            
+            guard firstResult.count == secondResult.count else {
+                diagnostics.add(.init(
+                    "SELECTs for \(op.kind) do not have the same number of columns (\(firstResult.count) and \(secondResult.count))",
+                    at: op.location
+                ))
+                return firstResult
+            }
+            
+            var index = 0
+            let secondColumns = secondResult.allColumns.values
+            return firstResult.mapTypes { type in
+                inferenceState.unify(type, with: secondColumns[index], at: location)
+                index += 1
+                return type
+            }
+        }
     }
     
     mutating func typeCheck(insert: InsertStmtSyntax) -> ResultColumns {
@@ -579,6 +623,7 @@ extension StmtTypeChecker {
                 
                 if let name = alias?.identifier.value ?? names.proposedName {
                     columns[name] = type
+                    nameInferrer.suggest(name: name, for: names)
                 } else {
                     diagnostics.add(.nameRequired(at: expr.location))
                 }

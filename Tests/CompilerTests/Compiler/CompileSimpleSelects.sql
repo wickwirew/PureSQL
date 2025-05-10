@@ -1,4 +1,5 @@
 CREATE TABLE foo (id INTEGER PRIMARY KEY, bar INTEGER AS Bool, baz TEXT NOT NULL);
+CREATE TABLE bar (id INTEGER PRIMARY KEY, qux INTEGER AS Bool);
 
 -- CHECK: SIGNATURE
 -- CHECK:   PARAMETERS
@@ -87,3 +88,66 @@ SELECT foo.*, foo.baz || 'postfix' AS bazWithPostfix FROM foo;
 -- CHECK:         baz TEXT
 -- CHECK:       OUTPUT_TABLE foo
 SELECT foo.baz AS bazButOnItsOwn, foo.* FROM foo;
+
+-- CHECK: SIGNATURE
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         id INTEGER
+-- CHECK:         bar (INTEGER AS Bool)?
+SELECT id, bar FROM foo
+UNION
+SELECT id, qux FROM bar;
+
+-- CHECK: SIGNATURE
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         id INTEGER
+-- CHECK:         baz TEXT
+-- CHECK-ERROR: Unable to unify types 'TEXT' and '(INTEGER AS Bool)?'
+SELECT id, baz FROM foo
+UNION
+SELECT id, qux FROM bar;
+
+-- CHECK: SIGNATURE
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         id INTEGER
+-- CHECK:         bar (INTEGER AS Bool)?
+-- CHECK:         baz TEXT
+-- CHECK-ERROR: SELECTs for UNION do not have the same number of columns (3 and 2)
+SELECT id, bar, baz FROM foo
+UNION
+SELECT id, qux FROM bar;
+
+-- CHECK: SIGNATURE
+-- CHECK:   PARAMETERS
+-- CHECK:     PARAMETER
+-- CHECK:       TYPE (INTEGER AS Bool)?
+-- CHECK:       INDEX 1
+-- CHECK:       NAME param
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         id INTEGER
+-- CHECK:         param (INTEGER AS Bool)?
+SELECT id, ? AS param FROM foo
+UNION
+SELECT id, qux FROM bar;
+
+-- CHECK: SIGNATURE
+-- CHECK:   PARAMETERS
+-- CHECK:     PARAMETER
+-- CHECK:       TYPE (INTEGER AS Bool)?
+-- CHECK:       INDEX 1
+-- CHECK:       NAME value
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         id INTEGER
+-- CHECK:         bar (INTEGER AS Bool)?
+SELECT id, bar FROM foo
+UNION
+SELECT id, ? AS value FROM bar;
