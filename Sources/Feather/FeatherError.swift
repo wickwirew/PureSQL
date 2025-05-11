@@ -25,4 +25,5 @@ public enum FeatherError: Error {
     case cannotEncode(Any.Type, to: Any.Type)
     case decodingError(String)
     case encodingError(String)
+    case requiredAssociationFailed(parent: String, childKey: String)
 }
