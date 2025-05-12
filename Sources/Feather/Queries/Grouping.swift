@@ -6,25 +6,24 @@
 //
 
 public protocol Association: Sendable {
-    associatedtype Parent: Sendable
-    associatedtype Child: Sendable
+    associatedtype Input: Sendable
     associatedtype Output: Sendable
     
-    func group(parents: [Parent], children: [Child]) throws -> Output
+    func group(input: Input) throws -> Output
 }
 
-public struct ManyToManyAssociation<Parent, ParentKey, Map, Child, ChildKey>
-    where Parent: Sendable, Child: Sendable, ParentKey: Hashable, ChildKey: Hashable
+public struct ManyToManyAssociation<Parent, ParentKey, Map, Child, ChildKey>: Association
+    where Parent: Sendable, Child: Sendable, ParentKey: Hashable & Sendable, ChildKey: Hashable & Sendable, Map: Sendable
 {
     public typealias Output = [(Parent, [Child])]
     
     let parentKey: @Sendable (Parent) -> ParentKey
-    let childKey: @Sendable (Child) -> ChildKey
     let mapParentKey: @Sendable (Map) -> ParentKey
+    let childKey: @Sendable (Child) -> ChildKey
     let mapChildKey: @Sendable (Map) -> ChildKey
     
-    public func group(records: ([Parent], [Map], [Child])) throws -> Output {
-        let (parents, maps, children) = records
+    public func group(input: ([Parent], [Map], [Child])) throws -> Output {
+        let (parents, maps, children) = input
         
         var parentToChildIDs: [ParentKey: Set<ChildKey>] = [:]
         for map in maps {
@@ -55,7 +54,9 @@ public struct OptionalOneToOneAssociation<Parent, Child, ChildKey>: Association
     let childKey: @Sendable (Child) -> ChildKey
     let childKeyFromParent: @Sendable (Parent) -> ChildKey?
     
-    public func group(parents: [Parent], children: [Child]) throws -> [(Parent, Child?)] {
+    public func group(input: ([Parent], [Child])) throws -> [(Parent, Child?)] {
+        let (parents, children) = input
+        
         let childrenByKey: [ChildKey: Child] = children
             .reduce(into: [:]) { $0[childKey($1)] = $1 }
 
@@ -82,7 +83,9 @@ public struct RequiredOneToOneAssociation<Parent, Child, ChildKey>: Association
     let childKey: @Sendable (Child) -> ChildKey
     let childKeyFromParent: @Sendable (Parent) -> ChildKey
     
-    public func group(parents: [Parent], children: [Child]) throws -> [(Parent, Child?)] {
+    public func group(input: ([Parent], [Child])) throws -> [(Parent, Child?)] {
+        let (parents, children) = input
+        
         let childrenByKey: [ChildKey: Child] = children
             .reduce(into: [:]) { $0[childKey($1)] = $1 }
 
@@ -108,7 +111,9 @@ public struct OneToManyAssociation<Parent, Child, ParentKey>: Association
     let parentKey: @Sendable (Parent) -> ParentKey
     let parentKeyFromChild: @Sendable (Child) -> ParentKey
     
-    public func group(parents: [Parent], children: [Child]) -> [(Parent, [Child])] {
+    public func group(input: ([Parent], [Child])) -> [(Parent, [Child])] {
+        let (parents, children) = input
+        
         var childrenForParent: [ParentKey: [Child]] = [:]
         for child in children {
             childrenForParent[parentKeyFromChild(child), default: []].append(child)
@@ -121,7 +126,7 @@ public struct OneToManyAssociation<Parent, Child, ParentKey>: Association
 }
 
 public struct Grouping<Base: Query, A: Association>: Query
-    where Base.Output == ([A.Parent], [A.Child])
+    where Base.Output == A.Input
 {
     public typealias Output = A.Output
     
@@ -131,8 +136,7 @@ public struct Grouping<Base: Query, A: Association>: Query
     public func execute(
         with input: Base.Input
     ) async throws -> Output {
-        let (parents, children) = try await base.execute(with: input)
-        return try association.group(parents: parents, children: children)
+        return try await association.group(input: base.execute(with: input))
     }
     
     public func observe(
@@ -155,8 +159,7 @@ extension Grouping: DatabaseQuery where Base: DatabaseQuery {
         with input: Base.Input,
         tx: borrowing Transaction
     ) throws -> A.Output {
-        let (parents, children) = try base.execute(with: input, tx: tx)
-        return try association.group(parents: parents, children: children)
+        return try association.group(input: base.execute(with: input, tx: tx))
     }
 }
 
@@ -409,7 +412,7 @@ extension Query {
     ///   - parentKey: The key to use for the parent
     ///   - parentKeyFromChild: The key of the parent on the child record
     /// - Returns: A query that returns the parent with all child records
-    public func groupingBy<Parent, Child, ParentKey>(
+    public func grouping<Parent, Child, ParentKey>(
         one parentKey: @escaping @Sendable (Parent) -> ParentKey,
         toManyThrough parentKeyFromChild: @escaping @Sendable (Child) -> ParentKey
     ) -> Grouping<Self, OneToManyAssociation<Parent, Child, ParentKey>>
@@ -418,6 +421,35 @@ extension Query {
         let association = OneToManyAssociation(
             parentKey: parentKey,
             parentKeyFromChild: parentKeyFromChild
+        )
+        return Grouping(base: self, association: association)
+    }
+    
+    public func groupingManyToMany<Parent, Map, Child>(
+        through parentId: @escaping @Sendable (Map) -> Parent.ID,
+        and childId: @escaping @Sendable (Map) -> Child.ID
+    ) -> Grouping<Self, ManyToManyAssociation<Parent, Parent.ID, Map, Child, Child.ID>>
+        where Parent: Identifiable, Child: Identifiable
+    {
+        return groupingManyToMany(
+            many: \.id,
+            toMany: \.id,
+            through: parentId,
+            and: childId
+        )
+    }
+    
+    public func groupingManyToMany<Parent, ParentKey, Map, Child, ChildKey>(
+        many parentKey: @escaping @Sendable (Parent) -> ParentKey,
+        toMany childKey: @escaping @Sendable (Child) -> ChildKey,
+        through mapParentKey: @escaping @Sendable (Map) -> ParentKey,
+        and mapChildKey: @escaping @Sendable (Map) -> ChildKey
+    ) -> Grouping<Self, ManyToManyAssociation<Parent, ParentKey, Map, Child, ChildKey>> {
+        let association = ManyToManyAssociation(
+            parentKey: parentKey,
+            mapParentKey: mapParentKey,
+            childKey: childKey,
+            mapChildKey: mapChildKey
         )
         return Grouping(base: self, association: association)
     }
