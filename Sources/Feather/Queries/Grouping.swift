@@ -155,6 +155,10 @@ extension Grouping: DatabaseQuery where Base: DatabaseQuery {
         return base.connection
     }
     
+    public var watchedTables: Set<String> {
+        return base.watchedTables
+    }
+    
     public func execute(
         with input: Base.Input,
         tx: borrowing Transaction

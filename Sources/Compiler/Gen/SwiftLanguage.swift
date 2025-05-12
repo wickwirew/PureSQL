@@ -165,6 +165,7 @@ public struct SwiftLanguage: Language {
                 leftParen: .leftParenToken(),
                 arguments: LabeledExprListSyntax {
                     LabeledExprSyntax(
+                        leadingTrivia: .newline,
                         label: nil,
                         colon: nil,
                         expression: DeclReferenceExprSyntax(
@@ -173,10 +174,25 @@ public struct SwiftLanguage: Language {
                         trailingComma: TokenSyntax.commaToken()
                     )
                     LabeledExprSyntax(
+                        leadingTrivia: .newline,
                         label: TokenSyntax.identifier("in"),
                         colon: TokenSyntax.colonToken(),
                         expression: DeclReferenceExprSyntax(baseName: .identifier("connection")),
-                        trailingComma: nil
+                        trailingComma: TokenSyntax.commaToken()
+                    )
+                    LabeledExprSyntax(
+                        leadingTrivia: .newline,
+                        label: TokenSyntax.identifier("watchingTables"),
+                        colon: TokenSyntax.colonToken(),
+                        expression: ArrayExprSyntax {
+                            if query.isReadOnly {
+                                for table in query.usedTableNames {
+                                    ArrayElementSyntax(expression: StringLiteralExprSyntax(content: table.description))
+                                }
+                            }
+                        },
+                        trailingComma: nil,
+                        trailingTrivia: .newline
                     )
                 },
                 rightParen: .rightParenToken(),

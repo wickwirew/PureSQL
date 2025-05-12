@@ -27,6 +27,8 @@ public final class DatabaseQueryObservation<Query>: DatabaseSubscriber, QueryObs
     }
     
     public func receive(event: DatabaseEvent) {
+        guard let tableName = event.tableName,
+              query.watchedTables.contains(tableName) else { return }
         enqueueNext()
     }
     

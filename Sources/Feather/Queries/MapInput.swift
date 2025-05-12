@@ -33,6 +33,10 @@ extension Queries.MapInput: DatabaseQuery where Base: DatabaseQuery {
         return base.transactionKind
     }
     
+    public var watchedTables: Set<String> {
+        return base.watchedTables
+    }
+    
     public func execute(
         with input: Input,
         tx: borrowing Transaction

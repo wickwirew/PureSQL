@@ -153,6 +153,7 @@ fileprivate struct CompilerWithSource {
             isReadOnly: isReadOnly,
             sanitizedSource: sanitizedSource,
             sourceSegments: sourceSegments,
+            usedTableNames: typeChecker.usedTableNames,
             syntax: stmt
         )
         

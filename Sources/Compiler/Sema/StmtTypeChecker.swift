@@ -25,6 +25,10 @@ struct StmtTypeChecker {
     /// Bind parameters can be used throughout different
     /// expressions in the statement.
     private(set) var inferenceState: InferenceState
+    /// Any table that the statement used. This is the table's actual name
+    /// not any alias that may have been set.
+    /// Its a `Set` to not bring in duplicates
+    private(set) var usedTableNames: Set<Substring> = []
     
     private let pragmas: FeatherPragmas
     
@@ -787,6 +791,10 @@ extension StmtTypeChecker {
         isOptional: Bool = false,
         onlyColumnsIn columns: Set<Substring> = []
     ) {
+        // Insert real name not alias. These are used later for observation tracking
+        // so an alias is no good since it will always be the actual table name.
+        usedTableNames.insert(table.name)
+        
         env.insert(
             alias?.identifier.value ?? table.name,
             ty: isOptional ? .optional(table.type) : table.type

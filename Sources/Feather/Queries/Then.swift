@@ -24,6 +24,10 @@ extension Queries {
             return max(first.transactionKind, second.transactionKind)
         }
         
+        public var watchedTables: Set<String> {
+            return first.watchedTables.union(second.watchedTables)
+        }
+        
         public func execute(
             with input: First.Input,
             tx: borrowing Transaction

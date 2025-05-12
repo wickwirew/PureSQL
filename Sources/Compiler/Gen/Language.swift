@@ -94,7 +94,8 @@ extension Language {
             output: output,
             outputCardinality: statement.outputCardinality,
             sourceSql: sql,
-            isReadOnly: statement.isReadOnly
+            isReadOnly: statement.isReadOnly,
+            usedTableNames: statement.usedTableNames
         )
     }
     
@@ -262,6 +263,7 @@ public struct GeneratedQuery {
     let outputCardinality: Cardinality
     let sourceSql: String
     let isReadOnly: Bool
+    let usedTableNames: Set<Substring>
 }
 
 public struct GeneratedResult<Decl> {

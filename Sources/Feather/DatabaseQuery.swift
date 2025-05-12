@@ -8,8 +8,12 @@
 public protocol DatabaseQuery<Input, Output>: Query {
     /// Whether the query requires a read or write transaction.
     var transactionKind: Transaction.Kind { get }
-    
+    /// The current connection to the database
     var connection: any Connection { get }
+    /// Any table this query depends on. When tables change
+    /// if this query is observed then we will only requery
+    /// if those tables changed.
+    var watchedTables: Set<String> { get }
     
     func execute(
         with input: Input,

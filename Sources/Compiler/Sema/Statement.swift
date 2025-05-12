@@ -20,8 +20,10 @@ public struct Statement {
     /// The statement source with all extra SQL syntax removed
     /// that is not valid in SQLite but valid in this library
     public let sanitizedSource: String
-    
+    /// The source broken up into segments.
     public let sourceSegments: [SourceSegment]
+    /// Any table that were accessed and used in the query.
+    public let usedTableNames: Set<Substring>
     /// The source syntax
     let syntax: any StmtSyntax
     
@@ -45,6 +47,7 @@ public struct Statement {
             isReadOnly: isReadOnly,
             sanitizedSource: sanitizedSource,
             sourceSegments: sourceSegments,
+            usedTableNames: usedTableNames,
             syntax: syntax
         )
     }

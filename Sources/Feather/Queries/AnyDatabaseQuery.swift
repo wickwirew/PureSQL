@@ -11,6 +11,7 @@ public struct AnyDatabaseQuery<Input, Output>: DatabaseQuery
 {
     public let connection: any Connection
     public let transactionKind: Transaction.Kind
+    public let watchedTables: Set<String>
     public let execute: @Sendable (Input, borrowing Transaction) throws -> Output
     
     
@@ -30,11 +31,13 @@ public struct AnyDatabaseQuery<Input, Output>: DatabaseQuery
     public init(
         _ transactionKind: Transaction.Kind,
         in connection: any Connection,
+        watchingTables watchedTables: Set<String>,
         execute: @escaping @Sendable (Input, borrowing Transaction) throws -> Output
     ) {
         self.connection = connection
         self.transactionKind = transactionKind
         self.execute = execute
+        self.watchedTables = watchedTables
     }
     
     public func execute(
@@ -52,7 +55,7 @@ public extension DatabaseQuery {
     ///
     /// - Returns: `self` erased to a `AnyDatabaseQuery`
     func eraseToAnyDatabaseQuery() -> AnyDatabaseQuery<Input, Output> {
-        AnyDatabaseQuery(transactionKind, in: connection) { input, tx in
+        AnyDatabaseQuery(transactionKind, in: connection, watchTables: watchedTables) { input, tx in
             try self.execute(with: input, tx: tx)
         }
     }
