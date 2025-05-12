@@ -12,18 +12,18 @@ enum Builtins {
     static let negate = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)))
     static let bitwiseNot = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)))
     static let pos = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0)))
-    static let between = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0), .var(0)], ret: .bool))
+    static let between = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0), .var(0)], ret: .integer))
     static let arithmetic = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0)], ret: .var(0)))
-    static let comparison = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0)], ret: .bool))
-    static let `in` = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .row(.unknown(.var(0)))], ret: .bool))
+    static let comparison = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .var(0)], ret: .integer))
+    static let `in` = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .row(.unknown(.var(0)))], ret: .integer))
     static let concatOp = TypeScheme(typeVariables: [0, 1], type: .fn(params: [.var(0), .var(1)], ret: .text))
     static let extract = TypeScheme(typeVariables: [0, 1], type: .fn(params: [.var(0)], ret: .var(1)))
     static let extractJson = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .any))
     static let collate = TypeScheme(typeVariables: [], type: .fn(params: [.text], ret: .text))
     static let escape = TypeScheme(typeVariables: [], type: .fn(params: [.text], ret: .text))
-    static let match = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .text], ret: .bool))
-    static let regexp = TypeScheme(typeVariables: [], type: .fn(params: [.text, .text], ret: .bool))
-    static let glob = TypeScheme(typeVariables: [], type: .fn(params: [.text, .text], ret: .bool))
+    static let match = TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .text], ret: .integer))
+    static let regexp = TypeScheme(typeVariables: [], type: .fn(params: [.text, .text], ret: .integer))
+    static let glob = TypeScheme(typeVariables: [], type: .fn(params: [.text, .text], ret: .integer))
     
     static let functions: OrderedDictionary<Substring, TypeScheme> = [
         // Scalar functions
@@ -41,7 +41,7 @@ enum Builtins {
         "instr": TypeScheme(typeVariables: [], type: .fn(params: [.text, .text], ret: .integer)),
         "last_insert_rowid": TypeScheme(typeVariables: [], type: .fn(params: [], ret: .integer)),
         "length": TypeScheme(typeVariables: [], type: .fn(params: [.text], ret: .integer)),
-        "like": TypeScheme(typeVariables: [], type: .fn(params: [.text, .text], ret: .bool)),
+        "like": TypeScheme(typeVariables: [], type: .fn(params: [.text, .text], ret: .integer)),
         "likelihood": TypeScheme(typeVariables: [0], type: .fn(params: [.var(0), .real], ret: .var(0))),
         "likely": TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0))),
         "lower": TypeScheme(typeVariables: [], type: .fn(params: [.text], ret: .text)),

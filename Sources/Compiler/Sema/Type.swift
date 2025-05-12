@@ -109,7 +109,6 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
     static let real: Type = .nominal("REAL")
     static let blob: Type = .nominal("BLOB")
     static let any: Type = .nominal("ANY")
-    static let bool: Type = .nominal("BOOL")
     
     /// The underlying root inner type
     var root: Type {

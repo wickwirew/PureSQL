@@ -188,8 +188,8 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         inferenceState.unify(all: allTypes, at: expr.location)
         
         let between = inferenceState.instantiate(Builtins.between)
-        inferenceState.unify(between, with: .fn(params: allTypes, ret: .bool), at: expr.location)
-        return .bool
+        inferenceState.unify(between, with: .fn(params: allTypes, ret: .integer), at: expr.location)
+        return .integer
     }
     
     mutating func visit(_ expr: borrowing FunctionExprSyntax) -> Type {
@@ -226,8 +226,8 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
             // Each when should have same type as case
             whenTys.append(caseType)
         } else {
-            // No case expr, so each when should be a bool
-            whenTys.append(.bool)
+            // No case expr, so each when should be a integer
+            whenTys.append(.integer)
         }
         
         if let elseType = expr.else?.accept(visitor: &self) {

@@ -40,7 +40,7 @@ struct PragmaAnalyzer {
         switch pragma.name.value {
         case FeatherPragmas.Keys.requireStrictTables:
             guard let expr = pragma.value else {
-                diagnostics.add(.init("Missing value, expected boolean", at: pragma.location))
+                diagnostics.add(.init("Missing value, expected integerean", at: pragma.location))
                 return
             }
             

@@ -567,9 +567,9 @@ extension StmtTypeChecker {
             if let having = groupBy.having {
                 let (type, _) = typeCheck(having)
                 
-                if type != .bool, type != .integer {
+                if type != .integer {
                     diagnostics.add(.init(
-                        "HAVING clause should return a 'BOOL' or 'INTEGER', got '\(type)'",
+                        "HAVING clause should return an 'INTEGER', got '\(type)'",
                         at: having.location
                     ))
                 }
@@ -593,9 +593,9 @@ extension StmtTypeChecker {
     private mutating func typeCheck(where expr: ExpressionSyntax) {
         let (type, _) = typeCheck(expr)
         
-        if type != .bool, type != .integer {
+        if type != .integer {
             diagnostics.add(.init(
-                "WHERE clause should return a 'BOOL' or 'INTEGER', got '\(type)'",
+                "WHERE clause should return an 'INTEGER', got '\(type)'",
                 at: expr.location
             ))
         }
@@ -700,9 +700,9 @@ extension StmtTypeChecker {
             
             let (type, _) = typeCheck(expression)
             
-            if type != .bool, type != .integer {
+            if type != .integer {
                 diagnostics.add(.init(
-                    "JOIN clause should return a 'BOOL' or 'INTEGER', got '\(type)'",
+                    "JOIN clause should return an 'INTEGER', got '\(type)'",
                     at: expression.location
                 ))
             }
