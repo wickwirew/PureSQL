@@ -2,16 +2,18 @@
     <source media="(prefers-color-scheme: dark)" srcset="https://github.com/wickwirew/Feather/blob/main/Otter~dark.png?raw=true">
     <source media="(prefers-color-scheme: light)" srcset="https://github.com/wickwirew/Feather/blob/main/Otter.png?raw=true">
     <p align="center">
-      <img alt="Otter" src="https://github.com/wickwirew/Feather/blob/main/Otter.png?raw=true" width=33% height=33%>
+      <img alt="Otter" src="https://github.com/wickwirew/Feather/blob/main/Otter.png?raw=true" width=40% height=40%>
     </p>
 </picture>
 
 <p align="center">
-  A fast, lightweight SQLite library for Swift
+    <strong>
+        A SQLite compiler, static analyzer and code generator for Swift
+    </strong>
 </p>
 
 ## Overview
-Otter generates type safe code from raw plain SQL.
+Otter aims to allow developers to write plain SQL but with compile time safety.
 
 ## Basic Usage
 As a primer here is a quick example. Below is some SQL. The first part is in the `/Migrations` directory. This is where you can create and modify your schema. The second part is in the `/Queries` directory.
