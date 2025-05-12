@@ -34,7 +34,7 @@ SELECT * FROM foo;
 -- CHECK:                   KIND
 -- CHECK:                     TABLE
 -- CHECK:                       NAME foo
--- CHECK:           KIND union
+-- CHECK:           KIND UNION
 -- CHECK:           SINGLE
 -- CHECK:             SELECT
 -- CHECK:               DISTINCT false
