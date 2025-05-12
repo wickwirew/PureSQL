@@ -67,6 +67,15 @@ enum Builtins {
         "upper": TypeScheme(typeVariables: [], type: .fn(params: [.text], ret: .text)),
         "zeroblob": TypeScheme(typeVariables: [], type: .fn(params: [.integer], ret: .blob)),
 
+        // Datetime
+        "unixepoch": TypeScheme(typeVariables: [], type: .fn(params: [], ret: .integer)),
+        "julianday": TypeScheme(typeVariables: [], type: .fn(params: [], ret: .real)),
+        "strftime": TypeScheme(typeVariables: [], type: .fn(params: [.text, .text], ret: .text), variadic: true),
+        "date": TypeScheme(typeVariables: [], type: .fn(params: [.text], ret: .text), variadic: true),
+        "time": TypeScheme(typeVariables: [], type: .fn(params: [.text], ret: .text), variadic: true),
+        "datetime": TypeScheme(typeVariables: [], type: .fn(params: [.text], ret: .text), variadic: true),
+        "timediff": TypeScheme(typeVariables: [], type: .fn(params: [.text], ret: .text)),
+
         // Aggregate Functions
         "avg": TypeScheme(typeVariables: [.integer(0)], type: .fn(params: [.var(.integer(0))], ret: .var(.integer(0)))),
         "count": TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .integer)),
