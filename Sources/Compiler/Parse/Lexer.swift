@@ -124,6 +124,9 @@ struct Lexer {
         case ("^", _): return consumeSingle(of: .carrot)
         case ("~", _): return consumeSingle(of: .tilde)
         case ("'", _): return parseString()
+        case ("\"", _): return parseEscapedIdentifier(closing: "\"")
+        case ("[", _): return parseEscapedIdentifier(closing: "]")
+        case ("`", _): return parseEscapedIdentifier(closing: "`")
         default:
             diagnostics.add(.init(
                 "Unexpected character: '\(current)'",
@@ -147,6 +150,35 @@ struct Lexer {
         } else {
             currentColumn += 1
         }
+    }
+    
+    // SQLite does not seem to really care what goes between the escape delimiters.
+    // Table names will gladly take newlines and such.
+    private mutating func parseEscapedIdentifier(closing: Character) -> Token {
+        let tokenStart = startLocation()
+        advance() // Opening
+        let identifierStart = currentIndex
+        
+        while let current, current != closing {
+            advance()
+        }
+        
+        let identifierEnd = currentIndex
+        
+        // If the current is nil it the EOF, else its
+        // our closing character.
+        if current == nil {
+            diagnostics.add(.init(
+                "Unterminated escaped identifier",
+                at: location(from: tokenStart)
+            ))
+        } else {
+            advance()
+        }
+        
+        let location = location(from: tokenStart)
+        let identifierRange = identifierStart..<identifierEnd
+        return Token(kind: .symbol(source[identifierRange]), location: location)
     }
     
     private mutating func parseWord() -> Token {
