@@ -7,6 +7,7 @@
 
 struct ParserState {
     private(set) var lexer: Lexer
+    private(set) var previous: Token?
     private(set) var current: Token
     private(set) var peek: Token
     private(set) var peek2: Token
@@ -108,6 +109,7 @@ struct ParserState {
     }
     
     mutating func skip() {
+        previous = current
         current = peek
         peek = peek2
         peek2 = lexer.next()

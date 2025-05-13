@@ -40,7 +40,7 @@ struct Rewriter {
             final.append(contentsOf: source[start..<stmt.location.upperBound])
         }
         
-        return "\(final.trimmingCharacters(in: .whitespaces));"
+        return final.trimmingCharacters(in: .whitespaces)
     }
     
     /// Splits the source into segments where each segment is either
