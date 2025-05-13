@@ -7,17 +7,29 @@
 
 import Foundation
 
+/// Tokenizes the source token into tokens.
 struct Lexer {
+    /// The raw source SQL
     let source: String
+    /// The current character we are considering consuming.
     var currentIndex: String.Index
+    /// The character right after the current index
     var peekIndex: String.Index
+    /// Holds any errors we encounter
     var diagnostics: Diagnostics
+    /// The current line number, starting at 1 since IDEs dont start at 0
     var currentLine: Int = 1
+    /// The current column number, starting at 1 since IDEs dont start at 0
     var currentColumn: Int = 1
     
-    static let hexDigits: Set<Character> = ["0","1","2","3","4","5","6","7","8","9","a","b",
-                                            "c","d","e","f","A","B","C","D","E","F"]
+    static let hexDigits: Set<Character> = [
+        "0","1","2","3","4","5","6","7","8","9","a","b",
+        "c","d","e","f","A","B","C","D","E","F"
+    ]
     
+    /// When we start consuming a token, we need the index, line and column
+    /// numbers. This acts as a little box so we can hold onto one value
+    /// before assembling it into the final `SourceLocation`
     struct Start {
         let index: String.Index
         let line: Int
@@ -36,16 +48,19 @@ struct Lexer {
         self.diagnostics = diagnostics
     }
     
+    /// The current character we are considering consuming.
     private var current: Character? {
         guard currentIndex < source.endIndex else { return nil }
         return source[currentIndex]
     }
     
+    /// The character after the `current` character
     private var peek: Character? {
         guard peekIndex < source.endIndex else { return nil }
         return source[peekIndex]
     }
     
+    /// Token to represent the end of the file. e.g. `EOF`
     private var eof: Token {
         return Token(
             kind: .eof,
@@ -57,6 +72,7 @@ struct Lexer {
         )
     }
     
+    /// Gets the next token from the source.
     mutating func next() -> Token {
         skipWhitespace()
         
@@ -137,6 +153,7 @@ struct Lexer {
         }
     }
     
+    /// Moves the indices to the next characters
     private mutating func advance() {
         currentIndex = peekIndex
         
@@ -181,6 +198,7 @@ struct Lexer {
         return Token(kind: .symbol(source[identifierRange]), location: location)
     }
     
+    /// Parses out a word which can be either an identifier or keyword.
     private mutating func parseWord() -> Token {
         let start = startLocation()
         
