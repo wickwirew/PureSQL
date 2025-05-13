@@ -36,14 +36,15 @@ PRAGMA feather_require_strict_tables = TRUE;
 -- CHECK:   NAME baz
 -- CHECK:   COLUMNS
 -- CHECK:       KEY foo
--- CHECK:       VALUE TEXT?
+-- CHECK:       VALUE DECIMAL?
 -- CHECK:   PRIMARY_KEY
 -- CHECK:     foo
 -- CHECK:   KIND normal
 -- CHECK-ERROR: Missing STRICT table option
+-- CHECK-ERROR: Invalid type 'DECIMAL'
 -- CHECK-ERROR: Column 'bar' does not exist
 CREATE TABLE baz (
-    foo TEXT,
+    foo DECIMAL,
     PRIMARY KEY (foo, bar)
 );
 
@@ -70,7 +71,30 @@ CREATE TABLE qux (
 -- CHECK:       KEY TABLE
 -- CHECK:       VALUE KEY?
 -- CHECK:   KIND normal
+-- CHECK-ERROR: Invalid type 'KEY'
 CREATE TABLE "PRIMARY" (
     "TABLE" INTEGER,
     [TABLE] `KEY`
+) STRICT;
+
+-- CHECK: TABLE
+-- CHECK:   NAME allValidTypes
+-- CHECK:   COLUMNS
+-- CHECK:       KEY int
+-- CHECK:       VALUE INT?
+-- CHECK:       KEY integer
+-- CHECK:       VALUE INTEGER?
+-- CHECK:       KEY text
+-- CHECK:       VALUE TEXT?
+-- CHECK:       KEY blob
+-- CHECK:       VALUE BLOB?
+-- CHECK:       KEY any
+-- CHECK:       VALUE ANY?
+-- CHECK:   KIND normal
+CREATE TABLE allValidTypes (
+    int INT,
+    integer INTEGER,
+    text TEXT,
+    blob BLOB,
+    any ANY
 ) STRICT;

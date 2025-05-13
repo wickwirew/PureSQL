@@ -110,6 +110,10 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
     static let blob: Type = .nominal("BLOB")
     static let any: Type = .nominal("ANY")
     
+    static let validTypeNames: Set<Substring> = [
+        "TEXT", "INT", "INTEGER", "REAL", "BLOB", "ANY"
+    ]
+    
     /// The underlying root inner type
     var root: Type {
         return switch self {

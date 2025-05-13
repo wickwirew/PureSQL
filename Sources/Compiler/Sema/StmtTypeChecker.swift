@@ -891,11 +891,19 @@ extension StmtTypeChecker {
     }
     
     /// Will figure out the final SQL column type from the syntax
-    private func typeFor(column: borrowing ColumnDefSyntax) -> Type {
+    private mutating func typeFor(column: borrowing ColumnDefSyntax) -> Type {
         // Technically you can have a NULL primary key but I don't
         // think people actually do that...
         let isNotNullable = column.constraints
             .contains { $0.isPkConstraint || $0.isNotNullConstraint }
+        
+        // Validate it is an actual SQLite type since SQlite doesnt care.
+        if !Type.validTypeNames.contains(column.type.name.value) {
+            diagnostics.add(.init(
+                "Invalid type '\(column.type.name.value)'",
+                at: column.type.location
+            ))
+        }
         
         let nominal: Type = .nominal(column.type.name.value)
         
