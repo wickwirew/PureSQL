@@ -31,7 +31,7 @@ public struct AnyDatabaseQuery<Input, Output>: DatabaseQuery
     public init(
         _ transactionKind: Transaction.Kind,
         in connection: any Connection,
-        watchingTables watchedTables: Set<String>,
+        watchingTables watchedTables: Set<String> = [],
         execute: @escaping @Sendable (Input, borrowing Transaction) throws -> Output
     ) {
         self.connection = connection
