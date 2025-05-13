@@ -69,6 +69,7 @@ class CompilerTests: XCTestCase {
 struct CheckSignature: Checkable {
     let parameters: [Parameter<String>]
     let outputChunks: [Chunk]
+    let tables: [Substring]
     
     struct Chunk {
         let output: [String]
@@ -80,6 +81,7 @@ struct CheckSignature: Checkable {
         self.outputChunks = statement.resultColumns.chunks.map { chunk in
             Chunk(output: chunk.columns.map{ "\($0) \($1)" }, outputTable: chunk.table)
         }
+        self.tables = statement.usedTableNames.sorted()
     }
     
     var typeName: String {

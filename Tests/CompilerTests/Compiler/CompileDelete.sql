@@ -1,6 +1,8 @@
 CREATE TABLE foo (bar INTEGER, baz INTEGER);
 
 -- CHECK: SIGNATURE
+-- CHECK:   TABLES
+-- CHECK:     foo
 DELETE FROM foo;
 
 -- CHECK: SIGNATURE
@@ -9,6 +11,8 @@ DELETE FROM foo;
 -- CHECK:       TYPE INTEGER?
 -- CHECK:       INDEX 1
 -- CHECK:       NAME bar
+-- CHECK:   TABLES
+-- CHECK:     foo
 DELETE FROM foo WHERE bar = ?;
 
 -- CHECK: SIGNATURE
@@ -17,4 +21,6 @@ DELETE FROM foo WHERE bar = ?;
 -- CHECK:       OUTPUT
 -- CHECK:         bar INTEGER?
 -- CHECK:         baz INTEGER?
+-- CHECK:   TABLES
+-- CHECK:     foo
 DELETE FROM foo RETURNING *;

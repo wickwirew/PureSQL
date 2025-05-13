@@ -55,7 +55,7 @@ public extension DatabaseQuery {
     ///
     /// - Returns: `self` erased to a `AnyDatabaseQuery`
     func eraseToAnyDatabaseQuery() -> AnyDatabaseQuery<Input, Output> {
-        AnyDatabaseQuery(transactionKind, in: connection, watchTables: watchedTables) { input, tx in
+        AnyDatabaseQuery(transactionKind, in: connection, watchingTables: watchedTables) { input, tx in
             try self.execute(with: input, tx: tx)
         }
     }

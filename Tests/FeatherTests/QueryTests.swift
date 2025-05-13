@@ -54,7 +54,7 @@ struct QueryTests {
     }
     
     private func selectAllFooQuery(database: any Connection) -> any DatabaseQuery<(), [Foo]> {
-        return AnyDatabaseQuery<(), [Foo]>(.read, in: database) { input, transaction in
+        return AnyDatabaseQuery<(), [Foo]>(.read, in: database, watchingTables: []) { input, transaction in
             let statement = try Statement(in: transaction) {
                 "SELECT * FROM foo;"
             }
@@ -64,7 +64,7 @@ struct QueryTests {
     }
     
     private func insertQuery(database: any Connection) -> any DatabaseQuery<Foo, ()> {
-        return AnyDatabaseQuery<Foo, ()>(.write, in: database) { input, transaction in
+        return AnyDatabaseQuery<Foo, ()>(.write, in: database, watchingTables: []) { input, transaction in
             let statement = try Statement(in: transaction) {
                 "INSERT INTO foo (bar, baz) VALUES (?, ?)"
             } bind: { statement in

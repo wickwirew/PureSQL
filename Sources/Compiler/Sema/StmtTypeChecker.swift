@@ -103,6 +103,7 @@ struct StmtTypeChecker {
         diagnostics = inferrer.diagnostics
         nameInferrer = inferrer.nameInferrer
         inferenceState = inferrer.inferenceState
+        usedTableNames.formUnion(inferrer.usedTableNames)
         return result
     }
 }

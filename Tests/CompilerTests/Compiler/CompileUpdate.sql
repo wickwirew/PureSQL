@@ -6,6 +6,8 @@ CREATE TABLE foo (bar INTEGER, baz INTEGER);
 -- CHECK:       TYPE INTEGER?
 -- CHECK:       INDEX 1
 -- CHECK:       NAME bar
+-- CHECK:   TABLES
+-- CHECK:     foo
 UPDATE foo SET bar = ?;
 
 -- CHECK: SIGNATURE
@@ -22,6 +24,8 @@ UPDATE foo SET bar = ?;
 -- CHECK:       TYPE INTEGER?
 -- CHECK:       INDEX 3
 -- CHECK:       NAME :condition
+-- CHECK:   TABLES
+-- CHECK:     foo
 UPDATE foo SET bar = ?, baz = :value WHERE :condition = bar;
 
 -- CHECK: SIGNATURE
@@ -34,6 +38,8 @@ UPDATE foo SET bar = ?, baz = :value WHERE :condition = bar;
 -- CHECK:       TYPE INTEGER?
 -- CHECK:       INDEX 2
 -- CHECK:       NAME value2
+-- CHECK:   TABLES
+-- CHECK:     foo
 -- NOTE: The names will have to be fixed later
 UPDATE foo SET (bar, baz) = (?, ?);
 
@@ -48,4 +54,6 @@ UPDATE foo SET (bar, baz) = (?, ?);
 -- CHECK:       OUTPUT
 -- CHECK:         bar INTEGER?
 -- CHECK:         baz INTEGER?
+-- CHECK:   TABLES
+-- CHECK:     foo
 UPDATE foo SET bar = ? RETURNING *;

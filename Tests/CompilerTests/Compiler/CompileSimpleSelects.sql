@@ -14,6 +14,8 @@ CREATE TABLE bar (id INTEGER PRIMARY KEY, qux INTEGER AS Bool);
 -- CHECK:         bar (INTEGER AS Bool)?
 -- CHECK:         baz TEXT
 -- CHECK:       OUTPUT_TABLE foo
+-- CHECK:   TABLES
+-- CHECK:     foo
 SELECT * FROM foo WHERE id = ?;
 
 -- CHECK: SIGNATURE
@@ -27,6 +29,8 @@ SELECT * FROM foo WHERE id = ?;
 -- CHECK:       OUTPUT
 -- CHECK:         id INTEGER
 -- CHECK:         bar (INTEGER AS Bool)?
+-- CHECK:   TABLES
+-- CHECK:     foo
 SELECT id, bar + 1 FROM foo WHERE bar * 20 > ?;
 
 -- CHECK: SIGNATURE
@@ -46,6 +50,8 @@ SELECT id, bar + 1 FROM foo WHERE bar * 20 > ?;
 -- CHECK:         bar (INTEGER AS Bool)?
 -- CHECK:         baz TEXT
 -- CHECK:       OUTPUT_TABLE foo
+-- CHECK:   TABLES
+-- CHECK:     foo
 SELECT * FROM foo WHERE id = :id AND id = :id AND bar = ?;
 
 -- CHECK: SIGNATURE
@@ -61,6 +67,8 @@ SELECT * FROM foo WHERE id = :id AND id = :id AND bar = ?;
 -- CHECK:         bar (INTEGER AS Bool)?
 -- CHECK:         baz TEXT
 -- CHECK:       OUTPUT_TABLE foo
+-- CHECK:   TABLES
+-- CHECK:     foo
 SELECT * FROM foo WHERE id IN (SELECT subFoo.id FROM foo AS subFoo WHERE subFoo.id IN :theIds);
 
 -- CHECK: SIGNATURE
@@ -74,6 +82,8 @@ SELECT * FROM foo WHERE id IN (SELECT subFoo.id FROM foo AS subFoo WHERE subFoo.
 -- CHECK:     CHUNK
 -- CHECK:       OUTPUT
 -- CHECK:         bazWithPostfix TEXT
+-- CHECK:   TABLES
+-- CHECK:     foo
 SELECT foo.*, foo.baz || 'postfix' AS bazWithPostfix FROM foo;
 
 -- CHECK: SIGNATURE
@@ -87,6 +97,8 @@ SELECT foo.*, foo.baz || 'postfix' AS bazWithPostfix FROM foo;
 -- CHECK:         bar (INTEGER AS Bool)?
 -- CHECK:         baz TEXT
 -- CHECK:       OUTPUT_TABLE foo
+-- CHECK:   TABLES
+-- CHECK:     foo
 SELECT foo.baz AS bazButOnItsOwn, foo.* FROM foo;
 
 -- CHECK: SIGNATURE
@@ -95,6 +107,9 @@ SELECT foo.baz AS bazButOnItsOwn, foo.* FROM foo;
 -- CHECK:       OUTPUT
 -- CHECK:         id INTEGER
 -- CHECK:         bar (INTEGER AS Bool)?
+-- CHECK:   TABLES
+-- CHECK:     bar
+-- CHECK:     foo
 SELECT id, bar FROM foo
 UNION
 SELECT id, qux FROM bar;
@@ -105,6 +120,9 @@ SELECT id, qux FROM bar;
 -- CHECK:       OUTPUT
 -- CHECK:         id INTEGER
 -- CHECK:         baz TEXT
+-- CHECK:   TABLES
+-- CHECK:     bar
+-- CHECK:     foo
 -- CHECK-ERROR: Unable to unify types 'TEXT' and '(INTEGER AS Bool)?'
 SELECT id, baz FROM foo
 UNION
@@ -117,6 +135,9 @@ SELECT id, qux FROM bar;
 -- CHECK:         id INTEGER
 -- CHECK:         bar (INTEGER AS Bool)?
 -- CHECK:         baz TEXT
+-- CHECK:   TABLES
+-- CHECK:     bar
+-- CHECK:     foo
 -- CHECK-ERROR: SELECTs for UNION do not have the same number of columns (3 and 2)
 SELECT id, bar, baz FROM foo
 UNION
@@ -133,6 +154,9 @@ SELECT id, qux FROM bar;
 -- CHECK:       OUTPUT
 -- CHECK:         id INTEGER
 -- CHECK:         param (INTEGER AS Bool)?
+-- CHECK:   TABLES
+-- CHECK:     bar
+-- CHECK:     foo
 SELECT id, ? AS param FROM foo
 UNION
 SELECT id, qux FROM bar;
@@ -148,6 +172,9 @@ SELECT id, qux FROM bar;
 -- CHECK:       OUTPUT
 -- CHECK:         id INTEGER
 -- CHECK:         bar (INTEGER AS Bool)?
+-- CHECK:   TABLES
+-- CHECK:     bar
+-- CHECK:     foo
 SELECT id, bar FROM foo
 UNION
 SELECT id, ? AS value FROM bar;

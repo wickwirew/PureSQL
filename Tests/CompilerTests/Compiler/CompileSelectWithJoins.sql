@@ -24,6 +24,9 @@ CREATE TABLE pet (
 -- CHECK:         id INTEGER
 -- CHECK:         fullName TEXT
 -- CHECK:         name TEXT?
+-- CHECK:   TABLES
+-- CHECK:     pet
+-- CHECK:     user
 SELECT user.id, fullName, pet.name FROM user
 JOIN pet ON user.id = pet.ownerId
 WHERE user.id = ?;
@@ -34,6 +37,9 @@ WHERE user.id = ?;
 -- CHECK:       OUTPUT
 -- CHECK:         id INTEGER
 -- CHECK:         petName TEXT
+-- CHECK:   TABLES
+-- CHECK:     pet
+-- CHECK:     user
 -- CHECK-ERROR: 'id' is ambigious in the current context
 SELECT id, pet.name AS petName FROM user
 INNER JOIN pet ON user.id = pet.ownerId;
