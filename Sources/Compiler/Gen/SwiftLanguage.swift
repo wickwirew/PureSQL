@@ -32,6 +32,7 @@ public struct SwiftLanguage: Language {
     }
     
     public static func file(
+        imports: [String],
         databaseName: String,
         migrations: [String],
         tables: [GeneratedModel],
@@ -41,6 +42,10 @@ public struct SwiftLanguage: Language {
         let file = try SourceFileSyntax {
             try ImportDeclSyntax("import Foundation")
             try ImportDeclSyntax("import Feather")
+            
+            for `import` in imports {
+                try ImportDeclSyntax("import \(raw: `import`)")
+            }
 
             for table in tables {
                 try declaration(for: table, isOutput: true, options: options)

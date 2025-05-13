@@ -28,8 +28,12 @@ struct Feather: ParsableCommand {
     @Option(name: .shortAndLong, help: "The database name")
     var databaseName: String = "DB"
     
+    @Option(name: .shortAndLong, help: "Comma separated list of additional imports to add")
+    var additionalImports: String?
+    
     @Flag(name: .long, help: "Whether or not the generated models should be namespace under the DB struct")
     var namespaceModels: Bool = false
+    
 
     mutating func run() throws {
         try generate(language: SwiftLanguage.self)
@@ -76,6 +80,7 @@ struct Feather: ParsableCommand {
         }
         
         let file = try Lang.generate(
+            imports: additionalImports?.split(separator: ",").map(\.description) ?? [],
             databaseName: databaseName,
             migrations: compiler.migrations.map(\.sanitizedSource),
             queries: compiler.queries,

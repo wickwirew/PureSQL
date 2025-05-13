@@ -15,6 +15,7 @@ public protocol Language {
     
     /// A file source code containing all of the generated tables, queries and migrations.
     static func file(
+        imports: [String],
         databaseName: String,
         migrations: [String],
         tables: [GeneratedModel],
@@ -35,6 +36,7 @@ public protocol Language {
 
 extension Language {
     public static func generate(
+        imports: [String],
         databaseName: String,
         migrations: [String],
         queries: [Statement],
@@ -44,6 +46,7 @@ extension Language {
         let values = try assemble(queries: queries, schema: schema)
         
         return try file(
+            imports: imports,
             databaseName: databaseName,
             migrations: migrations,
             tables: values.tables,
