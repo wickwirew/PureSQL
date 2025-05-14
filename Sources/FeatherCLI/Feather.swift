@@ -79,11 +79,12 @@ struct Feather: ParsableCommand {
             report(diagnostics: diags, source: file, forFile: fileName)
         }
         
+        
         let file = try Lang.generate(
             imports: additionalImports?.split(separator: ",").map(\.description) ?? [],
             databaseName: databaseName,
             migrations: compiler.migrations.map(\.sanitizedSource),
-            queries: compiler.queries,
+            queries: compiler.queries.map { ($0.key.file?.split(separator: ".").first?.description, $0.value) },
             schema: compiler.schema,
             options: gatherOptions()
         )
@@ -106,9 +107,6 @@ struct Feather: ParsableCommand {
     private func gatherOptions() -> GenerationOptions {
         var options: GenerationOptions = []
         
-        if namespaceModels {
-            options.insert(.namespaceGeneratedModels)
-        }
         
         return options
     }

@@ -35,6 +35,14 @@ extension Queries {
             self = Just(())
         }
         
+        public init() where Output: ExpressibleByArrayLiteral {
+            self = Just([])
+        }
+        
+        public init<T>() where Output == T? {
+            self = Just(nil)
+        }
+        
         public func execute(with input: Input) async throws -> Output {
             return output
         }

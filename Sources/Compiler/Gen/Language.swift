@@ -10,6 +10,15 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 
 public protocol Language {
+    static func queryTypeName(input: String, output: String) -> String
+    
+    static func inputTypeName(input: BuiltinOrGenerated?) -> String
+    
+    static func outputTypeName(
+        output: BuiltinOrGenerated?,
+        cardinality: Cardinality
+    ) -> String
+    
     /// Returns the Language builtin for the given SQL type
     static func builtinType(for type: Type) -> String
     
@@ -19,7 +28,7 @@ public protocol Language {
         databaseName: String,
         migrations: [String],
         tables: [GeneratedModel],
-        queries: [GeneratedQuery],
+        queries: [(String?, [GeneratedQuery])],
         options: GenerationOptions
     ) throws -> String
     
@@ -39,7 +48,7 @@ extension Language {
         imports: [String],
         databaseName: String,
         migrations: [String],
-        queries: [Statement],
+        queries: [(String?, [Statement])],
         schema: Schema,
         options: GenerationOptions
     ) throws -> String {
@@ -56,14 +65,14 @@ extension Language {
     }
     
     public static func assemble(
-        queries: [Statement],
+        queries: [(String?, [Statement])],
         schema: Schema
     ) throws -> (
         tables: [GeneratedModel],
-        queries: [GeneratedQuery]
+        queries: [(String?, [GeneratedQuery])]
     ) {
         let tables = schema.mapValues(model(for:))
-        let queries = queries.map { query(for: $0, tables: tables) }
+        let queries = queries.map { ($0.map { "\($0)Queries" }, $1.map{ query(for: $0, tables: tables) }) }
         return (Array(tables.values), queries)
     }
     
@@ -91,10 +100,18 @@ extension Language {
             }
         }.joined()
         
+        let inputTypeName = inputTypeName(input: input)
+        let outputTypeName = outputTypeName(output: output, cardinality: statement.outputCardinality)
+        
         return GeneratedQuery(
-            name: "\(definition.name)Query",
+            name: definition.name.description,
+            variableName: definition.name.lowercaseFirst,
+            typeName: queryTypeName(input: inputTypeName, output: outputTypeName),
+            typealiasName: "\(definition.name.capitalizedFirst)Query",
             input: input,
+            inputName: inputTypeName,
             output: output,
+            outputName: outputTypeName,
             outputCardinality: statement.outputCardinality,
             sourceSql: sql,
             isReadOnly: statement.isReadOnly,
@@ -230,9 +247,7 @@ extension Language {
 
 public typealias GenerationOptions = Set<GenerationOption>
 
-public enum GenerationOption: Hashable {
-    case namespaceGeneratedModels
-}
+public enum GenerationOption: Hashable {}
 
 public struct GeneratedModel {
     let name: String
@@ -261,8 +276,13 @@ public struct GeneratedField {
 
 public struct GeneratedQuery {
     let name: String
+    let variableName: String
+    let typeName: String
+    let typealiasName: String
     let input: BuiltinOrGenerated?
+    let inputName: String
     let output: BuiltinOrGenerated?
+    let outputName: String
     let outputCardinality: Cardinality
     let sourceSql: String
     let isReadOnly: Bool

@@ -27,7 +27,7 @@ public struct QueryMacro: AccessorMacro {
         }
         
         return [
-            "get { return _\(raw: identifier.text.removingQuerySuffix())Query }"
+            "get { return _\(raw: identifier.text.removingQuerySuffix()) }"
         ]
     }
 }

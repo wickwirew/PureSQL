@@ -13,9 +13,9 @@ struct DatabaseMacroTests {
     @Test func insertAndSelect() async throws {
         let database = try TestDB.inMemory()
         
-        try await database.insertFooQuery.execute(with: .init(bar: 1, baz: "Meow", qux: 1))
+        try await database.insertFoo.execute(with: .init(bar: 1, baz: "Meow", qux: 1))
         
-        let foos = try await database.selectFooQuery.execute()
+        let foos = try await database.selectFoo.execute()
         
         for foo in foos {
             print(foo)
@@ -25,10 +25,10 @@ struct DatabaseMacroTests {
     @Database
     struct TestDB {
         @Query("SELECT * FROM foo")
-        var selectFooQuery: SelectFooDatabaseQuery
+        var selectFoo: SelectFooDatabaseQuery
 
         @Query("INSERT INTO foo (bar, baz, qux) VALUES (?, ?, ?)", inputName: "Meow")
-        var insertFooQuery: InsertFooDatabaseQuery
+        var insertFoo: InsertFooDatabaseQuery
         
         static var migrations: [String] {
             return [

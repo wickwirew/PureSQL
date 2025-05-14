@@ -12,4 +12,11 @@ extension StringProtocol {
         let rest = self[index(after: startIndex)..<endIndex]
         return "\(first.uppercased())\(rest)"
     }
+    
+    var lowercaseFirst: String {
+        guard !isEmpty else { return self.description }
+        let first = self[startIndex]
+        let rest = self[index(after: startIndex)..<endIndex]
+        return "\(first.lowercased())\(rest)"
+    }
 }

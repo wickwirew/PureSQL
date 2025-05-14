@@ -6,13 +6,18 @@
 //
 
 struct PositionalSequence<Base: Collection>: Sequence {
-    typealias Element = (Position?, Base.Element)
+    typealias Element = (Position, Base.Element)
     
     let base: Base
     
-    enum Position {
-        case first
-        case last
+    struct Position: OptionSet {
+        let rawValue: UInt8
+        
+        static var first: Position { Position(rawValue: 1 << 0) }
+        static var last: Position { Position(rawValue: 1 << 1) }
+        
+        var isFirst: Bool { contains(.first) }
+        var isLast: Bool { contains(.last) }
     }
     
     func makeIterator() -> Iterator {
@@ -28,14 +33,17 @@ struct PositionalSequence<Base: Collection>: Sequence {
         
         mutating func next() -> Element? {
             guard let (offset, element) = base.next() else { return nil }
+            var position: Position = []
             
             if offset == 0 {
-                return (.first, element)
-            } else if offset == count - 1 {
-                return (.last, element)
-            } else {
-                return (nil, element)
+                position.insert(.first)
             }
+            
+            if offset == count - 1 {
+                position.insert(.last)
+            }
+            
+            return (position, element)
         }
     }
 }

@@ -7,7 +7,7 @@
 
 public struct Compiler {
     public private(set) var schema = Schema()
-    public private(set) var queries: [Statement] = []
+    public private(set) var queries: [Namespace: [Statement]] = [:]
     public private(set) var migrations: [Statement] = []
     public private(set) var diagnostics: [Namespace: Diagnostics] = [:]
     
@@ -16,6 +16,11 @@ public struct Compiler {
     public enum Namespace: Hashable {
         case global
         case file(String)
+        
+        public var file: String? {
+            guard case .file(let name) = self else { return nil }
+            return name
+        }
     }
     
     public init() {}
@@ -41,7 +46,7 @@ public struct Compiler {
             validator: IsValidForQueries(),
             context: "queries"
         )
-        self.queries.append(contentsOf: stmts)
+        self.queries[namespace, default: []].append(contentsOf: stmts)
         self.diagnostics[namespace] = diagnostics
         return diagnostics
     }
@@ -74,7 +79,7 @@ public struct Compiler {
             )
         )
         
-        self.queries.append(stmtWithDef)
+        self.queries[namespace, default: []].append(stmtWithDef)
         self.diagnostics[namespace] = diagnostics
         return diagnostics
     }

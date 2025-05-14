@@ -9,6 +9,31 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 
 public struct SwiftLanguage: Language {
+    public static func queryTypeName(
+        input: String,
+        output: String
+    ) -> String {
+        return "AnyDatabaseQuery<\(input), \(output)>"
+    }
+    
+    public static func inputTypeName(input: BuiltinOrGenerated?) -> String {
+        return input?.description ?? "()"
+    }
+    
+    public static func outputTypeName(
+        output: BuiltinOrGenerated?,
+        cardinality: Cardinality
+    ) -> String {
+        if let type = output?.description {
+            return switch cardinality {
+            case .single: "\(type)?"
+            case .many: "[\(type)]"
+            }
+        } else {
+            return "()"
+        }
+    }
+    
     public static func interpolatedQuestionMarks(for param: String) -> String {
         return  "\\(\(param).sqlQuestionMarks)"
     }
@@ -36,9 +61,11 @@ public struct SwiftLanguage: Language {
         databaseName: String,
         migrations: [String],
         tables: [GeneratedModel],
-        queries: [GeneratedQuery],
+        queries: [(String?, [GeneratedQuery])],
         options: GenerationOptions
     ) throws -> String {
+        let allQueries = queries.flatMap(\.1)
+        
         let file = try SourceFileSyntax {
             try ImportDeclSyntax("import Foundation")
             try ImportDeclSyntax("import Feather")
@@ -46,16 +73,22 @@ public struct SwiftLanguage: Language {
             for `import` in imports {
                 try ImportDeclSyntax("import \(raw: `import`)")
             }
-
+            
             for table in tables {
                 try declaration(for: table, isOutput: true, options: options)
             }
             
-            if !options.contains(.namespaceGeneratedModels) {
-                for query in queries {
-                    for model in try modelsFor(query: query, options: options) {
-                        model
-                    }
+            for query in allQueries {
+                for model in try modelsFor(query: query, options: options) {
+                    model
+                }
+            }
+            
+            for (namespace, queries) in queries {
+                if let namespace {
+                    try queriesProtocol(name: namespace, queries: queries)
+                    try queriesNoop(name: namespace, queries: queries)
+                    try queriesImpl(name: namespace, queries: queries)
                 }
             }
             
@@ -64,22 +97,25 @@ public struct SwiftLanguage: Language {
                 
                 try declaration(for: migrations, options: options)
                 
-                for query in queries {
-                    if options.contains(.namespaceGeneratedModels) {
-                        for model in try modelsFor(query: query, options: options) {
-                            model
+                for (namespace, queries) in queries {
+                    if let namespace {
+                        try queriesVariable(name: namespace, queries: queries)
+                    } else {
+                        // Generate queries with `nil` namespace which would make it global.
+                        // This is really only used by the macro since it doesnt have file names
+                        // which really wont happen here but still implement it for completeness.
+                        for query in queries {
+                            try declaration(for: query, databaseName: databaseName, options: options)
                         }
                     }
-                    
-                    try declaration(for: query, databaseName: databaseName, options: options)
                 }
             }
             
-            for query in queries {
-                try typealiasFor(query: query, databaseName: databaseName, options: options)
+            for query in allQueries {
+                try typealiasFor(query: query)
                 
                 if let input = query.input, case let .model(model) = input {
-                    try inputExtension(for: query, input: model, databaseName: databaseName, options: options)
+                    try inputExtension(for: query, input: model)
                 }
             }
         }
@@ -87,6 +123,8 @@ public struct SwiftLanguage: Language {
         return file.formatted().description
     }
     
+    /// Called by the actual Swift macro since it doesnt generate an entire
+    /// file and requires a little extra treatment
     public static func macro(
         databaseName: String,
         tables: [GeneratedModel],
@@ -109,8 +147,8 @@ public struct SwiftLanguage: Language {
         for query in queries {
             try decls.append(contentsOf: modelsFor(query: query, options: options))
             try decls.append(declaration(for: query, underscoreName: true, databaseName: databaseName, options: options))
-            try decls.append(DeclSyntax(dbTypealiasFor(query: query, databaseName: databaseName, options: options)))
-            try decls.append(DeclSyntax(typealiasFor(query: query, databaseName: databaseName, options: options)))
+            try decls.append(DeclSyntax(dbTypealiasFor(query: query)))
+            try decls.append(DeclSyntax(typealiasFor(query: query)))
         }
         
         // TODO: Generate extensions if this can be done.
@@ -118,6 +156,21 @@ public struct SwiftLanguage: Language {
         return decls
     }
     
+    /// Generates the variable for the namespaced queries object within the database struct
+    private static func queriesVariable(
+        name: String,
+        queries: [GeneratedQuery]
+    ) throws -> DeclSyntax {
+        let typeName = "\(name)Impl"
+        
+        let variable = try VariableDeclSyntax("var \(raw: name.lowercaseFirst): \(raw: typeName)") {
+            "\(raw: typeName)(connection: connection)"
+        }
+        
+        return DeclSyntax(variable)
+    }
+    
+    /// Of the models needed to be generated for a query
     private static func modelsFor(
         query: GeneratedQuery,
         options: GenerationOptions
@@ -134,7 +187,8 @@ public struct SwiftLanguage: Language {
         
         return decls
     }
-
+    
+    /// The migrations variable
     private static func declaration(
         for migrations: [String],
         options: GenerationOptions
@@ -151,137 +205,204 @@ public struct SwiftLanguage: Language {
         return DeclSyntax(variable)
     }
     
+    /// Generates the expression to initialize the query.
+    ///
+    /// ```swift
+    /// var theQuery: AnyDatabaseQuery<In, Out> { ... }
+    /// ```
     private static func declaration(
         for query: GeneratedQuery,
         underscoreName: Bool = false,
         databaseName: String,
         options: GenerationOptions
     ) throws -> DeclSyntax {
-        let inputTypeName = inputTypeName(for: query, databaseName: databaseName)
-        let outputTypeName = outputTypeName(for: query, databaseName: databaseName)
-        let queryTypeName = "AnyDatabaseQuery<\(inputTypeName), \(outputTypeName)>"
-        let variableName = underscoreName ? "_\(query.name)" : query.name
+        let variableName = underscoreName ? "_\(query.variableName)" : query.variableName
         
-        let query = try VariableDeclSyntax("var \(raw: variableName): \(raw: queryTypeName)") {
-            FunctionCallExprSyntax(
-                calledExpression: DeclReferenceExprSyntax(
-                    baseName: .identifier("AnyDatabaseQuery<\(inputTypeName), \(outputTypeName)>")
-                ),
-                leftParen: .leftParenToken(),
-                arguments: LabeledExprListSyntax {
-                    let hasWatchingTables = query.isReadOnly
-                    
-                    LabeledExprSyntax(
-                        leadingTrivia: hasWatchingTables ? .newline : nil,
-                        label: nil,
-                        colon: nil,
-                        expression: DeclReferenceExprSyntax(
-                            baseName: query.isReadOnly ? ".read" : ".write"
-                        ),
-                        trailingComma: TokenSyntax.commaToken()
-                    )
-                    LabeledExprSyntax(
-                        leadingTrivia: hasWatchingTables ? .newline : nil,
-                        label: TokenSyntax.identifier("in"),
-                        colon: TokenSyntax.colonToken(),
-                        expression: DeclReferenceExprSyntax(baseName: .identifier("connection")),
-                        trailingComma: hasWatchingTables ? TokenSyntax.commaToken() : nil
-                    )
-                    
-                    if hasWatchingTables {
-                        LabeledExprSyntax(
-                            leadingTrivia: .newline,
-                            label: TokenSyntax.identifier("watchingTables"),
-                            colon: TokenSyntax.colonToken(),
-                            expression: ArrayExprSyntax {
-                                if query.isReadOnly {
-                                    for table in query.usedTableNames {
-                                        ArrayElementSyntax(expression: StringLiteralExprSyntax(content: table.description))
-                                    }
-                                }
-                            },
-                            trailingComma: nil,
-                            trailingTrivia: .newline
-                        )
-                    }
-                },
-                rightParen: .rightParenToken(),
-                trailingClosure: ClosureExprSyntax(
-                    signature: ClosureSignatureSyntax(
-                        parameterClause: .simpleInput(.init {
-                            ClosureShorthandParameterSyntax(name: "input")
-                            ClosureShorthandParameterSyntax(name: "tx")
-                        })
-                    )
-                ) {
-                    let sql = stringLiteral(of: query.sourceSql, multiline: true)
-                    let statementBinding: TokenSyntax = .keyword(query.input == nil ? .let : .var)
-                    "\(statementBinding) statement = try Feather.Statement(\(sql), \ntransaction: tx\n)"
-
-                    if let input = query.input {
-                        switch input {
-                        case let .builtin(_, isArray, encodedAs):
-                            bind(field: nil, encodeToType: encodedAs, isArray: isArray)
-                        case .model(let model):
-                            for field in model.fields.values {
-                                bind(field: field.name, encodeToType: field.encodedAsType, isArray: field.isArray)
-                            }
-                        }
-                    }
-
-                    if query.output == nil {
-                        "_ = try statement.step()"
-                    } else {
-                        switch query.outputCardinality {
-                        case .single:
-                            "return try statement.fetchOne()"
-                        case .many:
-                            "return try statement.fetchAll()"
-                        }
-                    }
-                }
-            )
+        let query = try VariableDeclSyntax("var \(raw: variableName): \(raw: query.typeName)") {
+            try queryExpression(for: query)
         }
         
         return DeclSyntax(query)
     }
     
-    private static func typealiasFor(
-        query: GeneratedQuery,
-        databaseName: String,
-        options: GenerationOptions
-    ) throws -> TypeAliasDeclSyntax {
-        let namespace = options.contains(.namespaceGeneratedModels)
-        let inputTypeName = inputTypeName(for: query, namespaced: namespace, databaseName: databaseName)
-        let outputTypeName = outputTypeName(for: query, namespaced: namespace, databaseName: databaseName)
+    /// Generates the expression to initialize the query.
+    ///
+    /// ```swift
+    /// AnyDatabaseQuery<In, Out>(...)
+    /// ```
+    private static func queryExpression(for query: GeneratedQuery) throws -> SwiftSyntax.ExprSyntax {
+        let value = FunctionCallExprSyntax(
+            calledExpression: DeclReferenceExprSyntax(
+                baseName: .identifier(query.typeName)
+            ),
+            leftParen: .leftParenToken(),
+            arguments: LabeledExprListSyntax {
+                let hasWatchingTables = query.isReadOnly
+                
+                LabeledExprSyntax(
+                    leadingTrivia: hasWatchingTables ? .newline : nil,
+                    label: nil,
+                    colon: nil,
+                    expression: DeclReferenceExprSyntax(
+                        baseName: query.isReadOnly ? ".read" : ".write"
+                    ),
+                    trailingComma: TokenSyntax.commaToken()
+                )
+                LabeledExprSyntax(
+                    leadingTrivia: hasWatchingTables ? .newline : nil,
+                    label: TokenSyntax.identifier("in"),
+                    colon: TokenSyntax.colonToken(),
+                    expression: DeclReferenceExprSyntax(baseName: .identifier("connection")),
+                    trailingComma: hasWatchingTables ? TokenSyntax.commaToken() : nil
+                )
+                
+                if hasWatchingTables {
+                    LabeledExprSyntax(
+                        leadingTrivia: .newline,
+                        label: TokenSyntax.identifier("watchingTables"),
+                        colon: TokenSyntax.colonToken(),
+                        expression: ArrayExprSyntax {
+                            if query.isReadOnly {
+                                for table in query.usedTableNames {
+                                    ArrayElementSyntax(expression: StringLiteralExprSyntax(content: table.description))
+                                }
+                            }
+                        },
+                        trailingComma: nil,
+                        trailingTrivia: .newline
+                    )
+                }
+            },
+            rightParen: .rightParenToken(),
+            trailingClosure: ClosureExprSyntax(
+                signature: ClosureSignatureSyntax(
+                    parameterClause: .simpleInput(.init {
+                        ClosureShorthandParameterSyntax(name: "input")
+                        ClosureShorthandParameterSyntax(name: "tx")
+                    })
+                )
+            ) {
+                let sql = stringLiteral(of: query.sourceSql, multiline: true)
+                let statementBinding: TokenSyntax = .keyword(query.input == nil ? .let : .var)
+                "\(statementBinding) statement = try Feather.Statement(\(sql), \ntransaction: tx\n)"
+                
+                if let input = query.input {
+                    switch input {
+                    case let .builtin(_, isArray, encodedAs):
+                        bind(field: nil, encodeToType: encodedAs, isArray: isArray)
+                    case .model(let model):
+                        for field in model.fields.values {
+                            bind(field: field.name, encodeToType: field.encodedAsType, isArray: field.isArray)
+                        }
+                    }
+                }
+                
+                if query.output == nil {
+                    "_ = try statement.step()"
+                } else {
+                    switch query.outputCardinality {
+                    case .single:
+                        "return try statement.fetchOne()"
+                    case .many:
+                        "return try statement.fetchAll()"
+                    }
+                }
+            }
+        )
+        
+        return SwiftSyntax.ExprSyntax(value)
+    }
+    
+    /// The namespaced queries protocol
+    private static func queriesProtocol(
+        name: String,
+        queries: [GeneratedQuery]
+    ) throws -> DeclSyntax {
+        let protocl = try ProtocolDeclSyntax("protocol \(raw: name)") {
+            for query in queries {
+                let associatedType = query.name.capitalizedFirst
+                "associatedtype \(raw: associatedType): \(raw: query.typealiasName)"
+                "var \(raw: query.variableName): \(raw: associatedType) { get }"
+            }
+        }
+        
+        return DeclSyntax(protocl)
+    }
+    
+    /// The namespaced queries protocol implementation
+    private static func queriesImpl(
+        name: String,
+        queries: [GeneratedQuery]
+    ) throws -> DeclSyntax {
+        let strct = try StructDeclSyntax("struct \(raw: name)Impl: \(raw: name)") {
+            "let connection: any Connection"
+            
+            for query in queries {
+                try VariableDeclSyntax("var \(raw: query.variableName): \(raw: query.typeName)") {
+                    try queryExpression(for: query)
+                }
+            }
+        }
+        
+        return DeclSyntax(strct)
+    }
+    
+    /// Generates the no-op implementation of the queries.
+    private static func queriesNoop(
+        name: String,
+        queries: [GeneratedQuery]
+    ) throws -> DeclSyntax {
+        let strct = try StructDeclSyntax("struct \(raw: name)Noop: \(raw: name)") {
+            for query in queries {
+                "let \(raw: query.variableName): AnyQuery<\(raw: query.inputName), \(raw: query.outputName)>"
+            }
+            
+            InitializerDeclSyntax(
+                signature: FunctionSignatureSyntax(
+                    parameterClause: FunctionParameterClauseSyntax(
+                        parameters: FunctionParameterListSyntax(
+                            queries.positional()
+                                .map { (position, query) in
+                                    FunctionParameterSyntax(
+                                        leadingTrivia: position.isFirst ? .newline : nil,
+                                        firstName: .identifier(query.variableName),
+                                        type: IdentifierTypeSyntax(name: .identifier("any \(query.typealiasName)")),
+                                        defaultValue: InitializerClauseSyntax(value: DeclReferenceExprSyntax(baseName: TokenSyntax.identifier("Queries.Just()"))),
+                                        trailingComma: position .isLast ? nil : TokenSyntax.commaToken(),
+                                        trailingTrivia: .newline
+                                    )
+                                }
+                        )
+                    )
+                )
+            ) {
+                for query in queries {
+                    "self.\(raw: query.variableName) = \(raw: query.variableName).eraseToAnyQuery()"
+                }
+            }
+        }
+        
+        return DeclSyntax(strct)
+    }
+    
+    private static func typealiasFor(query: GeneratedQuery) throws -> TypeAliasDeclSyntax {
         return try TypeAliasDeclSyntax(
-            "typealias \(raw: query.name.capitalizedFirst) = Query<\(raw: inputTypeName), \(raw: outputTypeName)>"
+            "typealias \(raw: query.typealiasName) = Query<\(raw: query.inputName), \(raw: query.outputName)>"
         )
     }
     
-    private static func dbTypealiasFor(
-        query: GeneratedQuery,
-        databaseName: String,
-        options: GenerationOptions
-    ) throws -> TypeAliasDeclSyntax {
-        let namespace = options.contains(.namespaceGeneratedModels)
-        let inputTypeName = inputTypeName(for: query, namespaced: namespace, databaseName: databaseName)
-        let outputTypeName = outputTypeName(for: query, namespaced: namespace, databaseName: databaseName)
-        let name = query.name.capitalizedFirst.replacingOccurrences(of: "Query", with: "DatabaseQuery")
+    private static func dbTypealiasFor(query: GeneratedQuery) throws -> TypeAliasDeclSyntax {
+        let name = query.typealiasName.replacingOccurrences(of: "Query", with: "DatabaseQuery")
         return try TypeAliasDeclSyntax(
-            "typealias \(raw: name) = AnyDatabaseQuery<\(raw: inputTypeName), \(raw: outputTypeName)>"
+            "typealias \(raw: name) = AnyDatabaseQuery<\(raw: query.inputName), \(raw: query.outputName)>"
         )
     }
     
     private static func inputExtension(
         for query: GeneratedQuery,
-        input: GeneratedModel,
-        databaseName: String,
-        options: GenerationOptions
+        input: GeneratedModel
     ) throws -> ExtensionDeclSyntax {
-        let namespace = options.contains(.namespaceGeneratedModels)
-        let inputTypeName = inputTypeName(for: query, namespaced: namespace, databaseName: databaseName)
-        return try ExtensionDeclSyntax("extension Query where Input == \(raw: inputTypeName)") {
+        return try ExtensionDeclSyntax("extension Query where Input == \(raw: query.inputName)") {
             let parameters = input.fields.map { parameter in
                 "\(parameter.key): \(parameter.value.type)"
             }.joined(separator: ", ")
@@ -292,29 +413,12 @@ public struct SwiftLanguage: Language {
             
             """
             func execute(\(raw: parameters)) async throws -> Output {
-                try await execute(with: \(raw: inputTypeName)(\(raw: args)))
+                try await execute(with: \(raw: query.inputName)(\(raw: args)))
             }
             """
         }
     }
-    
-    private static func inputTypeName(for query: GeneratedQuery, namespaced: Bool = false, databaseName: String) -> String {
-        guard let input = query.input else { return "()" }
-        return namespaced ? input.namespaced(to: databaseName) : input.description
-    }
-    
-    private static func outputTypeName(for query: GeneratedQuery, namespaced: Bool = false, databaseName: String) -> String {
-        if let output = query.output {
-            let type = namespaced ? output.namespaced(to: databaseName) : output.description
-            return switch query.outputCardinality {
-            case .single: "\(type)?"
-            case .many: "[\(type)]"
-            }
-        } else {
-            return "()"
-        }
-    }
-    
+
     private static func declaration(
         for model: GeneratedModel,
         isOutput: Bool,
@@ -388,7 +492,7 @@ public struct SwiftLanguage: Language {
                     } else {
                         "self.\(raw: field.name) = try row.value(at: start + \(raw: index))"
                     }
-
+                    
                     let _ = index += 1
                 case .model(let model):
                     "self.\(raw: field.name) = try \(raw: field.type)(row: row, startingAt: start + \(raw: index))"
@@ -411,7 +515,7 @@ public struct SwiftLanguage: Language {
                                 FunctionParameterSyntax(
                                     firstName: .identifier(field.name),
                                     type: IdentifierTypeSyntax(name: .identifier(field.type.description)),
-                                    trailingComma: position == .last ? nil : TokenSyntax.commaToken()
+                                    trailingComma: position .isLast ? nil : TokenSyntax.commaToken()
                                 )
                             }
                     )
@@ -443,12 +547,12 @@ public struct SwiftLanguage: Language {
         multiline: Bool = false
     ) -> StringLiteralExprSyntax {
         let openingQuote: TokenSyntax = multiline
-            ? .multilineStringQuoteToken(trailingTrivia: .newline)
-            : .singleQuoteToken()
+        ? .multilineStringQuoteToken(trailingTrivia: .newline)
+        : .singleQuoteToken()
         
         let closingQuote: TokenSyntax = multiline
-            ? .multilineStringQuoteToken(leadingTrivia: .newline)
-            : .singleQuoteToken()
+        ? .multilineStringQuoteToken(leadingTrivia: .newline)
+        : .singleQuoteToken()
         
         let segments: StringLiteralSegmentListSyntax
         if multiline {
@@ -458,16 +562,16 @@ public struct SwiftLanguage: Language {
                 lines
                     .enumerated()
                     .map { (i, s) in
-                        .stringSegment(StringSegmentSyntax(
-                            content: .stringSegment(s.description),
-                            trailingTrivia: i == lines.count - 1 ? nil : .newline
-                        ))
+                            .stringSegment(StringSegmentSyntax(
+                                content: .stringSegment(s.description),
+                                trailingTrivia: i == lines.count - 1 ? nil : .newline
+                            ))
                     }
             )
         } else {
             segments = [.stringSegment(.init(content: .stringSegment(contents)))]
         }
-
+        
         return StringLiteralExprSyntax(
             leadingTrivia: multiline ? Trivia.newline : nil,
             openingQuote: openingQuote,

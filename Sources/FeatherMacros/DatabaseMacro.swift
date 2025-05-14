@@ -56,14 +56,14 @@ extension DatabaseMacro: MemberMacro {
         }
         
         let (generatedTables, generatedQueries) = try SwiftLanguage.assemble(
-            queries: compiler.queries,
+            queries: compiler.queries.map { (nil, $0.value) },
             schema: compiler.schema
         )
         
         return try SwiftLanguage.macro(
             databaseName: structDecl.name.text,
             tables: generatedTables,
-            queries: generatedQueries,
+            queries: generatedQueries.flatMap(\.1),
             options: [],
             addConnection: variables["connection"] == nil
         )
