@@ -31,6 +31,10 @@ extension Queries {
             self.output = output
         }
         
+        public init() where Output == () {
+            self = Just(())
+        }
+        
         public func execute(with input: Input) async throws -> Output {
             return output
         }
@@ -39,12 +43,8 @@ extension Queries {
             return Observation(output: output)
         }
         
-        final class Observation: QueryObservation {
+        struct Observation: QueryObservation {
             let output: Output
-            
-            init(output: Output) {
-                self.output = output
-            }
             
             func start(
                 onChange: @escaping (Output) -> Void,
