@@ -289,12 +289,6 @@ public struct GeneratedQuery {
     let usedTableNames: Set<Substring>
 }
 
-public struct GeneratedResult<Decl> {
-    let queries: [Decl]
-    let inputs: [Decl]
-    let outputs: [Decl]
-}
-
 public enum BuiltinOrGenerated: CustomStringConvertible {
     /// Types can be aliased. So `TEXT AS UUID`. `encodedAs`
     /// would be the `TEXT`. It will allow us to tell the

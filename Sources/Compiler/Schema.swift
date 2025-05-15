@@ -23,13 +23,13 @@ extension Columns {
     }
 }
 
-public struct Table {
+public struct Table: Sendable {
     public var name: Substring
     public var columns: Columns
     public let primaryKey: [Substring]
     public let kind: Kind
     
-    public enum Kind {
+    public enum Kind: Sendable {
         case normal
         case view
         case fts5

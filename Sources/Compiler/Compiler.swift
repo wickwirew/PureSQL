@@ -6,7 +6,7 @@
 //
 
 public struct Compiler {
-    public private(set) var schema = Schema()
+    public var schema = Schema()
     public private(set) var queries: [Namespace: [Statement]] = [:]
     public private(set) var migrations: [Statement] = []
     public private(set) var diagnostics: [Namespace: Diagnostics] = [:]
@@ -158,8 +158,7 @@ fileprivate struct CompilerWithSource {
             isReadOnly: isReadOnly,
             sanitizedSource: sanitizedSource,
             sourceSegments: sourceSegments,
-            usedTableNames: typeChecker.usedTableNames,
-            syntax: stmt
+            usedTableNames: typeChecker.usedTableNames
         )
         
         return (statement, typeChecker.allDiagnostics)

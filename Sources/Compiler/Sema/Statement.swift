@@ -24,8 +24,6 @@ public struct Statement {
     public let sourceSegments: [SourceSegment]
     /// Any table that were accessed and used in the query.
     public let usedTableNames: Set<Substring>
-    /// The source syntax
-    let syntax: any StmtSyntax
     
     /// If `true` the query returns nothing.
     public var noOutput: Bool {
@@ -47,8 +45,7 @@ public struct Statement {
             isReadOnly: isReadOnly,
             sanitizedSource: sanitizedSource,
             sourceSegments: sourceSegments,
-            usedTableNames: usedTableNames,
-            syntax: syntax
+            usedTableNames: usedTableNames
         )
     }
 }
