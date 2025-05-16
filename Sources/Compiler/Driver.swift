@@ -130,7 +130,7 @@ public actor Driver {
             fileName: file,
             usage: usage,
             diagnostics: diagnostics,
-            statements: compiler.queries.flatMap(\.1),
+            statements: compiler.queries,
             schema: compiler.schema,
             modificationDate: modificationDate
         )

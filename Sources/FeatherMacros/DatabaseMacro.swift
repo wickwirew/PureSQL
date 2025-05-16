@@ -56,7 +56,7 @@ extension DatabaseMacro: MemberMacro {
         }
         
         let (generatedTables, generatedQueries) = try SwiftLanguage.assemble(
-            queries: compiler.queries.map { (nil, $0.value) },
+            queries: [(nil, compiler.queries)],
             schema: compiler.schema
         )
         

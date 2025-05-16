@@ -7,9 +7,9 @@
 
 public struct Compiler {
     public var schema = Schema()
-    public private(set) var queries: [Namespace: [Statement]] = [:]
+    public private(set) var queries: [Statement] = []
     public private(set) var migrations: [Statement] = []
-    public private(set) var diagnostics: [Namespace: Diagnostics] = [:]
+    public private(set) var diagnostics = Diagnostics()
     
     private var pragmas = PragmaAnalyzer()
     
@@ -26,7 +26,7 @@ public struct Compiler {
     public init() {}
     
     public var hasDiagnostics: Bool {
-        return diagnostics.isEmpty || diagnostics.allSatisfy { !$0.value.isEmpty }
+        return !diagnostics.isEmpty
     }
     
     public mutating func compile(migration: String, namespace: Namespace) -> Diagnostics {
@@ -36,7 +36,7 @@ public struct Compiler {
             context: "migrations"
         )
         self.migrations.append(contentsOf: stmts)
-        self.diagnostics[namespace] = diagnostics
+        self.diagnostics.merge(diagnostics)
         return diagnostics
     }
     
@@ -46,8 +46,8 @@ public struct Compiler {
             validator: IsValidForQueries(),
             context: "queries"
         )
-        self.queries[namespace, default: []].append(contentsOf: stmts)
-        self.diagnostics[namespace] = diagnostics
+        self.queries.append(contentsOf: stmts)
+        self.diagnostics.merge(diagnostics)
         return diagnostics
     }
     
@@ -67,7 +67,7 @@ public struct Compiler {
         guard let stmt = stmts.first else {
             let loc = SourceLocation(range: query.startIndex..<query.endIndex, line: 0, column: 0)
             diagnostics.add(.init("Query has no statements", at: loc))
-            self.diagnostics[namespace] = diagnostics
+            self.diagnostics.merge(diagnostics)
             return diagnostics
         }
         
@@ -79,8 +79,8 @@ public struct Compiler {
             )
         )
         
-        self.queries[namespace, default: []].append(stmtWithDef)
-        self.diagnostics[namespace] = diagnostics
+        self.queries.append(stmtWithDef)
+        self.diagnostics.merge(diagnostics)
         return diagnostics
     }
     
