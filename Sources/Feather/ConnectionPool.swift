@@ -36,8 +36,7 @@ public actor ConnectionPool: Sendable {
     public init(
         path: String,
         limit: Int,
-        migrations: [String],
-        alwaysMigration: String? = nil
+        migrations: [String]
     ) throws {
         guard limit > 0 else {
             throw FeatherError.poolCannotHaveZeroConnections
@@ -53,7 +52,7 @@ public actor ConnectionPool: Sendable {
         try connection.execute(sql: "PRAGMA journal_mode=WAL;")
         
         let tx = try Transaction(connection: connection, kind: .write)
-        try MigrationRunner.execute(migrations: migrations, alwaysMigration: alwaysMigration, tx: tx)
+        try MigrationRunner.execute(migrations: migrations, tx: tx)
         try tx.commit()
         
         self.availableConnections = [connection]
