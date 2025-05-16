@@ -49,27 +49,16 @@ public actor Driver {
         
         let migrationFiles = try fileSystem.files(atPath: migrationsPath)
         let queriesFiles = try fileSystem.files(atPath: queriesPath)
-        let cache = try loadCache(for: path)
         
         // Migrations must be run synchronously in order.
         for migration in migrationFiles {
-            try compile(
-                file: migration,
-                in: migrationsPath,
-                usage: .migration,
-                cache: cache
-            )
+            try compile(file: migration, in: migrationsPath, usage: .migration)
         }
         
         // Queries can be compiled independently
         try await withThrowingTaskGroup(of: Void.self) { group in
             for query in queriesFiles {
-                try compile(
-                    file: query,
-                    in: queriesPath,
-                    usage: .queries,
-                    cache: cache
-                )
+                try compile(file: query, in: queriesPath, usage: .queries)
             }
             
             try await group.waitForAll()
@@ -89,7 +78,6 @@ public actor Driver {
             .sorted(by: { $0.fileName < $1.fileName })
             .flatMap(\.statements)
             .map(\.sanitizedSource)
-        
         
         // An array of all queries grouped by their file name
         let queries = results.values
@@ -120,55 +108,36 @@ public actor Driver {
         }
     }
 
-    private func compile(
-        file: String,
-        in base: Path,
-        usage: Usage,
-        cache: [Path: Output]
-    ) throws {
+    private func compile(file: String, in base: Path, usage: Usage) throws {
         let path = "\(base)/\(file)"
         let fileContents = try fileSystem.contents(of: path)
         let modificationDate = try fileSystem.modificationDate(of: path)
+    
+        var compiler = Compiler()
+        compiler.schema = currentSchema
         
-        let output: Output
-        let newSchema: Schema
-        // See if cache is usable
-        if let cached = cache[file],
-            let previousModificationDate = cached.modificationDate,
-            modificationDate == previousModificationDate {
-            // Has not been modified since the last compilation so reuse it.
-            output = cached
-            newSchema = cached.schema
-        } else {
-            var compiler = Compiler()
-            compiler.schema = currentSchema
-            
-            let diagnostics = switch usage {
-            case .migration, .alwaysMigration:
-                compiler.compile(migration: fileContents, namespace: .global)
-            case .queries:
-                compiler.compile(queries: fileContents, namespace: .global)
-            }
-            
-            newSchema = compiler.schema
-            output = Output(
-                fileName: file,
-                usage: usage,
-                diagnostics: diagnostics,
-                statements: compiler.queries.flatMap(\.1),
-                schema: compiler.schema,
-                modificationDate: modificationDate
-            )
-            
-            load(diagnostics: diagnostics, source: fileContents, fileName: file)
+        let diagnostics = switch usage {
+        case .migration, .alwaysMigration:
+            compiler.compile(migration: fileContents, namespace: .global)
+        case .queries:
+            compiler.compile(queries: fileContents, namespace: .global)
         }
         
-        results[file] = output
+        load(diagnostics: diagnostics, source: fileContents, fileName: file)
+        
+        results[file] = Output(
+            fileName: file,
+            usage: usage,
+            diagnostics: diagnostics,
+            statements: compiler.queries.flatMap(\.1),
+            schema: compiler.schema,
+            modificationDate: modificationDate
+        )
         
         // Really this probably could always be set since queries cannot
         // affect schema but still worth doing.
         if usage == .migration {
-            currentSchema = newSchema
+            currentSchema = compiler.schema
         }
     }
     
@@ -176,13 +145,6 @@ public actor Driver {
         for reporter in reporters {
             reporter.report(diagnostics: diagnostics, source: source, fileName: fileName)
         }
-    }
-    
-    private func loadCache(for path: Path) throws -> [Path: Output] {
-        // TODO: This is actually going to be a bit more work.
-        // TODO: Making `Statement` `Codable` is going to quite the change
-        // let cachePath = fileSystem.cachePath.appending("/com.wickwire.otter/\(path)")
-        return [:]
     }
     
     /// The migrations path relative to the base path
