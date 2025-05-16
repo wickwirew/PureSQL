@@ -25,10 +25,18 @@ struct Feather: AsyncParsableCommand {
     var additionalImports: String?
     
     mutating func run() async throws {
-        try await generate(language: SwiftLanguage.self)
+        let options = GenerationOptions(
+            databaseName: databaseName,
+            imports: additionalImports?.split(separator: ",").map(\.description) ?? []
+        )
+        
+        try await generate(language: SwiftLanguage.self, options: options)
     }
     
-    private func generate<Lang: Language>(language: Lang.Type) async throws {
+    private func generate<Lang: Language>(
+        language: Lang.Type,
+        options: GenerationOptions
+    ) async throws {
         let driver = Driver()
         await driver.add(reporter: StdoutDiagnosticReporter())
         
@@ -37,13 +45,7 @@ struct Feather: AsyncParsableCommand {
         try await driver.generate(
             language: Lang.self,
             to: output,
-            imports: additionalImports?.split(separator: ",").map(\.description) ?? [],
-            databaseName: databaseName,
-            options: gatherOptions()
+            options: options
         )
-    }
-    
-    private func gatherOptions() -> GenerationOptions {
-        return [] // This originally had options
     }
 }

@@ -24,8 +24,6 @@ public protocol Language {
     
     /// A file source code containing all of the generated tables, queries and migrations.
     static func file(
-        imports: [String],
-        databaseName: String,
         migrations: [String],
         tables: [GeneratedModel],
         queries: [(String?, [GeneratedQuery])],
@@ -45,8 +43,6 @@ public protocol Language {
 
 extension Language {
     public static func generate(
-        imports: [String],
-        databaseName: String,
         migrations: [String],
         queries: [(String?, [Statement])],
         schema: Schema,
@@ -55,8 +51,6 @@ extension Language {
         let values = try assemble(queries: queries, schema: schema)
         
         return try file(
-            imports: imports,
-            databaseName: databaseName,
             migrations: migrations,
             tables: values.tables,
             queries: values.queries,
@@ -244,10 +238,18 @@ extension Language {
     }
 }
 
-
-public typealias GenerationOptions = Set<GenerationOption>
-
-public enum GenerationOption: Hashable {}
+public struct GenerationOptions: Sendable {
+    public var databaseName: String
+    public var imports: [String]
+    
+    public init(
+        databaseName: String? = nil,
+        imports: [String] = []
+    ) {
+        self.databaseName = databaseName ?? "DB"
+        self.imports = imports
+    }
+}
 
 public struct GeneratedModel {
     let name: String

@@ -68,8 +68,6 @@ public actor Driver {
     public func generate<Lang: Language>(
         language: Lang.Type,
         to path: Path?,
-        imports: [String],
-        databaseName: String,
         options: GenerationOptions
     ) throws {
         // An array of all migrations source code
@@ -85,8 +83,6 @@ public actor Driver {
             .map { ($0.fileName.split(separator: ".").first?.description, $0.statements) }
         
         let file = try Lang.generate(
-            imports: imports,
-            databaseName: databaseName,
             migrations: migrations,
             queries: queries,
             schema: currentSchema,

@@ -57,8 +57,6 @@ public struct SwiftLanguage: Language {
     }
     
     public static func file(
-        imports: [String],
-        databaseName: String,
         migrations: [String],
         tables: [GeneratedModel],
         queries: [(String?, [GeneratedQuery])],
@@ -70,7 +68,7 @@ public struct SwiftLanguage: Language {
             try ImportDeclSyntax("import Foundation")
             try ImportDeclSyntax("import Feather")
             
-            for `import` in imports {
+            for `import` in options.imports {
                 try ImportDeclSyntax("import \(raw: `import`)")
             }
             
@@ -92,7 +90,7 @@ public struct SwiftLanguage: Language {
                 }
             }
             
-            try StructDeclSyntax("struct \(raw: databaseName): Database") {
+            try StructDeclSyntax("struct \(raw: options.databaseName): Database") {
                 "let connection: any Feather.Connection"
                 
                 try declaration(for: migrations, options: options)
@@ -105,7 +103,7 @@ public struct SwiftLanguage: Language {
                         // This is really only used by the macro since it doesnt have file names
                         // which really wont happen here but still implement it for completeness.
                         for query in queries {
-                            try declaration(for: query, databaseName: databaseName, options: options)
+                            try declaration(for: query, databaseName: options.databaseName, options: options)
                         }
                     }
                 }
