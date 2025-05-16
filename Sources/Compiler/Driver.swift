@@ -77,7 +77,7 @@ public actor Driver {
     }
     
     public func generate<Lang: Language>(
-        langage: Lang.Type,
+        language: Lang.Type,
         to path: Path?,
         imports: [String],
         databaseName: String,
@@ -159,6 +159,8 @@ public actor Driver {
                 schema: compiler.schema,
                 modificationDate: modificationDate
             )
+            
+            load(diagnostics: diagnostics, source: fileContents, fileName: file)
         }
         
         results[file] = output
@@ -170,8 +172,16 @@ public actor Driver {
         }
     }
     
+    private func load(diagnostics: Diagnostics, source: String, fileName: String) {
+        for reporter in reporters {
+            reporter.report(diagnostics: diagnostics, source: source, fileName: fileName)
+        }
+    }
+    
     private func loadCache(for path: Path) throws -> [Path: Output] {
-//        let cachePath = fileSystem.cachePath.appending("/com.wickwire.otter/\(path)")
+        // TODO: This is actually going to be a bit more work.
+        // TODO: Making `Statement` `Codable` is going to quite the change
+        // let cachePath = fileSystem.cachePath.appending("/com.wickwire.otter/\(path)")
         return [:]
     }
     

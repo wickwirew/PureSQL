@@ -9,6 +9,14 @@ public protocol DiagnosticReporter {
     func report(diagnostic: Diagnostic, source: String, fileName: String)
 }
 
+extension DiagnosticReporter {
+    func report(diagnostics: Diagnostics, source: String, fileName: String) {
+        for diagnostic in diagnostics {
+            report(diagnostic: diagnostic, source: source, fileName: fileName)
+        }
+    }
+}
+
 public struct StdoutDiagnosticReporter: DiagnosticReporter {
     public init() {}
     

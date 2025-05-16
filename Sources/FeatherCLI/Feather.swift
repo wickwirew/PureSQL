@@ -10,17 +10,10 @@ import ArgumentParser
 import Compiler
 import SwiftSyntax
 
-enum CLIError: Error {
-    case fileIsNotValidUTF8(path: String)
-    case migrationFileNameMustBeNumber(String)
-    case invalidOutput(String)
-    case outputMustBeFileNotDirectory(String)
-}
-
 @main
-struct Feather: ParsableCommand {
+struct Feather: AsyncParsableCommand {
     @Option(name: .shortAndLong, help: "The root directory of the Feather sources")
-    var path: String? = nil
+    var path: String = FileManager.default.currentDirectoryPath
     
     @Option(name: .shortAndLong, help: "The output file path. Default is to stdout")
     var output: String? = nil
@@ -31,113 +24,26 @@ struct Feather: ParsableCommand {
     @Option(name: .shortAndLong, help: "Comma separated list of additional imports to add")
     var additionalImports: String?
     
-    @Flag(name: .long, help: "Whether or not the generated models should be namespace under the DB struct")
-    var namespaceModels: Bool = false
-    
-
-    mutating func run() throws {
-        try generate(language: SwiftLanguage.self)
+    mutating func run() async throws {
+        try await generate(language: SwiftLanguage.self)
     }
     
-    @discardableResult
-    private func forEachFile<T>(
-        in path: String,
-        execute: (String, String) throws -> T
-    ) throws -> [T] {
-        var result: [T] = []
+    private func generate<Lang: Language>(language: Lang.Type) async throws {
+        let driver = Driver()
+        await driver.add(reporter: StdoutDiagnosticReporter())
         
-        for file in try FileManager.default.contentsOfDirectory(atPath: path).sorted() {
-            let data = try Data(contentsOf: URL(fileURLWithPath: "\(path)/\(file)"))
-            
-            guard let source = String(data: data, encoding: .utf8) else {
-                throw CLIError.fileIsNotValidUTF8(path: path)
-            }
-            
-            try result.append(execute(source, file))
-        }
+        try await driver.compile(path: path)
         
-        return result
-    }
-    
-    private func generate<Lang: Language>(language: Lang.Type) throws {
-        let path = path ?? FileManager.default.currentDirectoryPath
-        var compiler = Compiler()
-
-        try forEachFile(in: "\(path)/Migrations") { file, fileName in
-            let diags = compiler.compile(migration: file, namespace: .file(fileName))
-            
-            let numberStr = fileName.split(separator: ".")[0]
-            guard Int(numberStr) != nil else {
-                throw CLIError.migrationFileNameMustBeNumber(fileName)
-            }
-            
-            report(diagnostics: diags, source: file, forFile: fileName)
-        }
-        
-        try forEachFile(in: "\(path)/Queries") { file, fileName in
-            let diags = compiler.compile(queries: file, namespace: .file(fileName))
-            report(diagnostics: diags, source: file, forFile: fileName)
-        }
-        
-        
-        let file = try Lang.generate(
+        try await driver.generate(
+            language: Lang.self,
+            to: output,
             imports: additionalImports?.split(separator: ",").map(\.description) ?? [],
             databaseName: databaseName,
-            migrations: compiler.migrations.map(\.sanitizedSource),
-            queries: compiler.queries.map { ($0.key.file?.split(separator: ".").first?.description, $0.value) },
-            schema: compiler.schema,
             options: gatherOptions()
         )
-        
-        guard !compiler.hasDiagnostics else {
-            return
-        }
-        
-        if let output {
-            try validateIsFile(output)
-            try createDirectoiesIfNeeded(output)
-            
-            try file.write(toFile: output, atomically: true, encoding: .utf8)
-        } else {
-            // No output directory, just print to stdout
-            print(file)
-        }
     }
     
     private func gatherOptions() -> GenerationOptions {
-        var options: GenerationOptions = []
-        
-        
-        return options
-    }
-    
-    private func createDirectoiesIfNeeded(_ output: String) throws {
-        let url = URL(fileURLWithPath: output)
-        let directory = url.deletingLastPathComponent()
-        
-        guard !FileManager.default.fileExists(atPath: directory.path) else { return }
-        
-        try FileManager.default.createDirectory(
-            atPath: directory.path,
-            withIntermediateDirectories: true
-        )
-    }
-    
-    private func validateIsFile(_ output: String) throws {
-        if output.split(separator: ".").count <= 1 {
-            throw CLIError.outputMustBeFileNotDirectory(output)
-        }
-    }
-    
-    private func report(
-        diagnostics: Diagnostics,
-        source: String,
-        forFile fileName: String
-    ) {
-        let reporter = StdoutDiagnosticReporter()
-        
-        for diag in diagnostics.elements {
-            reporter.report(diagnostic: diag, source: source, fileName: fileName)
-        }
+        return [] // This originally had options
     }
 }
