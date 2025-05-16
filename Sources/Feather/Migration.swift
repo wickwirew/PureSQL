@@ -8,13 +8,21 @@
 public struct MigrationRunner {
     static let migrationTableName = "__featherMigrations"
     
-    public static func execute(migrations: [String], pool: ConnectionPool) async throws {
+    public static func execute(
+        migrations: [String],
+        alwaysMigration: String?,
+        pool: ConnectionPool
+    ) async throws {
         try await pool.begin(.write) { tx in
-            try execute(migrations: migrations, tx: tx)
+            try execute(migrations: migrations, alwaysMigration: alwaysMigration, tx: tx)
         }
     }
     
-    public static func execute(migrations: [String], tx: borrowing Transaction) throws {
+    public static func execute(
+        migrations: [String],
+        alwaysMigration: String?,
+        tx: borrowing Transaction
+    ) throws {
         try createTableIfNeeded(tx: tx)
         
         let lastMigration = try lastMigration(tx: tx)
@@ -27,6 +35,10 @@ public struct MigrationRunner {
         for (number, migration) in pendingMigrations {
             try execute(migration: migration, number: number, tx: tx)
         }
+        
+        if let alwaysMigration {
+            try execute(migration: alwaysMigration, number: nil, tx: tx)
+        }
     }
     
     static func createTableIfNeeded(tx: borrowing Transaction) throws(FeatherError) {
@@ -37,9 +49,13 @@ public struct MigrationRunner {
         """)
     }
     
-    static func execute(migration: String, number: Int, tx: borrowing Transaction) throws {
+    /// Executes the migration, if the `number` exists it will be recorded in the migrations table.
+    static func execute(migration: String, number: Int?, tx: borrowing Transaction) throws {
         try tx.execute(sql: migration)
-        try insertMigration(version: number, tx: tx)
+        
+        if let number {
+            try insertMigration(version: number, tx: tx)
+        }
     }
     
     private static func lastMigration(tx: borrowing Transaction) throws -> Int {

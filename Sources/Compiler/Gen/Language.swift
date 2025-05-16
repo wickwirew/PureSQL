@@ -25,6 +25,7 @@ public protocol Language {
     /// A file source code containing all of the generated tables, queries and migrations.
     static func file(
         migrations: [String],
+        alwaysMigration: String?,
         tables: [GeneratedModel],
         queries: [(String?, [GeneratedQuery])],
         options: GenerationOptions
@@ -44,6 +45,7 @@ public protocol Language {
 extension Language {
     public static func generate(
         migrations: [String],
+        alwaysMigration: String?,
         queries: [(String?, [Statement])],
         schema: Schema,
         options: GenerationOptions
@@ -52,6 +54,7 @@ extension Language {
         
         return try file(
             migrations: migrations,
+            alwaysMigration: alwaysMigration,
             tables: values.tables,
             queries: values.queries,
             options: options

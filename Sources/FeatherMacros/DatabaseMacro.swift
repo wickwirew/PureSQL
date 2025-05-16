@@ -64,7 +64,7 @@ extension DatabaseMacro: MemberMacro {
             databaseName: structDecl.name.text,
             tables: generatedTables,
             queries: generatedQueries.flatMap(\.1),
-            options: [],
+            options: GenerationOptions(),
             addConnection: variables["connection"] == nil
         )
     }

@@ -31,6 +31,11 @@ public actor Driver {
         case alwaysMigration
     }
     
+    enum Error: Swift.Error {
+        case invalidMigrationName(String)
+        case canOnlyHaveOneAlwaysMigration
+    }
+    
     init(fileSystem: FileSystem) {
         self.fileSystem = fileSystem
     }
@@ -47,12 +52,19 @@ public actor Driver {
         let migrationsPath = migrationsPath(at: path)
         let queriesPath = queriesPath(at: path)
         
-        let migrationFiles = try fileSystem.files(atPath: migrationsPath)
+        let (migrationFiles, alwaysMigration) = try organizeMigrations(
+            fileNames: fileSystem.files(atPath: migrationsPath)
+        )
         let queriesFiles = try fileSystem.files(atPath: queriesPath)
         
         // Migrations must be run synchronously in order.
         for migration in migrationFiles {
             try compile(file: migration, in: migrationsPath, usage: .migration)
+        }
+        
+        // Always migrations always run after
+        if let alwaysMigration {
+            try compile(file: alwaysMigration, in: migrationsPath, usage: .migration)
         }
         
         // Queries can be compiled independently
@@ -82,8 +94,15 @@ public actor Driver {
             .filter{ $0.usage == .queries }
             .map { ($0.fileName.split(separator: ".").first?.description, $0.statements) }
         
+        let alwaysMigration = results.values
+            .first { $0.usage == .alwaysMigration }?
+            .statements
+            .map(\.sanitizedSource)
+            .joined()
+        
         let file = try Lang.generate(
             migrations: migrations,
+            alwaysMigration: alwaysMigration,
             queries: queries,
             schema: currentSchema,
             options: options
@@ -151,5 +170,37 @@ public actor Driver {
     /// The queries path relative to the base path
     private func queriesPath(at base: Path) -> Path {
         "\(base)/Queries"
+    }
+    
+    private func organizeMigrations(
+        fileNames: [String]
+    ) throws -> (standard: [String], always: String?) {
+        var standard: [String] = []
+        var always: String?
+        
+        for fileName in fileNames.sorted() {
+            var components = fileName.split(separator: ".")
+            
+            guard components.count == 2 else {
+                throw Error.invalidMigrationName(fileName)
+            }
+            
+            let nameWithoutExt = components[0]
+            
+            if Int(nameWithoutExt) != nil {
+                standard.append(fileName)
+            } else if nameWithoutExt == "Always" {
+                guard always == nil else {
+                    // Can this really even happen?
+                    throw Error.canOnlyHaveOneAlwaysMigration
+                }
+                
+                always = fileName
+            } else {
+                throw Error.invalidMigrationName(fileName)
+            }
+        }
+        
+        return (standard, always)
     }
 }

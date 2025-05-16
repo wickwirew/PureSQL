@@ -58,6 +58,7 @@ public struct SwiftLanguage: Language {
     
     public static func file(
         migrations: [String],
+        alwaysMigration: String?,
         tables: [GeneratedModel],
         queries: [(String?, [GeneratedQuery])],
         options: GenerationOptions
@@ -94,6 +95,10 @@ public struct SwiftLanguage: Language {
                 "let connection: any Feather.Connection"
                 
                 try declaration(for: migrations, options: options)
+                
+                if let alwaysMigration {
+                    try declaration(alwaysMigration: alwaysMigration, options: options)
+                }
                 
                 for (namespace, queries) in queries {
                     if let namespace {
@@ -198,6 +203,18 @@ public struct SwiftLanguage: Language {
                         .with(\.trailingTrivia, .newline))
                 }
             )
+        }
+        
+        return DeclSyntax(variable)
+    }
+    
+    /// The migrations variable
+    private static func declaration(
+        alwaysMigration: String,
+        options: GenerationOptions
+    ) throws -> DeclSyntax {
+        let variable = try VariableDeclSyntax("static var alwaysMigration: String?") {
+            stringLiteral(of: alwaysMigration, multiline: true)
         }
         
         return DeclSyntax(variable)
