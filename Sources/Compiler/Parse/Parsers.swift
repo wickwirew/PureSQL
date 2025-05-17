@@ -58,6 +58,8 @@ enum Parsers {
             return try createView(state: &state)
         case (.create, .trigger):
             return try createTrigger(state: &state)
+        case (.drop, .trigger):
+            return dropTrigger(state: &state)
         case (.select, _):
             return try selectStmt(state: &state)
         case (.insert, _):

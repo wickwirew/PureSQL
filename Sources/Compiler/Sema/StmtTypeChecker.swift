@@ -248,12 +248,12 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
         
         switch stmt.action {
         case .delete:
-            insertTableAndColumnsIntoEnv(table, as: "old", onlyColumnsIn: [])
+            insertTableAndColumnsIntoEnv(table, as: "old", globallyAddColumns: false)
         case .insert:
-            insertTableAndColumnsIntoEnv(table, as: "new", onlyColumnsIn: [])
+            insertTableAndColumnsIntoEnv(table, as: "new", globallyAddColumns: false)
         case let .update(columns):
-            insertTableAndColumnsIntoEnv(table, as: "new", onlyColumnsIn: [])
-            insertTableAndColumnsIntoEnv(table, as: "old", onlyColumnsIn: [])
+            insertTableAndColumnsIntoEnv(table, as: "new", globallyAddColumns: false)
+            insertTableAndColumnsIntoEnv(table, as: "old", globallyAddColumns: false)
             
             // Make sure all columns in the update statement actually exist
             if let columns {
@@ -842,7 +842,8 @@ extension StmtTypeChecker {
         _ table: Table,
         as alias: Substring? = nil,
         isOptional: Bool = false,
-        onlyColumnsIn columns: Set<Substring>? = nil
+        onlyColumnsIn columns: Set<Substring> = [],
+        globallyAddColumns: Bool = true
     ) {
         // Insert real name not alias. These are used later for observation tracking
         // so an alias is no good since it will always be the actual table name.
@@ -853,8 +854,10 @@ extension StmtTypeChecker {
             ty: isOptional ? .optional(table.type) : table.type
         )
         
-        for column in table.columns where columns == nil || columns?.contains(column.key) == true {
-            env.insert(column.key, ty: isOptional ? .optional(column.value) : column.value)
+        if globallyAddColumns {
+            for column in table.columns where columns.isEmpty || columns.contains(column.key) {
+                env.insert(column.key, ty: isOptional ? .optional(column.value) : column.value)
+            }
         }
         
         // Make rank available, but only via by direct name so it isnt
