@@ -178,3 +178,19 @@ SELECT id, qux FROM bar;
 SELECT id, bar FROM foo
 UNION
 SELECT id, ? AS value FROM bar;
+
+-- CHECK: SIGNATURE
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         id INTEGER
+-- CHECK:         bestValue (INTEGER)
+-- CHECK:         secondBestValue (INTEGER)
+-- CHECK:         thirdBestValue (INTEGER)
+-- CHECK:   TABLES
+-- CHECK:     bar
+SELECT id,
+    (bar.id + unixepoch()) + 1 AS bestValue,
+    (bar.id) + (1 - 12) * (unixepoch()) AS secondBestValue,
+    (bar.id) + (bar.id + 1) AS thirdBestValue
+FROM bar;

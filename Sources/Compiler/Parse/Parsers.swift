@@ -1803,47 +1803,50 @@ enum Parsers {
             // If the lhs was a column refernce with no table/schema and we are
             // at an open paren treat as a function call.
             if state.is(of: .openParen), case let .column(column) = expr, column.schema == nil {
-                let args = try commaDelimitedInParens(state: &state) { try Parsers.expr(state: &$0) }
-                return .fn(FunctionExprSyntax(
+                let args = try parensOrEmpty(state: &state) { state in
+                    try commaDelimited(state: &state)  { try Parsers.expr(state: &$0) }
+                }
+                
+                expr = .fn(FunctionExprSyntax(
                     id: state.nextId(),
                     table: column.table,
                     name: column.column,
-                    args: args,
+                    args: args ?? [],
                     location: state.location(from: expr.location))
                 )
-            }
-            
-            guard let op = Operator.guess(for: state.current.kind, after: state.peek.kind),
-                  op.precedence(usage: .infix) >= precedence
-            else {
-                return expr
-            }
-            
-            // The between operator is a different one. It doesnt act like a
-            // normal infix expression. There are two rhs expressions for the
-            // lower and upper bounds. Those need to be parsed individually
-            //
-            // TODO: Move this to the Infix Parser
-            if op == .between || op == .not(.between) {
-                let op = Parsers.operator(state: &state)
-                assert(op.operator == .between || op.operator == .not(.between), "Guess cannot be wrong")
-                
-                // We need to dispatch the lower and upper bound expr's with a
-                // precedence above AND so the AND is not included in the expr.
-                // e.g. (a BETWEEN b AND C) not (a BETWEEN (b AND c))
-                let precAboveAnd = Operator.and.precedence(usage: .infix) + 1
-                let lowerBound = try Parsers.expr(state: &state, precedence: precAboveAnd)
-                state.consume(.and)
-                let upperBound = try Parsers.expr(state: &state, precedence: precAboveAnd)
-                expr = .between(BetweenExprSyntax(
-                    id: state.nextId(),
-                    not: op.operator == .not(.between),
-                    value: expr,
-                    lower: lowerBound,
-                    upper: upperBound)
-                )
             } else {
-                expr = try infixExpr(state: &state, lhs: expr)
+                guard let op = Operator.guess(for: state.current.kind, after: state.peek.kind),
+                      op.precedence(usage: .infix) >= precedence
+                else {
+                    return expr
+                }
+                
+                // The between operator is a different one. It doesnt act like a
+                // normal infix expression. There are two rhs expressions for the
+                // lower and upper bounds. Those need to be parsed individually
+                //
+                // TODO: Move this to the Infix Parser
+                if op == .between || op == .not(.between) {
+                    let op = Parsers.operator(state: &state)
+                    assert(op.operator == .between || op.operator == .not(.between), "Guess cannot be wrong")
+                    
+                    // We need to dispatch the lower and upper bound expr's with a
+                    // precedence above AND so the AND is not included in the expr.
+                    // e.g. (a BETWEEN b AND C) not (a BETWEEN (b AND c))
+                    let precAboveAnd = Operator.and.precedence(usage: .infix) + 1
+                    let lowerBound = try Parsers.expr(state: &state, precedence: precAboveAnd)
+                    state.consume(.and)
+                    let upperBound = try Parsers.expr(state: &state, precedence: precAboveAnd)
+                    expr = .between(BetweenExprSyntax(
+                        id: state.nextId(),
+                        not: op.operator == .not(.between),
+                        value: expr,
+                        lower: lowerBound,
+                        upper: upperBound)
+                    )
+                } else {
+                    expr = try infixExpr(state: &state, lhs: expr)
+                }
             }
         }
         
@@ -2208,6 +2211,8 @@ enum Parsers {
         return elements
     }
     
+    /// Parses a value in between parenthesis. Assumes the value exists within
+    /// the parenthesis.
     static func parens<Value>(
         state: inout ParserState,
         value: (inout ParserState) throws -> Value
@@ -2216,6 +2221,17 @@ enum Parsers {
         let value = try value(&state)
         state.consume(.closeParen)
         return value
+    }
+    
+    /// Just like `parens` but allows for an empty set of parens
+    static func parensOrEmpty<Value>(
+        state: inout ParserState,
+        value: (inout ParserState) throws -> Value
+    ) rethrows -> Value? {
+        try parens(state: &state) { state in
+            guard state.current.kind != .closeParen else { return nil }
+            return try value(&state)
+        }
     }
     
     static func identifier(

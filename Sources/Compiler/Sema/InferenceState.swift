@@ -196,24 +196,16 @@ extension InferenceState {
         case let (.fn(args1, ret1), .fn(args2, ret2)):
             unify(args1, with: args2, at: location)
             unify(ret1.apply(substitution), with: ret2.apply(substitution), at: location)
+        case let (.row(row), t) where row.count == 1 && !t.isRow:
+            unify(row.first!, with: t, at: location)
+        case let (t, .row(row)) where row.count == 1 && !t.isRow:
+            unify(row.first!, with: t, at: location)
         case let (.row(.unknown(ty)), .row(rhs)):
             return unify(all: rhs.types, with: ty, at: location)
         case let (.row(lhs), .row(.unknown(ty))):
             return unify(all: lhs.types, with: ty, at: location)
         case let (.row(rhs), .row(lhs)) where lhs.count == rhs.count:
             return unify(rhs.types, with: lhs.types, at: location)
-        case let (.row(row), t):
-            if row.count == 1, let first = row.first {
-                unify(first, with: t, at: location)
-            } else {
-                diagnostics.add(.unableToUnify(type, with: other, at: location))
-            }
-        case let (t, .row(row)):
-            if row.count == 1, let first = row.first {
-                unify(first, with: t, at: location)
-            } else {
-                diagnostics.add(.unableToUnify(type, with: other, at: location))
-            }
         case let (.alias(t1, _), t2):
             return unify(t1, with: t2, at: location)
         case let (t1, .alias(t2, _)):
@@ -284,12 +276,15 @@ extension InferenceState {
         with tvKind: TypeVariable.Kind,
         at location: SourceLocation
     ) {
-        if case let .alias(t, _) = type {
+        switch type {
+        case let .alias(t, _):
             return validateCanUnify(type: t, with: tvKind, at: location)
-        }
-        
-        if case let .optional(t) = type {
+        case let .optional(t):
             return validateCanUnify(type: t, with: tvKind, at: location)
+        case .var:
+            return
+        default:
+            break
         }
         
         switch tvKind {
@@ -298,12 +293,16 @@ extension InferenceState {
         case .integer:
             switch type {
             case .int, .integer, .real: return
+            case .row(let row) where row.count == 1:
+                validateCanUnify(type: row.first!, with: tvKind, at: location)
             default:
                 diagnostics.add(.unableToUnify(type, with: .integer, at: location))
             }
         case .float:
             switch type {
             case .int, .integer, .real: return
+            case .row(let row) where row.count == 1:
+                validateCanUnify(type: row.first!, with: tvKind, at: location)
             default:
                 diagnostics.add(.unableToUnify(type, with: .real, at: location))
             }

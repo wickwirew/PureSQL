@@ -181,6 +181,14 @@ class TypeCheckerTests: XCTestCase {
         XCTAssertEqual(.optional(.integer), type(for: ":bar", in: result))
     }
     
+    func testFunctionOnLhs() {
+        XCTAssertEqual(.integer, try check("unixepoch() + 1"))
+    }
+    
+    func testExprInParens() {
+        XCTAssertEqual(.row(.unnamed([.integer])), try check("(1 + 1) + 1"))
+    }
+    
     func scope(table: String, schema: String) throws -> Environment {
         var compiler = Compiler()
         _ = compiler.compile(migration: schema)

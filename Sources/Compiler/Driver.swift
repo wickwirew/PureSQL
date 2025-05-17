@@ -84,6 +84,12 @@ public actor Driver {
             .filter{ $0.usage == .queries }
             .map { ($0.fileName.split(separator: ".").first?.description, $0.statements) }
         
+        let hasDiagnostics = results.contains { !$0.value.diagnostics.isEmpty }
+        
+        guard !hasDiagnostics else {
+            return // Just skip, diagnostics should have already been emitted.
+        }
+        
         let file = try Lang.generate(
             migrations: migrations,
             queries: queries,
@@ -119,7 +125,7 @@ public actor Driver {
             compiler.compile(queries: fileContents)
         }
         
-        load(diagnostics: diagnostics, source: fileContents, fileName: file)
+        report(diagnostics: diagnostics, source: fileContents, fileName: file)
         
         results[file] = Output(
             fileName: file,
@@ -136,7 +142,7 @@ public actor Driver {
         }
     }
     
-    private func load(diagnostics: Diagnostics, source: String, fileName: String) {
+    private func report(diagnostics: Diagnostics, source: String, fileName: String) {
         for reporter in reporters {
             reporter.report(diagnostics: diagnostics, source: source, fileName: fileName)
         }
