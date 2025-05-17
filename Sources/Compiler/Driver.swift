@@ -119,9 +119,9 @@ public actor Driver {
         
         let diagnostics = switch usage {
         case .migration:
-            compiler.compile(migration: fileContents, namespace: .global)
+            compiler.compile(migration: fileContents)
         case .queries:
-            compiler.compile(queries: fileContents, namespace: .global)
+            compiler.compile(queries: fileContents)
         }
         
         load(diagnostics: diagnostics, source: fileContents, fileName: file)

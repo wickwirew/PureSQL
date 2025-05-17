@@ -12,24 +12,14 @@ public struct Compiler {
     public private(set) var diagnostics = Diagnostics()
     
     private var pragmas = PragmaAnalyzer()
-    
-    public enum Namespace: Hashable {
-        case global
-        case file(String)
-        
-        public var file: String? {
-            guard case .file(let name) = self else { return nil }
-            return name
-        }
-    }
-    
+
     public init() {}
     
     public var hasDiagnostics: Bool {
         return !diagnostics.isEmpty
     }
     
-    public mutating func compile(migration: String, namespace: Namespace) -> Diagnostics {
+    public mutating func compile(migration: String) -> Diagnostics {
         let (stmts, diagnostics) = compile(
             source: migration,
             validator: IsValidForMigrations(),
@@ -40,7 +30,7 @@ public struct Compiler {
         return diagnostics
     }
     
-    public mutating func compile(queries: String, namespace: Namespace) -> Diagnostics {
+    public mutating func compile(queries: String) -> Diagnostics {
         let (stmts, diagnostics) = compile(
             source: queries,
             validator: IsValidForQueries(),
@@ -55,8 +45,7 @@ public struct Compiler {
         query: String,
         named name: String,
         inputType: String?,
-        outputType: String?,
-        namespace: Namespace
+        outputType: String?
     ) -> Diagnostics {
         var (stmts, diagnostics) = compile(
             source: query,

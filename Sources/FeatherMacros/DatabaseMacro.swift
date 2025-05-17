@@ -36,7 +36,7 @@ extension DatabaseMacro: MemberMacro {
         var compiler = Compiler()
         
         for (migration, expr) in migrations {
-            for diag in compiler.compile(migration: migration, namespace: .global) {
+            for diag in compiler.compile(migration: migration) {
                 context.addDiagnostics(from: diag, node: expr)
             }
         }
@@ -48,8 +48,7 @@ extension DatabaseMacro: MemberMacro {
                 query: queryMacro.source,
                 named: name.removingQuerySuffix(),
                 inputType: queryMacro.inputName,
-                outputType: queryMacro.outputName,
-                namespace: .global
+                outputType: queryMacro.outputName
             ) {
                 context.addDiagnostics(from: diag, node: variable)
             }
