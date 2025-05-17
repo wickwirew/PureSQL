@@ -1,11 +1,11 @@
 //
-//  CreateTriggerSynax.swift
+//  CreateTriggerStmtSyntax.swift
 //  Feather
 //
 //  Created by Wes Wickwire on 5/17/25.
 //
 
-struct CreateTriggerSynax: StmtSyntax {
+struct CreateTriggerStmtSyntax: StmtSyntax {
     let id: SyntaxId
     let location: SourceLocation
     let isTemporary: Bool

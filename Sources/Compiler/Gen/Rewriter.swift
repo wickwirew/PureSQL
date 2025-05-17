@@ -159,5 +159,7 @@ extension Rewriter: StmtSyntaxVisitor {
         }
     }
     
-    func visit(_ stmt: borrowing CreateTriggerSynax) -> [Range<Substring.Index>] { [] }
+    func visit(_ stmt: borrowing CreateTriggerStmtSyntax) -> [Range<Substring.Index>] { [] }
+    
+    func visit(_ stmt: borrowing DropTriggerStmtSyntax) -> [Range<Substring.Index>] { [] }
 }

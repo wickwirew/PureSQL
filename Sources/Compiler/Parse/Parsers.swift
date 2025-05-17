@@ -1798,7 +1798,8 @@ enum Parsers {
         )
     }
     
-    static func createTrigger(state: inout ParserState) throws -> CreateTriggerSynax {
+    /// https://www.sqlite.org/lang_createtable.html
+    static func createTrigger(state: inout ParserState) throws -> CreateTriggerStmtSyntax {
         let start = state.location
         state.consume(.create)
         let isTemporary = state.take(if: .temp) || state.take(if: .temporary)
@@ -1806,7 +1807,7 @@ enum Parsers {
         let ifNotExists = ifNotExists(state: &state)
         let (schema, trigger) = tableAndSchemaName(state: &state)
         
-        let modifier: CreateTriggerSynax.Modifier?
+        let modifier: CreateTriggerStmtSyntax.Modifier?
         if state.take(if: .before) {
             modifier = .before
         } else if state.take(if: .after) {
@@ -1818,7 +1819,7 @@ enum Parsers {
             modifier = nil
         }
         
-        let action: CreateTriggerSynax.Action
+        let action: CreateTriggerStmtSyntax.Action
         if state.take(if: .delete) {
             action = .delete
         } else if state.take(if: .insert) {
@@ -1857,7 +1858,7 @@ enum Parsers {
         let statements = stmts(state: &state, end: .end)
         state.consume(.end)
         
-        return CreateTriggerSynax(
+        return CreateTriggerStmtSyntax(
             id: state.nextId(),
             location: state.location(from: start),
             isTemporary: isTemporary,
@@ -1870,6 +1871,22 @@ enum Parsers {
             tableName: tableName.table,
             when: when,
             statements: statements
+        )
+    }
+    
+    /// https://www.sqlite.org/lang_droptrigger.html
+    static func dropTrigger(state: inout ParserState) -> DropTriggerStmtSyntax {
+        let start = state.location
+        state.consume(.drop)
+        state.consume(.trigger)
+        let ifExists = ifExists(state: &state)
+        let names = tableAndSchemaName(state: &state)
+        return DropTriggerStmtSyntax(
+            id: state.nextId(),
+            location: state.location(from: start),
+            ifExists: ifExists,
+            schemaName: names.schema,
+            triggerName: names.table
         )
     }
     

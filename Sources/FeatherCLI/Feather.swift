@@ -24,6 +24,9 @@ struct Feather: AsyncParsableCommand {
     @Option(name: .shortAndLong, help: "Comma separated list of additional imports to add")
     var additionalImports: String?
     
+    @Flag
+    var dontColorize = false
+    
     mutating func run() async throws {
         let options = GenerationOptions(
             databaseName: databaseName,
@@ -38,7 +41,7 @@ struct Feather: AsyncParsableCommand {
         options: GenerationOptions
     ) async throws {
         let driver = Driver()
-        await driver.add(reporter: StdoutDiagnosticReporter())
+        await driver.add(reporter: StdoutDiagnosticReporter(dontColorize: dontColorize))
         
         try await driver.compile(path: path)
         

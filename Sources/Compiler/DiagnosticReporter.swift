@@ -18,10 +18,22 @@ extension DiagnosticReporter {
 }
 
 public struct StdoutDiagnosticReporter: DiagnosticReporter {
-    public init() {}
+    private let dontColorize: Bool
     
-    public let red = (open: "\u{001B}[31m", close: "\u{001B}[0m")
-    public let bold = (open: "\u{001B}[1m", close: "\u{001B}[22m")
+    public init(dontColorize: Bool = false) {
+        self.dontColorize = dontColorize
+    }
+    
+    static let red = ("\u{001B}[31m", "\u{001B}[0m")
+    static let bold = ("\u{001B}[1m", "\u{001B}[22m")
+    
+    var red: (open: String, close: String) {
+        dontColorize ? ("", "") : Self.red
+    }
+    
+    var bold: (open: String, close: String) {
+        dontColorize ? ("", "") : Self.bold
+    }
     
     public func report(diagnostic: Diagnostic, source: String, fileName: String) {
         let range = diagnostic.location.range

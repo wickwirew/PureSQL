@@ -146,6 +146,10 @@ final class ParserTests: XCTestCase {
     func testCreateTrigger() throws {
         try check(sqlFile: "ParseCreateTriggerStmt", parser: Parsers.createTrigger)
     }
+    
+    func testDropTrigger() throws {
+        try check(sqlFile: "ParseDropTriggerStmt", parser: Parsers.dropTrigger) 
+    }
 }
 
 func check<Output>(

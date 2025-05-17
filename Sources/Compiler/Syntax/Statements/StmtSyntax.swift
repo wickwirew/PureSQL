@@ -28,5 +28,6 @@ protocol StmtSyntaxVisitor {
     mutating func visit(_ stmt: borrowing ReindexStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: borrowing CreateViewStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: borrowing CreateVirtualTableStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: borrowing CreateTriggerSynax) -> StmtOutput
+    mutating func visit(_ stmt: borrowing CreateTriggerStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: borrowing DropTriggerStmtSyntax) -> StmtOutput
 }

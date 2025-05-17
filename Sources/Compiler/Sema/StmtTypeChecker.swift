@@ -240,7 +240,7 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
         return .empty
     }
     
-    mutating func visit(_ stmt: borrowing CreateTriggerSynax) -> ResultColumns {
+    mutating func visit(_ stmt: borrowing CreateTriggerStmtSyntax) -> ResultColumns {
         guard let table = schema[stmt.tableName.value] else {
             diagnostics.add(.tableDoesNotExist(stmt.tableName))
             return .empty
@@ -279,6 +279,11 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
             }
         }
         
+        return .empty
+    }
+    
+    func visit(_ stmt: borrowing DropTriggerStmtSyntax) -> ResultColumns {
+        // TODO: Track triggers
         return .empty
     }
 }
