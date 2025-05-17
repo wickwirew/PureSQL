@@ -22,7 +22,6 @@ public actor Driver {
         let diagnostics: Diagnostics
         let statements: [Statement]
         let schema: Schema
-        let modificationDate: Date?
     }
     
     enum Usage {
@@ -53,10 +52,8 @@ public actor Driver {
         let migrationFiles = try fileSystem.files(atPath: migrationsPath)
         let queriesFiles = try fileSystem.files(atPath: queriesPath)
         
-        try validateMigrations(fileNames: migrationFiles)
-        
         // Migrations must be run synchronously in order.
-        for migration in migrationFiles {
+        for migration in try sortMigrations(fileNames: migrationFiles) {
             try compile(file: migration, in: migrationsPath, usage: .migration)
         }
         
@@ -101,7 +98,6 @@ public actor Driver {
             var directory = path.split(separator: "/")
             directory.removeLast()
             try fileSystem.create(directory: directory.joined(separator: "/"))
-            
             try file.write(toFile: path, atomically: true, encoding: .utf8)
         } else {
             // No output path, default to stdout.
@@ -112,7 +108,6 @@ public actor Driver {
     private func compile(file: String, in base: Path, usage: Usage) throws {
         let path = "\(base)/\(file)"
         let fileContents = try fileSystem.contents(of: path)
-        let modificationDate = try fileSystem.modificationDate(of: path)
     
         var compiler = Compiler()
         compiler.schema = currentSchema
@@ -131,8 +126,7 @@ public actor Driver {
             usage: usage,
             diagnostics: diagnostics,
             statements: compiler.queries,
-            schema: compiler.schema,
-            modificationDate: modificationDate
+            schema: compiler.schema
         )
         
         // Really this probably could always be set since queries cannot
@@ -158,19 +152,27 @@ public actor Driver {
         "\(base)/Queries"
     }
     
-    private func validateMigrations(
+    /// Sorts the migration files
+    private func sortMigrations(
         fileNames: [String]
-    ) throws {
-        for fileName in fileNames.sorted() {
-            let components = fileName.split(separator: ".")
-            
-            guard components.count == 2 else {
-                throw Error.invalidMigrationName(fileName)
-            }
-            
-            if Int(components[0]) != nil {
-                throw Error.invalidMigrationName(fileName)
-            }
+    ) throws -> [String] {
+        return try fileNames.sorted { lhs, rhs in
+            try migrationNumber(fileName: lhs) < migrationNumber(fileName: rhs)
         }
+    }
+    
+    /// Gets the migration number from the migration file name
+    private func migrationNumber(fileName: String) throws -> Int {
+        let components = fileName.split(separator: ".")
+        
+        guard components.count == 2 else {
+            throw Error.invalidMigrationName(fileName)
+        }
+        
+        guard let number = Int(components[0]) else {
+            throw Error.invalidMigrationName(fileName)
+        }
+        
+        return number
     }
 }

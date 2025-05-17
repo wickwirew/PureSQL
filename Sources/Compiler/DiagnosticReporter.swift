@@ -11,7 +11,7 @@ public protocol DiagnosticReporter {
 
 extension DiagnosticReporter {
     func report(diagnostics: Diagnostics, source: String, fileName: String) {
-        for diagnostic in diagnostics {
+        for diagnostic in diagnostics.sorted(by: { $0.location.lowerBound < $1.location.lowerBound }) {
             report(diagnostic: diagnostic, source: source, fileName: fileName)
         }
     }
