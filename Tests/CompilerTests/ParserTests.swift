@@ -142,6 +142,10 @@ final class ParserTests: XCTestCase {
     func testCreateVirtualTable() throws {
         try check(sqlFile: "ParseCreateVirtualTable", parser: Parsers.createVirutalTable)
     }
+    
+    func testCreateTrigger() throws {
+        try check(sqlFile: "ParseCreateTriggerStmt", parser: Parsers.createTrigger)
+    }
 }
 
 func check<Output>(

@@ -24,6 +24,10 @@ enum Parsers {
     }
     
     static func stmts(state: inout ParserState) -> [any StmtSyntax] {
+        return stmts(state: &state, end: .eof)
+    }
+    
+    static func stmts(state: inout ParserState, end: Token.Kind) -> [any StmtSyntax] {
         var stmts: [any StmtSyntax] = []
         
         repeat {
@@ -33,7 +37,7 @@ enum Parsers {
             } catch {
                 recover(state: &state)
             }
-        } while state.take(if: .semiColon) && state.current.kind != .eof
+        } while state.take(if: .semiColon) && state.current.kind != end
         
         return stmts
     }
@@ -52,6 +56,8 @@ enum Parsers {
             (.create, .temp) where state.peek2.kind == .view,
             (.create, .temporary) where state.peek2.kind == .view:
             return try createView(state: &state)
+        case (.create, .trigger):
+            return try createTrigger(state: &state)
         case (.select, _):
             return try selectStmt(state: &state)
         case (.insert, _):
@@ -1789,6 +1795,81 @@ enum Parsers {
             ifExists: ifExists,
             tableName: table,
             location: state.location(from: drop)
+        )
+    }
+    
+    static func createTrigger(state: inout ParserState) throws -> CreateTriggerSynax {
+        let start = state.location
+        state.consume(.create)
+        let isTemporary = state.take(if: .temp) || state.take(if: .temporary)
+        state.consume(.trigger)
+        let ifNotExists = ifNotExists(state: &state)
+        let (schema, trigger) = tableAndSchemaName(state: &state)
+        
+        let modifier: CreateTriggerSynax.Modifier?
+        if state.take(if: .before) {
+            modifier = .before
+        } else if state.take(if: .after) {
+            modifier = .after
+        } else if state.take(if: .instead) {
+            state.consume(.of)
+            modifier = .insteadOf
+        } else {
+            modifier = nil
+        }
+        
+        let action: CreateTriggerSynax.Action
+        if state.take(if: .delete) {
+            action = .delete
+        } else if state.take(if: .insert) {
+            action = .insert
+        } else if state.take(if: .update) {
+            if state.take(if: .of) {
+                action = .update(columns: columnNameList(state: &state))
+            } else {
+                action = .update(columns: nil)
+            }
+        } else {
+            action = .insert // Just default to insert so we can continue
+            state.diagnostics.add(.init(
+                "Expected 'DELETE', 'INSERT' or 'UPDATE'",
+                at: state.current.location
+            ))
+        }
+        
+        state.consume(.on)
+        
+        let tableName = tableAndSchemaName(state: &state)
+        
+        if state.take(if: .for) {
+            state.consume(.each)
+            state.consume(.row)
+        }
+        
+        let when: ExprSyntax?
+        if state.take(if: .when) {
+            when = try expr(state: &state)
+        } else {
+            when = nil
+        }
+        
+        state.consume(.begin)
+        let statements = stmts(state: &state, end: .end)
+        state.consume(.end)
+        
+        return CreateTriggerSynax(
+            id: state.nextId(),
+            location: state.location(from: start),
+            isTemporary: isTemporary,
+            ifNotExists: ifNotExists,
+            schemaName: schema,
+            triggerName: trigger,
+            modifier: modifier,
+            action: action,
+            tableSchemaName: tableName.schema,
+            tableName: tableName.table,
+            when: when,
+            statements: statements
         )
     }
     

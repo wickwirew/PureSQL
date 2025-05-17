@@ -31,7 +31,7 @@ public struct StdoutDiagnosticReporter: DiagnosticReporter {
         let source = source[start ..< end]
         let distanceToStart = source.distance(from: start, to: range.lowerBound)
         let indent = String(repeating: " ", count: distanceToStart)
-        let underline = String(repeating: "^", count: source.distance(from: range.lowerBound, to: range.upperBound))
+        let underline = String(repeating: "^", count: source.distance(from: range.lowerBound, to: min(end, range.upperBound)))
         
         let line = diagnostic.location.line
         let column = diagnostic.location.column

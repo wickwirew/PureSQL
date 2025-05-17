@@ -262,6 +262,10 @@ extension CompilerWithSource: StmtSyntaxVisitor {
     mutating func visit(_ stmt: CreateVirtualTableStmtSyntax) -> (Statement, Diagnostics)? {
         return typeCheck(stmt, isReadOnly: false)
     }
+    
+    mutating func visit(_ stmt: borrowing CreateTriggerSynax) -> (Statement, Diagnostics)? {
+        return typeCheck(stmt, isReadOnly: false)
+    }
 }
 
 /// Used to validate whether a statement syntax is valid for use in migrations
@@ -281,6 +285,7 @@ struct IsValidForMigrations: StmtSyntaxVisitor {
     func visit(_ stmt: borrowing ReindexStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing CreateViewStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing CreateVirtualTableStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing CreateTriggerSynax) -> Bool { true }
 }
 
 /// Used to validate whether a statement syntax is valid for use in queries
@@ -300,6 +305,7 @@ struct IsValidForQueries: StmtSyntaxVisitor {
     func visit(_ stmt: borrowing ReindexStmtSyntax) -> Bool { false }
     func visit(_ stmt: borrowing CreateViewStmtSyntax) -> Bool { false }
     func visit(_ stmt: borrowing CreateVirtualTableStmtSyntax) -> Bool { false }
+    func visit(_ stmt: borrowing CreateTriggerSynax) -> Bool { false }
 }
 
 // Mainly used in tests, since they are usually a mix of migrations and queries
@@ -319,4 +325,5 @@ struct IsAlwaysValid: StmtSyntaxVisitor {
     func visit(_ stmt: borrowing ReindexStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing CreateViewStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing CreateVirtualTableStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing CreateTriggerSynax) -> Bool { true }
 }

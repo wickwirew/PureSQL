@@ -95,10 +95,15 @@ struct StmtTypeChecker {
     /// Performs the inference in a new environment.
     /// Useful for subqueries that don't inhereit our current joins.
     private mutating func inNewEnvironment<Output>(
+        extendCurrentEnv: Bool = false,
         _ action: (inout StmtTypeChecker) -> Output
     ) -> Output {
         var inferrer = self
-        inferrer.env = Environment()
+        
+        if !extendCurrentEnv {
+            inferrer.env = Environment()
+        }
+        
         let result = action(&inferrer)
         diagnostics = inferrer.diagnostics
         nameInferrer = inferrer.nameInferrer
@@ -230,6 +235,48 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
             typeCheck(fts5Table: stmt)
         case .unknown:
             diagnostics.add(.init("Unknown virtual table module name", at: stmt.moduleName.location))
+        }
+        
+        return .empty
+    }
+    
+    mutating func visit(_ stmt: borrowing CreateTriggerSynax) -> ResultColumns {
+        guard let table = schema[stmt.tableName.value] else {
+            diagnostics.add(.tableDoesNotExist(stmt.tableName))
+            return .empty
+        }
+        
+        switch stmt.action {
+        case .delete:
+            insertTableAndColumnsIntoEnv(table, as: "old", onlyColumnsIn: [])
+        case .insert:
+            insertTableAndColumnsIntoEnv(table, as: "new", onlyColumnsIn: [])
+        case let .update(columns):
+            insertTableAndColumnsIntoEnv(table, as: "new", onlyColumnsIn: [])
+            insertTableAndColumnsIntoEnv(table, as: "old", onlyColumnsIn: [])
+            
+            // Make sure all columns in the update statement actually exist
+            if let columns {
+                for column in columns {
+                    if table.columns[column.value] == nil {
+                        diagnostics.add(.columnDoesNotExist(column))
+                    }
+                }
+            }
+        }
+        
+        if let when = stmt.when {
+            insertTableAndColumnsIntoEnv(table)
+            let (whenType, _) = typeCheck(when)
+            
+            // Make sure the value is a valid boolean (integer)
+            inferenceState.unify(whenType, with: .integer, at: when.location)
+        }
+        
+        for statement in stmt.statements {
+            _ = inNewEnvironment(extendCurrentEnv: true) { typeChecker in
+                statement.accept(visitor: &typeChecker)
+            }
         }
         
         return .empty
@@ -742,7 +789,7 @@ extension StmtTypeChecker {
 
             insertTableAndColumnsIntoEnv(
                 envTable,
-                as: table.alias,
+                as: table.alias?.identifier.value,
                 isOptional: isOptional,
                 onlyColumnsIn: usedColumns
             )
@@ -788,20 +835,20 @@ extension StmtTypeChecker {
     /// as well. Useful in joins that may or may not have a match, e.g. Outer
     private mutating func insertTableAndColumnsIntoEnv(
         _ table: Table,
-        as alias: AliasSyntax? = nil,
+        as alias: Substring? = nil,
         isOptional: Bool = false,
-        onlyColumnsIn columns: Set<Substring> = []
+        onlyColumnsIn columns: Set<Substring>? = nil
     ) {
         // Insert real name not alias. These are used later for observation tracking
         // so an alias is no good since it will always be the actual table name.
         usedTableNames.insert(table.name)
         
         env.insert(
-            alias?.identifier.value ?? table.name,
+            alias ?? table.name,
             ty: isOptional ? .optional(table.type) : table.type
         )
         
-        for column in table.columns where columns.isEmpty || columns.contains(column.key) {
+        for column in table.columns where columns == nil || columns?.contains(column.key) == true {
             env.insert(column.key, ty: isOptional ? .optional(column.value) : column.value)
         }
         
