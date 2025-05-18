@@ -33,35 +33,62 @@ struct Environment {
         /// during a query. However if they do a `SELECT *` it should
         /// not be included into the result columns
         let explicitAccessOnly: Bool
+        /// Whether or not this value is inherited from a parent environment.
+        /// In a subquery we inherit the values from the parent environment
+        /// but with the caveat that they are overridable and won't be consider
+        /// ambiguous if something was inserted with the same name.
+        let isFromParent: Bool
     }
     
     init() {}
+    
+    private init(identifiers: OrderedDictionary<Substring, TypeContainer>) {
+        self.identifiers = identifiers
+    }
 
     /// Inserts or updates the type for the given name
     mutating func upsert(_ name: Substring, ty: Type, explicitAccessOnly: Bool = false) {
         identifiers[name] = TypeContainer(
             type: ty,
             isAmbiguous: false,
-            explicitAccessOnly: explicitAccessOnly
+            explicitAccessOnly: explicitAccessOnly,
+            isFromParent: false
         )
     }
     
     /// Inserts the type for the given name. If the name
     /// already exists it will be marked as ambiguous
     mutating func insert(_ name: Substring, ty: Type, explicitAccessOnly: Bool = false) {
-        if let existing = identifiers[name] {
+        // If it already exists, mark it as ambiguous except for the case
+        // where its from a parent environment.
+        if let existing = identifiers[name], !existing.isFromParent {
             identifiers[name] = TypeContainer(
                 type: existing.type,
                 isAmbiguous: true,
-                explicitAccessOnly: explicitAccessOnly
+                explicitAccessOnly: explicitAccessOnly,
+                isFromParent: false
             )
         } else {
             identifiers[name] = TypeContainer(
                 type: ty,
                 isAmbiguous: false,
-                explicitAccessOnly: explicitAccessOnly
+                explicitAccessOnly: explicitAccessOnly,
+                isFromParent: false
             )
         }
+    }
+    
+    /// Returns a copy of `self` but with all identifiers in the environment
+    /// as overridable since they are from a parent environment.
+    func asParent() -> Environment {
+        return Environment(identifiers: identifiers.mapValues { container in
+            TypeContainer(
+                type: container.type,
+                isAmbiguous: container.isAmbiguous,
+                explicitAccessOnly: container.explicitAccessOnly,
+                isFromParent: true
+            )
+        })
     }
     
     mutating func rename(_ key: Substring, to newValue: Substring) {

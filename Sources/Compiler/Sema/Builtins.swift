@@ -25,7 +25,20 @@ enum Builtins {
     static let regexp = TypeScheme(typeVariables: [], type: .fn(params: [.text, .text], ret: .integer))
     static let glob = TypeScheme(typeVariables: [], type: .fn(params: [.text, .text], ret: .integer))
     
-    static let functions: OrderedDictionary<Substring, TypeScheme> = [
+    static let functions: OrderedDictionary<Substring, TypeScheme> = {
+        // TODO: Clean this up. SQLite isnt casing dependant but we are at the moment.
+        // TODO: So insert each function twice, under the lower and upper cased name.
+        
+        var functions = baseFunctions
+        
+        for (name, fn) in baseFunctions {
+            functions[name.uppercased()[...]] = fn
+        }
+        
+        return functions
+    }()
+    
+    private static let baseFunctions: OrderedDictionary<Substring, TypeScheme> = [
         // Scalar functions
         "abs": TypeScheme(typeVariables: [.integer(0)], type: .fn(params: [.var(.integer(0))], ret: .var(.integer(0)))),
         "changes": TypeScheme(typeVariables: [], type: .fn(params: [], ret: .integer)),

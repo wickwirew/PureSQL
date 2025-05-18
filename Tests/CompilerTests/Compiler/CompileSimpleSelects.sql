@@ -194,3 +194,17 @@ SELECT id,
     (bar.id) + (1 - 12) * (unixepoch()) AS secondBestValue,
     (bar.id) + (bar.id + 1) AS thirdBestValue
 FROM bar;
+
+-- CHECK: SIGNATURE
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         id INTEGER
+-- CHECK:         bar (INTEGER AS Bool)?
+-- CHECK:         baz TEXT
+-- CHECK:       OUTPUT_TABLE foo
+-- CHECK:   TABLES
+-- CHECK:     bar
+-- CHECK:     foo
+SELECT * FROM foo
+WHERE id IN (SELECT qux FROM bar WHERE qux > foo.id);

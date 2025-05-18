@@ -18,6 +18,8 @@ struct ExprTypeChecker {
     private let schema: Schema
     /// Any diagnostics that are emitted during compilation
     private(set) var diagnostics = Diagnostics()
+    /// Any table that is used
+    private(set) var usedTableNames: Set<Substring> = []
     
     private let pragmas: FeatherPragmas
     
@@ -245,7 +247,12 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
     }
     
     mutating func visit(_ expr: borrowing SelectExprSyntax) -> Type {
-        var typeChecker = StmtTypeChecker(env: env, schema: schema, inferenceState: inferenceState, pragmas: pragmas)
+        var typeChecker = StmtTypeChecker(
+            env: env.asParent(),
+            schema: schema,
+            inferenceState: inferenceState,
+            pragmas: pragmas
+        )
         let signature = typeChecker.signature(for: expr.select)
         let type: Type = .row(.named(signature.output.allColumns))
         // Make sure to update our inference state
@@ -255,6 +262,7 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         diagnostics.merge(typeChecker.diagnostics)
         // Record the result type in the state
         inferenceState.record(type: type, for: expr)
+        usedTableNames = typeChecker.usedTableNames
         return type
     }
     

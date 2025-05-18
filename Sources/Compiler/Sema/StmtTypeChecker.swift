@@ -68,6 +68,7 @@ struct StmtTypeChecker {
         diagnostics.merge(exprTypeChecker.diagnostics)
         // Collect the updated inference state.
         inferenceState = exprTypeChecker.inferenceState
+        usedTableNames.formUnion(exprTypeChecker.usedTableNames)
         return (type, name)
     }
     
@@ -287,6 +288,7 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
         }
         
         for statement in stmt.statements {
+            // Extending the current environment to include new/old
             _ = inNewEnvironment(extendCurrentEnv: true) { typeChecker in
                 statement.accept(visitor: &typeChecker)
             }
