@@ -232,9 +232,8 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
     }
     
     mutating func visit(_ stmt: borrowing CreateVirtualTableStmtSyntax) -> ResultColumns {
-        guard schema[stmt.tableName.name.value] == nil else {
+        if !stmt.ifNotExists, schema[stmt.tableName.name.value] != nil {
             diagnostics.add(.tableAlreadyExists(stmt.tableName.name))
-            return .empty
         }
         
         switch stmt.module {
@@ -280,7 +279,6 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
         }
         
         if let when = stmt.when {
-            insertTableAndColumnsIntoEnv(table)
             let (whenType, _) = typeCheck(when)
             
             // Make sure the value is a valid boolean (integer)
@@ -977,7 +975,7 @@ extension StmtTypeChecker {
                 // Dropping a table automatically removes any trigger its the target of.
                 schema[trigger: trigger.name] = nil
             } else {
-                guard !trigger.usedTables.contains(dropTable.tableName.name.value) else { continue }
+                guard trigger.usedTables.contains(dropTable.tableName.name.value) else { continue }
                 
                 // SQLite seemingly from my tests will allow this to happen but I swear I've
                 // had errors from it before. But error if the table is used in a trigger.

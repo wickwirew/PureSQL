@@ -151,7 +151,10 @@ extension CardinalityInferrer: ExprSyntaxVisitor {
     mutating func visit(_ expr: borrowing BindParameterSyntax) -> ExprOutput { [] }
     
     mutating func visit(_ expr: borrowing ColumnExprSyntax) -> ExprOutput {
-        return [expr.column.value]
+        return switch expr.column {
+        case .column(let column): [column.value]
+        case .all: []
+        }
     }
     
     mutating func visit(_ expr: borrowing PrefixExprSyntax) -> ExprOutput {

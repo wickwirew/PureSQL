@@ -17,7 +17,8 @@ struct IndexedColumnSyntax: Syntax {
     }
     
     var columnName: IdentifierSyntax? {
-        guard case let .column(column) = expr else { return nil }
-        return column.column
+        guard case let .column(column) = expr,
+                case let .column(name) = column.column else { return nil }
+        return name
     }
 }

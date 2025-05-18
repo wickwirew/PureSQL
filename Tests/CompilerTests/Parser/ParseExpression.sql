@@ -17,6 +17,24 @@ foo.bar;
 foo.bar.baz;
 
 -- CHECK: EXPRESSION_SYNTAX
+-- CHECK:   COLUMN
+-- CHECK:     SCHEMA foo
+-- CHECK:     TABLE bar
+-- CHECK:     COLUMN *
+foo.bar.*;
+
+-- CHECK: EXPRESSION_SYNTAX
+-- CHECK:   COLUMN
+-- CHECK:     TABLE bar
+-- CHECK:     COLUMN *
+bar.*;
+
+-- CHECK: EXPRESSION_SYNTAX
+-- CHECK:   COLUMN
+-- CHECK:     COLUMN *
+*;
+
+-- CHECK: EXPRESSION_SYNTAX
 -- CHECK:   LITERAL 1.0
 1.0;
 

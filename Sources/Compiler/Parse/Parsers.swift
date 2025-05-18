@@ -1902,15 +1902,18 @@ enum Parsers {
         while true {
             // If the lhs was a column refernce with no table/schema and we are
             // at an open paren treat as a function call.
-            if state.is(of: .openParen), case let .column(column) = expr, column.schema == nil {
+            if state.is(of: .openParen),
+                case let .column(columnExpr) = expr,
+                case let .column(column) = columnExpr.column,
+                columnExpr.schema == nil {
                 let args = try parensOrEmpty(state: &state) { state in
                     try commaDelimited(state: &state)  { try Parsers.expr(state: &$0) }
                 }
                 
                 expr = .fn(FunctionExprSyntax(
                     id: state.nextId(),
-                    table: column.table,
-                    name: column.column,
+                    table: columnExpr.table,
+                    name: column,
                     args: args ?? [],
                     location: state.location(from: expr.location))
                 )
@@ -1961,8 +1964,8 @@ enum Parsers {
         switch state.current.kind {
         case .double, .string, .int, .hex, .currentDate, .currentTime, .currentTimestamp, .true, .false:
             return .literal(literal(state: &state))
-        case .symbol:
-            let column = columnExpr(state: &state)
+        case .symbol, .star:
+            let column = try columnExpr(state: &state, schema: nil, table: nil)
             return .column(column)
         case .questionMark, .colon, .dollarSign, .at:
             return .bindParameter(bindParameter(state: &state))
@@ -2054,36 +2057,40 @@ enum Parsers {
         
         return .infix(InfixExprSyntax(id: state.nextId(), lhs: lhs, operator: op, rhs: rhs))
     }
-    
+
     /// https://www.sqlite.org/syntax/expr.html
-    static func columnExpr(state: inout ParserState) -> ColumnExprSyntax {
-        let first = identifier(state: &state)
-        
-        if state.take(if: .dot) {
-            let second = identifier(state: &state)
+    static func columnExpr(
+        state: inout ParserState,
+        schema: IdentifierSyntax?,
+        table: IdentifierSyntax?
+    ) throws -> ColumnExprSyntax {
+        switch state.current.kind {
+        case .star:
+            let star = state.take()
+            return ColumnExprSyntax(
+                id: state.nextId(),
+                schema: schema,
+                table: table,
+                column: .all(star.location)
+            )
+        case .symbol:
+            let ident = identifier(state: &state)
             
             if state.take(if: .dot) {
-                return ColumnExprSyntax(
-                    id: state.nextId(),
-                    schema: first,
-                    table: second,
-                    column: identifier(state: &state)
-                )
+                return try columnExpr(state: &state, schema: table, table: ident)
             } else {
                 return ColumnExprSyntax(
                     id: state.nextId(),
-                    schema: nil,
-                    table: first,
-                    column: second
+                    schema: schema,
+                    table: table,
+                    column: .column(ident)
                 )
             }
-        } else {
-            return ColumnExprSyntax(
-                id: state.nextId(),
-                schema: nil,
-                table: nil,
-                column: first
-            )
+        default:
+            throw state.diagnostics.add(.init(
+                "Unexpected token, expected * or an identifier",
+                at: state.location
+            ))
         }
     }
     

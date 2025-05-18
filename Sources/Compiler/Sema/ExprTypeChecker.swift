@@ -99,33 +99,46 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
                 return inferenceState.errorType(for: expr)
             }
 
-            guard let type = columns[expr.column.value] else {
-                diagnostics.add(.init(
-                    "Table '\(tableName)' has no column '\(expr.column)'",
-                    at: expr.location
-                ))
-                return inferenceState.errorType(for: expr)
+            let type: Type
+            switch expr.column {
+            case .column(let column):
+                guard let t = columns[column.value] else {
+                    diagnostics.add(.init(
+                        "Table '\(tableName)' has no column '\(column)'",
+                        at: expr.location
+                    ))
+                    return inferenceState.errorType(for: expr)
+                }
+                
+                type = t
+            case .all:
+                type = tableTy
             }
             
             return (isOptional ? .optional(type) : type)
         } else {
-            guard let result = env[expr.column.value] else {
-                diagnostics.add(.init(
-                    "Column '\(expr.column)' does not exist",
-                    at: expr.location
-                ))
-                return inferenceState.errorType(for: expr)
+            switch expr.column {
+            case .column(let column):
+                guard let result = env[column.value] else {
+                    diagnostics.add(.init(
+                        "Column '\(column)' does not exist",
+                        at: expr.location
+                    ))
+                    return inferenceState.errorType(for: expr)
+                }
+                
+                // TODO: Maybe put this in the scheme instantiation?
+                if result.isAmbiguous {
+                    diagnostics.add(.ambiguous(column.value, at: column.location))
+                }
+                
+                // Make sure to record the type in the inference state since
+                // the type was pulled from the environment
+                inferenceState.record(type: result.type, for: expr)
+                return result.type
+            case .all:
+                return .row(.named(.init(uniqueKeysWithValues: env)))
             }
-            
-            // TODO: Maybe put this in the scheme instantiation?
-            if result.isAmbiguous {
-                diagnostics.add(.ambiguous(expr.column.value, at: expr.column.location))
-            }
-            
-            // Make sure to record the type in the inference state since
-            // the type was pulled from the environment
-            inferenceState.record(type: result.type, for: expr)
-            return (result.type)
         }
     }
     

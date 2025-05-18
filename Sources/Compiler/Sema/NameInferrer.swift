@@ -229,7 +229,12 @@ extension NameInferrer: ExprSyntaxVisitor {
     }
     
     mutating func visit(_ expr: borrowing ColumnExprSyntax) -> Name {
-        .some(expr.column.value)
+        switch expr.column {
+        case .column(let column):
+            return .some(column.value)
+        case .all:
+            return .none
+        }
     }
     
     mutating func visit(_ expr: borrowing BindParameterSyntax) -> Name {
