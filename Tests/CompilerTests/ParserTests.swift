@@ -139,6 +139,10 @@ final class ParserTests: XCTestCase {
         try check(sqlFile: "ParseCreateViewStmt", parser: Parsers.createView)
     }
     
+    func testDropView() throws {
+        try check(sqlFile: "ParseDropViewStmt", parser: Parsers.dropView)
+    }
+    
     func testCreateVirtualTable() throws {
         try check(sqlFile: "ParseCreateVirtualTable", parser: Parsers.createVirutalTable)
     }

@@ -10,6 +10,8 @@ CREATE TABLE user (id INTEGER, name TEXT);
 -- CHECK:       TYPE TEXT?
 -- CHECK:       INDEX 2
 -- CHECK:       NAME name
+-- CHECK:     TABLES
+-- CHECK:       user
 INSERT INTO user (id, name) VALUES (?, ?);
 
 -- CHECK: SIGNATURE
@@ -27,6 +29,8 @@ INSERT INTO user (id, name) VALUES (?, ?);
 -- CHECK:       OUTPUT
 -- CHECK:         id INTEGER?
 -- CHECK:         name TEXT?
+-- CHECK:     TABLES
+-- CHECK:       user
 INSERT INTO user (id, name) VALUES (?, ?) RETURNING *;
 
 -- CHECK: SIGNATURE
@@ -60,4 +64,6 @@ INSERT INTO user (id, name) VALUES (?, ?) RETURNING *;
 -- CHECK:       OUTPUT
 -- CHECK:         id INTEGER?
 -- CHECK:         name TEXT?
+-- CHECK:     TABLES
+-- CHECK:       user
 INSERT INTO user (id, name) VALUES (?, ?), (?, ?), (?, ?) RETURNING *;

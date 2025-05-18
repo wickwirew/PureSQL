@@ -149,6 +149,8 @@ extension Rewriter: StmtSyntaxVisitor {
     
     func visit(_ stmt: borrowing CreateViewStmtSyntax) -> [Range<Substring.Index>] { [] }
     
+    func visit(_ stmt: borrowing DropViewStmtSyntax) -> [Range<Substring.Index>] { [] }
+    
     func visit(_ stmt: borrowing CreateVirtualTableStmtSyntax) -> [Range<Substring.Index>] {
         return stmt.arguments.flatMap { argument -> [Range<Substring.Index>] in
             guard case let .fts5Column(_, typeName, notNull, _) = argument else { return [] }

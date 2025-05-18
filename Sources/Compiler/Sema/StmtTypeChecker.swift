@@ -231,6 +231,23 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
         return .empty
     }
     
+    mutating func visit(_ stmt: borrowing DropViewStmtSyntax) -> ResultColumns {
+        guard let table = schema[stmt.viewName.value] else {
+            if !stmt.ifExists {
+                diagnostics.add(.init("View with name does not exist", at: stmt.viewName.location))
+            }
+            return .empty
+        }
+        
+        if table.kind != .view {
+            diagnostics.add(.init("Table is not a view", at: stmt.viewName.location))
+        }
+        
+        schema[stmt.viewName.value] = nil
+        
+        return .empty
+    }
+    
     mutating func visit(_ stmt: borrowing CreateVirtualTableStmtSyntax) -> ResultColumns {
         if !stmt.ifNotExists, schema[stmt.tableName.name.value] != nil {
             diagnostics.add(.tableAlreadyExists(stmt.tableName.name))
@@ -295,7 +312,7 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
         schema[trigger: stmt.triggerName.value] = Trigger(
             name: stmt.triggerName.value,
             targetTable: table.name,
-            usedTables: usedTableNames
+            usedTables: usedTableNames.subtracting([table.name])
         )
         
         return .empty
@@ -394,6 +411,8 @@ extension StmtTypeChecker {
             diagnostics.add(.tableDoesNotExist(insert.tableName.name))
             return .empty
         }
+        
+        usedTableNames.insert(table.name)
         
         let inputType: Type
         if let columns = insert.columns {

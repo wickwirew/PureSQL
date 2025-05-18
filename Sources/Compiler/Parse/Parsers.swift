@@ -76,6 +76,8 @@ enum Parsers {
             return dropTable(state: &state)
         case (.drop, .index):
             return dropIndex(state: &state)
+        case (.drop, .view):
+            return dropView(state: &state)
         case (.reindex, _):
             return reindex(state: &state)
         case (.with, _):
@@ -369,6 +371,21 @@ enum Parsers {
             columnNames: columns,
             select: select,
             location: state.location(from: create)
+        )
+    }
+    
+    /// https://www.sqlite.org/lang_dropview.html
+    static func dropView(state: inout ParserState) -> DropViewStmtSyntax {
+        let drop = state.take(.drop)
+        state.consume(.view)
+        let ifExists = ifExists(state: &state)
+        let (schema, view) = tableAndSchemaName(state: &state)
+        return DropViewStmtSyntax(
+            id: state.nextId(),
+            location: state.location(from: drop),
+            ifExists: ifExists,
+            schemaName: schema,
+            viewName: view
         )
     }
     

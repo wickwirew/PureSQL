@@ -39,8 +39,8 @@ class CompilerTests: XCTestCase {
     }
     
     func testView() throws {
-        try checkSchema(compile: "CompileView", prefix: "CHECK-SCHEMA")
-        try checkQueries(compile: "CompileView", prefix: "CHECK-QUERIES")
+        try checkSchema(compile: "CompileView", prefix: "CHECK-SCHEMA", dump: true)
+        try checkQueries(compile: "CompileView", prefix: "CHECK-QUERIES", dump: true)
     }
     
     func testFTS5() throws {

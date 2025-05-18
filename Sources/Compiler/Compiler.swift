@@ -259,6 +259,10 @@ extension CompilerWithSource: StmtSyntaxVisitor {
         return typeCheck(stmt, isReadOnly: false)
     }
     
+    mutating func visit(_ stmt: DropViewStmtSyntax) -> (Statement, Diagnostics)? {
+        return typeCheck(stmt, isReadOnly: false)
+    }
+    
     mutating func visit(_ stmt: CreateVirtualTableStmtSyntax) -> (Statement, Diagnostics)? {
         return typeCheck(stmt, isReadOnly: false)
     }
@@ -288,6 +292,7 @@ struct IsValidForMigrations: StmtSyntaxVisitor {
     func visit(_ stmt: borrowing DropIndexStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing ReindexStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing CreateViewStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing DropViewStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing CreateVirtualTableStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing CreateTriggerStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing DropTriggerStmtSyntax) -> Bool { true }
@@ -309,6 +314,7 @@ struct IsValidForQueries: StmtSyntaxVisitor {
     func visit(_ stmt: borrowing DropIndexStmtSyntax) -> Bool { false }
     func visit(_ stmt: borrowing ReindexStmtSyntax) -> Bool { false }
     func visit(_ stmt: borrowing CreateViewStmtSyntax) -> Bool { false }
+    func visit(_ stmt: borrowing DropViewStmtSyntax) -> Bool { false }
     func visit(_ stmt: borrowing CreateVirtualTableStmtSyntax) -> Bool { false }
     func visit(_ stmt: borrowing CreateTriggerStmtSyntax) -> Bool { false }
     func visit(_ stmt: borrowing DropTriggerStmtSyntax) -> Bool { false }
@@ -330,6 +336,7 @@ struct IsAlwaysValid: StmtSyntaxVisitor {
     func visit(_ stmt: borrowing DropIndexStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing ReindexStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing CreateViewStmtSyntax) -> Bool { true }
+    func visit(_ stmt: borrowing DropViewStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing CreateVirtualTableStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing CreateTriggerStmtSyntax) -> Bool { true }
     func visit(_ stmt: borrowing DropTriggerStmtSyntax) -> Bool { true }
