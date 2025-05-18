@@ -65,7 +65,7 @@ extension Language {
         tables: [GeneratedModel],
         queries: [(String?, [GeneratedQuery])]
     ) {
-        let tables = schema.mapValues(model(for:))
+        let tables = schema.tables.mapValues(model(for:))
         let queries = queries.map { ($0.map { "\($0)Queries" }, $1.map{ query(for: $0, tables: tables) }) }
         return (Array(tables.values), queries)
     }

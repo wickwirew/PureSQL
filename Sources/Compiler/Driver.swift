@@ -10,7 +10,7 @@ import Foundation
 public actor Driver {
     private let fileSystem: FileSystem
     private var results: [Path: Output] = [:]
-    private var currentSchema: Schema = [:]
+    private var currentSchema = Schema()
     
     public typealias Path = String
     

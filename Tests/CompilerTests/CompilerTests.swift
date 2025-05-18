@@ -64,6 +64,10 @@ class CompilerTests: XCTestCase {
             }
         )
     }
+    
+    func testTriggers() throws {
+        try checkErrors(compile: "CompileTriggers", dump: true)
+    }
 }
 
 struct CheckSignature: Checkable {
@@ -105,7 +109,7 @@ func checkSchema(
                 validator: IsAlwaysValid(),
                 context: "tests"
             )
-            return (Array(compiler.schema.values), diags)
+            return (Array(compiler.schema.tables.values), diags)
         },
         prefix: prefix,
         dump: dump,
@@ -173,6 +177,32 @@ func checkWithErrors<Output>(
         sqlFile: sqlFile,
         parse: { _ in diagnostics.map(\.message) },
         prefix: "CHECK-ERROR",
+        dump: dump,
+        file: file,
+        line: line
+    )
+}
+
+func checkErrors(
+    compile sqlFile: String,
+    prefix: String = "CHECK-ERROR",
+    dump: Bool = false,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws {
+    try check(
+        sqlFile: sqlFile,
+        parse: { contents in
+            var compiler = Compiler()
+            let (_, d) = compiler.compile(
+                source: contents,
+                validator: IsAlwaysValid(),
+                context: "tests"
+            )
+            
+            return d.map(\.message)
+        },
+        prefix: prefix,
         dump: dump,
         file: file,
         line: line

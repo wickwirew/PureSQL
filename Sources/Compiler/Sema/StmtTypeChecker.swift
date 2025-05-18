@@ -169,18 +169,24 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
             _ = typeCheck(whereExpr)
         }
         
+        schema[index: stmt.name.value] = Index(
+            name: stmt.name.value,
+            table: table.name
+        )
+        
         return .empty
     }
     
     mutating func visit(_ stmt: borrowing DropIndexStmtSyntax) -> ResultColumns {
-        // Indices are not stored at the moment, so there is nothign to do.
+        if !stmt.ifExists, schema[index: stmt.name.value] == nil {
+            diagnostics.add(.init("Index does not exist", at: stmt.name.location))
+        }
+        
+        schema[index: stmt.name.value] = nil
         return .empty
     }
     
     mutating func visit(_ stmt: borrowing ReindexStmtSyntax) -> ResultColumns {
-        // Indices are not stored at the moment, so there is nothign to do.
-        // We cant really even validate the name since it can be the
-        // index name and not just the table
         return .empty
     }
     
@@ -246,6 +252,13 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
             return .empty
         }
         
+        if !stmt.ifNotExists, schema[trigger: stmt.triggerName.value] != nil {
+            diagnostics.add(.init(
+                "Trigger with name already exists",
+                at: stmt.triggerName.location
+            ))
+        }
+        
         switch stmt.action {
         case .delete:
             insertTableAndColumnsIntoEnv(table, as: "old", globallyAddColumns: false)
@@ -279,11 +292,21 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
             }
         }
         
+        schema[trigger: stmt.triggerName.value] = Trigger(
+            name: stmt.triggerName.value,
+            targetTable: table.name,
+            usedTables: usedTableNames
+        )
+        
         return .empty
     }
     
-    func visit(_ stmt: borrowing DropTriggerStmtSyntax) -> ResultColumns {
-        // TODO: Track triggers
+    mutating func visit(_ stmt: borrowing DropTriggerStmtSyntax) -> ResultColumns {
+        if !stmt.ifExists, schema[trigger: stmt.triggerName.value] == nil {
+            diagnostics.add(.init("Trigger with name does not exist", at: stmt.triggerName.location))
+        }
+        
+        schema[trigger: stmt.triggerName.value] = nil
         return .empty
     }
 }
@@ -940,6 +963,24 @@ extension StmtTypeChecker {
         
         if !tableExists && !dropTable.ifExists {
             diagnostics.add(.tableDoesNotExist(dropTable.tableName.name))
+        }
+        
+        for trigger in schema.triggers.values {
+            if trigger.targetTable == dropTable.tableName.name.value {
+                // Dropping a table automatically removes any trigger its the target of.
+                schema[trigger: trigger.name] = nil
+            } else {
+                guard !trigger.usedTables.contains(dropTable.tableName.name.value) else { continue }
+                
+                // SQLite seemingly from my tests will allow this to happen but I swear I've
+                // had errors from it before. But error if the table is used in a trigger.
+                // Any trigger where its the target table will automatically be deleted
+                // so those dont matter
+                diagnostics.add(.init(
+                    "Table referenced in statements of trigger '\(trigger.name)'",
+                    at: dropTable.location
+                ))
+            }
         }
         
         schema[dropTable.tableName.name.value] = nil
