@@ -38,7 +38,7 @@ extension Columns {
     /// Initializes the columns with their default names that SQLite gives to them.
     init(withDefaultNames types: [Type]) {
         self = types.enumerated()
-            .reduce(into: [:]) { c, v in c["column\(v.offset)"] = v.element }
+            .reduce(into: [:]) { c, v in c["column\(v.offset + 1)"] = v.element }
     }
 }
 

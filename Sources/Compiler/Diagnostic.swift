@@ -101,14 +101,6 @@ extension Diagnostic {
         )
     }
     
-    static func nameRequired(at location: SourceLocation) -> Diagnostic {
-        return Diagnostic(
-            "Name required, add via 'AS'",
-            at: location,
-            suggestion: .append("AS \(Diagnostic.placeholder(name: "name"))")
-        )
-    }
-    
     static func unexpectedToken(
         of kind: Token.Kind,
         expected: Token.Kind? = nil,

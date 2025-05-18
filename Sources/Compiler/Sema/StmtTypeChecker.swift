@@ -530,15 +530,12 @@ extension StmtTypeChecker {
     ) -> ResultColumns {
         var resultColumns: Columns = [:]
         
-        for value in returningClause.values {
+        for (offset, value) in returningClause.values.enumerated() {
             switch value {
             case let .expr(expr, alias):
                 let (type, names) = typeCheck(expr)
                 
-                guard let name = alias?.identifier.value ?? names.proposedName else {
-                    diagnostics.add(.nameRequired(at: expr.location))
-                    continue
-                }
+                let name = alias?.identifier.value ?? names.proposedName ?? "column\(offset + 1)"
                 
                 resultColumns[name] = type
             case .all:
@@ -696,17 +693,14 @@ extension StmtTypeChecker {
             table = nil
         }
         
-        for resultColumn in resultColumns {
+        for (offset, resultColumn) in resultColumns.enumerated() {
             switch resultColumn.kind {
             case let .expr(expr, alias):
                 let (type, names) = typeCheck(expr)
+                let name = alias?.identifier.value ?? names.proposedName ?? "column\(offset + 1)"
                 
-                if let name = alias?.identifier.value ?? names.proposedName {
-                    columns[name] = type
-                    nameInferrer.suggest(name: name, for: names)
-                } else {
-                    diagnostics.add(.nameRequired(at: expr.location))
-                }
+                columns[name] = type
+                nameInferrer.suggest(name: name, for: names)
                 
                 // We selected a single column, so clear out the table
                 // since its not a select all of a table.
