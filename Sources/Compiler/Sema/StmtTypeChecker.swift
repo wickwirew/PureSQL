@@ -890,6 +890,12 @@ extension StmtTypeChecker {
         }
     }
     
+    private mutating func insertColumnsIntoEnv(columns: borrowing Columns) {
+        for column in columns {
+            env.insert(column.key, ty: column.value)
+        }
+    }
+    
     mutating func typeCheck(createTable: CreateTableStmtSyntax) {
         if pragmas.contains(.requireStrictTables)
             && !createTable.options.kind.contains(.strict) {
@@ -910,11 +916,16 @@ extension StmtTypeChecker {
                 primaryKey: primaryKey(of: createTable, columns: columns),
                 kind: .normal
             )
-        case let .columns(columns):
-            let columns: Columns = columns.reduce(into: [:]) {
-                $0[$1.value.name.value] = typeFor(column: $1.value)
+        case let .columns(columnsDefs):
+            var columns: Columns = [:]
+            for (name, def) in columnsDefs {
+                columns[name.value] = typeFor(
+                    column: def,
+                    tableColumns: columns
+                )
             }
             
+            validateTableConstraints(of: createTable, columns: columns)
             schema[createTable.name.value] = Table(
                 name: createTable.name.value,
                 columns: columns,
@@ -950,7 +961,7 @@ extension StmtTypeChecker {
                 newColumns[column.key == oldName.value ? newName.value : column.key] = column.value
             }
         case let .addColumn(column):
-            table.columns[column.name.value] = typeFor(column: column)
+            table.columns[column.name.value] = typeFor(column: column, tableColumns: table.columns)
         case let .dropColumn(column):
             table.columns[column.value] = nil
         }
@@ -987,11 +998,39 @@ extension StmtTypeChecker {
     }
     
     /// Will figure out the final SQL column type from the syntax
-    private mutating func typeFor(column: borrowing ColumnDefSyntax) -> Type {
-        // Technically you can have a NULL primary key but I don't
-        // think people actually do that...
-        let isNotNullable = column.constraints
-            .contains { $0.isPkConstraint || $0.isNotNullConstraint }
+    private mutating func typeFor(
+        column: borrowing ColumnDefSyntax,
+        tableColumns: borrowing Columns
+    ) -> Type {
+        var isNotNullable = false
+        for constraint in column.constraints {
+            switch constraint.kind {
+            case .primaryKey, .notNull:
+                // Technically you can have a NULL primary key but I don't
+                // think people actually do that...
+                isNotNullable = true
+            case .check(let expr):
+                inNewEnvironment { typeChecker in
+                    typeChecker.insertColumnsIntoEnv(columns: tableColumns)
+                    _ = typeChecker.typeCheck(expr)
+                }
+            case .default(let expr):
+                inNewEnvironment { typeChecker in
+                    _ = typeChecker.typeCheck(expr)
+                }
+            case .foreignKey(let fk):
+                if schema[fk.foreignTable.value] == nil {
+                    diagnostics.add(.tableDoesNotExist(fk.foreignTable))
+                }
+            case .generated(let expr, _):
+                inNewEnvironment { typeChecker in
+                    typeChecker.insertColumnsIntoEnv(columns: tableColumns)
+                    _ = typeChecker.typeCheck(expr)
+                }
+            case .unique, .collate:
+                break
+            }
+        }
         
         // Validate it is an actual SQLite type since SQlite doesnt care.
         if !Type.validTypeNames.contains(column.type.name.value) {
@@ -1073,6 +1112,41 @@ extension StmtTypeChecker {
                 }
             }
             return columnNames
+        }
+    }
+    
+    private mutating func validateTableConstraints(
+        of stmt: CreateTableStmtSyntax,
+        columns: Columns
+    ) {
+        for constraint in stmt.constraints {
+            switch constraint.kind {
+            case .check(let expr):
+                inNewEnvironment { typeChecker in
+                    typeChecker.insertColumnsIntoEnv(columns: columns)
+                    _ = typeChecker.typeCheck(expr)
+                }
+            case .foreignKey(let fkColumns, let fkClause):
+                // Make sure listed columns exist
+                for column in fkColumns {
+                    guard columns[column.value] == nil else { continue }
+                    diagnostics.add(.columnDoesNotExist(column))
+                }
+                
+                // Make sure referenced table exists
+                guard let foreignTable = schema[fkClause.foreignTable.value] else {
+                    diagnostics.add(.tableDoesNotExist(fkClause.foreignTable))
+                    return
+                }
+                
+                // Make sure referenced columns exist
+                for column in fkClause.foreignColumns {
+                    guard foreignTable.columns[column.value] == nil else { continue }
+                    diagnostics.add(.columnDoesNotExist(column))
+                }
+            case .primaryKey, .unique:
+                break
+            }
         }
     }
     

@@ -98,3 +98,44 @@ CREATE TABLE allValidTypes (
     blob BLOB,
     any ANY
 ) STRICT;
+
+-- CHECK: TABLE
+-- CHECK:   NAME hasGenerated
+-- CHECK:   COLUMNS
+-- CHECK:       KEY foo
+-- CHECK:       VALUE INTEGER?
+-- CHECK:       KEY bar
+-- CHECK:       VALUE INTEGER?
+-- CHECK:       KEY baz
+-- CHECK:       VALUE INTEGER?
+-- CHECK:       KEY ref
+-- CHECK:       VALUE INTEGER?
+-- CHECK:   KIND normal
+-- CHECK-ERROR: Column 'qux' does not exist
+-- CHECK-ERROR: Table 'dne' does not exist
+CREATE TABLE hasGenerated (
+    foo INTEGER,
+    bar INTEGER GENERATED ALWAYS AS (foo + 1),
+    baz INTEGER GENERATED ALWAYS AS (qux + 1),
+    ref INTEGER REFERENCES dne (value)
+) STRICT;
+
+-- CHECK: TABLE
+-- CHECK:   NAME hasTableCheck
+-- CHECK:   COLUMNS
+-- CHECK:       KEY foo
+-- CHECK:       VALUE INTEGER?
+-- CHECK:       KEY bar
+-- CHECK:       VALUE INTEGER?
+-- CHECK:   KIND normal
+-- CHECK-ERROR: Column 'foooooo' does not exist
+-- CHECK-ERROR: Column 'typo' does not exist
+-- CHECK-ERROR: Table 'doesNotExist' does not exist
+CREATE TABLE hasTableCheck (
+    foo INTEGER,
+    bar INTEGER,
+    CHECK (foo + bar > 1),
+    CHECK (foooooo + bar > 1),
+    FOREIGN KEY (typo) REFERENCES doesNotExist (meh),
+    FOREIGN KEY (foo) REFERENCES hasGenerated (foo)
+) STRICT;
