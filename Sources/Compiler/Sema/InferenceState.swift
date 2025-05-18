@@ -166,6 +166,7 @@ extension InferenceState {
         case (.error, _), (_, .error):
             // Already had an upstream error so no need to emit any more diagnostics
             return
+            
         case let (.var(tv1), .var(tv2)):
             // Unify to type variables.
             // We need to prioritize what gets substituded for what
@@ -177,39 +178,69 @@ extension InferenceState {
             } else {
                 substitute(tv1, for: other)
             }
+        
+        // When two optionals, unify wrapped type.
         case let (.optional(t1), .optional(t2)):
             unify(t1, with: t2, at: location)
+            
+        // tyVar with optional tyVar
         case let (.var(nonOptional), .optional(.var(optional))):
             let kind = max(nonOptional.kind, optional.kind)
             substitute(nonOptional, for: .optional(.var(optional.with(kind: kind))))
+        
+        // tyVar with optional tyVar
         case let (.optional(.var(optional)), .var(nonOptional)):
             let kind = max(nonOptional.kind, optional.kind)
             substitute(nonOptional, for: .optional(.var(optional.with(kind: kind))))
+            
+        // Optional tyVar with concrete type
+        case let (.optional(.var(optional)), t):
+            substitute(optional, for: .optional(t))
+        
+        // Optional tyVar with concrete type
+        case let (t, .optional(.var(optional))):
+            substitute(optional, for: .optional(t))
+            
+        // tyVar with concrete type
         case let (.var(tv), ty):
             validateCanUnify(type: ty, with: tv.kind, at: location)
             substitute(tv, for: ty)
+        
+        // tyVar with concrete type
         case let (ty, .var(tv)):
             validateCanUnify(type: ty, with: tv.kind, at: location)
             substitute(tv, for: ty)
+            
         case (.integer, .real), (.real, .integer), (.any, _), (_, .any):
             return // Not equal but valid to use together
+            
         case let (.fn(args1, ret1), .fn(args2, ret2)):
             unify(args1, with: args2, at: location)
             unify(ret1.apply(substitution), with: ret2.apply(substitution), at: location)
+            
+        // Row with value of 1 is unifiable to the inner type
+        // (INTEGER) == INTEGER
         case let (.row(row), t) where row.count == 1 && !t.isRow:
             unify(row.first!, with: t, at: location)
+            
         case let (t, .row(row)) where row.count == 1 && !t.isRow:
             unify(row.first!, with: t, at: location)
+            
         case let (.row(.unknown(ty)), .row(rhs)):
             return unify(all: rhs.types, with: ty, at: location)
+            
         case let (.row(lhs), .row(.unknown(ty))):
             return unify(all: lhs.types, with: ty, at: location)
+            
         case let (.row(rhs), .row(lhs)) where lhs.count == rhs.count:
             return unify(rhs.types, with: lhs.types, at: location)
+            
         case let (.alias(t1, _), t2):
             return unify(t1, with: t2, at: location)
+            
         case let (t1, .alias(t2, _)):
             return unify(t2, with: t1, at: location)
+            
         default:
             guard type.root != other.root else { return }
             diagnostics.add(.unableToUnify(type, with: other, at: location))
