@@ -201,6 +201,14 @@ extension InferenceState {
         case let (t, .optional(.var(optional))):
             substitute(optional, for: .optional(t))
             
+        // Allow for T? == T
+        case let (.optional(t1), t2):
+            unify(t1, with: t2, at: location)
+        
+        // Allow for T == T?
+        case let (t1, .optional(t2)):
+            unify(t2, with: t1, at: location)
+            
         // tyVar with concrete type
         case let (.var(tv), ty):
             validateCanUnify(type: ty, with: tv.kind, at: location)

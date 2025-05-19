@@ -334,7 +334,9 @@ extension StmtTypeChecker {
         potentialNames: [IdentifierSyntax]? = nil
     ) -> ResultColumns {
         if let cte = select.cte?.value {
-            typeCheck(cte: cte)
+            inNewEnvironment { typeChecker in
+                typeChecker.typeCheck(cte: cte)
+            }
         }
         
         let resultColumns = typeCheck(
@@ -404,7 +406,9 @@ extension StmtTypeChecker {
     
     mutating func typeCheck(insert: InsertStmtSyntax) -> ResultColumns {
         if let cte = insert.cte {
-            typeCheck(cte: cte)
+            inNewEnvironment { typeChecker in
+                typeChecker.typeCheck(cte: cte)
+            }
         }
         
         guard let table = schema[insert.tableName.name.value] else {
@@ -450,7 +454,9 @@ extension StmtTypeChecker {
     
     mutating func typeCheck(update: UpdateStmtSyntax) -> ResultColumns {
         if let cte = update.cte {
-            typeCheck(cte: cte)
+            inNewEnvironment { typeChecker in
+                typeChecker.typeCheck(cte: cte)
+            }
         }
         
         guard let table = schema[update.tableName.tableName.name.value] else {
@@ -502,7 +508,9 @@ extension StmtTypeChecker {
     
     mutating func typeCheck(delete: DeleteStmtSyntax) -> ResultColumns {
         if let cte = delete.cte {
-            typeCheck(cte: cte)
+            inNewEnvironment { typeChecker in
+                typeChecker.typeCheck(cte: cte)
+            }
         }
         
         guard let table = schema[delete.table.tableName.name.value] else {

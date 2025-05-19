@@ -1922,9 +1922,15 @@ enum Parsers {
             if state.is(of: .openParen),
                 case let .column(columnExpr) = expr,
                 case let .column(column) = columnExpr.column,
-                columnExpr.schema == nil {
+                columnExpr.schema == nil,
+                columnExpr.table == nil {
                 let args = try parensOrEmpty(state: &state) { state in
-                    try commaDelimited(state: &state)  { try Parsers.expr(state: &$0) }
+                    // TODO: Validate it is an aggregate function
+                    if state.current.kind == .all || state.current.kind == .distinct {
+                        state.skip()
+                    }
+                    
+                    return try commaDelimited(state: &state)  { try Parsers.expr(state: &$0) }
                 }
                 
                 expr = .fn(FunctionExprSyntax(

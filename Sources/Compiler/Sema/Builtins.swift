@@ -79,6 +79,7 @@ enum Builtins {
         "unlikely": TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .var(0))),
         "upper": TypeScheme(typeVariables: [], type: .fn(params: [.text], ret: .text)),
         "zeroblob": TypeScheme(typeVariables: [], type: .fn(params: [.integer], ret: .blob)),
+        "bm25": TypeScheme(typeVariables: [0], type: .fn(params: [.var(0)], ret: .real)),
 
         // Datetime
         "unixepoch": TypeScheme(typeVariables: [], type: .fn(params: [], ret: .integer)),

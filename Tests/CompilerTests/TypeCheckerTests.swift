@@ -175,6 +175,12 @@ class TypeCheckerTests: XCTestCase {
         XCTAssertEqual(.row(.unknown(.integer)), type(for: ":bar", in: result))
     }
     
+    func testNotIn() throws {
+        let result = try result(for: ":bar NOT IN (1, 2)")
+        XCTAssertEqual(.integer, result.type)
+        XCTAssertEqual(.integer, type(for: ":bar", in: result))
+    }
+    
     func testNull() throws {
         let result = try result(for: ":bar > 1 OR :bar == NULL")
         XCTAssertEqual(.integer, result.type)

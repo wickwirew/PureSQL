@@ -134,6 +134,7 @@ struct Environment {
     
     subscript(infix op: Operator) -> TypeScheme? {
         return switch op {
+        case .in, .not(.in): Builtins.in
         case .plus, .minus, .multiply, .divide, .bitwuseOr,
              .bitwiseAnd, .shl, .shr, .mod:
             Builtins.arithmetic
@@ -141,7 +142,6 @@ struct Environment {
              .notNull, .notnull, .like, .isNot, .isDistinctFrom,
              .isNotDistinctFrom, .between, .and, .or, .isnull, .not:
             Builtins.comparison
-        case .in: Builtins.in
         case .concat: Builtins.concatOp
         case .doubleArrow: Builtins.extract
         case .match: Builtins.match
