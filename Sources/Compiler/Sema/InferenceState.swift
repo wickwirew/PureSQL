@@ -214,7 +214,7 @@ extension InferenceState {
         case (.integer, .real), (.real, .integer), (.any, _), (_, .any):
             return // Not equal but valid to use together
             
-        case let (.fn(args1, ret1), .fn(args2, ret2)):
+        case let (.fn(args1, ret1), .fn(args2, ret2)) where args1.count == args2.count:
             unify(args1, with: args2, at: location)
             unify(ret1.apply(substitution), with: ret2.apply(substitution), at: location)
             

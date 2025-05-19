@@ -49,6 +49,25 @@ struct ExprTypeChecker {
         
         return types
     }
+    
+    private mutating func typeCheck(select: SelectStmtSyntax) -> Type {
+        var typeChecker = StmtTypeChecker(
+            env: env.asParent(),
+            schema: schema,
+            inferenceState: inferenceState,
+            pragmas: pragmas
+        )
+        let signature = typeChecker.signature(for: select)
+        let type: Type = .row(.named(signature.output.allColumns))
+        // Make sure to update our inference state
+        inferenceState = typeChecker.inferenceState
+        // Using typeCheckers `allDiagnostics` would include diags
+        // even from within the inference state
+        diagnostics.merge(typeChecker.diagnostics)
+        // Record the result type in the state
+        usedTableNames = typeChecker.usedTableNames
+        return type
+    }
 }
 
 extension ExprTypeChecker: ExprSyntaxVisitor {
@@ -260,23 +279,14 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
     }
     
     mutating func visit(_ expr: borrowing SelectExprSyntax) -> Type {
-        var typeChecker = StmtTypeChecker(
-            env: env.asParent(),
-            schema: schema,
-            inferenceState: inferenceState,
-            pragmas: pragmas
-        )
-        let signature = typeChecker.signature(for: expr.select)
-        let type: Type = .row(.named(signature.output.allColumns))
-        // Make sure to update our inference state
-        inferenceState = typeChecker.inferenceState
-        // Using typeCheckers `allDiagnostics` would include diags
-        // even from within the inference state
-        diagnostics.merge(typeChecker.diagnostics)
-        // Record the result type in the state
+        let type = typeCheck(select: expr.select)
         inferenceState.record(type: type, for: expr)
-        usedTableNames = typeChecker.usedTableNames
         return type
+    }
+    
+    mutating func visit(_ expr: borrowing ExistsExprSyntax) -> Type {
+        _ = typeCheck(select: expr.select)
+        return .integer
     }
     
     mutating func visit(_ expr: borrowing InvalidExprSyntax) -> Type {

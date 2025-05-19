@@ -2019,7 +2019,10 @@ enum Parsers {
             let select = try selectStmt(state: &state)
             return .select(SelectExprSyntax(id: state.nextId(), select: select))
         case .exists:
-            fatalError("TODO: Do when select is done")
+            return try .exists(exists(state: &state, not: false, start: state.location))
+        case .not where state.peek.kind == .exists:
+            let start = state.take()
+            return try .exists(exists(state: &state, not: true, start: start.location))
         case .case:
             let start = state.take()
             let `case` = try take(ifNot: .when, state: &state) { try expr(state: &$0) }
@@ -2075,6 +2078,21 @@ enum Parsers {
         return .infix(InfixExprSyntax(id: state.nextId(), lhs: lhs, operator: op, rhs: rhs))
     }
 
+    static func exists(
+        state: inout ParserState,
+        not: Bool,
+        start: SourceLocation
+    ) throws -> ExistsExprSyntax {
+        state.consume(.exists)
+        let select = try parens(state: &state, value: selectStmt)
+        return ExistsExprSyntax(
+            id: state.nextId(),
+            not: not,
+            location: state.location(from: start),
+            select: select
+        )
+    }
+    
     /// https://www.sqlite.org/syntax/expr.html
     static func columnExpr(
         state: inout ParserState,

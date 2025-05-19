@@ -645,3 +645,17 @@ foo BETWEEN 1 + 2 AND 2 * 5;
 -- CHECK:     UPPER
 -- CHECK:       LITERAL 2.0
 foo NOT BETWEEN 1 AND 2;
+
+-- CHECK: EXPRESSION_SYNTAX
+-- CHECK:   EXISTS
+-- CHECK:     NOT false
+-- CHECK:     SELECT
+-- CHECK:       ...
+EXISTS(SELECT * FROM foo);
+
+-- CHECK: EXPRESSION_SYNTAX
+-- CHECK:   EXISTS
+-- CHECK:     NOT true
+-- CHECK:     SELECT
+-- CHECK:       ...
+NOT EXISTS(SELECT * FROM foo);

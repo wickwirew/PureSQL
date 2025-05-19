@@ -24,6 +24,7 @@ protocol ExprSyntaxVisitor {
     mutating func visit(_ expr: borrowing CaseWhenThenExprSyntax) -> ExprOutput
     mutating func visit(_ expr: borrowing GroupedExprSyntax) -> ExprOutput
     mutating func visit(_ expr: borrowing SelectExprSyntax) -> ExprOutput
+    mutating func visit(_ expr: borrowing ExistsExprSyntax) -> ExprOutput
     mutating func visit(_ expr: borrowing InvalidExprSyntax) -> ExprOutput
 }
 
@@ -54,6 +55,8 @@ extension ExprSyntaxVisitor {
             return expr.accept(visitor: &self)
         case let .select(expr):
             return expr.accept(visitor: &self)
+        case let .exists(expr):
+            return expr.accept(visitor: &self)
         case let .invalid(expr):
             return expr.accept(visitor: &self)
         }
@@ -81,6 +84,7 @@ indirect enum ExpressionSyntax: ExprSyntax {
     case grouped(GroupedExprSyntax)
     case caseWhenThen(CaseWhenThenExprSyntax)
     case select(SelectExprSyntax)
+    case exists(ExistsExprSyntax)
     case invalid(InvalidExprSyntax)
     
     var id: SyntaxId {
@@ -97,6 +101,7 @@ indirect enum ExpressionSyntax: ExprSyntax {
         case let .grouped(expr): expr.id
         case let .caseWhenThen(expr): expr.id
         case let .select(expr): expr.id
+        case let .exists(expr): expr.id
         case let .invalid(expr): expr.id
         }
     }
@@ -115,6 +120,7 @@ indirect enum ExpressionSyntax: ExprSyntax {
         case let .grouped(expr): expr.location
         case let .caseWhenThen(expr): expr.location
         case let .select(expr): expr.location
+        case let .exists(expr): expr.location
         case let .invalid(expr): expr.location
         }
     }
@@ -155,6 +161,8 @@ extension ExpressionSyntax: CustomStringConvertible {
         case let .caseWhenThen(expr):
             return expr.description
         case let .select(expr):
+            return "\(expr)"
+        case let .exists(expr):
             return "\(expr)"
         case let .invalid(expr):
             return expr.description

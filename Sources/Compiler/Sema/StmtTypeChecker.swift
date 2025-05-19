@@ -662,13 +662,7 @@ extension StmtTypeChecker {
             
             if let having = groupBy.having {
                 let (type, _) = typeCheck(having)
-                
-                if type != .integer {
-                    diagnostics.add(.init(
-                        "HAVING clause should return an 'INTEGER', got '\(type)'",
-                        at: having.location
-                    ))
-                }
+                inferenceState.unify(type, with: .integer, at: having.location)
             }
         }
         
@@ -688,13 +682,7 @@ extension StmtTypeChecker {
     
     private mutating func typeCheck(where expr: ExpressionSyntax) {
         let (type, _) = typeCheck(expr)
-        
-        if type != .integer {
-            diagnostics.add(.init(
-                "WHERE clause should return an 'INTEGER', got '\(type)'",
-                at: expr.location
-            ))
-        }
+        inferenceState.unify(type, with: .integer, at: expr.location)
     }
     
     private mutating func typeCheck(resultColumns: [ResultColumnSyntax]) -> ResultColumns {
@@ -792,13 +780,7 @@ extension StmtTypeChecker {
             typeCheck(join.tableOrSubquery, joinOp: join.op)
             
             let (type, _) = typeCheck(expression)
-            
-            if type != .integer {
-                diagnostics.add(.init(
-                    "JOIN clause should return an 'INTEGER', got '\(type)'",
-                    at: expression.location
-                ))
-            }
+            inferenceState.unify(type, with: .integer, at: expression.location)
         case let .using(columns):
             typeCheck(
                 join.tableOrSubquery,

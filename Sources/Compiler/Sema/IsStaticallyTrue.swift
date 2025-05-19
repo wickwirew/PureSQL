@@ -102,6 +102,11 @@ struct IsStaticallyTrue: ExprSyntaxVisitor {
         }
     }
     
+    mutating func visit(_ expr: borrowing ExistsExprSyntax) -> Bool {
+        emitNotBoolDiag(for: expr)
+        return false
+    }
+    
     private mutating func emitNotBoolDiag<S: Syntax>(for syntax: S) {
         diagnostics.add(.init(
             "Value is not a static integerean, expected TRUE, FALSE, 1 or 0",

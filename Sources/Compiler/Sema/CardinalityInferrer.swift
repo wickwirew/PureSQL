@@ -192,4 +192,6 @@ extension CardinalityInferrer: ExprSyntaxVisitor {
         // `id = 1 AND parentId = 2` should return [id, parentId]
         return expr.lhs.accept(visitor: &self).union(expr.rhs.accept(visitor: &self))
     }
+    
+    mutating func visit(_ expr: borrowing ExistsExprSyntax) -> Set<Substring> { [] }
 }

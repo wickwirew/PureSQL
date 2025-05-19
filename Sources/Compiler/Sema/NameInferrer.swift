@@ -257,4 +257,9 @@ extension NameInferrer: ExprSyntaxVisitor {
             with: unify(names: value.append("Upper"), with: upper)
         )
     }
+    
+    mutating func visit(_ expr: borrowing ExistsExprSyntax) -> Name {
+        infer(select: expr.select)
+        return .none
+    }
 }
