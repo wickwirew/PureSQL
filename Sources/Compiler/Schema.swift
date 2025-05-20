@@ -52,6 +52,7 @@ public struct Table: Sendable {
         case normal
         case view
         case fts5
+        case cte
     }
     
     var type: Type {

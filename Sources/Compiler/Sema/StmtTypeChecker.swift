@@ -7,6 +7,9 @@
 
 import OrderedCollections
 
+/// Type checks a single statement. At this current time it is only valid for one statement.
+/// It internally tracks metadata about the statement which stays even till after the
+/// type checking is done. Allows the caller to get said info if need be.
 struct StmtTypeChecker {
     typealias Signature = (parameters: [Parameter<Substring?>], output: ResultColumns)
     
@@ -15,6 +18,9 @@ struct StmtTypeChecker {
     private(set) var env: Environment
     /// The entire database schema
     private(set) var schema: Schema
+    /// Any CTE that was declared with the statement.
+    /// Keeping these separate from the schema so they don't get passed to the next statement
+    private(set) var ctes: [Substring: Table] = [:]
     /// Any diagnostics that are emitted during compilation
     private(set) var diagnostics = Diagnostics()
     /// Inferrer for any bind parameter names
@@ -334,9 +340,11 @@ extension StmtTypeChecker {
         potentialNames: [IdentifierSyntax]? = nil
     ) -> ResultColumns {
         if let cte = select.cte?.value {
-            inNewEnvironment { typeChecker in
+            let cte = inNewEnvironment { typeChecker in
                 typeChecker.typeCheck(cte: cte)
             }
+            
+            ctes[cte.name] = cte
         }
         
         let resultColumns = typeCheck(
@@ -406,9 +414,11 @@ extension StmtTypeChecker {
     
     mutating func typeCheck(insert: InsertStmtSyntax) -> ResultColumns {
         if let cte = insert.cte {
-            inNewEnvironment { typeChecker in
+            let cte = inNewEnvironment { typeChecker in
                 typeChecker.typeCheck(cte: cte)
             }
+            
+            ctes[cte.name] = cte
         }
         
         guard let table = schema[insert.tableName.name.value] else {
@@ -454,9 +464,11 @@ extension StmtTypeChecker {
     
     mutating func typeCheck(update: UpdateStmtSyntax) -> ResultColumns {
         if let cte = update.cte {
-            inNewEnvironment { typeChecker in
+            let cte = inNewEnvironment { typeChecker in
                 typeChecker.typeCheck(cte: cte)
             }
+            
+            ctes[cte.name] = cte
         }
         
         guard let table = schema[update.tableName.tableName.name.value] else {
@@ -508,9 +520,11 @@ extension StmtTypeChecker {
     
     mutating func typeCheck(delete: DeleteStmtSyntax) -> ResultColumns {
         if let cte = delete.cte {
-            inNewEnvironment { typeChecker in
+            let cte = inNewEnvironment { typeChecker in
                 typeChecker.typeCheck(cte: cte)
             }
+            
+            ctes[cte.name] = cte
         }
         
         guard let table = schema[delete.table.tableName.name.value] else {
@@ -574,7 +588,7 @@ extension StmtTypeChecker {
         return ResultColumns(columns: resultColumns, table: nil)
     }
     
-    private mutating func typeCheck(cte: CommonTableExpressionSyntax) {
+    private mutating func typeCheck(cte: CommonTableExpressionSyntax) -> Table {
         let resultColumns = typeCheck(select: cte.select)
 
         let columns: Columns
@@ -593,7 +607,7 @@ extension StmtTypeChecker {
                 .reduce(into: [:]) { $0[cte.columns[$1].value] = columnTypes[$1] }
         }
         
-        env.insert(cte.table.value, ty: .row(.named(columns)))
+        return Table(name: cte.table.value, columns: columns, primaryKey: [], kind: .cte)
     }
     
     /// Will infer the core part of the select.
@@ -807,25 +821,23 @@ extension StmtTypeChecker {
     ) {
         switch tableOrSubquery.kind {
         case let .table(table):
-            guard let envTable = schema[table.name.value] else {
+            let isOptional = switch joinOp?.kind {
+            case nil, .inner: false
+            default: true
+            }
+            
+            guard let envTable = schema[table.name.value] ?? ctes[table.name.value] else {
                 env.insert(table.name.value, ty: .error)
                 diagnostics.add(.tableDoesNotExist(table.name))
                 return
             }
             
-            let isOptional = switch joinOp?.kind {
-            case nil, .inner: false
-            default: true
-            }
-
             insertTableAndColumnsIntoEnv(
                 envTable,
                 as: table.alias?.identifier.value,
                 isOptional: isOptional,
                 onlyColumnsIn: usedColumns
             )
-            
-            return
         case .tableFunction:
             fatalError()
         case let .subquery(selectStmt, alias):
@@ -875,10 +887,14 @@ extension StmtTypeChecker {
         // so an alias is no good since it will always be the actual table name.
         usedTableNames.insert(table.name)
         
-        env.insert(
-            alias ?? table.name,
-            ty: isOptional ? .optional(table.type) : table.type
-        )
+        let tableTy: Type = isOptional ? .optional(table.type) : table.type
+        
+        // Table is always accessible by it's name even if aliased
+        env.insert(table.name, ty: tableTy)
+        
+        if let alias {
+            env.insert(alias, ty: tableTy)
+        }
         
         if globallyAddColumns {
             for column in table.columns where columns.isEmpty || columns.contains(column.key) {
