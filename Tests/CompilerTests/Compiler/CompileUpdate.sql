@@ -19,11 +19,11 @@ UPDATE foo SET bar = ?;
 -- CHECK:     PARAMETER
 -- CHECK:       TYPE INTEGER?
 -- CHECK:       INDEX 2
--- CHECK:       NAME :value
+-- CHECK:       NAME value
 -- CHECK:     PARAMETER
 -- CHECK:       TYPE INTEGER?
 -- CHECK:       INDEX 3
--- CHECK:       NAME :condition
+-- CHECK:       NAME condition
 -- CHECK:   TABLES
 -- CHECK:     foo
 UPDATE foo SET bar = ?, baz = :value WHERE :condition = bar;

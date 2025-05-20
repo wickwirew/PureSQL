@@ -12,7 +12,7 @@ struct ParserState {
     private(set) var peek: Token
     private(set) var peek2: Token
     private var parameterIndex = 1
-    private var namedParamIndices: [Substring: Int] = [:]
+    private var namedParamIndices: [BindParameterSyntax.Kind: Int] = [:]
     var diagnostics = Diagnostics()
     private var syntaxCounter = 0
     
@@ -119,16 +119,20 @@ struct ParserState {
         return current.kind == kind
     }
     
-    mutating func indexForParam(named name: Substring) -> Int {
-        if let existing = namedParamIndices[name] { return existing }
-        let index = indexForUnnamedParam()
-        namedParamIndices[name] = index
-        return index
-    }
-    
-    mutating func indexForUnnamedParam() -> Int {
-        defer { parameterIndex += 1 }
-        return parameterIndex
+    mutating func indexForParam(_ kind: BindParameterSyntax.Kind) -> Int {
+        switch kind {
+        case .questionMark:
+            defer { parameterIndex += 1 }
+            return parameterIndex
+        case .number(let n):
+            return n
+        case .colon, .at, .tcl:
+            if let existing = namedParamIndices[kind] { return existing }
+            defer { parameterIndex += 1 }
+            let index = parameterIndex
+            namedParamIndices[kind] = index
+            return index
+        }
     }
     
     mutating func resetParameterIndex() {

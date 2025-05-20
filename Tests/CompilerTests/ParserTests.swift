@@ -52,7 +52,7 @@ final class ParserTests: XCTestCase {
     }
     
     func testBindParameter() throws {
-        try check(sqlFile: "ParseBindParameter", parser: Parsers.bindParameter)
+        try check(sqlFile: "ParseBindParameter", parser: Parsers.bindParameter, dump: true)
     }
     
     func testOpertators() throws {

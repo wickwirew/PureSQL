@@ -2146,60 +2146,42 @@ enum Parsers {
     /// https://www.sqlite.org/c3ref/bind_blob.html
     static func bindParameter(state: inout ParserState) -> BindParameterSyntax {
         let token = state.take()
+        let kind: BindParameterSyntax.Kind
         
         switch token.kind {
         case .questionMark:
-            return BindParameterSyntax(
-                id: state.nextId(),
-                kind: .unnamed,
-                index: state.indexForUnnamedParam(),
-                location: token.location
-            )
+            if case let .int(n) = state.current.kind {
+                state.skip()
+                kind = .number(n)
+            } else {
+                kind = .questionMark
+            }
         case .colon:
-            let symbol = identifierAllowingKeywords(state: &state)
-            let location = token.location.spanning(symbol.location)
-            let name = IdentifierSyntax(value: ":\(symbol)", location: location)
-            let index = state.indexForParam(named: name.value)
-            return BindParameterSyntax(
-                id: state.nextId(),
-                kind: .named(name),
-                index: index,
-                location: location
-            )
+            kind = .colon(identifierAllowingKeywords(state: &state))
         case .at:
-            let symbol = identifierAllowingKeywords(state: &state)
-            let location = token.location.spanning(symbol.location)
-            let name = IdentifierSyntax(value: "@\(symbol)", location: location)
-            let index = state.indexForParam(named: name.value)
-            return BindParameterSyntax(id: state.nextId(), kind: .named(name), index: index, location: location)
+            kind = .at(identifierAllowingKeywords(state: &state))
         case .dollarSign:
             let segments = delimited(by: .colon, and: .colon, state: &state, element: identifier)
-            let nameRange = token.location.spanning(segments.last?.location ?? state.current.location)
-            let fullName = segments.map(\.value)
-                .joined(separator: "::")[...]
             let suffix = take(if: .openParen, state: &state) { state in
                 parens(state: &state, value: identifier)
             }
-            
-            if let suffix {
-                let location = token.location.spanning(suffix.location)
-                let name = IdentifierSyntax(value: "$\(fullName)(\(suffix))", location: location)
-                let index = state.indexForParam(named: name.value)
-                return BindParameterSyntax(id: state.nextId(), kind: .named(name), index: index, location: location)
-            } else {
-                let name = IdentifierSyntax(value: "$\(fullName)", location: nameRange)
-                let index = state.indexForParam(named: name.value)
-                return BindParameterSyntax(id: state.nextId(), kind: .named(name), index: index, location: nameRange)
-            }
+            kind = .tcl(segments, suffix: suffix)
         default:
             state.diagnostics.add(.init("Invalid bind parameter", at: token.location))
             return BindParameterSyntax(
                 id: state.nextId(),
-                kind: .unnamed,
-                index: state.indexForUnnamedParam(),
+                kind: .questionMark,
+                index: -1,
                 location: token.location
             )
         }
+        
+        return BindParameterSyntax(
+            id: state.nextId(),
+            kind: kind,
+            index: state.indexForParam(kind),
+            location: state.location(from: token.location)
+        )
     }
     
     static func `operator`(state: inout ParserState) -> OperatorSyntax {

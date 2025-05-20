@@ -38,7 +38,7 @@ SELECT id, bar + 1 FROM foo WHERE bar * 20 > ?;
 -- CHECK:     PARAMETER
 -- CHECK:       TYPE INTEGER
 -- CHECK:       INDEX 1
--- CHECK:       NAME :id
+-- CHECK:       NAME id
 -- CHECK:     PARAMETER
 -- CHECK:       TYPE (INTEGER AS Bool)?
 -- CHECK:       INDEX 2
@@ -59,7 +59,7 @@ SELECT * FROM foo WHERE id = :id AND id = :id AND bar = ?;
 -- CHECK:     PARAMETER
 -- CHECK:       TYPE (INTEGER...)
 -- CHECK:       INDEX 1
--- CHECK:       NAME :theIds
+-- CHECK:       NAME theIds
 -- CHECK:   OUTPUT_CHUNKS
 -- CHECK:     CHUNK
 -- CHECK:       OUTPUT

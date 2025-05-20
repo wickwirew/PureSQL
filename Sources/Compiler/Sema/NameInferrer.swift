@@ -238,11 +238,10 @@ extension NameInferrer: ExprSyntaxVisitor {
     }
     
     mutating func visit(_ expr: borrowing BindParameterSyntax) -> Name {
-        switch expr.kind {
-        case let .named(name):
-            inferredNames[expr.index] = name.value
+        if let name = expr.name {
+            inferredNames[expr.index] = name[...]
             return .none
-        case .unnamed:
+        } else {
             return .needed(index: expr.index)
         }
     }
