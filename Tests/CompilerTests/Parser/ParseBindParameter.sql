@@ -4,8 +4,14 @@
 -- CHECK: :variable
 :variable;
 
+-- CHECK: :select
+:select;
+
 -- CHECK: @variable
 @variable;
+
+-- CHECK: @select
+@select;
 
 -- CHECK: $variable
 $variable;

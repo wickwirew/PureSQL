@@ -1922,8 +1922,7 @@ enum Parsers {
             if state.is(of: .openParen),
                 case let .column(columnExpr) = expr,
                 case let .column(column) = columnExpr.column,
-                columnExpr.schema == nil,
-                columnExpr.table == nil {
+                columnExpr.schema == nil {
                 let args = try parensOrEmpty(state: &state) { state in
                     // TODO: Validate it is an aggregate function
                     if state.current.kind == .all || state.current.kind == .distinct {
@@ -2157,7 +2156,7 @@ enum Parsers {
                 location: token.location
             )
         case .colon:
-            let symbol = identifier(state: &state)
+            let symbol = identifierAllowingKeywords(state: &state)
             let location = token.location.spanning(symbol.location)
             let name = IdentifierSyntax(value: ":\(symbol)", location: location)
             let index = state.indexForParam(named: name.value)
@@ -2168,7 +2167,7 @@ enum Parsers {
                 location: location
             )
         case .at:
-            let symbol = identifier(state: &state)
+            let symbol = identifierAllowingKeywords(state: &state)
             let location = token.location.spanning(symbol.location)
             let name = IdentifierSyntax(value: "@\(symbol)", location: location)
             let index = state.indexForParam(named: name.value)
@@ -2393,6 +2392,34 @@ enum Parsers {
         }
         
         return IdentifierSyntax(value: ident, location: token.location)
+    }
+    
+    /// So this is to handle a weird edge case. SQLite apparently allows keywords
+    /// to be used as parameter names.
+    static func identifierAllowingKeywords(
+        state: inout ParserState
+    ) -> IdentifierSyntax {
+        let token = state.take()
+        
+        if case let .symbol(ident) = token.kind {
+            return IdentifierSyntax(value: ident, location: token.location)
+        }
+        
+        // Since this is kind of edge casey instead of making all
+        // keywords just Token.identifier() just regrabbing the source.
+        // Would hate to hold on to every word in the source in a substring
+        // when its really only needed for this.
+        let rawValue = state.lexer.source[token.location.range]
+        let isKeyword = Token.keywords[rawValue.uppercased()] != nil
+        
+        // If its not a keyword its likely an operator or something which we
+        // should not allow
+        guard isKeyword else {
+            state.diagnostics.add(.init("Expected identifier", at: token.location))
+            return IdentifierSyntax(value: "<<error>>", location: token.location)
+        }
+        
+        return IdentifierSyntax(value: rawValue, location: token.location)
     }
     
     /// https://www.sqlite.org/syntax/numeric-literal.html
