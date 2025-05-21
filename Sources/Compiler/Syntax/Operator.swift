@@ -186,7 +186,7 @@ enum Operator: Equatable {
         case .between: return .between
         case .modulo: return .mod
         case .collate:
-            guard case let .symbol(collation) = after else {
+            guard case let .identifier(collation) = after else {
                 return nil
             }
             return .collate(collation)

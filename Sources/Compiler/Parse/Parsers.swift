@@ -1005,7 +1005,7 @@ enum Parsers {
                 kind: .all(table: nil),
                 location: state.location(from: start)
             )
-        case let .symbol(table) where state.peek.kind == .dot && state.peek2.kind == .star:
+        case let .identifier(table) where state.peek.kind == .dot && state.peek2.kind == .star:
             let table = IdentifierSyntax(value: table, location: state.current.location)
             state.skip()
             state.consume(.dot)
@@ -1031,7 +1031,7 @@ enum Parsers {
         let kind: TableOrSubquerySyntax.Kind
         
         switch state.current.kind {
-        case .symbol:
+        case .identifier:
             let (schema, table) = tableAndSchemaName(state: &state)
             
             if state.current.kind == .openParen {
@@ -1139,7 +1139,7 @@ enum Parsers {
                 identifier: ident,
                 location: state.location(from: start)
             )
-        case .symbol where !asRequired:
+        case .identifier where !asRequired:
             let ident = identifier(state: &state)
             return AliasSyntax(
                 id: state.nextId(),
@@ -1187,7 +1187,7 @@ enum Parsers {
     ) -> TypeNameSyntax {
         var name = identifier(state: &state)
         
-        while case let .symbol(s) = state.current.kind {
+        while case let .identifier(s) = state.current.kind {
             if let doNotConsumeWords, doNotConsumeWords.contains(s) {
                 break
             }
@@ -1964,7 +1964,7 @@ enum Parsers {
         switch state.current.kind {
         case .double, .string, .int, .hex, .currentDate, .currentTime, .currentTimestamp, .true, .false:
             return .literal(literal(state: &state))
-        case .symbol, .star:
+        case .identifier, .star:
             let column = try columnExpr(state: &state, schema: nil, table: nil)
             return .column(column)
         case .questionMark, .colon, .dollarSign, .at:
@@ -2091,7 +2091,7 @@ enum Parsers {
                 table: table,
                 column: .all(star.location)
             )
-        case .symbol:
+        case .identifier:
             let ident = identifier(state: &state)
             
             if state.take(if: .dot) {
@@ -2346,7 +2346,7 @@ enum Parsers {
     ) -> IdentifierSyntax {
         let token = state.take()
         
-        guard case let .symbol(ident) = token.kind else {
+        guard case let .identifier(ident) = token.kind else {
             state.diagnostics.add(.init("Expected identifier", at: token.location))
             return IdentifierSyntax(value: "<<error>>", location: token.location)
         }
@@ -2361,7 +2361,7 @@ enum Parsers {
     ) -> IdentifierSyntax {
         let token = state.take()
         
-        if case let .symbol(ident) = token.kind {
+        if case let .identifier(ident) = token.kind {
             return IdentifierSyntax(value: ident, location: token.location)
         }
         

@@ -195,7 +195,7 @@ struct Lexer {
         
         let location = location(from: tokenStart)
         let identifierRange = identifierStart..<identifierEnd
-        return Token(kind: .symbol(source[identifierRange]), location: location)
+        return Token(kind: .identifier(source[identifierRange]), location: location)
     }
     
     /// Parses out a word which can be either an identifier or keyword.

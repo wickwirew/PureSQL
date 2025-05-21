@@ -18,7 +18,7 @@ class LexerTests: XCTestCase {
     
     func testSymbol() throws {
         let tokens = tokens(of: "some words select")
-        XCTAssertEqual(tokens, [.symbol("some"), .symbol("words"), .select, .eof])
+        XCTAssertEqual(tokens, [.identifier("some"), .identifier("words"), .select, .eof])
     }
     
     func testString() throws {

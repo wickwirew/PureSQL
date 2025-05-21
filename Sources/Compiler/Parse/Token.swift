@@ -167,11 +167,11 @@ struct Token {
     ].reduce(into: [:]) { $0[$1.description] = $1 }
     
     enum Kind: Hashable {
-        static let `true`: Kind = .symbol("TRUE")
-        static let `false`: Kind = .symbol("FALSE")
-        static let unindexed: Kind = .symbol("UNINDEXED")
+        static let `true`: Kind = .identifier("TRUE")
+        static let `false`: Kind = .identifier("FALSE")
+        static let unindexed: Kind = .identifier("UNINDEXED")
 
-        case symbol(Substring)
+        case identifier(Substring)
         case string(Substring)
         case double(Double)
         case int(Int)
@@ -375,18 +375,18 @@ struct Token {
             if let keyword = Token.keywords[word.uppercased()] {
                 self = keyword
             } else {
-                self = .symbol(word)
+                self = .identifier(word)
             }
         }
         
         var isSymbol: Bool {
-            if case .symbol = self { return true }
+            if case .identifier = self { return true }
             return false
         }
         
         var description: String {
             switch self {
-            case let .symbol(value): String(value)
+            case let .identifier(value): String(value)
             case let .string(value): String(value)
             case let .double(value): value.description
             case let .int(value): value.description
