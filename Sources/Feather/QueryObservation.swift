@@ -61,6 +61,10 @@ public final class DatabaseQueryObservation<Query>: DatabaseSubscriber, QueryObs
         }
         
         do {
+            guard query.transactionKind != .write else {
+                throw FeatherError.cannotObserveWriteQuery
+            }
+            
             let output = try await query.execute(with: input)
             onChange(output)
         } catch {

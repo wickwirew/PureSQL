@@ -26,4 +26,5 @@ public enum FeatherError: Error {
     case decodingError(String)
     case encodingError(String)
     case requiredAssociationFailed(parent: String, childKey: String)
+    case cannotObserveWriteQuery
 }
