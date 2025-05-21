@@ -5,7 +5,6 @@
 -- CHECK:     name
 -- CHECK:   MATERIALIZED false
 -- CHECK:   SELECT
--- CHECK:     CTE_RECURSIVE false
 -- CHECK:     SELECTS
 -- CHECK:       VALUE
 -- CHECK:         SINGLE

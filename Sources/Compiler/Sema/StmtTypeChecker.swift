@@ -339,13 +339,7 @@ extension StmtTypeChecker {
         select: SelectStmtSyntax,
         potentialNames: [IdentifierSyntax]? = nil
     ) -> ResultColumns {
-        if let cte = select.cte?.value {
-            let cte = inNewEnvironment { typeChecker in
-                typeChecker.typeCheck(cte: cte)
-            }
-            
-            ctes[cte.name] = cte
-        }
+        typeCheck(with: select.with)
         
         // Type check limit before since it does not have access
         // to any selected columns
@@ -431,13 +425,7 @@ extension StmtTypeChecker {
     }
     
     mutating func typeCheck(insert: InsertStmtSyntax) -> ResultColumns {
-        if let cte = insert.cte {
-            let cte = inNewEnvironment { typeChecker in
-                typeChecker.typeCheck(cte: cte)
-            }
-            
-            ctes[cte.name] = cte
-        }
+        typeCheck(with: insert.with)
         
         guard let table = schema[insert.tableName.name.value] else {
             diagnostics.add(.tableDoesNotExist(insert.tableName.name))
@@ -481,13 +469,7 @@ extension StmtTypeChecker {
     }
     
     mutating func typeCheck(update: UpdateStmtSyntax) -> ResultColumns {
-        if let cte = update.cte {
-            let cte = inNewEnvironment { typeChecker in
-                typeChecker.typeCheck(cte: cte)
-            }
-            
-            ctes[cte.name] = cte
-        }
+        typeCheck(with: update.with)
         
         guard let table = schema[update.tableName.tableName.name.value] else {
             diagnostics.add(.tableDoesNotExist(update.tableName.tableName.name))
@@ -537,13 +519,7 @@ extension StmtTypeChecker {
     }
     
     mutating func typeCheck(delete: DeleteStmtSyntax) -> ResultColumns {
-        if let cte = delete.cte {
-            let cte = inNewEnvironment { typeChecker in
-                typeChecker.typeCheck(cte: cte)
-            }
-            
-            ctes[cte.name] = cte
-        }
+        typeCheck(with: delete.with)
         
         guard let table = schema[delete.table.tableName.name.value] else {
             diagnostics.add(.tableDoesNotExist(delete.table.tableName.name))
@@ -604,6 +580,18 @@ extension StmtTypeChecker {
         }
         
         return ResultColumns(columns: resultColumns, table: nil)
+    }
+    
+    private mutating func typeCheck(with: WithSyntax?) {
+        guard let with else { return }
+        
+        for cte in with.ctes {
+            let table = inNewEnvironment { typeChecker in
+                typeChecker.typeCheck(cte: cte)
+            }
+            
+            ctes[cte.table.value] = table
+        }
     }
     
     private mutating func typeCheck(cte: CommonTableExpressionSyntax) -> Table {

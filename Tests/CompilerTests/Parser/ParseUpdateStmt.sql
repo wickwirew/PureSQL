@@ -1,5 +1,4 @@
 -- CHECK: UPDATE_STMT_SYNTAX
--- CHECK:   CTE_RECURSIVE false
 -- CHECK:   TABLE_NAME
 -- CHECK:     TABLE_NAME
 -- CHECK:       SCHEMA main
@@ -13,29 +12,30 @@
 UPDATE foo SET bar = 1;
 
 -- CHECK: UPDATE_STMT_SYNTAX
--- CHECK:   CTE
--- CHECK:     TABLE foo
--- CHECK:     MATERIALIZED false
--- CHECK:     SELECT
--- CHECK:       CTE_RECURSIVE false
--- CHECK:       SELECTS
--- CHECK:         VALUE
--- CHECK:           SINGLE
--- CHECK:             SELECT
--- CHECK:               DISTINCT false
--- CHECK:               COLUMNS
--- CHECK:                 RESULT_COLUMN_SYNTAX
--- CHECK:                   KIND
--- CHECK:                     EXPR
--- CHECK:                         COLUMN
--- CHECK:                           COLUMN foo
--- CHECK:               FROM
--- CHECK:                 JOIN
--- CHECK:                   TABLE_OR_SUBQUERY
--- CHECK:                     KIND
--- CHECK:                       TABLE
--- CHECK:                         NAME bar
--- CHECK:   CTE_RECURSIVE false
+-- CHECK:   WITH
+-- CHECK:     RECURSIVE false
+-- CHECK:     CTES
+-- CHECK:       COMMON_TABLE_EXPRESSION_SYNTAX
+-- CHECK:         TABLE foo
+-- CHECK:         MATERIALIZED false
+-- CHECK:         SELECT
+-- CHECK:           SELECTS
+-- CHECK:             VALUE
+-- CHECK:               SINGLE
+-- CHECK:                 SELECT
+-- CHECK:                   DISTINCT false
+-- CHECK:                   COLUMNS
+-- CHECK:                     RESULT_COLUMN_SYNTAX
+-- CHECK:                       KIND
+-- CHECK:                         EXPR
+-- CHECK:                             COLUMN
+-- CHECK:                               COLUMN foo
+-- CHECK:                   FROM
+-- CHECK:                     JOIN
+-- CHECK:                       TABLE_OR_SUBQUERY
+-- CHECK:                         KIND
+-- CHECK:                           TABLE
+-- CHECK:                             NAME bar
 -- CHECK:   TABLE_NAME
 -- CHECK:     TABLE_NAME
 -- CHECK:       SCHEMA main

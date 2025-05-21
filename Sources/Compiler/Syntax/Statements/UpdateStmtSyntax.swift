@@ -7,8 +7,7 @@
 
 struct UpdateStmtSyntax: StmtSyntax {
     let id: SyntaxId
-    let cte: CommonTableExpressionSyntax?
-    let cteRecursive: Bool
+    let with: WithSyntax?
     let or: OrSyntax?
     let tableName: QualifiedTableNameSyntax
     let sets: [SetActionSyntax]

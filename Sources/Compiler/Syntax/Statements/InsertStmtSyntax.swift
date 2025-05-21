@@ -7,8 +7,7 @@
 
 struct InsertStmtSyntax: StmtSyntax, Syntax {
     let id: SyntaxId
-    let cte: CommonTableExpressionSyntax?
-    let cteRecursive: Bool
+    let with: WithSyntax?
     let action: Action
     let tableName: TableNameSyntax
     let tableAlias: AliasSyntax?

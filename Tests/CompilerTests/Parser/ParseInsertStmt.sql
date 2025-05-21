@@ -1,5 +1,4 @@
 -- CHECK: INSERT_STMT_SYNTAX
--- CHECK:   CTE_RECURSIVE false
 -- CHECK:   ACTION
 -- CHECK:     KIND
 -- CHECK:       INSERT
@@ -11,7 +10,6 @@
 -- CHECK:     baz
 -- CHECK:   VALUES
 -- CHECK:     SELECT
--- CHECK:       CTE_RECURSIVE false
 -- CHECK:       SELECTS
 -- CHECK:         VALUE
 -- CHECK:           SINGLE
@@ -23,7 +21,6 @@
 INSERT INTO foo (bar, baz) VALUES (1, 'two');
 
 -- CHECK: INSERT_STMT_SYNTAX
--- CHECK:   CTE_RECURSIVE false
 -- CHECK:   ACTION
 -- CHECK:     KIND replace
 -- CHECK:   TABLE_NAME
@@ -33,7 +30,6 @@ INSERT INTO foo (bar, baz) VALUES (1, 'two');
 -- CHECK:     bar
 -- CHECK:   VALUES
 -- CHECK:     SELECT
--- CHECK:       CTE_RECURSIVE false
 -- CHECK:       SELECTS
 -- CHECK:         VALUE
 -- CHECK:           SINGLE
@@ -61,29 +57,30 @@ INSERT INTO foo (bar, baz) VALUES (1, 'two');
 REPLACE INTO foo (bar) SELECT baz FROM qux RETURNING bar;
 
 -- CHECK: INSERT_STMT_SYNTAX
--- CHECK:   CTE
--- CHECK:     TABLE foo
--- CHECK:     MATERIALIZED false
--- CHECK:     SELECT
--- CHECK:       CTE_RECURSIVE false
--- CHECK:       SELECTS
--- CHECK:         VALUE
--- CHECK:           SINGLE
--- CHECK:             SELECT
--- CHECK:               DISTINCT false
--- CHECK:               COLUMNS
--- CHECK:                 RESULT_COLUMN_SYNTAX
--- CHECK:                   KIND
--- CHECK:                     EXPR
--- CHECK:                         COLUMN
--- CHECK:                           COLUMN bar
--- CHECK:               FROM
--- CHECK:                 JOIN
--- CHECK:                   TABLE_OR_SUBQUERY
--- CHECK:                     KIND
--- CHECK:                       TABLE
--- CHECK:                         NAME baz
--- CHECK:   CTE_RECURSIVE true
+-- CHECK:   WITH
+-- CHECK:     RECURSIVE true
+-- CHECK:     CTES
+-- CHECK:       COMMON_TABLE_EXPRESSION_SYNTAX
+-- CHECK:         TABLE foo
+-- CHECK:         MATERIALIZED false
+-- CHECK:         SELECT
+-- CHECK:           SELECTS
+-- CHECK:             VALUE
+-- CHECK:               SINGLE
+-- CHECK:                 SELECT
+-- CHECK:                   DISTINCT false
+-- CHECK:                   COLUMNS
+-- CHECK:                     RESULT_COLUMN_SYNTAX
+-- CHECK:                       KIND
+-- CHECK:                         EXPR
+-- CHECK:                             COLUMN
+-- CHECK:                               COLUMN bar
+-- CHECK:                   FROM
+-- CHECK:                     JOIN
+-- CHECK:                       TABLE_OR_SUBQUERY
+-- CHECK:                         KIND
+-- CHECK:                           TABLE
+-- CHECK:                             NAME baz
 -- CHECK:   ACTION
 -- CHECK:     KIND
 -- CHECK:       INSERT

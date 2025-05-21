@@ -7,8 +7,7 @@
 
 struct DeleteStmtSyntax: StmtSyntax {
     let id: SyntaxId
-    let cte: CommonTableExpressionSyntax?
-    let cteRecursive: Bool
+    let with: WithSyntax?
     let table: QualifiedTableNameSyntax
     let whereExpr: ExpressionSyntax?
     let returningClause: ReturningClauseSyntax?

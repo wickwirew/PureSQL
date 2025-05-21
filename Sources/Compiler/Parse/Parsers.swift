@@ -82,30 +82,15 @@ enum Parsers {
             return reindex(state: &state)
         case (.with, _):
             let start = state.current
-            let cte = try withCte(state: &state)
+            let with = try take(if: .with, state: &state, parse: with)
             
             switch state.current.kind {
             case .select:
-                return try selectStmt(
-                    state: &state,
-                    start: start,
-                    cteRecursive: cte.recursive,
-                    cte: cte.cte
-                )
+                return try selectStmt(state: &state, start: start, with: with)
             case .insert:
-                return try insertStmt(
-                    state: &state,
-                    start: start,
-                    cteRecursive: cte.recursive,
-                    cte: cte.cte
-                )
+                return try insertStmt(state: &state, start: start, with: with)
             case .delete:
-                return try deleteStmt(
-                    state: &state,
-                    start: start,
-                    cteRecursive: cte.recursive,
-                    cte: cte.cte
-                )
+                return try deleteStmt(state: &state, start: start, with: with)
             default:
                 state.diagnostics.add(.unexpectedToken(of: state.current.kind, at: state.location))
                 return EmptyStmtSyntax(id: state.nextId(), location: state.current.location)
@@ -121,12 +106,11 @@ enum Parsers {
     
     static func insertStmt(state: inout ParserState) throws -> InsertStmtSyntax {
         let start = state.current
-        let cte = try withCte(state: &state)
+        let with = try take(if: .with, state: &state, parse: with)
         return try insertStmt(
             state: &state,
             start: start,
-            cteRecursive: cte.recursive,
-            cte: cte.cte
+            with: with
         )
     }
     
@@ -134,8 +118,7 @@ enum Parsers {
     static func insertStmt(
         state: inout ParserState,
         start: Token,
-        cteRecursive: Bool,
-        cte: CommonTableExpressionSyntax?
+        with: WithSyntax?
     ) throws -> InsertStmtSyntax {
         let action = insertAction(state: &state)
         state.consume(.into)
@@ -147,8 +130,7 @@ enum Parsers {
         
         return InsertStmtSyntax(
             id: state.nextId(),
-            cte: cte,
-            cteRecursive: cteRecursive,
+            with: with,
             action: action,
             tableName: tableName,
             tableAlias: alias,
@@ -507,7 +489,7 @@ enum Parsers {
     /// https://www.sqlite.org/lang_update.html
     static func updateStmt(state: inout ParserState) throws -> UpdateStmtSyntax {
         let start = state.location
-        let cte = try withCte(state: &state)
+        let with = try take(if: .with, state: &state, parse: with)
         state.consume(.update)
         let or = take(if: .or, state: &state, parse: or)
         let tableName = qualifiedTableName(state: &state)
@@ -521,8 +503,7 @@ enum Parsers {
         let returningClause = try take(if: .returning, state: &state, parse: returningClause)
         return UpdateStmtSyntax(
             id: state.nextId(),
-            cte: cte.cte,
-            cteRecursive: cte.recursive,
+            with: with,
             or: or,
             tableName: tableName,
             sets: sets,
@@ -536,12 +517,11 @@ enum Parsers {
     /// https://www.sqlite.org/lang_delete.html
     static func deleteStmt(state: inout ParserState) throws -> DeleteStmtSyntax {
         let start = state.current
-        let cte = try withCte(state: &state)
+        let with = try take(if: .with, state: &state, parse: with)
         return try deleteStmt(
             state: &state,
             start: start,
-            cteRecursive: cte.recursive,
-            cte: cte.cte
+            with: with
         )
     }
     
@@ -549,8 +529,7 @@ enum Parsers {
     static func deleteStmt(
         state: inout ParserState,
         start: Token,
-        cteRecursive: Bool,
-        cte: CommonTableExpressionSyntax?
+        with: WithSyntax?
     ) throws -> DeleteStmtSyntax {
         state.consume(.delete)
         state.consume(.from)
@@ -559,8 +538,7 @@ enum Parsers {
         let returningClause = try state.current.kind == .returning ? returningClause(state: &state) : nil
         return DeleteStmtSyntax(
             id: state.nextId(),
-            cte: cte,
-            cteRecursive: cteRecursive,
+            with: with,
             table: table,
             whereExpr: whereExpr,
             returningClause: returningClause,
@@ -617,15 +595,17 @@ enum Parsers {
     }
     
     /// https://www.sqlite.org/lang_with.html
-    static func withCte(
-        state: inout ParserState
-    ) throws -> (cte: CommonTableExpressionSyntax?, recursive: Bool) {
-        if state.take(if: .with) {
-            let cteRecursive = state.take(if: .recursive)
-            return try (cte(state: &state), cteRecursive)
-        } else {
-            return (nil, false)
-        }
+    static func with(state: inout ParserState) throws -> WithSyntax {
+        let with = state.take(.with)
+        let recursive = state.take(if: .recursive)
+        let ctes = try commaDelimited(state: &state, element: cte)
+        
+        return WithSyntax(
+            id: state.nextId(),
+            location: state.location(from: with),
+            recursive: recursive,
+            ctes: ctes
+        )
     }
     
     /// https://www.sqlite.org/syntax/common-table-expression.html
@@ -795,16 +775,15 @@ enum Parsers {
     /// https://www.sqlite.org/syntax/select-stmt.html
     static func selectStmt(state: inout ParserState) throws -> SelectStmtSyntax {
         let start = state.current
-        let cte = try withCte(state: &state)
-        return try selectStmt(state: &state, start: start, cteRecursive: cte.recursive, cte: cte.cte)
+        let with = try take(if: .with, state: &state, parse: with)
+        return try selectStmt(state: &state, start: start, with: with)
     }
     
     /// https://www.sqlite.org/syntax/select-stmt.html
     static func selectStmt(
         state: inout ParserState,
         start: Token,
-        cteRecursive: Bool,
-        cte: CommonTableExpressionSyntax?
+        with: WithSyntax?
     ) throws -> SelectStmtSyntax {
         let selects = try selects(state: &state)
         let orderBy = try orderingTerms(state: &state)
@@ -812,8 +791,7 @@ enum Parsers {
         
         return SelectStmtSyntax(
             id: state.nextId(),
-            cte: cte.map(Indirect.init),
-            cteRecursive: cteRecursive,
+            with: with,
             selects: .init(selects),
             orderBy: orderBy,
             limit: limit,

@@ -83,8 +83,10 @@ struct NameInferrer {
     }
     
     private mutating func infer(select: SelectStmtSyntax) {
-        if let cte = select.cte {
-            infer(select: cte.select)
+        if let with = select.with {
+            for cte in with.ctes {
+                infer(select: cte.select)
+            }
         }
         
         infer(selects: select.selects.value)

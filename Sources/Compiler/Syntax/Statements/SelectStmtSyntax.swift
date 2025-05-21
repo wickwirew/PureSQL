@@ -7,8 +7,7 @@
 
 struct SelectStmtSyntax: StmtSyntax {
     let id: SyntaxId
-    let cte: Indirect<CommonTableExpressionSyntax>?
-    let cteRecursive: Bool
+    let with: WithSyntax?
     let selects: Indirect<Selects>
     let orderBy: [OrderingTermSyntax]
     let limit: Limit?
