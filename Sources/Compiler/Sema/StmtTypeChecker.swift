@@ -347,18 +347,36 @@ extension StmtTypeChecker {
             ctes[cte.name] = cte
         }
         
+        // Type check limit before since it does not have access
+        // to any selected columns
+        if let limit = select.limit {
+            _ = typeCheck(limit.expr)
+        }
+        
         let resultColumns = typeCheck(
             selects: select.selects.value,
             at: select.location,
             potentialNames: potentialNames
         )
         
-        for term in select.orderBy {
-            _ = typeCheck(term.expr)
-        }
-        
-        if let limit = select.limit {
-            _ = typeCheck(limit.expr)
+        // FIX-ME: This is a little odd. Aliased columns are inserted automatically
+        // when the result columns are declared. Compound select statements (UNION)
+        // are executed in a new environment so those columns are lost. So we have
+        // to re-insert any missing columns into the env before type checking the
+        // order by clause to make sure it has access. This could really be cleaned
+        // up. Not sure if the environment should track selected columns, then
+        // the `inNewEnvironment` could make sure to automatically retain those?
+        // However for compound statements that would still error since the second
+        // would try to double insert the column in the second select.... Needless
+        // to say this stays for now but I dont like it.
+        inNewEnvironment(extendCurrentEnv: true) { typeChecker in
+            for column in resultColumns.allColumns where typeChecker.env[column.key] == nil {
+                typeChecker.env.insert(column.key, ty: column.value)
+            }
+            
+            for term in select.orderBy {
+                _ = typeChecker.typeCheck(term.expr)
+            }
         }
         
         return resultColumns
@@ -734,6 +752,10 @@ extension StmtTypeChecker {
                 // We selected a single column, so clear out the table
                 // since its not a select all of a table.
                 table = nil
+                
+                if let alias {
+                    env.insert(alias.identifier.value, ty: type)
+                }
             case let .all(tableName):
                 if let tableName {
                     // Was a `table.*`, import every column from the table.
@@ -836,7 +858,7 @@ extension StmtTypeChecker {
                 envTable,
                 as: table.alias?.identifier.value,
                 isOptional: isOptional,
-                onlyColumnsIn: usedColumns
+                selectedColumns: usedColumns
             )
         case .tableFunction:
             fatalError()
@@ -880,7 +902,7 @@ extension StmtTypeChecker {
         _ table: Table,
         as alias: Substring? = nil,
         isOptional: Bool = false,
-        onlyColumnsIn columns: Set<Substring> = [],
+        selectedColumns: Set<Substring> = [],
         globallyAddColumns: Bool = true
     ) {
         // Insert real name not alias. These are used later for observation tracking
@@ -897,8 +919,19 @@ extension StmtTypeChecker {
         }
         
         if globallyAddColumns {
-            for column in table.columns where columns.isEmpty || columns.contains(column.key) {
-                env.insert(column.key, ty: isOptional ? .optional(column.value) : column.value)
+            for column in table.columns {
+                // If it wasnt selected explicitly we still want it to be in the environment
+                // but through explcit access only.
+                //
+                // Meaning they can not select a column, but still use it in a WHERE or something
+                // but not have the column returned in their result set.
+                let wasSelected = !selectedColumns.isEmpty && !selectedColumns.contains(column.key)
+                
+                env.insert(
+                    column.key,
+                    ty: isOptional ? .optional(column.value) : column.value,
+                    explicitAccessOnly: wasSelected
+                )
             }
         }
         

@@ -222,3 +222,13 @@ WHERE id IN (SELECT qux FROM bar WHERE qux > foo.id);
 -- CHECK:     foo
 SELECT * FROM foo
 WHERE id > (SELECT COUNT(*) FROM bar);
+
+-- CHECK: SIGNATURE
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         value INTEGER
+-- CHECK:   TABLES
+-- CHECK:     foo
+SELECT 1 AS value FROM foo
+WHERE value = 1 ORDER BY value;

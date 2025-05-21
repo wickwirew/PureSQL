@@ -24,8 +24,7 @@ struct Feather: AsyncParsableCommand {
     @Option(name: .shortAndLong, help: "Comma separated list of additional imports to add")
     var additionalImports: String?
     
-    @Flag
-    var dontColorize = false
+    @Flag var dontColorize = false
     
     mutating func run() async throws {
         let options = GenerationOptions(

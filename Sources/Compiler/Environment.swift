@@ -29,7 +29,9 @@ struct Environment {
         /// The value will not be included when iterating over every
         /// value in the environment.
         ///
-        /// Useful for FTS tables. The `rank` column is available
+        /// Used for inserting a column into the environment that wasnt
+        /// selected explicitly. Meaning it wont end up as a result column.
+        /// Also useful for FTS tables. The `rank` column is available
         /// during a query. However if they do a `SELECT *` it should
         /// not be included into the result columns
         let explicitAccessOnly: Bool
