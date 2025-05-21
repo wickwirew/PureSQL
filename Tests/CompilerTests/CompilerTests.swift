@@ -57,8 +57,8 @@ class CompilerTests: XCTestCase {
             sqlFile: "CompileIsSingleResult",
             parse: { contents in
                 var compiler = Compiler()
-                _ = compiler.compile(queries: contents)
-                return compiler.queries
+                let (statements, _) = compiler.compile(queries: contents)
+                return statements
                     .filter{ !($0.syntax is CreateTableStmtSyntax) }
                     .map { $0.outputCardinality.rawValue.uppercased() }
             }

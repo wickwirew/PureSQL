@@ -34,9 +34,12 @@ extension DatabaseMacro: MemberMacro {
         }
         
         var compiler = Compiler()
+        var queries: [Statement] = []
         
         for (migration, expr) in migrations {
-            for diag in compiler.compile(migration: migration) {
+            let (_, diagnostics) = compiler.compile(migration: migration)
+            
+            for diag in diagnostics {
                 context.addDiagnostics(from: diag, node: expr)
             }
         }
@@ -44,18 +47,24 @@ extension DatabaseMacro: MemberMacro {
         for (name, variable) in variables {
             guard let queryMacro = variable.queryMacroInputsIfIsQuery(in: context) else { continue }
             
-            for diag in compiler.compile(
+            let (statement, diagnostics) = compiler.compile(
                 query: queryMacro.source,
                 named: name.removingQuerySuffix(),
                 inputType: queryMacro.inputName,
                 outputType: queryMacro.outputName
-            ) {
+            )
+            
+            for diag in diagnostics {
                 context.addDiagnostics(from: diag, node: variable)
+            }
+            
+            if let statement {
+                queries.append(statement)
             }
         }
         
         let (generatedTables, generatedQueries) = try SwiftLanguage.assemble(
-            queries: [(nil, compiler.queries)],
+            queries: [(nil, queries)],
             schema: compiler.schema
         )
         

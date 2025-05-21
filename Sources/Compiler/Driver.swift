@@ -118,7 +118,7 @@ public actor Driver {
         var compiler = Compiler()
         compiler.schema = currentSchema
         
-        let diagnostics = switch usage {
+        let (statements, diagnostics) = switch usage {
         case .migration:
             compiler.compile(migration: fileContents)
         case .queries:
@@ -131,7 +131,7 @@ public actor Driver {
             fileName: file,
             usage: usage,
             diagnostics: diagnostics,
-            statements: compiler.queries,
+            statements: statements,
             schema: compiler.schema
         )
         

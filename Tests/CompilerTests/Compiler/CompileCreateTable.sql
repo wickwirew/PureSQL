@@ -60,7 +60,7 @@ CREATE TABLE baz (
 -- CHECK:   KIND normal
 -- CHECK-ERROR: Table 'qux' already has a primary key
 CREATE TABLE qux (
-    foo TEXT PRIMARY KEY,
+    foo TEXT PRIMARY KEY ON CONFLICT REPLACE REFERENCES qux (foo) ON DELETE CASCADE,
     bar INTEGER,
     PRIMARY KEY (bar)
 ) STRICT;

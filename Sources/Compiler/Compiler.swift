@@ -7,38 +7,24 @@
 
 public struct Compiler {
     public var schema = Schema()
-    public private(set) var queries: [Statement] = []
-    public private(set) var migrations: [Statement] = []
-    public private(set) var diagnostics = Diagnostics()
-    
     private var pragmas = PragmaAnalyzer()
 
     public init() {}
     
-    public var hasDiagnostics: Bool {
-        return !diagnostics.isEmpty
-    }
-    
-    public mutating func compile(migration: String) -> Diagnostics {
-        let (stmts, diagnostics) = compile(
+    public mutating func compile(migration: String) -> ([Statement], Diagnostics) {
+        compile(
             source: migration,
             validator: IsValidForMigrations(),
             context: "migrations"
         )
-        self.migrations.append(contentsOf: stmts)
-        self.diagnostics.merge(diagnostics)
-        return diagnostics
     }
     
-    public mutating func compile(queries: String) -> Diagnostics {
-        let (stmts, diagnostics) = compile(
+    public mutating func compile(queries: String) -> ([Statement], Diagnostics) {
+        compile(
             source: queries,
             validator: IsValidForQueries(),
             context: "queries"
         )
-        self.queries.append(contentsOf: stmts)
-        self.diagnostics.merge(diagnostics)
-        return diagnostics
     }
     
     public mutating func compile(
@@ -46,7 +32,7 @@ public struct Compiler {
         named name: String,
         inputType: String?,
         outputType: String?
-    ) -> Diagnostics {
+    ) -> (Statement?, Diagnostics) {
         var (stmts, diagnostics) = compile(
             source: query,
             validator: IsValidForQueries(),
@@ -56,8 +42,7 @@ public struct Compiler {
         guard let stmt = stmts.first else {
             let loc = SourceLocation(range: query.startIndex..<query.endIndex, line: 0, column: 0)
             diagnostics.add(.init("Query has no statements", at: loc))
-            self.diagnostics.merge(diagnostics)
-            return diagnostics
+            return (nil, diagnostics)
         }
         
         let stmtWithDef = stmt.with(
@@ -68,9 +53,7 @@ public struct Compiler {
             )
         )
         
-        self.queries.append(stmtWithDef)
-        self.diagnostics.merge(diagnostics)
-        return diagnostics
+        return (stmtWithDef, diagnostics)
     }
     
     mutating func compile<Validator>(

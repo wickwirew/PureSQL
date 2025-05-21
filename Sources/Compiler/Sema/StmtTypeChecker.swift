@@ -961,7 +961,8 @@ extension StmtTypeChecker {
             for (name, def) in columnsDefs {
                 columns[name.value] = typeFor(
                     column: def,
-                    tableColumns: columns
+                    tableColumns: columns,
+                    tableName: createTable.name.value
                 )
             }
             
@@ -1001,7 +1002,11 @@ extension StmtTypeChecker {
                 newColumns[column.key == oldName.value ? newName.value : column.key] = column.value
             }
         case let .addColumn(column):
-            table.columns[column.name.value] = typeFor(column: column, tableColumns: table.columns)
+            table.columns[column.name.value] = typeFor(
+                column: column,
+                tableColumns: table.columns,
+                tableName: table.name
+            )
         case let .dropColumn(column):
             table.columns[column.value] = nil
         }
@@ -1040,7 +1045,8 @@ extension StmtTypeChecker {
     /// Will figure out the final SQL column type from the syntax
     private mutating func typeFor(
         column: borrowing ColumnDefSyntax,
-        tableColumns: borrowing Columns
+        tableColumns: borrowing Columns,
+        tableName: Substring
     ) -> Type {
         var isNotNullable = false
         for constraint in column.constraints {
@@ -1059,7 +1065,23 @@ extension StmtTypeChecker {
                     _ = typeChecker.typeCheck(expr)
                 }
             case .foreignKey(let fk):
-                if schema[fk.foreignTable.value] == nil {
+                if fk.foreignTable.value == tableName {
+                    for foreignColumn in fk.foreignColumns {
+                        // Column constraints can reference the column they are
+                        // declared for so if its this table and this column then ignore it.
+                        guard column.name.value != foreignColumn.value else { continue }
+                        
+                        if tableColumns[foreignColumn.value] == nil {
+                            diagnostics.add(.columnDoesNotExist(foreignColumn))
+                        }
+                    }
+                } else if let table = schema[fk.foreignTable.value] {
+                    for foreignColumn in fk.foreignColumns {
+                        if table.columns[foreignColumn.value] == nil {
+                            diagnostics.add(.columnDoesNotExist(foreignColumn))
+                        }
+                    }
+                } else {
                     diagnostics.add(.tableDoesNotExist(fk.foreignTable))
                 }
             case .generated(let expr, _):
@@ -1092,6 +1114,21 @@ extension StmtTypeChecker {
             return type
         } else {
             return .optional(type)
+        }
+    }
+    
+    private mutating func typeCheck(
+        fk: ForeignKeyClauseSyntax,
+        column: ColumnDefSyntax,
+        tableColumns: Columns
+    ) {
+        for foreignColumn in fk.foreignColumns {
+            // Column constraints can oddly reference themselves
+            guard column.name.value != foreignColumn.value else { continue }
+            
+            if tableColumns[foreignColumn.value] == nil {
+                diagnostics.add(.columnDoesNotExist(foreignColumn))
+            }
         }
     }
     
