@@ -8,39 +8,146 @@
 
 <p align="center">
     <strong>
-        A SQLite compiler, static analyzer and code generator for Swift
+        A SQLite compiler, static analyzer and code generator for Swift ❤️
     </strong>
 </p>
 
 ## Overview
-Otter aims to allow developers to write plain SQL but with compile time safety.
+Otter is a pure Swift SQL compiler that allow developers to write plain comile time safe SQL.
 
 ## Basic Usage
-As a primer here is a quick example. Below is some SQL. The first part is in the `/Migrations` directory. This is where you can create and modify your schema. The second part is in the `/Queries` directory.
+As a primer here is a quick example. First, in SQL we will create our migrations and our first query.
 ```sql
 -- Located in Migrations/1.sql
 CREATE TABLE todo (
   id INTEGER,
   name TEXT NOT NULL,
-  completedOn INTEGER
+  completedOn INTEGER AS Date
 )
 
--- Located in Queries/Todo.sql
+-- Located in Queries/Todo/Todo.sql
 DEFINE QUERY selectTodos AS
 SELECT * FROM todo;
 ```
-Would generate the following Swift code
-```swift
-let db = DB()
-let todos = try await db.selectTodos.execute()
 
+Otter will automatically generate all structs for the tables and queries providing the APIs below
+
+```swift
+// Open a connection to the database
+let database = try DB(path: "...")
+
+// Execute the query
+let todos = try await database.todoQueries.selectTodos.execute()
+
+// The `Todo` struct is automatically generated for the table
+// meaning your schema and swift code will never get out of sync
 for todo in todos {
   print(todo.id, todo.name, todo.completedOn)
 }
 
-for try await todos in db.selectTodos.observe() {
+// Easily observe any query as the database changes.
+for try await todos in database.todoQueries.selectTodos.observe() {
   print("Got todos", todos)
 }
+```
+
+### Or Use the Swift Macro
+Otter can even run within a Swift macro by adding the `@Database` macro to a `struct`.
+
+> As of now it is not recommended for larger projects. There are quite a few limitations 
+that won't scale well beyond a fairly simple schema and a handfull of queries. ⚠️
+
+```swift
+@Database
+struct DB {
+    @Query("SELECT * FROM foo")
+    var selectFooQuery: SelectFooDatabaseQuery
+    
+    static var migrations: [String] {
+        return [
+            """
+            CREATE TABLE todo (
+              id INTEGER,
+              name TEXT NOT NULL,
+              completedOn INTEGER AS Date
+            )
+            """
+        ]
+    }
+}
+
+func main() async throws {
+    let database = try DB(path: "...")
+    let todos = try await database.selectTodos.execute()
+
+    for todo in todos {
+      print(todo.id, todo.name, todo.completedOn)
+    }
+}
+```
+
+#### Current Limitations
+* Since macros operate purely on the syntax, all queries must be within the `@Database` itself so it has access to the schema.
+* All generated types will be nested under the `@Database` struct.
+* All `@Query` definitions must define their type as the generated `typealias` by the `@Database` macro.
+* Any diagnostics will be on the entire string rather than the part that actually failed.
+
+## Opening a Connection
+Each database will automatically have a few initializers at hand to choose from. Each are listed below.
+When the connection is opened, all migrations are run instantly.
+
+All connections are automatically opened up in WAL journal mode, allowing asynchronous reads while writes are happening. And all connections will automatically handle all threading and scheduling of queries for you.
+
+```swift
+// Defaults to a connection pool of 5 connections
+let database = try DB(path: "...")
+
+// Opens the database in memory, useful for unit tests or previews
+let database = try DB.inMemory()
+
+// Or open up using the configuration.
+var config = DatbaseConfig()
+config.path = "" // if nil, it will be in memory
+config.maxConnectionCount = 8
+let database = try DB(config: config)
+```
+
+## Types
+SQLite is a unique SQL database engine in that it is fairly lawless when it comes to typing. SQLite will allow you create a column with an `INTEGER` and gladly insert a `TEXT` into it. It will even let you make up your own type names and will take them. Otter only supports the core types/affinities SQLite recognizes:
+```
+INTEGER -> Int
+REAL -> Double
+TEXT -> String
+BLOB -> Data
+ANY -> SQLAny
+```
+
+> SQLite is the Javascript of SQL databases
+> 
+>    Richard Hipp, creator of SQLite
+
+#### Aliasing & Custom Types
+SQLite's core affinity types are few, but with aliasing types we can represent more complex types in Swift like `Date` or `UUID`.
+
+Using the `AS` keyword you can specify the type to use in `Swift`
+```sql
+TEXT as UUID
+
+-- If the type has `.` in it, put the name in quotes to escape it.
+TEXT as "Todo.ID"
+```
+
+## Operators
+The library ships with a few core operators. The operators allow you to perform transformations on queries inputs or output. Or even combine queries.
+
+## Then
+Then is used to combine two queries together. It will execute `self` first then the input query. Each query will be run within the same transaction.
+
+```swift
+func then<Next>(
+    _ next: Next,
+    nextInput: @Sendable @escaping (Input, Output) -> Next.Input
+) -> Queries.Then<Self, Next>
 ```
 
 ## Dependency Injection
@@ -88,39 +195,3 @@ class ViewModel {
   let query: any LatestExpensesQuery
 }
 ```
-
-## Swift Macros
-> TLDR; Don't use for larger projects ⚠️
-
-Otter can even run within a Swift macro by adding the `@Database` macro to a `struct`. As of now it is not recommended for larger projects. 
-There are quite a few limitations that won't scale well beyond a fairly simple schema and a handfull of queries.
-
-```swift
-@Database
-struct DB {
-    @Query("SELECT * FROM foo")
-    var selectFooQuery: SelectFooDatabaseQuery
-
-    @Query("INSERT INTO foo (bar, baz) VALUES (?, ?)", inputName: "FooInput")
-    var insertFooQuery: InsertFooDatabaseQuery
-    
-    static var migrations: [String] {
-        return [
-            "CREATE TABLE foo (bar INTEGER, baz TEXT);"
-        ]
-    }
-}
-
-func main() async throws {
-    let database = try DB.inMemory()
-    try await database.insertFooQuery.execute(with: .init(bar: 1, baz: "Baz"))
-    let foos = try await database.selectFooQuery.execute()
-    print(foos)
-}
-```
-
-### Current Limitations
-* Since macros operate purely on the syntax, all queries must be within the `@Database` itself so the schema can be inferred properly.
-* All generated types will be nested under the `@Database` struct.
-* All `@Query` definitions must define their type as the generated `typealias` by the `@Database` macro.
-* Any diagnostics will be on the entire string rather than the part that actually failed.
