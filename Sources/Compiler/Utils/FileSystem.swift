@@ -17,6 +17,34 @@ protocol FileSystem {
     func contents(of path: String) throws -> String
     func modificationDate(of path: String) throws -> Date?
     func create(directory: String) throws
+    func write(_ data: Data, to path: String)
+    func exists(at path: String) -> Bool
+}
+
+extension FileSystem {
+    func files(at url: URL) throws -> [String] {
+        try files(atPath: url.path)
+    }
+    
+    func contents(of url: URL) throws -> String {
+        try contents(of: url.path)
+    }
+    
+    func modificationDate(of url: URL) throws -> Date? {
+        try modificationDate(of: url.path)
+    }
+    
+    func create(directory: URL) throws {
+        try create(directory: directory.path)
+    }
+    
+    func write(_ data: Data, to url: URL) {
+        write(data, to: url.path)
+    }
+    
+    func exists(at url: URL) -> Bool {
+        exists(at: url.path)
+    }
 }
 
 extension FileManager: FileSystem {
@@ -56,12 +84,19 @@ extension FileManager: FileSystem {
     }
     
     func create(directory: String) throws {
-        guard !FileManager.default
-            .fileExists(atPath: directory) else { return }
+        guard !fileExists(atPath: directory) else { return }
         
         try FileManager.default.createDirectory(
             atPath: directory,
             withIntermediateDirectories: true
         )
+    }
+    
+    func write(_ data: Data, to path: String) {
+        createFile(atPath: path, contents: data)
+    }
+    
+    func exists(at path: String) -> Bool {
+        fileExists(atPath: path)
     }
 }

@@ -12,42 +12,22 @@ import SwiftSyntax
 
 @main
 struct Feather: AsyncParsableCommand {
-    @Option(name: .shortAndLong, help: "The root directory of the Feather sources")
-    var path: String = FileManager.default.currentDirectoryPath
+    static let configuration = CommandConfiguration(
+        subcommands: [GenCommand.self, InitCommand.self, MigrateCommand.self, QueriesCommand.self],
+        defaultSubcommand: GenCommand.self
+    )
+}
+
+enum FeatherError: Error, CustomStringConvertible {
+    case sourcesNotFound
+    case queryAlreadyExists(fileName: String)
     
-    @Option(name: .shortAndLong, help: "The output file path. Default is to stdout")
-    var output: String? = nil
-    
-    @Option(name: .shortAndLong, help: "The database name")
-    var databaseName: String = "DB"
-    
-    @Option(name: .shortAndLong, help: "Comma separated list of additional imports to add")
-    var additionalImports: String?
-    
-    @Flag var dontColorize = false
-    
-    mutating func run() async throws {
-        let options = GenerationOptions(
-            databaseName: databaseName,
-            imports: additionalImports?.split(separator: ",").map(\.description) ?? []
-        )
-        
-        try await generate(language: SwiftLanguage.self, options: options)
-    }
-    
-    private func generate<Lang: Language>(
-        language: Lang.Type,
-        options: GenerationOptions
-    ) async throws {
-        let driver = Driver()
-        await driver.add(reporter: StdoutDiagnosticReporter(dontColorize: dontColorize))
-        
-        try await driver.compile(path: path)
-        
-        try await driver.generate(
-            language: Lang.self,
-            to: output,
-            options: options
-        )
+    var description: String {
+        switch self {
+        case .sourcesNotFound:
+            "Sources not found, run init to initialize new project"
+        case .queryAlreadyExists(let fileName):
+            "Query file with name '\(fileName)' already exists"
+        }
     }
 }
