@@ -113,28 +113,26 @@ let database = try DB(config: config)
 ```
 
 ## Types
-SQLite is a unique SQL database engine in that it is fairly lawless when it comes to typing. SQLite will allow you create a column with an `INTEGER` and gladly insert a `TEXT` into it. It will even let you make up your own type names and will take them. Otter only supports the core types/affinities SQLite recognizes:
-```
-INTEGER -> Int
-REAL -> Double
-TEXT -> String
-BLOB -> Data
-ANY -> SQLAny
-```
+SQLite is a unique SQL database engine in that it is fairly lawless when it comes to typing. SQLite will allow you create a column with an `INTEGER` and gladly insert a `TEXT` into it. It will even let you make up your own type names and will take them. Otter will not allow this and tends to operate more strictly like the table option `STRICT`. Only the core types that SQLite recognizes are usable for the column type.
+| SQLite  | Swift  |
+|---------|--------|
+| INTEGER | Int    |
+| REAL    | Double |
+| TEXT    | String |
+| BLOB    | Data   |
+| ANY     | SQLAny |
 
-> SQLite is the Javascript of SQL databases
-> 
->    Richard Hipp, creator of SQLite
-
-#### Aliasing & Custom Types
-SQLite's core affinity types are few, but with aliasing types we can represent more complex types in Swift like `Date` or `UUID`.
+#### Custom Types
+While your column only can be one of the core SQLite types, what type that ends up as in Swift can be different. Using the `AS` keyword you can specify the Swift type to decode it to. Think of the column type as the storage type while the type in the `AS` will be the type actually in the interface.
 
 Using the `AS` keyword you can specify the type to use in `Swift`
 ```sql
-TEXT as UUID
-
+-- UUID stored as a string
+TEXT AS UUID
+-- UUID stored as it's raw bytes
+BLOB AS UUID
 -- If the type has `.` in it, put the name in quotes to escape it.
-TEXT as "Todo.ID"
+TEXT AS "Todo.ID"
 ```
 
 ## Operators
