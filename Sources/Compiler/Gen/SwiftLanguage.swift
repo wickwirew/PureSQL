@@ -202,7 +202,7 @@ public struct SwiftLanguage: Language {
         
         return DeclSyntax(variable)
     }
-
+    
     /// Generates the expression to initialize the query.
     ///
     /// ```swift
@@ -416,7 +416,7 @@ public struct SwiftLanguage: Language {
             """
         }
     }
-
+    
     private static func declaration(
         for model: GeneratedModel,
         isOutput: Bool,
@@ -435,7 +435,20 @@ public struct SwiftLanguage: Language {
             }
         }
         
+        let dynamicLookupTables = model.fields.values.compactMap { value -> (String, GeneratedModel)? in
+            guard case let .model(model) = value.type else { return nil }
+            return (value.name, model)
+        }
+        
+        let addDynamicLookup = isOutput && !dynamicLookupTables.isEmpty && model.fields.count > 1
+        
         let strct = StructDeclSyntax(
+            attributes: AttributeListSyntax {
+                if addDynamicLookup {
+                    let attr: AttributeSyntax = "@dynamicMemberLookup"
+                    attr.with(\.trailingTrivia, .newline)
+                }
+            },
             name: TokenSyntax.identifier(model.name),
             inheritanceClause: inheretance
         ) {
@@ -447,9 +460,52 @@ public struct SwiftLanguage: Language {
                 rowDecodableInit(for: model)
                 memberwiseInit(for: model)
             }
+            
+            if addDynamicLookup {
+                for (fieldName, table) in dynamicLookupTables {
+                    dynamicMemberLookup(fieldName: fieldName, typeName: table.name)
+                }
+            }
         }
         
         return DeclSyntax(strct)
+    }
+    
+    private static func dynamicMemberLookup(
+        fieldName: String,
+        typeName: String
+    ) -> SubscriptDeclSyntax {
+        return SubscriptDeclSyntax(
+            subscriptKeyword: TokenSyntax.keyword(.subscript)
+                .with(\.trailingTrivia, .spaces(0)),
+            genericParameterClause: GenericParameterClauseSyntax {
+                GenericParameterSyntax(name: "Value")
+            },
+            parameterClause: FunctionParameterClauseSyntax(
+                parameters: [
+                    FunctionParameterSyntax(
+                        firstName: "dynamicMember",
+                        secondName: "dynamicMember",
+                        type: IdentifierTypeSyntax(name: "KeyPath<\(raw: typeName), Value>"),
+                        trailingComma: nil
+                    )
+                ]
+            ),
+            returnClause: ReturnClauseSyntax(type: IdentifierTypeSyntax(name: "Value")),
+            accessorBlock: AccessorBlockSyntax(accessors: .getter(CodeBlockItemListSyntax {
+                SubscriptCallExprSyntax(
+                    calledExpression: DeclReferenceExprSyntax(baseName: TokenSyntax.identifier(fieldName)),
+                    arguments: LabeledExprListSyntax {
+                        LabeledExprSyntax(
+                            label: "keyPath",
+                            colon: TokenSyntax.colonToken(),
+                            expression: DeclReferenceExprSyntax(baseName: "dynamicMember"),
+                            trailingComma: nil
+                        )
+                    }
+                )
+            }))
+        )
     }
     
     private static func rowDecodableInit(

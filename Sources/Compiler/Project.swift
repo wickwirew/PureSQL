@@ -7,6 +7,7 @@
 
 import Foundation
 
+/// Small object to make interacting with the overall project structure easier.
 public struct Project {
     public let url: URL
     public let migrationsDirectory: URL
@@ -22,6 +23,10 @@ public struct Project {
         self.fileSystem = fileSystem
         self.migrationsDirectory = url.appendingPathComponent("Migrations")
         self.queriesDirectory = url.appendingPathComponent("Queries")
+    }
+    
+    public static func inWorkingDir() -> Project {
+        Project(url: URL(fileURLWithPath: FileManager.default.currentDirectoryPath))
     }
     
     public var doesMigrationsExist: Bool {

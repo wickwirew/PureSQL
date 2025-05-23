@@ -13,7 +13,7 @@ struct InitCommand: ParsableCommand {
     static let configuration = CommandConfiguration(commandName: "init")
     
     func run() throws {
-        let project = Project(url: URL(fileURLWithPath: FileManager.default.currentDirectoryPath))
+        let project = Project.inWorkingDir()
         try project.setup()
         try project.addMigration()
     }

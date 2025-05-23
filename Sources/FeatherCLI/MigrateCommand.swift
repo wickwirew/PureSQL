@@ -19,7 +19,7 @@ struct MigrateCommand: ParsableCommand {
         static let configuration = CommandConfiguration(commandName: "add")
         
         func run() throws {
-            let project = Project(url: URL(fileURLWithPath: FileManager.default.currentDirectoryPath))
+            let project = Project.inWorkingDir()
             
             guard project.doesMigrationsExist else {
                 throw FeatherError.sourcesNotFound

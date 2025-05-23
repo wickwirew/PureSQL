@@ -21,7 +21,7 @@ struct QueriesCommand: ParsableCommand {
         @Argument var name: String
         
         func run() throws {
-            let project = Project(url: URL(fileURLWithPath: FileManager.default.currentDirectoryPath))
+            let project = Project.inWorkingDir()
             
             guard project.doesQueriesExist else {
                 throw FeatherError.sourcesNotFound
