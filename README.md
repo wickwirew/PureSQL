@@ -184,11 +184,12 @@ let users: [User] = try await query.execute()
 ```
 
 ### Input and Output Types
-In the example above, since we selected all columns from a single table the query will return the `User` struct that was generated for the table. If additional columns are selected a new structure will be generated to match the input. In the following example we will join in the `post` table to get a users post count.
+In the example above, since we selected all columns from a single table the query will return the `User` struct that was generated for the table. If additional columns are selected a new structure will be generated to match the output. In the following example we will join in the `post` table to get a users post count.
 ```sql
 DEFINE QUERY fetchUsers AS
 SELECT user.*, COUNT(post.*) AS numberOfPosts
-OUTER JOIN post ON post.userId = user.id;
+OUTER JOIN post ON post.userId = user.id
+GROUP BY user.id;
 ```
 
 The following `struct` would automatically be generated for the query. Since we used the syntax `user.*` it will embed the `User` struct instead of replicating it's columns. Any embeded table struct will also get a `@dynamicMemberLookup` method generated so it can be accessed directly like the other column values.
@@ -200,12 +201,6 @@ FetchUsersOutput {
 
     subscript<Value>(dynamicMember dynamicMember: KeyPath<FetchUsersOutput, Value>) -> Value { ... }
 }
-```
-
-### Naming
-The `FetchUsersOutput` name, while clear where it came from, is not too great if we want to store it in a view model or model within our app. Some queries we want to give it a better name that has more meaning. In the `DEFINE` statement we can specify a name for the inputs and outputs.
-```sql
-DEFINE QUERY queryName(input: InputName, output: OutputName) AS ...
 ```
 
 ### Inputs
@@ -225,6 +220,12 @@ struct UserPostsInput {
 }
 
 let posts = try await database.userQueries.userPosts.execute(id: id, dateLower: lower, dateUpper: upper)
+```
+
+### Naming
+The `FetchUsersOutput` name, while clear where it came from, is not too great if we want to store it in a view model or model within our app. Some queries we want to give it a better name that has more meaning. In the `DEFINE` statement we can specify a name for the inputs and outputs.
+```sql
+DEFINE QUERY queryName(input: InputName, output: OutputName) AS ...
 ```
 
 # Types
