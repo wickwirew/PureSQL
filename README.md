@@ -15,7 +15,12 @@
 ## Overview
 Otter is a pure Swift SQL compiler that allow developers to write plain comile time safe SQL.
 
-## Basic Usage
+- [Installation](#installation)
+- [Queries](#queries)
+- [Types](#types)
+- [Operators](#operators)
+- [Dependency Injection](#dependency-injection)
+
 As a primer here is a quick example. First, in SQL we will create our migrations and our first query.
 ```sql
 -- Located in Migrations/1.sql
@@ -92,9 +97,53 @@ func main() async throws {
 * All `@Query` definitions must define their type as the generated `typealias` by the `@Database` macro.
 * Any diagnostics will be on the entire string rather than the part that actually failed.
 
-## Opening a Connection
-Each database will automatically have a few initializers at hand to choose from. Each are listed below.
-When the connection is opened, all migrations are run instantly.
+# Installation
+Otter supports Swift Package Manager. To install add the following to your `Package.swift` file.
+
+```swift
+let package = Package(
+    [...]
+    dependencies: [
+        .Package(url: "https://github.com/wickwirew/Feather.git", from: "...")
+    ]
+)
+```
+
+Also the cli tool will be needed to be installed.
+```
+brew install TODO FIX THIS ONCE IT IS ACTUALLY IN BREW
+```
+
+Once the project has been added it is time to setup the queries and migrations folders. In the root of the project where you want everything to live, in terminal run the following command
+```
+feather init
+```
+
+This will create all diretories needed and will create your first migration. Your project should have 2 new folders and a swift file. In the migrations folder you will have a file named `1.sql`. You put your first migration code in there. The `Queries.swift` file is what the generated Swift code will be written too. The `gen` command will automatically recreate this if it gets deleted.
+```
+/Migrations/1.sql
+/Queries
+Queries.swift
+```
+
+> 💡 Tip: Follow the SQL standard and use singular table names.
+
+#### Generating the Database
+Once you have your first migration in and the project setup you can now generate the database. In the same directory where `init` was run, you run the `gen` command.
+```
+feather gen
+```
+
+This will compile and check all migrations and queries, then generate all Swift required to talk to the database.
+
+#### Adding a New Migration
+When a new migration is needed, you can simply add a new file with a number 1 higher than the previous. To automatically do this the cli tool can do it for you by running
+```
+feather migrate add
+```
+
+# Opening a Connection
+Once you have your database being generated, you can now open a connection to it. Each database will automatically have a few initializers at hand to choose from. Each are listed below. When the connection is opened, all migrations are run instantly.
 
 All connections are automatically opened up in WAL journal mode, allowing asynchronous reads while writes are happening. And all connections will automatically handle all threading and scheduling of queries for you.
 
@@ -110,9 +159,75 @@ var config = DatbaseConfig()
 config.path = "" // if nil, it will be in memory
 config.maxConnectionCount = 8
 let database = try DB(config: config)
+
+// All migrations are run on open, so it's good to use right away
 ```
 
-## Types
+# Queries
+All queries will be stored in the `/Queries` directory. More than one query can go in each file. To get started, create a new file in the `/Queries` directory. The cli can do this automatically. In the same directory where `init` was run, execute
+```
+feather queries add --name <some-name>
+```
+
+> 💡 Tip: Organize queries by usage, not by table. This will become more useful later on when we talk about dependency injection.
+
+Open the file that was created in `/Queries`, it should be blank. Individual queries can be defined using the `DEFINE` keyword. At the moment queries can only have one statement.
+```sql
+DEFINE QUERY fetchUsers AS
+SELECT * FROM user;
+```
+
+If the queries file was named `User.sql` this would be accessible via
+```swift
+let query: any FetchUsersQuery = database.userQueries.fetchUsers
+let users: [User] = try await query.execute()
+```
+
+### Input and Output Types
+In the example above, since we selected all columns from a single table the query will return the `User` struct that was generated for the table. If additional columns are selected a new structure will be generated to match the input. In the following example we will join in the `post` table to get a users post count.
+```sql
+DEFINE QUERY fetchUsers AS
+SELECT user.*, COUNT(post.*) AS numberOfPosts
+OUTER JOIN post ON post.userId = user.id;
+```
+
+The following `struct` would automatically be generated for the query. Since we used the syntax `user.*` it will embed the `User` struct instead of replicating it's columns. Any embeded table struct will also get a `@dynamicMemberLookup` method generated so it can be accessed directly like the other column values.
+```swift
+@dynamicMemberLookup
+FetchUsersOutput {
+    let user: User
+    let numberOfPosts: Int
+
+    subscript<Value>(dynamicMember dynamicMember: KeyPath<FetchUsersOutput, Value>) -> Value { ... }
+}
+```
+
+### Naming
+The `FetchUsersOutput` name, while clear where it came from, is not too great if we want to store it in a view model or model within our app. Some queries we want to give it a better name that has more meaning. In the `DEFINE` statement we can specify a name for the inputs and outputs.
+```sql
+DEFINE QUERY queryName(input: InputName, output: OutputName) AS ...
+```
+
+### Inputs
+When a query has multiple inputs it will have a struct generated for it's inputs similar to the output. Also, so the input struct does not have to be initialized everytime, an extension will be created that takes each parameter individually, rather then the full type.
+```sql
+DEFINE QUERY userPosts AS
+SELECT * FROM post WHERE userId = ? AND date BETWEEN ? AND ?;
+```
+
+Would generate the following Swift code
+
+```swift
+struct UserPostsInput {
+    let id: Int
+    let dateLower: Date
+    let dateUpper: Date
+}
+
+let posts = try await database.userQueries.userPosts.execute(id: id, dateLower: lower, dateUpper: upper)
+```
+
+# Types
 SQLite is a unique SQL database engine in that it is fairly lawless when it comes to typing. SQLite will allow you create a column with an `INTEGER` and gladly insert a `TEXT` into it. It will even let you make up your own type names and will take them. Otter will not allow this and tends to operate more strictly like the table option `STRICT`. Only the core types that SQLite recognizes are usable for the column type.
 | SQLite  | Swift  |
 |---------|--------|
