@@ -12,7 +12,7 @@
     </strong>
 </p>
 
-## Overview
+# Overview
 Otter is a pure Swift SQL compiler that allow developers to write plain comile time safe SQL.
 
 - [Installation](#installation)
@@ -21,7 +21,9 @@ Otter is a pure Swift SQL compiler that allow developers to write plain comile t
 - [Operators](#operators)
 - [Dependency Injection](#dependency-injection)
 
-As a primer here is a quick example. First, in SQL we will create our migrations and our first query.
+## Basic Primer
+
+As a quick intro, here is an basic example. First, in SQL we will create our migrations and our first query.
 ```sql
 -- Located in Migrations/1.sql
 CREATE TABLE todo (
@@ -184,7 +186,7 @@ let users: [User] = try await query.execute()
 ```
 
 ### Input and Output Types
-In the example above, since we selected all columns from a single table the query will return the `User` struct that was generated for the table. If additional columns are selected a new structure will be generated to match the output. In the following example we will join in the `post` table to get a users post count.
+In the example above, since we selected all columns from a single table the query will return the `User` struct that was generated for the table. If additional columns are selected a new structure will be generated to match the selected columns. In the following example we will join in the `post` table to get a users post count.
 ```sql
 DEFINE QUERY fetchUsers AS
 SELECT user.*, COUNT(post.*) AS numberOfPosts
@@ -192,7 +194,7 @@ OUTER JOIN post ON post.userId = user.id
 GROUP BY user.id;
 ```
 
-The following `struct` would automatically be generated for the query. Since we used the syntax `user.*` it will embed the `User` struct instead of replicating it's columns. Any embeded table struct will also get a `@dynamicMemberLookup` method generated so it can be accessed directly like the other column values.
+The following `struct` would automatically be generated for the query. Since we used the syntax `user.*` it will embed the `User` struct instead of replicating it's columns. Any embeded table struct will also get a `@dynamicMemberLookup` method generated so it can be accessed directly like the other column values. This allows extensions on the table struct to work across many queries.
 ```swift
 @dynamicMemberLookup
 FetchUsersOutput {
@@ -219,7 +221,11 @@ struct UserPostsInput {
     let dateUpper: Date
 }
 
+// Using the extension
 let posts = try await database.userQueries.userPosts.execute(id: id, dateLower: lower, dateUpper: upper)
+
+// Or using the input type directly
+let posts = try await database.userQueries.userPosts.execute(with: UserPostInput(...))
 ```
 
 ### Naming
@@ -229,7 +235,7 @@ DEFINE QUERY queryName(input: InputName, output: OutputName) AS ...
 ```
 
 # Types
-SQLite is a unique SQL database engine in that it is fairly lawless when it comes to typing. SQLite will allow you create a column with an `INTEGER` and gladly insert a `TEXT` into it. It will even let you make up your own type names and will take them. Otter will not allow this and tends to operate more strictly like the table option `STRICT`. Only the core types that SQLite recognizes are usable for the column type.
+SQLite is a unique SQL database engine in that it is fairly lawless when it comes to typing. SQLite will allow you create a column with an `INTEGER` and gladly insert a `TEXT` into it. It will even let you make up your own type names and it will take them. Otter will not allow this and tends to operate more strictly like the table option `STRICT`. Only the core types that SQLite recognizes are usable for the column type.
 | SQLite  | Swift  |
 |---------|--------|
 | INTEGER | Int    |
@@ -238,7 +244,7 @@ SQLite is a unique SQL database engine in that it is fairly lawless when it come
 | BLOB    | Data   |
 | ANY     | SQLAny |
 
-#### Custom Types
+### Custom Types
 While your column only can be one of the core SQLite types, what type that ends up as in Swift can be different. Using the `AS` keyword you can specify the Swift type to decode it to. Think of the column type as the storage type while the type in the `AS` will be the type actually in the interface.
 
 Using the `AS` keyword you can specify the type to use in `Swift`
@@ -265,7 +271,7 @@ func then<Next>(
 ```
 
 ## Dependency Injection
-> TLDR; Avoid the repository pattern, inject queries.
+> TL;DR Avoid the repository pattern, inject queries.
 
 Otter was written with application development in mind. One of the common walls when talking to a database is dependecy injection. 
 Normally this would mean wrapping your database calls in a repository or some other layer to keep the model layer testable without needing a database connection. 
