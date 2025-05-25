@@ -13,7 +13,7 @@
 </p>
 
 # Overview
-Otter is a pure Swift SQL compiler that allow developers to write plain comile time safe SQL.
+Otter is a pure Swift SQL compiler that allow developers to write plain compile time safe SQL.
 
 - [Installation](#installation)
 - [Queries](#queries)
@@ -23,7 +23,7 @@ Otter is a pure Swift SQL compiler that allow developers to write plain comile t
 
 ## Basic Primer
 
-As a quick intro, here is an basic example. First, in SQL we will create our migrations and our first query.
+As a quick intro, here is a basic example. First, in SQL we will create our migrations and our first query.
 ```sql
 -- Located in Migrations/1.sql
 CREATE TABLE todo (
@@ -61,9 +61,6 @@ for try await todos in database.todoQueries.selectTodos.observe() {
 ### Or Use the Swift Macro
 Otter can even run within a Swift macro by adding the `@Database` macro to a `struct`.
 
-> As of now it is not recommended for larger projects. There are quite a few limitations 
-that won't scale well beyond a fairly simple schema and a handfull of queries. ⚠️
-
 ```swift
 @Database
 struct DB {
@@ -92,6 +89,10 @@ func main() async throws {
     }
 }
 ```
+
+> [!IMPORTANT]
+> As of now it is not recommended for larger projects. There are quite a few limitations 
+that won't scale well beyond a fairly simple schema and a handfull of queries.
 
 #### Current Limitations
 * Since macros operate purely on the syntax, all queries must be within the `@Database` itself so it has access to the schema.
@@ -128,7 +129,8 @@ This will create all diretories needed and will create your first migration. You
 Queries.swift
 ```
 
-> 💡 Tip: Follow the SQL standard and use singular table names.
+> [!TIP]
+> Follow the SQL standard and use singular table names. This will stop table structs from being named plural
 
 #### Generating the Database
 Once you have your first migration in and the project setup you can now generate the database. In the same directory where `init` was run, you run the `gen` command.
@@ -171,7 +173,8 @@ All queries will be stored in the `/Queries` directory. More than one query can 
 feather queries add --name <some-name>
 ```
 
-> 💡 Tip: Organize queries by usage, not by table. This will become more useful later on when we talk about dependency injection.
+> [!TIP]
+> Organize queries by usage, not by table. This will become more useful later on when we talk about dependency injection.
 
 Open the file that was created in `/Queries`, it should be blank. Individual queries can be defined using the `DEFINE` keyword. At the moment queries can only have one statement.
 ```sql
