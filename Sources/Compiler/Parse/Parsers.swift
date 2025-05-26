@@ -1026,6 +1026,7 @@ enum Parsers {
         }
     }
     
+    /// https://www.sqlite.org/syntax/table-or-subquery.html
     static func tableOrSubquery(state: inout ParserState) throws -> TableOrSubquerySyntax {
         let start = state.location
         let kind: TableOrSubquerySyntax.Kind
@@ -1076,8 +1077,16 @@ enum Parsers {
                 case let .join(joinClause):
                     kind = .join(joinClause)
                 case let .tableOrSubqueries(table):
+                    // Note: The alias is not mentioned at all in the documentation.
+                    // I think this is a bug in the docs, since you can clearly add one
+                    // unless im misinterpreting the diagram which is more than possible.
+                    //
+                    // Valid SQL:
+                    // SELECT * FROM (foo, bar) AS baz;
+                    //
+                    // https://www.sqlite.org/syntax/table-or-subquery.html
                     let alias = maybeAlias(state: &state, asRequired: false)
-                    kind = .subTableOrSubqueries(table, alias: alias)
+                    kind = .tableOrSubqueries(table, alias: alias)
                 }
             }
         default:

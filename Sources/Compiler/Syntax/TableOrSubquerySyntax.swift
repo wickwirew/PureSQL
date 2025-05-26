@@ -15,7 +15,7 @@ struct TableOrSubquerySyntax: Syntax {
         case tableFunction(schema: IdentifierSyntax?, table: IdentifierSyntax, args: [ExpressionSyntax], alias: AliasSyntax?)
         case subquery(SelectStmtSyntax, alias: AliasSyntax?)
         indirect case join(JoinClauseSyntax)
-        case subTableOrSubqueries([TableOrSubquerySyntax], alias: AliasSyntax?)
+        case tableOrSubqueries([TableOrSubquerySyntax], alias: AliasSyntax?)
     }
 
     struct Table {

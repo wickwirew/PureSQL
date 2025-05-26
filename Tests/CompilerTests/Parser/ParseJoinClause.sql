@@ -86,7 +86,7 @@ foo INNER JOIN bar ON 1;
 -- CHECK:               NATURAL false
 -- CHECK:         TABLE_OR_SUBQUERY
 -- CHECK:           KIND
--- CHECK:             SUB_TABLE_OR_SUBQUERIES
+-- CHECK:             TABLE_OR_SUBQUERIES
 -- CHECK:                 TABLE_OR_SUBQUERY_SYNTAX
 -- CHECK:                   KIND
 -- CHECK:                     TABLE

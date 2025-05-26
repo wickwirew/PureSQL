@@ -849,7 +849,7 @@ extension StmtTypeChecker {
                 selectedColumns: usedColumns
             )
         case .tableFunction:
-            fatalError()
+            fatalError("Not yet implemented")
         case let .subquery(selectStmt, alias):
             let resultColumns = inNewEnvironment { inferrer in
                 inferrer.typeCheck(select: selectStmt)
@@ -867,7 +867,7 @@ extension StmtTypeChecker {
             }
         case let .join(joinClause):
             typeCheck(joinClause: joinClause)
-        case .subTableOrSubqueries:
+        case .tableOrSubqueries:
             fatalError()
         }
     }
