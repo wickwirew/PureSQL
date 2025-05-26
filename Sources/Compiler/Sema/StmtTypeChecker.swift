@@ -937,15 +937,6 @@ extension StmtTypeChecker {
     }
     
     mutating func typeCheck(createTable: CreateTableStmtSyntax) {
-        if pragmas.contains(.requireStrictTables)
-            && !createTable.options.kind.contains(.strict) {
-            diagnostics.add(.init(
-                "Missing STRICT table option",
-                at: createTable.location,
-                suggestion: .append(" STRICT")
-            ))
-        }
-        
         switch createTable.kind {
         case let .select(selectStmt):
             let signature = signature(for: selectStmt)
@@ -956,7 +947,7 @@ extension StmtTypeChecker {
                 primaryKey: primaryKey(of: createTable, columns: columns),
                 kind: .normal
             )
-        case let .columns(columnsDefs):
+        case let .columns(columnsDefs, constraints, options):
             var columns: Columns = [:]
             for (name, def) in columnsDefs {
                 columns[name.value] = typeFor(
@@ -966,13 +957,27 @@ extension StmtTypeChecker {
                 )
             }
             
-            validateTableConstraints(of: createTable, columns: columns)
+            validateTableConstraints(
+                of: createTable,
+                columns: columns,
+                constraints: constraints
+            )
+            
             schema[createTable.name.value] = Table(
                 name: createTable.name.value,
                 columns: columns,
                 primaryKey: primaryKey(of: createTable, columns: columns),
                 kind: .normal
             )
+            
+            if pragmas.contains(.requireStrictTables)
+                && !options.kind.contains(.strict) {
+                diagnostics.add(.init(
+                    "Missing STRICT table option",
+                    at: createTable.location,
+                    suggestion: .append(" STRICT")
+                ))
+            }
         }
     }
     
@@ -1138,15 +1143,15 @@ extension StmtTypeChecker {
         columns: Columns
     ) -> [Substring] {
         // Any PK define by table constraints
-        let byTableConstraints: [([IndexedColumnSyntax], TableConstraintSyntax)] = stmt.constraints
+        let byTableConstraints: [([IndexedColumnSyntax], TableConstraintSyntax)] = stmt.constraints?
             .compactMap { constraint -> ([IndexedColumnSyntax], TableConstraintSyntax)? in
                 guard case let .primaryKey(columns, _) = constraint.kind else { return nil }
                 return (columns, constraint)
-            }
+            } ?? []
         
         // Any PK defined at the column level
         let byColumnConstraints: [IdentifierSyntax]
-        if case let .columns(columns) = stmt.kind {
+        if case let .columns(columns, _, _) = stmt.kind {
             byColumnConstraints = columns.values
                 .filter{ $0.constraints.contains(where: \.isPkConstraint) }
                 .map(\.name)
@@ -1194,9 +1199,10 @@ extension StmtTypeChecker {
     
     private mutating func validateTableConstraints(
         of stmt: CreateTableStmtSyntax,
-        columns: Columns
+        columns: Columns,
+        constraints: [TableConstraintSyntax]
     ) {
-        for constraint in stmt.constraints {
+        for constraint in constraints {
             switch constraint.kind {
             case .check(let expr):
                 inNewEnvironment { typeChecker in

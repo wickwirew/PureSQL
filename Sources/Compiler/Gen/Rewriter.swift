@@ -108,7 +108,7 @@ struct Rewriter {
 extension Rewriter: StmtSyntaxVisitor {
     func visit(_ stmt: borrowing CreateTableStmtSyntax) -> [Range<Substring.Index>] {
         switch stmt.kind {
-        case .columns(let columns):
+        case .columns(let columns, _, _):
             return columns.values.compactMap { $0.type.alias?.location.range }
         case .select:
             return []

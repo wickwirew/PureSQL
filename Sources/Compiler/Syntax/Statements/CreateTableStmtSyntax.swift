@@ -14,15 +14,23 @@ struct CreateTableStmtSyntax: StmtSyntax {
     let isTemporary: Bool
     let onlyIfExists: Bool
     let kind: Kind
-    let constraints: [TableConstraintSyntax]
-    let options: TableOptionsSyntax
     let location: SourceLocation
 
     typealias Columns = OrderedDictionary<IdentifierSyntax, ColumnDefSyntax>
     
+    var constraints: [TableConstraintSyntax]? {
+        guard case let .columns(_, constraints, _) = kind else { return nil }
+        return constraints
+    }
+    
+    var options: TableOptionsSyntax? {
+        guard case let .columns(_, _, options) = kind else { return nil }
+        return options
+    }
+    
     enum Kind {
         case select(SelectStmtSyntax)
-        case columns(Columns)
+        case columns(Columns, constraints: [TableConstraintSyntax], options: TableOptionsSyntax)
     }
 
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {

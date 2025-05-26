@@ -40,9 +40,9 @@ PRAGMA feather_require_strict_tables = TRUE;
 -- CHECK:   PRIMARY_KEY
 -- CHECK:     foo
 -- CHECK:   KIND normal
--- CHECK-ERROR: Missing STRICT table option
 -- CHECK-ERROR: Invalid type 'DECIMAL'
 -- CHECK-ERROR: Column 'bar' does not exist
+-- CHECK-ERROR: Missing STRICT table option
 CREATE TABLE baz (
     foo DECIMAL,
     PRIMARY KEY (foo, bar)
@@ -139,3 +139,13 @@ CREATE TABLE hasTableCheck (
     FOREIGN KEY (typo) REFERENCES doesNotExist (meh),
     FOREIGN KEY (foo) REFERENCES hasGenerated (foo)
 ) STRICT;
+
+-- CHECK: TABLE
+-- CHECK:   NAME fromSelect
+-- CHECK:   COLUMNS
+-- CHECK:       KEY bar
+-- CHECK:       VALUE INTEGER
+-- CHECK:       KEY baz
+-- CHECK:       VALUE TEXT?
+-- CHECK:   KIND normal
+CREATE TABLE fromSelect AS SELECT * FROM foo;

@@ -963,7 +963,7 @@ enum Parsers {
     }
     
     static func windowDef(state: inout ParserState) -> WindowDefinitionSyntax {
-        fatalError("TODO")
+        fatalError("Not yet implemented")
     }
     
     enum JoinClauseOrTableOrSubqueries {
@@ -1294,12 +1294,20 @@ enum Parsers {
         state.consume(.table)
         
         let ifNotExists = ifNotExists(state: &state)
+        let (schema, table) = tableAndSchemaName(state: &state)
         
-        if state.is(of: .as) {
-            fatalError("Implement SELECT statement")
+        if state.take(if: .as) {
+            let select = try selectStmt(state: &state)
+            return CreateTableStmtSyntax(
+                id: state.nextId(),
+                name: table,
+                schemaName: schema,
+                isTemporary: isTemporary,
+                onlyIfExists: ifNotExists,
+                kind: .select(select),
+                location: create.location.spanning(state.current.location)
+            )
         } else {
-            let (schema, table) = tableAndSchemaName(state: &state)
-            
             let (columns, constraints) = try parens(state: &state) { state in
                 let columns = try createTableStmtColumns(state: &state)
                 let constraints = try tableConstraints(state: &state)
@@ -1314,9 +1322,7 @@ enum Parsers {
                 schemaName: schema,
                 isTemporary: isTemporary,
                 onlyIfExists: ifNotExists,
-                kind: .columns(columns),
-                constraints: constraints,
-                options: options,
+                kind: .columns(columns, constraints: constraints, options: options),
                 location: create.location.spanning(state.current.location)
             )
         }
