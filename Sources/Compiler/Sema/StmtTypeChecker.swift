@@ -708,16 +708,28 @@ extension StmtTypeChecker {
         }
     }
     
+    /// Type checks a `WHERE` expression
     private mutating func typeCheck(where expr: ExpressionSyntax) {
         let (type, _) = typeCheck(expr)
+        // Needs to return an `INTEGER` e.g. boolean
         inferenceState.unify(type, with: .integer, at: expr.location)
     }
     
+    /// Type checks and calculates the returned columns from a `SELECT` stmt.
+    ///
+    /// Note: This is going to do a little extra than just infer the column names
+    /// and types. It will try to chunk them out by table. So if the user does
+    /// a query like `SELECT foo.*, bar.*` we can embed the fact that they
+    /// selected all columns from foo and bar so the table structs can be embded
+    /// within the output type.
     private mutating func typeCheck(resultColumns: [ResultColumnSyntax]) -> ResultColumns {
         var columns: OrderedDictionary<Substring, Type> = [:]
         var table: Substring?
+        // Each chunk is either a list of specifically listed columns
+        // or a select all of a table.
         var chunks: [ResultColumns.Chunk] = []
         
+        // Breaks off the current columns into a chunk then starts a new one.
         func breakOffCurrentChunkIfNeeded() {
             guard !columns.isEmpty else { return }
             

@@ -36,23 +36,6 @@ public struct Diagnostics {
         copy.merge(diagnostics)
         return copy
     }
-    
-    public mutating func throwing(_ diagnostic: Diagnostic) throws {
-        elements.append(diagnostic)
-        throw diagnostic
-    }
-    
-    public mutating func trying<Output>(
-        _ action: () throws -> Output,
-        at location: SourceLocation
-    ) -> Output? {
-        do {
-            return try action()
-        } catch {
-            add(.init("\(error)", at: location))
-            return nil
-        }
-    }
 }
 
 extension Diagnostics: Sequence {

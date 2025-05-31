@@ -187,10 +187,13 @@ public struct TypeVariable: Hashable, CustomStringConvertible, ExpressibleByInte
     /// What kind or group this type variable belongs too.
     let kind: Kind
     
-    /// There are different type of type variables.
+    /// There are different types of type variables.
     /// Each are spawned from different usages.
+    ///
+    /// Having a kind with a type variable allows us to delay unification
+    /// with a concrete type till we have more info.
     enum Kind: Int, Equatable, Comparable {
-        /// `general` is any type variable that does not fall into the above
+        /// `general` is any type variable that does not fall into the below
         case general = 0
         /// `integer` is any type variable from an integer literal e.g. `0`
         case integer = 1

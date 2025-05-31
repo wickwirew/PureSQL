@@ -42,10 +42,15 @@ extension Columns {
     }
 }
 
+/// A table within the database schema
 public struct Table: Sendable {
+    /// The name of the table
     public var name: Substring
+    /// The columns of the table
     public var columns: Columns
+    /// The columns that make up the primary key
     public let primaryKey: [Substring]
+    /// What kind of table it is (FTS/CTE...)
     public let kind: Kind
     
     public enum Kind: Sendable {
@@ -60,6 +65,7 @@ public struct Table: Sendable {
     }
 }
 
+/// A trigger to be run on certain SQL operations
 public struct Trigger {
     /// The name of the trigger
     public let name: Substring
@@ -69,7 +75,10 @@ public struct Trigger {
     public let usedTables: Set<Substring>
 }
 
+/// An index created within the schema
 public struct Index {
+    /// The name given too the index
     public let name: Substring
+    /// The name of the table the index was created for.
     public let table: Substring
 }

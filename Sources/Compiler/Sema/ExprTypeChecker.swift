@@ -98,7 +98,6 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
                 return inferenceState.errorType(for: expr)
             }
             
-            // TODO: Maybe put this in the scheme instantiation?
             if result.isAmbiguous {
                 diagnostics.add(.ambiguous(tableName.value, at: tableName.location))
             }
@@ -146,7 +145,6 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
                     return inferenceState.errorType(for: expr)
                 }
                 
-                // TODO: Maybe put this in the scheme instantiation?
                 if result.isAmbiguous {
                     diagnostics.add(.ambiguous(column.value, at: column.location))
                 }
@@ -192,7 +190,11 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         
         let tv = inferenceState.freshTyVar(for: expr)
         let fnType = inferenceState.instantiate(scheme)
-        inferenceState.unify(fnType, with: .fn(params: [inferenceState.solution(for: lTy), rTy], ret: tv), at: expr.location)
+        inferenceState.unify(
+            fnType,
+            with: .fn(params: [inferenceState.solution(for: lTy), rTy], ret: tv),
+            at: expr.location
+        )
         return inferenceState.solution(for: tv)
     }
     
