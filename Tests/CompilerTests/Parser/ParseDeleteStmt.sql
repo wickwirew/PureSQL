@@ -1,14 +1,12 @@
 -- CHECK: DELETE_STMT_SYNTAX
 -- CHECK:   TABLE
 -- CHECK:     TABLE_NAME
--- CHECK:       SCHEMA main
 -- CHECK:       NAME user
 DELETE FROM user;
 
 -- CHECK: DELETE_STMT_SYNTAX
 -- CHECK:   TABLE
 -- CHECK:     TABLE_NAME
--- CHECK:       SCHEMA main
 -- CHECK:       NAME user
 -- CHECK:   WHERE_EXPR
 -- CHECK:     INFIX
@@ -23,7 +21,6 @@ DELETE FROM user WHERE id = ?;
 -- CHECK: DELETE_STMT_SYNTAX
 -- CHECK:   TABLE
 -- CHECK:     TABLE_NAME
--- CHECK:       SCHEMA main
 -- CHECK:       NAME user
 -- CHECK:   WHERE_EXPR
 -- CHECK:     INFIX

@@ -5,102 +5,109 @@
 //  Created by Wes Wickwire on 11/4/24.
 //
 
-import OrderedCollections
-
 /// The environment for which every query and statement is
 /// type checked against as well as any other static analysis.
 struct Environment {
-    private var identifiers: OrderedDictionary<Substring, TypeContainer> = [:]
+    /// Any tables that are imported into the environment.
+    var importedTables: DuplicateDictionary<QualifiedTableName, ImportedTable> = [:]
+    /// Detached values are all of the columns but detached from under their
+    /// table. Also any defined column that is inserted without a table is
+    /// in here as well. As well as the table themselves which allows
+    /// them to be used in a `IN` and `MATCH` statements
+    var detachedValues: DuplicateDictionary<Substring, Type> = [:]
     
-    /// Holds the type in the map.
-    struct TypeContainer {
-        let type: Type
-        /// We need to track ambiguous items. We could store
-        /// each as an array but that seems like a bad idea due to
-        /// the number of allocations that would add.
-        ///
-        /// This just allows us to store the flag right with the type.
-        ///
-        /// Is flipped to `true` when the same name is inserted into
-        /// the environment twice or more.
-        let isAmbiguous: Bool
-        /// A value inserted into the environment that should only be
-        /// available by direct access via name.
-        /// The value will not be included when iterating over every
-        /// value in the environment.
-        ///
-        /// Used for inserting a column into the environment that wasnt
-        /// selected explicitly. Meaning it wont end up as a result column.
-        /// Also useful for FTS tables. The `rank` column is available
-        /// during a query. However if they do a `SELECT *` it should
-        /// not be included into the result columns
-        let explicitAccessOnly: Bool
-        /// Whether or not this value is inherited from a parent environment.
-        /// In a subquery we inherit the values from the parent environment
-        /// but with the caveat that they are overridable and won't be consider
-        /// ambiguous if something was inserted with the same name.
-        let isFromParent: Bool
-    }
-    
-    init() {}
-    
-    private init(identifiers: OrderedDictionary<Substring, TypeContainer>) {
-        self.identifiers = identifiers
-    }
+    @Indirect private var parent: Environment?
 
-    /// Inserts or updates the type for the given name
-    mutating func upsert(_ name: Substring, ty: Type, explicitAccessOnly: Bool = false) {
-        identifiers[name] = TypeContainer(
-            type: ty,
-            isAmbiguous: false,
-            explicitAccessOnly: explicitAccessOnly,
-            isFromParent: false
-        )
-    }
-    
-    /// Inserts the type for the given name. If the name
-    /// already exists it will be marked as ambiguous
-    mutating func insert(_ name: Substring, ty: Type, explicitAccessOnly: Bool = false) {
-        // If it already exists, mark it as ambiguous except for the case
-        // where its from a parent environment.
-        if let existing = identifiers[name], !existing.isFromParent {
-            identifiers[name] = TypeContainer(
-                type: existing.type,
-                isAmbiguous: true,
-                explicitAccessOnly: explicitAccessOnly,
-                isFromParent: false
-            )
-        } else {
-            identifiers[name] = TypeContainer(
-                type: ty,
-                isAmbiguous: false,
-                explicitAccessOnly: explicitAccessOnly,
-                isFromParent: false
-            )
+    /// A result type for a lookup/resolve. We cannot use
+    /// `Result<T, E>` or a `try` due to there being two
+    /// "success" cases `success` and `ambiguous`.
+    enum LookupResult<Value: Equatable>: Equatable {
+        /// Found a valid type for the lookup
+        case success(Value)
+        /// Found a type, but it exists many times
+        /// in the environment and is ambiguous on
+        /// which one to use.
+        case ambiguous(Value)
+        /// No column in the environment exists
+        case columnDoesNotExist(Substring)
+        /// No table in the environment exists
+        case tableDoesNotExist(Substring)
+        /// No schema in the environment exists
+        case schemaDoesNotExist(Substring)
+        
+        init(_ value: Value, isAmbiguous: Bool) {
+            if isAmbiguous {
+                self = .ambiguous(value)
+            } else {
+                self = .success(value)
+            }
+        }
+        
+        var value: Value? {
+            switch self {
+            case .success(let value): value
+            case .ambiguous(let value): value
+            case .columnDoesNotExist, .tableDoesNotExist, .schemaDoesNotExist: nil
+            }
+        }
+        
+        /// Tranforms the wrapped value.
+        func map<T>(_ transform: (Value) throws -> T) rethrows -> LookupResult<T> {
+            switch self {
+            case .success(let value): try .success(transform(value))
+            case .ambiguous(let value): try .ambiguous(transform(value))
+            case .columnDoesNotExist(let name): .columnDoesNotExist(name)
+            case .tableDoesNotExist(let name): .tableDoesNotExist(name)
+            case .schemaDoesNotExist(let name): .schemaDoesNotExist(name)
+            }
+        }
+        
+        /// Tranforms the wrapped value.
+        func mapValue<T>(_ transform: (Value) throws -> LookupResult<T>) rethrows -> LookupResult<T> {
+            switch self {
+            case .success(let value): try transform(value)
+            case .ambiguous(let value): try transform(value)
+            case .columnDoesNotExist(let name): .columnDoesNotExist(name)
+            case .tableDoesNotExist(let name): .tableDoesNotExist(name)
+            case .schemaDoesNotExist(let name): .schemaDoesNotExist(name)
+            }
         }
     }
     
-    /// Returns a copy of `self` but with all identifiers in the environment
-    /// as overridable since they are from a parent environment.
-    func asParent() -> Environment {
-        return Environment(identifiers: identifiers.mapValues { container in
-            TypeContainer(
-                type: container.type,
-                isAmbiguous: container.isAmbiguous,
-                explicitAccessOnly: container.explicitAccessOnly,
-                isFromParent: true
-            )
-        })
+    /// A table that has been imported with any addition
+    /// metadata we need about the table
+    struct ImportedTable: Equatable {
+        /// The imported table.
+        let table: Table
+        /// Some tables bring in extra columns that are not
+        /// defined on the table like an `FTS` table bringing
+        /// in `rank`. Those can be stored here so the table
+        /// can remain intact.
+        let additionalColumns: Columns?
     }
     
-    mutating func rename(_ key: Substring, to newValue: Substring) {
-        guard let value = identifiers[key] else { return }
-        identifiers[key] = nil
-        identifiers[newValue] = value
+    init(parent: Environment? = nil) {
+        self.detachedValues.reserveCapacity(20)
+        self.parent = parent
     }
     
-    subscript(_ key: Substring) -> TypeContainer? {
-        return identifiers[key]
+    /// All columns in the environment and their name
+    var allColumns: [(Substring, Type)] {
+        detachedValues.map { ($0.key, $0.value) }
+    }
+    
+    /// All columns types in the environment
+    var allColumnTypes: [Type] {
+        Array(detachedValues.values)
+    }
+    
+    /// All table that have been imported into the environment
+    var allImportedTables: [Table] {
+        return importedTables.map(\.value.table)
+    }
+    
+    func hasColumn(named: Substring) -> Bool {
+        return detachedValues[named].count > 0
     }
     
     subscript(function name: Substring, argCount argCount: Int) -> TypeScheme? {
@@ -163,24 +170,177 @@ struct Environment {
     }
 }
 
-extension Environment: CustomStringConvertible {
-    var description: String {
-        return self.identifiers.map { "\($0.key): \($0.value)" }.joined(separator: "\n")
-    }
-}
-
-extension Environment: Sequence {
-    func makeIterator() -> Iterator {
-        return Iterator(inner: identifiers.makeIterator())
+extension Environment {
+    /// Imports the table into the environment.
+    /// If `isOptional` is true all columns types will be
+    /// forced to their optional value.
+    mutating func `import`(
+        table: Table,
+        isOptional: Bool
+    ) {
+        let importedTable = ImportedTable(
+            table: isOptional ? table.mapTypes { $0.coerceToOptional() } : table,
+            additionalColumns: table.kind == .fts5 ? ["rank": .real] : nil
+        )
+        
+        importedTables.append(importedTable, for: table.name)
+        
+        // Insert the tables type as well so it can be used like a column
+        // in `MATCH` and `IN` statements.
+        insert(detached: table.name.name, type: table.type, isOptional: false)
+        
+        for (column, type) in table.columns {
+            insert(detached: column, type: type, isOptional: isOptional)
+        }
+        
+        if let additionalColumns = importedTable.additionalColumns {
+            for (column, type) in additionalColumns {
+                insert(detached: column, type: type, isOptional: isOptional)
+            }
+        }
     }
     
-    struct Iterator: IteratorProtocol {
-        var inner: OrderedDictionary<Substring, Environment.TypeContainer>.Iterator
+    /// Imports all columns into the environment
+    mutating func `import`(columns: Columns) {
+        for (column, type) in columns {
+            insert(detached: column, type: type, isOptional: false)
+        }
+    }
+    
+    /// Imports a single column into the environment.
+    mutating func `import`(column: Substring, with type: Type) {
+        insert(detached: column, type: type, isOptional: false)
+    }
+    
+    /// Resolves the table for the given name and schema
+    func resolve(table: Substring, schema: Substring?) -> LookupResult<Table> {
+        resolveImported(table: table, schema: schema).map(\.table)
+    }
+    
+    /// Resolves the type of the column based off the
+    /// column, table and schema names provided
+    func resolve(
+        column: Substring,
+        table: Substring?,
+        schema: Substring?
+    ) -> LookupResult<Type> {
+        if let table {
+            if let schema {
+                /// Fully qualified schema.table.column
+                return resolveImported(table: table, schema: schema)
+                    .mapValue { table in
+                        resolve(column: column, in: table)
+                    }
+            } else {
+                /// Only have the table, need to figure out which
+                /// table it is first.
+                return resolveImported(table: table)
+                    .mapValue { table in
+                        resolve(column: column, in: table)
+                    }
+            }
+        } else {
+            /// Only have column, lookup in detached for simplicity
+            let entries = detachedValues[column]
+            
+            guard let column = entries.first else {
+                return parent?.resolve(column: column, table: table, schema: schema)
+                    ?? .columnDoesNotExist(column)
+            }
+            
+            let isAmbiguous = entries.count > 1
+            
+            // If its ambiguous make sure to still return the type
+            // but alert the caller there is an error.
+            if isAmbiguous {
+                return .ambiguous(column)
+            } else {
+                return .success(column)
+            }
+        }
+    }
+    
+    /// Looks up the column for the given name in the imported table.
+    /// If `forceAmbiguous` is `true` then if found it will be `.ambiguous(Type)`
+    private func resolve(
+        column: Substring,
+        in importedTable: ImportedTable,
+        forceAmbiguous: Bool = false
+    ) -> LookupResult<Type> {
+        if let column = importedTable.table.columns[column] {
+            return LookupResult(column, isAmbiguous: forceAmbiguous)
+        }
         
-        mutating func next() -> (Substring, Type)? {
-            guard let value = inner.next() else { return nil }
-            guard !value.value.explicitAccessOnly else { return next() }
-            return (value.key, value.value.type)
+        guard let column = importedTable.additionalColumns?[column] else {
+            // If the table does not have it the parent won't either
+            return .columnDoesNotExist(column)
+        }
+        
+        return LookupResult(column, isAmbiguous: forceAmbiguous)
+    }
+    
+    /// Inserts a type into the map of detached values.
+    /// If `isOptional` the type will be forced to optional.
+    private mutating func insert(
+        detached: Substring,
+        type: Type,
+        isOptional: Bool
+    ) {
+        // If the type is already optional no need to force it to T?? since
+        // it means nothing to SQLite.
+        let type: Type = isOptional ? type.coerceToOptional() : type
+        detachedValues.append(type, for: detached)
+    }
+    
+    /// Looks up a table that does not have a schema defined. Applies SQLites
+    /// precedence orders to make sure the correc table is returned.
+    private func resolveImported(table: Substring) -> LookupResult<ImportedTable> {
+        // No schema means it was a CTE or aliased subquery which should take precedence
+        let noSchemaEntries = importedTables[QualifiedTableName(name: table, schema: nil)]
+        if let importedTable = noSchemaEntries.first {
+            return LookupResult(importedTable, isAmbiguous: noSchemaEntries.count > 1)
+        }
+        
+        // SQLite actually lets `temp` take precedence over `main` so we need to check it first.
+        let tempEntries = importedTables[QualifiedTableName(name: table, schema: .temp)]
+        if let importedTable = tempEntries.first {
+            return LookupResult(importedTable, isAmbiguous: tempEntries.count > 1)
+        }
+        
+        let mainEntries = importedTables[QualifiedTableName(name: table, schema: .main)]
+        if let importedTable = mainEntries.first {
+            return LookupResult(importedTable, isAmbiguous: mainEntries.count > 1)
+        }
+        
+        return parent?.resolveImported(table: table) ?? .tableDoesNotExist(table)
+    }
+    
+    private func resolveImported(
+        table: Substring,
+        schema: Substring?
+    ) -> LookupResult<ImportedTable> {
+        guard let schema else {
+            return resolveImported(table: table)
+        }
+        
+        guard let schemaName = SchemaName(schema) else {
+            return .schemaDoesNotExist(schema)
+        }
+        
+        let qualifiedName = QualifiedTableName(name: table, schema: schemaName)
+        let entries = importedTables[qualifiedName]
+        
+        guard let importedTable = entries.first else {
+            return parent?.resolveImported(table: table, schema: schema)
+                ?? .tableDoesNotExist(table)
+        }
+        
+        let isAmbiguous = entries.count > 1
+        
+        if isAmbiguous {
+            return .ambiguous(importedTable)
+        } else {
+            return .success(importedTable)
         }
     }
 }

@@ -19,7 +19,7 @@ DROP TRIGGER doesNotExist;
 
 DROP TRIGGER IF EXISTS doesNotExistButItDoesntMatter;
 
--- CHECK-ERROR: Table referenced in statements of trigger 'fooUpdate'
+-- CHECK-ERROR: Table referenced in statements of trigger 'main.fooUpdate'
 DROP TABLE baz;
 
 DROP TABLE foo;

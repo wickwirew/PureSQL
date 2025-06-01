@@ -1,7 +1,6 @@
 -- CHECK: UPDATE_STMT_SYNTAX
 -- CHECK:   TABLE_NAME
 -- CHECK:     TABLE_NAME
--- CHECK:       SCHEMA main
 -- CHECK:       NAME foo
 -- CHECK:   SETS
 -- CHECK:     SET_ACTION_SYNTAX
@@ -20,25 +19,23 @@ UPDATE foo SET bar = 1;
 -- CHECK:         MATERIALIZED false
 -- CHECK:         SELECT
 -- CHECK:           SELECTS
--- CHECK:             VALUE
--- CHECK:               SINGLE
--- CHECK:                 SELECT
--- CHECK:                   DISTINCT false
--- CHECK:                   COLUMNS
--- CHECK:                     RESULT_COLUMN_SYNTAX
+-- CHECK:             SINGLE
+-- CHECK:               SELECT
+-- CHECK:                 DISTINCT false
+-- CHECK:                 COLUMNS
+-- CHECK:                   RESULT_COLUMN_SYNTAX
+-- CHECK:                     KIND
+-- CHECK:                       EXPR
+-- CHECK:                           COLUMN
+-- CHECK:                             COLUMN foo
+-- CHECK:                 FROM
+-- CHECK:                   JOIN
+-- CHECK:                     TABLE_OR_SUBQUERY
 -- CHECK:                       KIND
--- CHECK:                         EXPR
--- CHECK:                             COLUMN
--- CHECK:                               COLUMN foo
--- CHECK:                   FROM
--- CHECK:                     JOIN
--- CHECK:                       TABLE_OR_SUBQUERY
--- CHECK:                         KIND
--- CHECK:                           TABLE
--- CHECK:                             NAME bar
+-- CHECK:                         TABLE
+-- CHECK:                           NAME bar
 -- CHECK:   TABLE_NAME
 -- CHECK:     TABLE_NAME
--- CHECK:       SCHEMA main
 -- CHECK:       NAME foo
 -- CHECK:   SETS
 -- CHECK:     SET_ACTION_SYNTAX

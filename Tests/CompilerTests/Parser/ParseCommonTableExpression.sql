@@ -6,18 +6,17 @@
 -- CHECK:   MATERIALIZED false
 -- CHECK:   SELECT
 -- CHECK:     SELECTS
--- CHECK:       VALUE
--- CHECK:         SINGLE
--- CHECK:           SELECT
--- CHECK:             DISTINCT false
--- CHECK:             COLUMNS
--- CHECK:               RESULT_COLUMN_SYNTAX
+-- CHECK:       SINGLE
+-- CHECK:         SELECT
+-- CHECK:           DISTINCT false
+-- CHECK:           COLUMNS
+-- CHECK:             RESULT_COLUMN_SYNTAX
+-- CHECK:               KIND
+-- CHECK:                 ALL
+-- CHECK:           FROM
+-- CHECK:             JOIN
+-- CHECK:               TABLE_OR_SUBQUERY
 -- CHECK:                 KIND
--- CHECK:                   ALL
--- CHECK:             FROM
--- CHECK:               JOIN
--- CHECK:                 TABLE_OR_SUBQUERY
--- CHECK:                   KIND
--- CHECK:                     TABLE
--- CHECK:                       NAME bar
+-- CHECK:                   TABLE
+-- CHECK:                     NAME bar
 foo (id, name) AS (SELECT * FROM bar);

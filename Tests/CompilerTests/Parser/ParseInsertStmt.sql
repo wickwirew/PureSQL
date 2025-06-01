@@ -3,7 +3,6 @@
 -- CHECK:     KIND
 -- CHECK:       INSERT
 -- CHECK:   TABLE_NAME
--- CHECK:     SCHEMA main
 -- CHECK:     NAME foo
 -- CHECK:   COLUMNS
 -- CHECK:     bar
@@ -11,42 +10,39 @@
 -- CHECK:   VALUES
 -- CHECK:     SELECT
 -- CHECK:       SELECTS
--- CHECK:         VALUE
--- CHECK:           SINGLE
--- CHECK:             VALUES
--- CHECK:               EXPRESSION_SYNTAX
--- CHECK:                 LITERAL 1.0
--- CHECK:               EXPRESSION_SYNTAX
--- CHECK:                 LITERAL 'two'
+-- CHECK:         SINGLE
+-- CHECK:           VALUES
+-- CHECK:             EXPRESSION_SYNTAX
+-- CHECK:               LITERAL 1.0
+-- CHECK:             EXPRESSION_SYNTAX
+-- CHECK:               LITERAL 'two'
 INSERT INTO foo (bar, baz) VALUES (1, 'two');
 
 -- CHECK: INSERT_STMT_SYNTAX
 -- CHECK:   ACTION
 -- CHECK:     KIND replace
 -- CHECK:   TABLE_NAME
--- CHECK:     SCHEMA main
 -- CHECK:     NAME foo
 -- CHECK:   COLUMNS
 -- CHECK:     bar
 -- CHECK:   VALUES
 -- CHECK:     SELECT
 -- CHECK:       SELECTS
--- CHECK:         VALUE
--- CHECK:           SINGLE
--- CHECK:             SELECT
--- CHECK:               DISTINCT false
--- CHECK:               COLUMNS
--- CHECK:                 RESULT_COLUMN_SYNTAX
+-- CHECK:         SINGLE
+-- CHECK:           SELECT
+-- CHECK:             DISTINCT false
+-- CHECK:             COLUMNS
+-- CHECK:               RESULT_COLUMN_SYNTAX
+-- CHECK:                 KIND
+-- CHECK:                   EXPR
+-- CHECK:                       COLUMN
+-- CHECK:                         COLUMN baz
+-- CHECK:             FROM
+-- CHECK:               JOIN
+-- CHECK:                 TABLE_OR_SUBQUERY
 -- CHECK:                   KIND
--- CHECK:                     EXPR
--- CHECK:                         COLUMN
--- CHECK:                           COLUMN baz
--- CHECK:               FROM
--- CHECK:                 JOIN
--- CHECK:                   TABLE_OR_SUBQUERY
--- CHECK:                     KIND
--- CHECK:                       TABLE
--- CHECK:                         NAME qux
+-- CHECK:                     TABLE
+-- CHECK:                       NAME qux
 -- CHECK:   RETURNING_CLAUSE
 -- CHECK:     VALUES
 -- CHECK:       VALUE
@@ -65,28 +61,26 @@ REPLACE INTO foo (bar) SELECT baz FROM qux RETURNING bar;
 -- CHECK:         MATERIALIZED false
 -- CHECK:         SELECT
 -- CHECK:           SELECTS
--- CHECK:             VALUE
--- CHECK:               SINGLE
--- CHECK:                 SELECT
--- CHECK:                   DISTINCT false
--- CHECK:                   COLUMNS
--- CHECK:                     RESULT_COLUMN_SYNTAX
+-- CHECK:             SINGLE
+-- CHECK:               SELECT
+-- CHECK:                 DISTINCT false
+-- CHECK:                 COLUMNS
+-- CHECK:                   RESULT_COLUMN_SYNTAX
+-- CHECK:                     KIND
+-- CHECK:                       EXPR
+-- CHECK:                           COLUMN
+-- CHECK:                             COLUMN bar
+-- CHECK:                 FROM
+-- CHECK:                   JOIN
+-- CHECK:                     TABLE_OR_SUBQUERY
 -- CHECK:                       KIND
--- CHECK:                         EXPR
--- CHECK:                             COLUMN
--- CHECK:                               COLUMN bar
--- CHECK:                   FROM
--- CHECK:                     JOIN
--- CHECK:                       TABLE_OR_SUBQUERY
--- CHECK:                         KIND
--- CHECK:                           TABLE
--- CHECK:                             NAME baz
+-- CHECK:                         TABLE
+-- CHECK:                           NAME baz
 -- CHECK:   ACTION
 -- CHECK:     KIND
 -- CHECK:       INSERT
 -- CHECK:         KIND replace
 -- CHECK:   TABLE_NAME
--- CHECK:     SCHEMA main
 -- CHECK:     NAME user
 WITH RECURSIVE foo AS (SELECT bar FROM baz)
 INSERT OR REPLACE INTO user DEFAULT VALUES;

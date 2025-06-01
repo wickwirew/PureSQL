@@ -6,15 +6,30 @@
 //
 
 @dynamicMemberLookup
+@propertyWrapper
 final class Indirect<Wrapped> {
-    var value: Wrapped
+    var wrappedValue: Wrapped
 
-    init(_ value: Wrapped) {
-        self.value = value
+    init(_ wrappedValue: Wrapped) {
+        self.wrappedValue = wrappedValue
+    }
+    
+    init(wrappedValue: Wrapped) {
+        self.wrappedValue = wrappedValue
+    }
+    
+    var value: Wrapped {
+        self.wrappedValue
     }
 
     subscript<T>(dynamicMember keyPath: KeyPath<Wrapped, T>) -> T {
         return value[keyPath: keyPath]
+    }
+}
+
+extension Indirect: CustomReflectable {
+    var customMirror: Mirror {
+        Mirror(reflecting: wrappedValue)
     }
 }
 

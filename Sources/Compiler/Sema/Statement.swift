@@ -131,7 +131,7 @@ public struct ResultColumns: Sendable {
     
     /// The columns as a row type.
     public var type: Type {
-        return .row(.named(allColumns))
+        return .row(.fixed(allColumns.map(\.value)))
     }
     
     /// Whether or not there are any columns returned

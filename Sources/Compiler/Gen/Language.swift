@@ -65,14 +65,14 @@ extension Language {
         tables: [GeneratedModel],
         queries: [(String?, [GeneratedQuery])]
     ) {
-        let tables = schema.tables.mapValues(model(for:))
+        let tables = Dictionary(schema.tables.map { ($0.key.name, model(for: $0.value)) }, uniquingKeysWith: { $1 })
         let queries = queries.map { ($0.map { "\($0)Queries" }, $1.map{ query(for: $0, tables: tables) }) }
         return (Array(tables.values), queries)
     }
     
     private static func query(
         for statement: Statement,
-        tables: OrderedDictionary<Substring, GeneratedModel>
+        tables: [Substring: GeneratedModel]
     ) -> GeneratedQuery {
         guard let definition = statement.definition else {
             fatalError("Upstream error should have caught this")
@@ -115,7 +115,7 @@ extension Language {
     
     private static func model(for table: Table) -> GeneratedModel {
         GeneratedModel(
-            name: table.name.capitalizedFirst,
+            name: table.name.name.capitalizedFirst,
             fields: table.columns.reduce(into: [:]) { fields, column in
                 let name = column.key.description
                 let type = column.value
@@ -178,7 +178,7 @@ extension Language {
     private static func outputTypeIfNeeded(
         statement: Statement,
         definition: Definition,
-        tables: OrderedDictionary<Substring, GeneratedModel>
+        tables: [Substring: GeneratedModel]
     ) -> BuiltinOrGenerated? {
         guard let firstResultColumns = statement.resultColumns.chunks.first else { return nil }
         

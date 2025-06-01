@@ -80,13 +80,6 @@ extension Diagnostic {
         )
     }
     
-    static func tableDoesNotExist(_ identifier: IdentifierSyntax) -> Diagnostic {
-        Diagnostic(
-            "Table '\(identifier)' does not exist",
-            at: identifier.location
-        )
-    }
-    
     static func tableAlreadyExists(_ identifier: IdentifierSyntax) -> Diagnostic {
         Diagnostic(
             "Table '\(identifier)' already exists",
@@ -94,11 +87,37 @@ extension Diagnostic {
         )
     }
     
-    static func columnDoesNotExist(_ identifier: IdentifierSyntax) -> Diagnostic {
+    static func tableDoesNotExist(_ table: Substring, at location: SourceLocation) -> Diagnostic {
         Diagnostic(
-            "Column '\(identifier)' does not exist",
-            at: identifier.location
+            "Table '\(table)' does not exist",
+            at: location
         )
+    }
+    
+    static func tableDoesNotExist(_ identifier: IdentifierSyntax) -> Diagnostic {
+        .tableDoesNotExist(identifier.value, at: identifier.location)
+    }
+    
+    static func columnDoesNotExist(_ column: Substring, at location: SourceLocation) -> Diagnostic {
+        Diagnostic(
+            "Column '\(column)' does not exist",
+            at: location
+        )
+    }
+    
+    static func columnDoesNotExist(_ identifier: IdentifierSyntax) -> Diagnostic {
+        .columnDoesNotExist(identifier.value, at: identifier.location)
+    }
+    
+    static func schemaDoesNotExist(_ schema: Substring, at location: SourceLocation) -> Diagnostic {
+        Diagnostic(
+            "Schema '\(schema)' does not exist",
+            at: location
+        )
+    }
+    
+    static func schemaDoesNotExist(_ identifier: IdentifierSyntax) -> Diagnostic {
+        .schemaDoesNotExist(identifier.value, at: identifier.location)
     }
     
     static func unexpectedToken(

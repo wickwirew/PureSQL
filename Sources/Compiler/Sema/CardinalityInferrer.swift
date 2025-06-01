@@ -31,6 +31,13 @@ struct CardinalityInferrer {
         let didFilterByPrimaryKey = !table.primaryKey.contains{ !filteredPrimaryKeys.contains($0) }
         return didFilterByPrimaryKey ? .single : .many
     }
+    
+    private func qualifiedName(
+        for name: IdentifierSyntax,
+        in schema: IdentifierSyntax?
+    ) -> QualifiedTableName {
+        return QualifiedTableName(name: name.value, schema: schema?.value)
+    }
 }
 
 /// Returns `true` if the query/statement will only return one value.
@@ -49,7 +56,9 @@ extension CardinalityInferrer: StmtSyntaxVisitor {
         // No filtering, update is to full table
         guard let whereExpr = stmt.whereExpr else { return .many }
         
-        guard let table = schema[stmt.tableName.tableName.name.value] else {
+        let tableName = qualifiedName(for: stmt.tableName.tableName.name, in: stmt.tableName.tableName.schema)
+        
+        guard let table = schema[tableName] else {
             // Upstream will have emitted diag
             return .many
         }
@@ -86,9 +95,11 @@ extension CardinalityInferrer: StmtSyntaxVisitor {
                 // If its not against a table we cannot infer it.
                 guard case let .table(table) = join.tableOrSubquery.kind else { return .many }
                 
+                let tableName = qualifiedName(for: table.name, in: table.schema)
+                
                 // If we cannot find the table something upstream will have already emitted
                 // diagnositic so just exit
-                guard let t = schema[table.name.value] else { return .many }
+                guard let t = schema[tableName] else { return .many }
                 
                 // If they had filtering on all primary keys we can assume a single
                 // result will be returned.
@@ -113,7 +124,9 @@ extension CardinalityInferrer: StmtSyntaxVisitor {
     mutating func visit(_ stmt: borrowing DeleteStmtSyntax) -> Cardinality {
         guard let filter = stmt.whereExpr else { return .many }
         
-        guard let table = schema[stmt.table.tableName.name.value] else {
+        let tableName = qualifiedName(for: stmt.table.tableName.name, in: stmt.table.tableName.schema)
+        
+        guard let table = schema[tableName] else {
             // Upstream will have emitted diag
             return .many
         }

@@ -42,61 +42,52 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
     /// a FROM or JOIN. Unnamed would be from a subquery or
     /// a row expression `(?, ?, ?)`.
     public enum Row: Equatable, Sendable, ExpressibleByArrayLiteral {
-        /// A row that has names for each value
-        case named(OrderedDictionary<Substring, Type>)
-        /// A row that does not have names. These can come from
-        /// using `VALUES (1, 2, 3)`.
-        case unnamed([Type])
+        /// A row of a defined set of types.
+        case fixed([Type])
         /// This is a special row that we don't know the inner types of.
         /// It assumes that all types in it are the same type and of an
         /// unbounded length. Allows us to define functions like `IN` that
         /// take a row as an input but we are unsure of what the inner values are.
         indirect case unknown(Type)
         
-        public static let empty: Row = .unnamed([])
+        public static let empty: Row = .fixed([])
         
         public init(arrayLiteral elements: Type...) {
-            self = .unnamed(elements)
+            self = .fixed(elements)
         }
         
         var first: Type? {
             return switch self {
-            case let .named(v): v.values.first
-            case let .unnamed(v): v.first
+            case let .fixed(v): v.first
             case let .unknown(t): t
             }
         }
         
         var count: Int {
             return switch self {
-            case let .named(v): v.count
-            case let .unnamed(v): v.count
+            case let .fixed(v): v.count
             case .unknown: 1
             }
         }
         
         var types: [Type] {
             return switch self {
-            case let .named(v): Array(v.values)
-            case let .unnamed(v): v
+            case let .fixed(v): v
             case let .unknown(t): [t]
             }
         }
         
         func apply(_ s: Substitution) -> Row {
             return switch self {
-            case let .named(v): .named(v.mapValues { $0.apply(s) })
-            case let .unnamed(v): .unnamed(v.map { $0.apply(s) })
+            case let .fixed(v): .fixed(v.map { $0.apply(s) })
             case let .unknown(t): .unknown(t.apply(s))
             }
         }
         
         func mapTypes(_ transform: (Type) -> Type) -> Row {
             switch self {
-            case let .named(values):
-                return .named(values.mapValues(transform))
-            case let .unnamed(values):
-                return .unnamed(values.map(transform))
+            case let .fixed(values):
+                return .fixed(values.map(transform))
             case let .unknown(value):
                 return .unknown(transform(value))
             }
@@ -114,6 +105,21 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
         "TEXT", "INT", "INTEGER", "REAL", "BLOB", "ANY"
     ]
     
+    public var description: String {
+        return switch self {
+        case let .nominal(typeName): typeName.description
+        case let .var(typeVariable): typeVariable.description
+        case let .fn(args, ret): "(\(args.map(\.description).joined(separator: ","))) -> \(ret)"
+        case let .row(row): switch row {
+            case let .fixed(values): "(\(values.map(\.description).joined(separator: ",")))"
+            case let .unknown(ty): "(\(ty)...)"
+            }
+        case let .optional(ty): "\(ty)?"
+        case let .alias(t, a): "(\(t) AS \(a))"
+        case .error: "<<error>>"
+        }
+    }
+    
     /// The underlying root inner type
     var root: Type {
         return switch self {
@@ -123,22 +129,7 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
         }
     }
     
-    public var description: String {
-        return switch self {
-        case let .nominal(typeName): typeName.description
-        case let .var(typeVariable): typeVariable.description
-        case let .fn(args, ret): "(\(args.map(\.description).joined(separator: ","))) -> \(ret)"
-        case let .row(row): switch row {
-            case let .named(values): "(\(values.map { "\($0):\($1)" }.joined(separator: ",")))"
-            case let .unnamed(values): "(\(values.map(\.description).joined(separator: ",")))"
-            case let .unknown(ty): "(\(ty)...)"
-            }
-        case let .optional(ty): "\(ty)?"
-        case let .alias(t, a): "(\(t) AS \(a))"
-        case .error: "<<error>>"
-        }
-    }
-    
+    /// Whether or not it is a row type.
     var isRow: Bool {
         switch self {
         case .row: true
@@ -146,6 +137,21 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
         }
     }
     
+    /// Whether or not the type is optional or not
+    var isOptional: Bool {
+        switch self {
+        case .nominal, .error, .row, .fn, .var: false
+        case .alias(let t, _): t.isOptional
+        case .optional: true
+        }
+    }
+    
+    /// Will return the optional version of `self` if it is not already optional
+    func coerceToOptional() -> Type {
+        isOptional ? self : .optional(self)
+    }
+    
+    /// Applies the substitution to `self` returning the final result type.
     func apply(_ s : Substitution) -> Type {
         // To apply a substitution to a type:
         switch self {

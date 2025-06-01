@@ -1,7 +1,23 @@
 -- CHECK: SELECT_STMT_SYNTAX
 -- CHECK:   SELECTS
--- CHECK:     VALUE
--- CHECK:       SINGLE
+-- CHECK:     SINGLE
+-- CHECK:       SELECT
+-- CHECK:         DISTINCT false
+-- CHECK:         COLUMNS
+-- CHECK:           RESULT_COLUMN_SYNTAX
+-- CHECK:             KIND
+-- CHECK:               ALL
+-- CHECK:         FROM
+-- CHECK:           JOIN
+-- CHECK:             TABLE_OR_SUBQUERY
+-- CHECK:               KIND
+-- CHECK:                 TABLE
+-- CHECK:                   NAME foo
+SELECT * FROM foo;
+
+-- CHECK: SELECT_STMT_SYNTAX
+-- CHECK:   SELECTS
+-- CHECK:     COMPOUND
 -- CHECK:         SELECT
 -- CHECK:           DISTINCT false
 -- CHECK:           COLUMNS
@@ -14,12 +30,8 @@
 -- CHECK:                 KIND
 -- CHECK:                   TABLE
 -- CHECK:                     NAME foo
-SELECT * FROM foo;
-
--- CHECK: SELECT_STMT_SYNTAX
--- CHECK:   SELECTS
--- CHECK:     VALUE
--- CHECK:       COMPOUND
+-- CHECK:         KIND UNION
+-- CHECK:         SINGLE
 -- CHECK:           SELECT
 -- CHECK:             DISTINCT false
 -- CHECK:             COLUMNS
@@ -31,20 +43,6 @@ SELECT * FROM foo;
 -- CHECK:                 TABLE_OR_SUBQUERY
 -- CHECK:                   KIND
 -- CHECK:                     TABLE
--- CHECK:                       NAME foo
--- CHECK:           KIND UNION
--- CHECK:           SINGLE
--- CHECK:             SELECT
--- CHECK:               DISTINCT false
--- CHECK:               COLUMNS
--- CHECK:                 RESULT_COLUMN_SYNTAX
--- CHECK:                   KIND
--- CHECK:                     ALL
--- CHECK:               FROM
--- CHECK:                 JOIN
--- CHECK:                   TABLE_OR_SUBQUERY
--- CHECK:                     KIND
--- CHECK:                       TABLE
 -- CHECK:                         NAME bar
 SELECT * FROM foo
 UNION

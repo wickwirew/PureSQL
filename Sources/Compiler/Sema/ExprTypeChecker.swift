@@ -52,13 +52,13 @@ struct ExprTypeChecker {
     
     private mutating func typeCheck(select: SelectStmtSyntax) -> Type {
         var typeChecker = StmtTypeChecker(
-            env: env.asParent(),
+            env: Environment(parent: env),
             schema: schema,
             inferenceState: inferenceState,
             pragmas: pragmas
         )
         let signature = typeChecker.signature(for: select)
-        let type: Type = .row(.named(signature.output.allColumns))
+        let type: Type = .row(.fixed(signature.output.allColumns.map(\.value)))
         // Make sure to update our inference state
         inferenceState = typeChecker.inferenceState
         // Using typeCheckers `allDiagnostics` would include diags
@@ -67,6 +67,29 @@ struct ExprTypeChecker {
         // Record the result type in the state
         usedTableNames = typeChecker.usedTableNames
         return type
+    }
+    
+    private mutating func value<Value>(
+        from result: Environment.LookupResult<Value>,
+        at location: SourceLocation,
+        name: Substring
+    ) -> Value? {
+        switch result {
+        case .success(let value):
+            return value
+        case .ambiguous(let value):
+            diagnostics.add(.ambiguous(name, at: location))
+            return value
+        case let .columnDoesNotExist(column):
+            diagnostics.add(.columnDoesNotExist(column, at: location))
+            return nil
+        case let .tableDoesNotExist(table):
+            diagnostics.add(.tableDoesNotExist(table, at: location))
+            return nil
+        case let .schemaDoesNotExist(schema):
+            diagnostics.add(.schemaDoesNotExist(schema, at: location))
+            return nil
+        }
     }
 }
 
@@ -89,73 +112,39 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
     }
     
     mutating func visit(_ expr: borrowing ColumnExprSyntax) -> Type {
-        if let tableName = expr.table {
-            guard let result = env[tableName.value] else {
-                diagnostics.add(.init(
-                    "Table named '\(expr)' does not exist",
-                    at: expr.location
-                ))
-                return inferenceState.errorType(for: expr)
-            }
-            
-            if result.isAmbiguous {
-                diagnostics.add(.ambiguous(tableName.value, at: tableName.location))
-            }
-            
-            // Table may be optionally included
-            let (tableTy, isOptional) = if case let .optional(inner) = result.type {
-                (inner, true)
+        switch expr.column {
+        case .all:
+            if let tableName = expr.table {
+                guard let table = value(
+                    from: env.resolve(
+                        table: tableName.value,
+                        schema: expr.schema?.value
+                    ),
+                    at: expr.location,
+                    name: tableName.value
+                ) else { return inferenceState.errorType(for: expr) }
+                
+                return table.type
             } else {
-                (result.type, false)
+                return .row(.fixed(env.allColumnTypes))
             }
-            
-            guard case let .row(.named(columns)) = tableTy else {
-                diagnostics.add(.init(
-                    "'\(tableName)' is not a row, got \(tableTy)",
-                    at: expr.location
-                ))
+        case .column(let column):
+            guard let column = value(
+                from: env.resolve(
+                    column: column.value,
+                    table: expr.table?.value,
+                    schema: expr.schema?.value
+                ),
+                at: expr.location,
+                name: column.value
+            ) else {
                 return inferenceState.errorType(for: expr)
             }
-
-            let type: Type
-            switch expr.column {
-            case .column(let column):
-                guard let t = columns[column.value] else {
-                    diagnostics.add(.init(
-                        "Table '\(tableName)' has no column '\(column)'",
-                        at: expr.location
-                    ))
-                    return inferenceState.errorType(for: expr)
-                }
-                
-                type = t
-            case .all:
-                type = tableTy
-            }
             
-            return (isOptional ? .optional(type) : type)
-        } else {
-            switch expr.column {
-            case .column(let column):
-                guard let result = env[column.value] else {
-                    diagnostics.add(.init(
-                        "Column '\(column)' does not exist",
-                        at: expr.location
-                    ))
-                    return inferenceState.errorType(for: expr)
-                }
-                
-                if result.isAmbiguous {
-                    diagnostics.add(.ambiguous(column.value, at: column.location))
-                }
-                
-                // Make sure to record the type in the inference state since
-                // the type was pulled from the environment
-                inferenceState.record(type: result.type, for: expr)
-                return result.type
-            case .all:
-                return .row(.named(.init(uniqueKeysWithValues: env)))
-            }
+            // Make sure to record the type in the inference state since
+            // the type was pulled from the environment
+            inferenceState.record(type: column, for: expr)
+            return column
         }
     }
     
@@ -277,7 +266,7 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
     }
     
     mutating func visit(_ expr: borrowing GroupedExprSyntax) -> Type {
-        return .row(.unnamed(typeCheck(expr.exprs)))
+        return .row(.fixed(typeCheck(expr.exprs)))
     }
     
     mutating func visit(_ expr: borrowing SelectExprSyntax) -> Type {

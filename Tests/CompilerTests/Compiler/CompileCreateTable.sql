@@ -1,5 +1,5 @@
 -- CHECK: TABLE
--- CHECK:   NAME foo
+-- CHECK:   NAME main.foo
 -- CHECK:   COLUMNS
 -- CHECK:       KEY bar
 -- CHECK:       VALUE INTEGER
@@ -14,7 +14,7 @@ CREATE TABLE foo (
 );
 
 -- CHECK: TABLE
--- CHECK:   NAME bar
+-- CHECK:   NAME main.bar
 -- CHECK:   COLUMNS
 -- CHECK:       KEY foo
 -- CHECK:       VALUE TEXT?
@@ -33,7 +33,7 @@ CREATE TABLE bar (
 PRAGMA feather_require_strict_tables = TRUE;
 
 -- CHECK: TABLE
--- CHECK:   NAME baz
+-- CHECK:   NAME main.baz
 -- CHECK:   COLUMNS
 -- CHECK:       KEY foo
 -- CHECK:       VALUE DECIMAL?
@@ -49,7 +49,7 @@ CREATE TABLE baz (
 );
 
 -- CHECK: TABLE
--- CHECK:   NAME qux
+-- CHECK:   NAME main.qux
 -- CHECK:   COLUMNS
 -- CHECK:       KEY foo
 -- CHECK:       VALUE TEXT
@@ -66,7 +66,7 @@ CREATE TABLE qux (
 ) STRICT;
 
 -- CHECK: TABLE
--- CHECK:   NAME PRIMARY
+-- CHECK:   NAME main.PRIMARY
 -- CHECK:   COLUMNS
 -- CHECK:       KEY TABLE
 -- CHECK:       VALUE KEY?
@@ -78,7 +78,7 @@ CREATE TABLE "PRIMARY" (
 ) STRICT;
 
 -- CHECK: TABLE
--- CHECK:   NAME allValidTypes
+-- CHECK:   NAME main.allValidTypes
 -- CHECK:   COLUMNS
 -- CHECK:       KEY int
 -- CHECK:       VALUE INT?
@@ -100,7 +100,7 @@ CREATE TABLE allValidTypes (
 ) STRICT;
 
 -- CHECK: TABLE
--- CHECK:   NAME hasGenerated
+-- CHECK:   NAME main.hasGenerated
 -- CHECK:   COLUMNS
 -- CHECK:       KEY foo
 -- CHECK:       VALUE INTEGER?
@@ -121,7 +121,7 @@ CREATE TABLE hasGenerated (
 ) STRICT;
 
 -- CHECK: TABLE
--- CHECK:   NAME hasTableCheck
+-- CHECK:   NAME main.hasTableCheck
 -- CHECK:   COLUMNS
 -- CHECK:       KEY foo
 -- CHECK:       VALUE INTEGER?
@@ -141,7 +141,7 @@ CREATE TABLE hasTableCheck (
 ) STRICT;
 
 -- CHECK: TABLE
--- CHECK:   NAME fromSelect
+-- CHECK:   NAME main.fromSelect
 -- CHECK:   COLUMNS
 -- CHECK:       KEY bar
 -- CHECK:       VALUE INTEGER

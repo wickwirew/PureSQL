@@ -118,6 +118,57 @@ struct StmtTypeChecker {
         usedTableNames.formUnion(inferrer.usedTableNames)
         return result
     }
+    
+    /// Initializes a `QualifiedName` and emits any diagnostics on a failure.
+    /// If the schema does not exists `nil` will be returned.
+    private mutating func qualifedName(for name: TableNameSyntax) -> QualifiedTableName {
+        return qualifedName(for: name.name, in: name.schema)
+    }
+    
+    /// Initializes a `QualifiedName` and emits any diagnostics on a failure.
+    /// If the schema does not exists `nil` will be returned.
+    private mutating func qualifedName(
+        for name: IdentifierSyntax,
+        in schema: IdentifierSyntax?,
+        isTemp: Bool = false
+    ) -> QualifiedTableName {
+        guard let schema else {
+            return QualifiedTableName(name: name.value, schema: isTemp ? .temp : .main)
+        }
+        
+        if isTemp {
+            diagnostics.add(.init("Temporary table name must be unqualified", at: schema.location))
+        }
+        
+        guard let schemaName = SchemaName(schema.value) else {
+            diagnostics.add(.init("Schema '\(schema)' does not exist", at: schema.location))
+            return QualifiedTableName(name: name.value, schema: nil)
+        }
+
+        return QualifiedTableName(name: name.value, schema: schemaName)
+    }
+    
+    private mutating func value<Value>(
+        from result: Environment.LookupResult<Value>,
+        for identifier: IdentifierSyntax
+    ) -> Value? {
+        switch result {
+        case .success(let value):
+            return value
+        case .ambiguous(let value):
+            diagnostics.add(.ambiguous(identifier.value, at: identifier.location))
+            return value
+        case .columnDoesNotExist:
+            diagnostics.add(.columnDoesNotExist(identifier))
+            return nil
+        case .tableDoesNotExist:
+            diagnostics.add(.tableDoesNotExist(identifier))
+            return nil
+        case .schemaDoesNotExist:
+            diagnostics.add(.schemaDoesNotExist(identifier))
+            return nil
+        }
+    }
 }
 
 extension StmtTypeChecker: StmtSyntaxVisitor {
@@ -165,31 +216,32 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
     }
     
     mutating func visit(_ stmt: borrowing CreateIndexStmtSyntax) -> ResultColumns {
-        guard let table = schema[stmt.table.value] else {
+        let name = qualifedName(for: stmt.name, in: stmt.schemaName)
+        
+        guard let table = schema[name] else {
             diagnostics.add(.tableDoesNotExist(stmt.table))
             return .empty
         }
         
-        insertTableAndColumnsIntoEnv(table)
+        importTable(table)
         
         if let whereExpr = stmt.whereExpr {
             _ = typeCheck(whereExpr)
         }
         
-        schema[index: stmt.name.value] = Index(
-            name: stmt.name.value,
-            table: table.name
-        )
+        schema[index: name] = Index(name: name, table: table.name)
         
         return .empty
     }
     
     mutating func visit(_ stmt: borrowing DropIndexStmtSyntax) -> ResultColumns {
-        if !stmt.ifExists, schema[index: stmt.name.value] == nil {
+        let name = qualifedName(for: stmt.name, in: stmt.schemaName)
+        
+        if !stmt.ifExists, schema[index: name] == nil {
             diagnostics.add(.init("Index does not exist", at: stmt.name.location))
         }
         
-        schema[index: stmt.name.value] = nil
+        schema[index: name] = nil
         return .empty
     }
     
@@ -198,7 +250,9 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
     }
     
     mutating func visit(_ stmt: borrowing CreateViewStmtSyntax) -> ResultColumns {
-        guard schema[stmt.name.value] == nil else {
+        let name = qualifedName(for: stmt.name, in: stmt.schemaName, isTemp: stmt.temp)
+        
+        guard schema[name] == nil else {
             diagnostics.add(.tableAlreadyExists(stmt.name))
             return .empty
         }
@@ -227,8 +281,8 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
             }
         }
         
-        schema[stmt.name.value] = Table(
-            name: stmt.name.value,
+        schema[name] = Table(
+            name: name,
             columns: columns,
             primaryKey: [/* In the future we can analyze the select to see if we can do better */],
             kind: .view
@@ -238,7 +292,9 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
     }
     
     mutating func visit(_ stmt: borrowing DropViewStmtSyntax) -> ResultColumns {
-        guard let table = schema[stmt.viewName.value] else {
+        let name = qualifedName(for: stmt.viewName, in: stmt.schemaName)
+        
+        guard let table = schema[name] else {
             if !stmt.ifExists {
                 diagnostics.add(.init("View with name does not exist", at: stmt.viewName.location))
             }
@@ -249,13 +305,15 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
             diagnostics.add(.init("Table is not a view", at: stmt.viewName.location))
         }
         
-        schema[stmt.viewName.value] = nil
+        schema[name] = nil
         
         return .empty
     }
     
     mutating func visit(_ stmt: borrowing CreateVirtualTableStmtSyntax) -> ResultColumns {
-        if !stmt.ifNotExists, schema[stmt.tableName.name.value] != nil {
+        let name = qualifedName(for: stmt.tableName.name, in: stmt.tableName.schema)
+        
+        if !stmt.ifNotExists, schema[name] != nil {
             diagnostics.add(.tableAlreadyExists(stmt.tableName.name))
         }
         
@@ -270,12 +328,15 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
     }
     
     mutating func visit(_ stmt: borrowing CreateTriggerStmtSyntax) -> ResultColumns {
-        guard let table = schema[stmt.tableName.value] else {
+        let name = qualifedName(for: stmt.triggerName, in: stmt.schemaName)
+        let tableName = qualifedName(for: stmt.tableName, in: stmt.tableSchemaName)
+        
+        guard let table = schema[tableName] else {
             diagnostics.add(.tableDoesNotExist(stmt.tableName))
             return .empty
         }
         
-        if !stmt.ifNotExists, schema[trigger: stmt.triggerName.value] != nil {
+        if !stmt.ifNotExists, schema[trigger: name] != nil {
             diagnostics.add(.init(
                 "Trigger with name already exists",
                 at: stmt.triggerName.location
@@ -284,12 +345,12 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
         
         switch stmt.action {
         case .delete:
-            insertTableAndColumnsIntoEnv(table, as: "old", globallyAddColumns: false)
+            importTable(table, as: "old")
         case .insert:
-            insertTableAndColumnsIntoEnv(table, as: "new", globallyAddColumns: false)
+            importTable(table, as: "new")
         case let .update(columns):
-            insertTableAndColumnsIntoEnv(table, as: "new", globallyAddColumns: false)
-            insertTableAndColumnsIntoEnv(table, as: "old", globallyAddColumns: false)
+            importTable(table, as: "new")
+            importTable(table, as: "old")
             
             // Make sure all columns in the update statement actually exist
             if let columns {
@@ -315,21 +376,22 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
             }
         }
         
-        schema[trigger: stmt.triggerName.value] = Trigger(
-            name: stmt.triggerName.value,
-            targetTable: table.name,
-            usedTables: usedTableNames.subtracting([table.name])
+        schema[trigger: name] = Trigger(
+            name: name,
+            targetTable: tableName,
+            usedTables: usedTableNames.subtracting([table.name.name])
         )
         
         return .empty
     }
     
     mutating func visit(_ stmt: borrowing DropTriggerStmtSyntax) -> ResultColumns {
-        if !stmt.ifExists, schema[trigger: stmt.triggerName.value] == nil {
+        let name = qualifedName(for: stmt.triggerName, in: stmt.schemaName)
+        if !stmt.ifExists, schema[trigger: name] == nil {
             diagnostics.add(.init("Trigger with name does not exist", at: stmt.triggerName.location))
         }
         
-        schema[trigger: stmt.triggerName.value] = nil
+        schema[trigger: name] = nil
         return .empty
     }
 }
@@ -364,8 +426,8 @@ extension StmtTypeChecker {
         // would try to double insert the column in the second select.... Needless
         // to say this stays for now but I dont like it.
         inNewEnvironment(extendCurrentEnv: true) { typeChecker in
-            for column in resultColumns.allColumns where typeChecker.env[column.key] == nil {
-                typeChecker.env.insert(column.key, ty: column.value)
+            for column in resultColumns.allColumns where !typeChecker.env.hasColumn(named: column.key) {
+                typeChecker.env.import(column: column.key, with: column.value)
             }
             
             for term in select.orderBy {
@@ -427,12 +489,14 @@ extension StmtTypeChecker {
     mutating func typeCheck(insert: InsertStmtSyntax) -> ResultColumns {
         typeCheck(with: insert.with)
         
-        guard let table = schema[insert.tableName.name.value] else {
+        let tableName = qualifedName(for: insert.tableName)
+        
+        guard let table = schema[tableName] else {
             diagnostics.add(.tableDoesNotExist(insert.tableName.name))
             return .empty
         }
         
-        usedTableNames.insert(table.name)
+        usedTableNames.insert(table.name.name)
         
         let inputType: Type
         if let columns = insert.columns {
@@ -446,7 +510,7 @@ extension StmtTypeChecker {
                 
                 columnTypes.append(def)
             }
-            inputType = .row(.unnamed(columnTypes))
+            inputType = .row(.fixed(columnTypes))
         } else {
             inputType = table.type
         }
@@ -471,12 +535,14 @@ extension StmtTypeChecker {
     mutating func typeCheck(update: UpdateStmtSyntax) -> ResultColumns {
         typeCheck(with: update.with)
         
-        guard let table = schema[update.tableName.tableName.name.value] else {
+        let tableName = qualifedName(for: update.tableName.tableName)
+        
+        guard let table = schema[tableName] else {
             diagnostics.add(.tableDoesNotExist(update.tableName.tableName.name))
             return .empty
         }
         
-        insertTableAndColumnsIntoEnv(table)
+        importTable(table)
         
         for set in update.sets {
             let (valueType, valueName) = typeCheck(set.expr)
@@ -521,12 +587,14 @@ extension StmtTypeChecker {
     mutating func typeCheck(delete: DeleteStmtSyntax) -> ResultColumns {
         typeCheck(with: delete.with)
         
-        guard let table = schema[delete.table.tableName.name.value] else {
+        let tableName = qualifedName(for: delete.table.tableName)
+        
+        guard let table = schema[tableName] else {
             diagnostics.add(.tableDoesNotExist(delete.table.tableName.name))
             return .empty
         }
         
-        insertTableAndColumnsIntoEnv(table)
+        importTable(table)
         
         if let whereExpr = delete.whereExpr {
             typeCheck(where: whereExpr)
@@ -545,18 +613,18 @@ extension StmtTypeChecker {
         for names: [IdentifierSyntax],
         from table: Table
     ) -> Type {
-        var columns: Columns = [:]
+        var columns: [Type] = []
         
         for name in names {
             if let column = table.columns[name.value] {
-                columns[name.value] = column
+                columns.append(column)
             } else {
                 diagnostics.add(.columnDoesNotExist(name))
-                columns[name.value] = .error
+                columns.append(.error)
             }
         }
         
-        return .row(.named(columns))
+        return .row(.fixed(columns))
     }
     
     private mutating func typeCheck(
@@ -613,7 +681,12 @@ extension StmtTypeChecker {
                 .reduce(into: [:]) { $0[cte.columns[$1].value] = columnTypes[$1] }
         }
         
-        return Table(name: cte.table.value, columns: columns, primaryKey: [], kind: .cte)
+        return Table(
+            name: QualifiedTableName(name: cte.table.value, schema: nil),
+            columns: columns,
+            primaryKey: [],
+            kind: .cte
+        )
     }
     
     /// Will infer the core part of the select.
@@ -649,7 +722,7 @@ extension StmtTypeChecker {
                     }
                 }
                 
-                types.append(.row(.unnamed(columns)))
+                types.append(.row(.fixed(columns)))
             }
             
             // All of the different groups, e.g. (1, 2), (3, 4)
@@ -754,51 +827,35 @@ extension StmtTypeChecker {
                 table = nil
                 
                 if let alias {
-                    env.insert(alias.identifier.value, ty: type)
+                    env.import(column: alias.identifier.value, with: type)
                 }
             case let .all(tableName):
                 if let tableName {
-                    // Was a `table.*`, import every column from the table.
-                    if let table = env[tableName.value]?.type {
-                        guard case let .row(.named(tableColumns)) = table else {
-                            diagnostics.add(.init("'\(tableName)' is not a table", at: tableName.location))
-                            continue
-                        }
-                        
-                        // Insert any columns that have been defined before the `table.*`
-                        breakOffCurrentChunkIfNeeded()
-                        
-                        // Add table columns as a chunk
-                        chunks.append(ResultColumns.Chunk(
-                            columns: tableColumns,
-                            table: tableName.value
-                        ))
-                    } else {
-                        diagnostics.add(.init("Table '\(tableName)' does not exist", at: tableName.location))
-                    }
+                    let table = value(
+                        from: env.resolve(
+                            table: tableName.value,
+                            schema: nil
+                        ),
+                        for: tableName
+                    ) ?? .error
+                    
+                    // Insert any columns that have been defined before the `table.*`
+                    breakOffCurrentChunkIfNeeded()
+                    
+                    // Add table columns as a chunk
+                    chunks.append(ResultColumns.Chunk(
+                        columns: table.columns,
+                        table: tableName.value
+                    ))
                 } else {
                     // No table specified so import everything in from the environment.
+                    breakOffCurrentChunkIfNeeded()
                     
-                    // As we iterate over the environment we will count the number of tables
-                    var numberOfTables = 0
-                    var lastTable: Substring?
-                    let columnsBeforeThis = columns.isEmpty
-                    
-                    for (name, type) in env {
-                        switch type {
-                        case .row:
-                            lastTable = name
-                            numberOfTables += 1
-                        default:
-                            columns[name] = type
-                        }
-                    }
-                    
-                    // If there was only 1 table in the environment, and there were
-                    // no columns defined before this `*` then so far we will assume
-                    // that the overall result can be mapped to this table.
-                    if numberOfTables == 1, columnsBeforeThis {
-                        table = lastTable
+                    for table in env.allImportedTables {
+                        chunks.append(ResultColumns.Chunk(
+                            columns: table.columns,
+                            table: table.name.name
+                        ))
                     }
                 }
             }
@@ -848,18 +905,16 @@ extension StmtTypeChecker {
             default: true
             }
             
-            guard let envTable = schema[table.name.value] ?? ctes[table.name.value] else {
-                env.insert(table.name.value, ty: .error)
+            let tableName = qualifedName(for: table.name, in: table.schema)
+            
+            // TODO: Delete `ctes`s
+            guard let envTable = schema[tableName] ?? ctes[table.name.value] else {
+                env.import(table: .error, isOptional: isOptional)
                 diagnostics.add(.tableDoesNotExist(table.name))
                 return
             }
             
-            insertTableAndColumnsIntoEnv(
-                envTable,
-                as: table.alias?.identifier.value,
-                isOptional: isOptional,
-                selectedColumns: usedColumns
-            )
+            importTable(envTable, as: table.alias?.identifier.value, isOptional: isOptional)
         case .tableFunction:
             fatalError("Not yet implemented")
         case let .subquery(selectStmt, alias):
@@ -869,13 +924,17 @@ extension StmtTypeChecker {
             
             // Insert the result of the subquery into the environment
             if let alias {
-                env.insert(alias.identifier.value, ty: resultColumns.type)
-            }
-            
-            // Also insert each column into the env. So you dont
-            // have to do `alias.column`
-            for (name, type) in resultColumns.allColumns {
-                env.insert(name, ty: type)
+                let table = Table(
+                    name: QualifiedTableName(name: alias.identifier.value, schema: nil),
+                    columns: resultColumns.allColumns,
+                    primaryKey: [],
+                    kind: .subquery
+                )
+                importTable(table, isOptional: false)
+            } else {
+                // No alias so it cannot be imported as a table so we can
+                // just import the columns only.
+                env.import(columns: resultColumns.allColumns)
             }
         case let .join(joinClause):
             typeCheck(joinClause: joinClause)
@@ -887,7 +946,7 @@ extension StmtTypeChecker {
     private func assumeRow(_ ty: Type) -> Type.Row {
         guard case let .row(rowTy) = ty else {
             assertionFailure("This cannot happen")
-            return .unnamed([])
+            return .fixed([])
         }
 
         return rowTy
@@ -898,63 +957,36 @@ extension StmtTypeChecker {
     ///
     /// If `isOptional` is true, all of the column types will be made optional
     /// as well. Useful in joins that may or may not have a match, e.g. Outer
-    private mutating func insertTableAndColumnsIntoEnv(
+    private mutating func importTable(
         _ table: Table,
         as alias: Substring? = nil,
-        isOptional: Bool = false,
-        selectedColumns: Set<Substring> = [],
-        globallyAddColumns: Bool = true
+        isOptional: Bool = false
     ) {
         // Insert real name not alias. These are used later for observation tracking
         // so an alias is no good since it will always be the actual table name.
-        usedTableNames.insert(table.name)
-        
-        let tableTy: Type = isOptional ? .optional(table.type) : table.type
+        usedTableNames.insert(table.name.name)
         
         // Table is always accessible by it's name even if aliased
-        env.insert(table.name, ty: tableTy)
+        env.import(table: table, isOptional: isOptional)
         
         if let alias {
-            env.insert(alias, ty: tableTy)
-        }
-        
-        if globallyAddColumns {
-            for column in table.columns {
-                // If it wasnt selected explicitly we still want it to be in the environment
-                // but through explcit access only.
-                //
-                // Meaning they can not select a column, but still use it in a WHERE or something
-                // but not have the column returned in their result set.
-                let wasSelected = !selectedColumns.isEmpty && !selectedColumns.contains(column.key)
-                
-                env.insert(
-                    column.key,
-                    ty: isOptional ? .optional(column.value) : column.value,
-                    explicitAccessOnly: wasSelected
-                )
-            }
-        }
-        
-        // Make rank available, but only via by direct name so it isnt
-        // included in the result columns during a `SELECT *`
-        if table.kind == .fts5 {
-            env.insert("rank", ty: .real, explicitAccessOnly: true)
-        }
-    }
-    
-    private mutating func insertColumnsIntoEnv(columns: borrowing Columns) {
-        for column in columns {
-            env.insert(column.key, ty: column.value)
+            env.import(table: table.aliased(to: alias), isOptional: isOptional)
         }
     }
     
     mutating func typeCheck(createTable: CreateTableStmtSyntax) {
+        let tableName = qualifedName(
+            for: createTable.name,
+            in: createTable.schemaName,
+            isTemp: createTable.isTemporary
+        )
+        
         switch createTable.kind {
         case let .select(selectStmt):
             let signature = signature(for: selectStmt)
             let columns = signature.output.allColumns
-            schema[createTable.name.value] = Table(
-                name: createTable.name.value,
+            schema[tableName] = Table(
+                name: tableName,
                 columns: columns,
                 primaryKey: primaryKey(of: createTable, columns: columns),
                 kind: .normal
@@ -975,8 +1007,8 @@ extension StmtTypeChecker {
                 constraints: constraints
             )
             
-            schema[createTable.name.value] = Table(
-                name: createTable.name.value,
+            schema[tableName] = Table(
+                name: tableName,
                 columns: columns,
                 primaryKey: primaryKey(of: createTable, columns: columns),
                 kind: .normal
@@ -994,7 +1026,9 @@ extension StmtTypeChecker {
     }
     
     mutating func typeCheck(alterTable: AlterTableStmtSyntax) {
-        guard var table = schema[alterTable.name.value] else {
+        var tableName = qualifedName(for: alterTable.name, in: alterTable.schemaName)
+        
+        guard var table = schema[tableName] else {
             diagnostics.add(.tableDoesNotExist(alterTable.name))
             return
         }
@@ -1011,9 +1045,13 @@ extension StmtTypeChecker {
         }
         
         switch alterTable.kind {
-        case let .rename(newName):
-            schema[alterTable.name.value] = nil
-            schema[newName.value] = table
+        case let .rename(newTableName):
+            // Clear out table under original name
+            schema[tableName] = nil
+            
+            // Update name, `table` will be inserted at end of function
+            tableName = QualifiedTableName(name: newTableName.value, schema: tableName.schema)
+            table.name = tableName
         case let .renameColumn(oldName, newName):
             table.columns = table.columns.reduce(into: [:]) { newColumns, column in
                 newColumns[column.key == oldName.value ? newName.value : column.key] = column.value
@@ -1022,24 +1060,25 @@ extension StmtTypeChecker {
             table.columns[column.name.value] = typeFor(
                 column: column,
                 tableColumns: table.columns,
-                tableName: table.name
+                tableName: table.name.name
             )
         case let .dropColumn(column):
             table.columns[column.value] = nil
         }
         
-        schema[alterTable.name.value] = table
+        schema[tableName] = table
     }
     
     mutating func typeCheck(dropTable: DropTableStmtSyntax) {
-        let tableExists = schema[dropTable.tableName.name.value] != nil
+        let tableName = qualifedName(for: dropTable.tableName)
+        let tableExists = schema[tableName] != nil
         
         if !tableExists && !dropTable.ifExists {
             diagnostics.add(.tableDoesNotExist(dropTable.tableName.name))
         }
         
         for trigger in schema.triggers.values {
-            if trigger.targetTable == dropTable.tableName.name.value {
+            if trigger.targetTable == tableName {
                 // Dropping a table automatically removes any trigger its the target of.
                 schema[trigger: trigger.name] = nil
             } else {
@@ -1056,7 +1095,7 @@ extension StmtTypeChecker {
             }
         }
         
-        schema[dropTable.tableName.name.value] = nil
+        schema[tableName] = nil
     }
     
     /// Will figure out the final SQL column type from the syntax
@@ -1074,7 +1113,7 @@ extension StmtTypeChecker {
                 isNotNullable = true
             case .check(let expr):
                 inNewEnvironment { typeChecker in
-                    typeChecker.insertColumnsIntoEnv(columns: tableColumns)
+                    typeChecker.env.import(columns: tableColumns)
                     _ = typeChecker.typeCheck(expr)
                 }
             case .default(let expr):
@@ -1092,7 +1131,7 @@ extension StmtTypeChecker {
                             diagnostics.add(.columnDoesNotExist(foreignColumn))
                         }
                     }
-                } else if let table = schema[fk.foreignTable.value] {
+                } else if let table = schema[QualifiedTableName(name: fk.foreignTable.value, schema: .main)] {
                     for foreignColumn in fk.foreignColumns {
                         if table.columns[foreignColumn.value] == nil {
                             diagnostics.add(.columnDoesNotExist(foreignColumn))
@@ -1103,7 +1142,7 @@ extension StmtTypeChecker {
                 }
             case .generated(let expr, _):
                 inNewEnvironment { typeChecker in
-                    typeChecker.insertColumnsIntoEnv(columns: tableColumns)
+                    typeChecker.env.import(columns: tableColumns)
                     _ = typeChecker.typeCheck(expr)
                 }
             case .unique, .collate:
@@ -1218,7 +1257,7 @@ extension StmtTypeChecker {
             switch constraint.kind {
             case .check(let expr):
                 inNewEnvironment { typeChecker in
-                    typeChecker.insertColumnsIntoEnv(columns: columns)
+                    typeChecker.env.import(columns: columns)
                     _ = typeChecker.typeCheck(expr)
                 }
             case .foreignKey(let fkColumns, let fkClause):
@@ -1228,8 +1267,10 @@ extension StmtTypeChecker {
                     diagnostics.add(.columnDoesNotExist(column))
                 }
                 
+                let foreignTable = QualifiedTableName(name: fkClause.foreignTable.value, schema: .main)
+                
                 // Make sure referenced table exists
-                guard let foreignTable = schema[fkClause.foreignTable.value] else {
+                guard let foreignTable = schema[foreignTable] else {
                     diagnostics.add(.tableDoesNotExist(fkClause.foreignTable))
                     return
                 }
@@ -1246,6 +1287,7 @@ extension StmtTypeChecker {
     }
     
     mutating func typeCheck(fts5Table: borrowing CreateVirtualTableStmtSyntax) {
+        let name = qualifedName(for: fts5Table.tableName)
         var columns: Columns = [:]
         
         for argument in fts5Table.arguments {
@@ -1266,8 +1308,8 @@ extension StmtTypeChecker {
             }
         }
         
-        schema[fts5Table.tableName.name.value] = Table(
-            name: fts5Table.tableName.name.value,
+        schema[name] = Table(
+            name: name,
             columns: columns,
             primaryKey: [],
             kind: .fts5

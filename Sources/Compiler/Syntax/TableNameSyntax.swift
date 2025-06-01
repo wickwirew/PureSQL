@@ -7,7 +7,7 @@
 
 struct TableNameSyntax: Syntax, Hashable, CustomStringConvertible {
     let id: SyntaxId
-    let schema: Schema
+    let schema: IdentifierSyntax?
     let name: IdentifierSyntax
 
     enum Schema: Hashable {
@@ -16,18 +16,18 @@ struct TableNameSyntax: Syntax, Hashable, CustomStringConvertible {
     }
 
     var description: String {
-        switch schema {
-        case .main:
-            return name.description
-        case let .other(schema):
+        if let schema {
             return "\(schema).\(name)"
+        } else {
+            return name.description
         }
     }
 
     var location: SourceLocation {
-        return switch schema {
-        case .main: name.location
-        case let .other(schema): schema.location.spanning(name.location)
+        if let schema {
+            return schema.location.spanning(name.location)
+        } else {
+            return name.location
         }
     }
 }

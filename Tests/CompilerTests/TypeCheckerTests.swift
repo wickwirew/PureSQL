@@ -192,16 +192,17 @@ class TypeCheckerTests: XCTestCase {
     }
     
     func testExprInParens() {
-        XCTAssertEqual(.row(.unnamed([.integer])), try check("(1 + 1) + 1"))
+        XCTAssertEqual(.row(.fixed([.integer])), try check("(1 + 1) + 1"))
     }
     
     func scope(table: String, schema: String) throws -> Environment {
         var compiler = Compiler()
         _ = compiler.compile(migration: schema)
-        guard let table = compiler.schema[table[...]] else { fatalError("'table' provided not in 'schema'") }
+        guard let table = compiler.schema[QualifiedTableName(name: table[...], schema: .main)] else {
+            fatalError("'table' provided not in 'schema'")
+        }
         var env = Environment()
-        env.upsert(table.name, ty: table.type)
-        table.columns.forEach { env.upsert($0, ty: $1) }
+        env.import(table: table, isOptional: false)
         return env
     }
     

@@ -756,11 +756,7 @@ enum Parsers {
     
     static func tableName(state: inout ParserState) -> TableNameSyntax {
         let names = tableAndSchemaName(state: &state)
-        return TableNameSyntax(
-            id: state.nextId(),
-            schema: names.schema.map { .other($0) } ?? .main,
-            name: names.table
-        )
+        return TableNameSyntax(id: state.nextId(), schema: names.schema, name: names.table)
     }
     
     static func tableAndSchemaName(state: inout ParserState) -> (schema: IdentifierSyntax?, table: IdentifierSyntax) {
