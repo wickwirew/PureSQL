@@ -1,11 +1,13 @@
 //
-//  QualifiedTableName.swift
+//  QualifiedName.swift
 //  Feather
 //
 //  Created by Wes Wickwire on 6/2/25.
 //
 
-public struct QualifiedTableName: Hashable, Sendable, CustomStringConvertible {
+/// A fully qualified name. This can be used for tables, indices or anything
+/// that is `schema.name` based.
+public struct QualifiedName: Hashable, Sendable, CustomStringConvertible {
     /// The non qualified name.
     public let name: Substring
     /// The schema it exists in if any.

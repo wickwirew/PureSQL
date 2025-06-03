@@ -90,7 +90,7 @@ struct EnvironmentTests {
         kind: Table.Kind = .normal
     ) -> Table {
         return Table(
-            name: QualifiedTableName(name: name, schema: schema),
+            name: QualifiedName(name: name, schema: schema),
             columns: columns,
             primaryKey: [],
             kind: kind

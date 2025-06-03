@@ -35,8 +35,8 @@ struct CardinalityInferrer {
     private func qualifiedName(
         for name: IdentifierSyntax,
         in schema: IdentifierSyntax?
-    ) -> QualifiedTableName {
-        return QualifiedTableName(name: name.value, schema: schema?.value)
+    ) -> QualifiedName {
+        return QualifiedName(name: name.value, schema: schema?.value)
     }
 }
 

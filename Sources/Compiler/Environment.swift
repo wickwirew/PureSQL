@@ -9,7 +9,7 @@
 /// type checked against as well as any other static analysis.
 struct Environment {
     /// Any tables that are imported into the environment.
-    var importedTables: DuplicateDictionary<QualifiedTableName, ImportedTable> = [:]
+    var importedTables: DuplicateDictionary<QualifiedName, ImportedTable> = [:]
     /// Detached values are all of the columns but detached from under their
     /// table. Also any defined column that is inserted without a table is
     /// in here as well. As well as the table themselves which allows
@@ -296,18 +296,18 @@ extension Environment {
     /// precedence orders to make sure the correc table is returned.
     private func resolveImported(table: Substring) -> LookupResult<ImportedTable> {
         // No schema means it was a CTE or aliased subquery which should take precedence
-        let noSchemaEntries = importedTables[QualifiedTableName(name: table, schema: nil)]
+        let noSchemaEntries = importedTables[QualifiedName(name: table, schema: nil)]
         if let importedTable = noSchemaEntries.first {
             return LookupResult(importedTable, isAmbiguous: noSchemaEntries.count > 1)
         }
         
         // SQLite actually lets `temp` take precedence over `main` so we need to check it first.
-        let tempEntries = importedTables[QualifiedTableName(name: table, schema: .temp)]
+        let tempEntries = importedTables[QualifiedName(name: table, schema: .temp)]
         if let importedTable = tempEntries.first {
             return LookupResult(importedTable, isAmbiguous: tempEntries.count > 1)
         }
         
-        let mainEntries = importedTables[QualifiedTableName(name: table, schema: .main)]
+        let mainEntries = importedTables[QualifiedName(name: table, schema: .main)]
         if let importedTable = mainEntries.first {
             return LookupResult(importedTable, isAmbiguous: mainEntries.count > 1)
         }
@@ -327,7 +327,7 @@ extension Environment {
             return .schemaDoesNotExist(schema)
         }
         
-        let qualifiedName = QualifiedTableName(name: table, schema: schemaName)
+        let qualifiedName = QualifiedName(name: table, schema: schemaName)
         let entries = importedTables[qualifiedName]
         
         guard let importedTable = entries.first else {

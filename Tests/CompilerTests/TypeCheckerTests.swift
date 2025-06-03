@@ -198,7 +198,7 @@ class TypeCheckerTests: XCTestCase {
     func scope(table: String, schema: String) throws -> Environment {
         var compiler = Compiler()
         _ = compiler.compile(migration: schema)
-        guard let table = compiler.schema[QualifiedTableName(name: table[...], schema: .main)] else {
+        guard let table = compiler.schema[QualifiedName(name: table[...], schema: .main)] else {
             fatalError("'table' provided not in 'schema'")
         }
         var env = Environment()

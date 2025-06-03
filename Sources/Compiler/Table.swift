@@ -1,0 +1,56 @@
+//
+//  Table.swift
+//  Feather
+//
+//  Created by Wes Wickwire on 6/2/25.
+//
+
+/// A table within the database schema
+public struct Table: Sendable, Equatable {
+    /// The name of the table
+    public var name: QualifiedName
+    /// The columns of the table
+    public var columns: Columns
+    /// The columns that make up the primary key
+    public let primaryKey: [Substring]
+    /// What kind of table it is (FTS/CTE...)
+    public let kind: Kind
+    
+    public enum Kind: Sendable {
+        case normal
+        case view
+        case fts5
+        case cte
+        case subquery
+    }
+    
+    var type: Type {
+        return .row(.fixed(columns.map(\.value)))
+    }
+    
+    /// A table to be returned incase of an error in type checking
+    static let error = Table(
+        name: QualifiedName(name: "<<error>>", schema: nil),
+        columns: [:],
+        primaryKey: [],
+        kind: .normal
+    )
+    
+    /// The table but with the name of the alias.
+    /// Used in `FROM foo AS bar`
+    func aliased(to alias: Substring) -> Table {
+        var copy = self
+        // Alias erases schema on purpose.
+        // main.foo AS bar does not equal main.bar
+        copy.name = QualifiedName(name: alias, schema: nil)
+        return copy
+    }
+    
+    /// Function to map over the column types and perform any
+    /// transformations needed
+    func mapTypes(_ transform: (Type) -> Type) -> Table {
+        var copy = self
+        copy.columns = columns.mapValues(transform)
+        return copy
+    }
+}

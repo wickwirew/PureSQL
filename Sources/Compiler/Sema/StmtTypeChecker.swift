@@ -121,7 +121,7 @@ struct StmtTypeChecker {
     
     /// Initializes a `QualifiedName` and emits any diagnostics on a failure.
     /// If the schema does not exists `nil` will be returned.
-    private mutating func qualifedName(for name: TableNameSyntax) -> QualifiedTableName {
+    private mutating func qualifedName(for name: TableNameSyntax) -> QualifiedName {
         return qualifedName(for: name.name, in: name.schema)
     }
     
@@ -131,9 +131,9 @@ struct StmtTypeChecker {
         for name: IdentifierSyntax,
         in schema: IdentifierSyntax?,
         isTemp: Bool = false
-    ) -> QualifiedTableName {
+    ) -> QualifiedName {
         guard let schema else {
-            return QualifiedTableName(name: name.value, schema: isTemp ? .temp : .main)
+            return QualifiedName(name: name.value, schema: isTemp ? .temp : .main)
         }
         
         if isTemp {
@@ -142,10 +142,10 @@ struct StmtTypeChecker {
         
         guard let schemaName = SchemaName(schema.value) else {
             diagnostics.add(.init("Schema '\(schema)' does not exist", at: schema.location))
-            return QualifiedTableName(name: name.value, schema: nil)
+            return QualifiedName(name: name.value, schema: nil)
         }
 
-        return QualifiedTableName(name: name.value, schema: schemaName)
+        return QualifiedName(name: name.value, schema: schemaName)
     }
     
     private mutating func value<Value>(
@@ -682,7 +682,7 @@ extension StmtTypeChecker {
         }
         
         return Table(
-            name: QualifiedTableName(name: cte.table.value, schema: nil),
+            name: QualifiedName(name: cte.table.value, schema: nil),
             columns: columns,
             primaryKey: [],
             kind: .cte
@@ -925,7 +925,7 @@ extension StmtTypeChecker {
             // Insert the result of the subquery into the environment
             if let alias {
                 let table = Table(
-                    name: QualifiedTableName(name: alias.identifier.value, schema: nil),
+                    name: QualifiedName(name: alias.identifier.value, schema: nil),
                     columns: resultColumns.allColumns,
                     primaryKey: [],
                     kind: .subquery
@@ -1050,7 +1050,7 @@ extension StmtTypeChecker {
             schema[tableName] = nil
             
             // Update name, `table` will be inserted at end of function
-            tableName = QualifiedTableName(name: newTableName.value, schema: tableName.schema)
+            tableName = QualifiedName(name: newTableName.value, schema: tableName.schema)
             table.name = tableName
         case let .renameColumn(oldName, newName):
             table.columns = table.columns.reduce(into: [:]) { newColumns, column in
@@ -1131,7 +1131,7 @@ extension StmtTypeChecker {
                             diagnostics.add(.columnDoesNotExist(foreignColumn))
                         }
                     }
-                } else if let table = schema[QualifiedTableName(name: fk.foreignTable.value, schema: .main)] {
+                } else if let table = schema[QualifiedName(name: fk.foreignTable.value, schema: .main)] {
                     for foreignColumn in fk.foreignColumns {
                         if table.columns[foreignColumn.value] == nil {
                             diagnostics.add(.columnDoesNotExist(foreignColumn))
@@ -1267,7 +1267,7 @@ extension StmtTypeChecker {
                     diagnostics.add(.columnDoesNotExist(column))
                 }
                 
-                let foreignTable = QualifiedTableName(name: fkClause.foreignTable.value, schema: .main)
+                let foreignTable = QualifiedName(name: fkClause.foreignTable.value, schema: .main)
                 
                 // Make sure referenced table exists
                 guard let foreignTable = schema[foreignTable] else {
