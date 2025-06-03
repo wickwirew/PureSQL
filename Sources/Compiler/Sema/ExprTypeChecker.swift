@@ -151,7 +151,7 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
     mutating func visit(_ expr: borrowing PrefixExprSyntax) -> Type {
         let rhs = expr.rhs.accept(visitor: &self)
         
-        guard let scheme = env[prefix: expr.operator.operator] else {
+        guard let scheme = env.resolve(prefix: expr.operator.operator) else {
             diagnostics.add(.init(
                 "'\(expr.operator.operator)' is not a valid prefix operator",
                 at: expr.operator.location
@@ -169,7 +169,7 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         let lTy = expr.lhs.accept(visitor: &self)
         let rTy = expr.rhs.accept(visitor: &self)
         
-        guard let scheme = env[infix: expr.operator.operator] else {
+        guard let scheme = env.resolve(infix: expr.operator.operator) else {
             diagnostics.add(.init(
                 "'\(expr.operator.operator)' is not a valid infix operator",
                 at: expr.operator.location
@@ -190,7 +190,7 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
     mutating func visit(_ expr: borrowing PostfixExprSyntax) -> Type {
         let lhs = expr.lhs.accept(visitor: &self)
         
-        guard let scheme = env[postfix: expr.operator.operator] else {
+        guard let scheme = env.resolve(postfix: expr.operator.operator) else {
             diagnostics.add(.init(
                 "'\(expr.operator.operator)' is not a valid postfix operator",
                 at: expr.operator.location
@@ -220,7 +220,7 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
     mutating func visit(_ expr: borrowing FunctionExprSyntax) -> Type {
         let argTys = typeCheck(expr.args)
         
-        guard let scheme = env[function: expr.name.value, argCount: argTys.count] else {
+        guard let scheme = env.resolve(function: expr.name.value, argCount: argTys.count) else {
             diagnostics.add(.init("No such function '\(expr.name)' exits", at: expr.location))
             return .error
         }

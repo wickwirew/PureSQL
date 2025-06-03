@@ -20,12 +20,6 @@ public struct QualifiedName: Hashable, Sendable, CustomStringConvertible {
         self.schema = schema
     }
     
-    @_disfavoredOverload
-    public init(name: Substring, schema: Substring?) {
-        self.name = name
-        self.schema = schema.map(SchemaName.init) ?? nil
-    }
-    
     public var description: String {
         return if let schema {
             "\(schema).\(name)"

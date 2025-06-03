@@ -15,7 +15,7 @@ public enum Cardinality: String {
 /// This allows the generation to be smart and set the
 /// return type to an Array only if needed.
 struct CardinalityInferrer {
-    let schema: Schema
+    let env: Environment
     
     mutating func cardinality<S: StmtSyntax>(for syntax: borrowing S) -> Cardinality {
         return syntax.accept(visitor: &self)
@@ -30,13 +30,6 @@ struct CardinalityInferrer {
         let filteredPrimaryKeys = expr.accept(visitor: &self)
         let didFilterByPrimaryKey = !table.primaryKey.contains{ !filteredPrimaryKeys.contains($0) }
         return didFilterByPrimaryKey ? .single : .many
-    }
-    
-    private func qualifiedName(
-        for name: IdentifierSyntax,
-        in schema: IdentifierSyntax?
-    ) -> QualifiedName {
-        return QualifiedName(name: name.value, schema: schema?.value)
     }
 }
 
@@ -56,9 +49,10 @@ extension CardinalityInferrer: StmtSyntaxVisitor {
         // No filtering, update is to full table
         guard let whereExpr = stmt.whereExpr else { return .many }
         
-        let tableName = qualifiedName(for: stmt.tableName.tableName.name, in: stmt.tableName.tableName.schema)
-        
-        guard let table = schema[tableName] else {
+        guard let table = env.resolve(
+            table: stmt.tableName.tableName.name.value,
+            schema: stmt.tableName.tableName.schema?.value
+        ).value else {
             // Upstream will have emitted diag
             return .many
         }
@@ -95,11 +89,12 @@ extension CardinalityInferrer: StmtSyntaxVisitor {
                 // If its not against a table we cannot infer it.
                 guard case let .table(table) = join.tableOrSubquery.kind else { return .many }
                 
-                let tableName = qualifiedName(for: table.name, in: table.schema)
-                
                 // If we cannot find the table something upstream will have already emitted
                 // diagnositic so just exit
-                guard let t = schema[tableName] else { return .many }
+                guard let t = env.resolve(
+                    table: table.name.value,
+                    schema: table.schema?.value
+                ).value else { return .many }
                 
                 // If they had filtering on all primary keys we can assume a single
                 // result will be returned.
@@ -124,9 +119,10 @@ extension CardinalityInferrer: StmtSyntaxVisitor {
     mutating func visit(_ stmt: borrowing DeleteStmtSyntax) -> Cardinality {
         guard let filter = stmt.whereExpr else { return .many }
         
-        let tableName = qualifiedName(for: stmt.table.tableName.name, in: stmt.table.tableName.schema)
-        
-        guard let table = schema[tableName] else {
+        guard let table = env.resolve(
+            table: stmt.table.tableName.name.value,
+            schema: stmt.table.tableName.schema?.value
+        ).value else {
             // Upstream will have emitted diag
             return .many
         }

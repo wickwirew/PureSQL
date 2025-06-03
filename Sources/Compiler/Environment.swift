@@ -110,7 +110,7 @@ struct Environment {
         return detachedValues[named].count > 0
     }
     
-    subscript(function name: Substring, argCount argCount: Int) -> TypeScheme? {
+    func resolve(function name: Substring, argCount: Int) -> TypeScheme? {
         // TODO: Move this out of the env
         guard let scheme = Builtins.functions[name],
               case let .fn(params, ret) = scheme.type else { return nil }
@@ -132,7 +132,7 @@ struct Environment {
         )
     }
     
-    subscript(prefix op: Operator) -> TypeScheme? {
+    func resolve(prefix op: Operator) -> TypeScheme? {
         return switch op {
         case .plus: Builtins.pos
         case .minus: Builtins.negate
@@ -141,7 +141,7 @@ struct Environment {
         }
     }
     
-    subscript(infix op: Operator) -> TypeScheme? {
+    func resolve(infix op: Operator) -> TypeScheme? {
         return switch op {
         case .in, .not(.in): Builtins.in
         case .plus, .minus, .multiply, .divide, .bitwuseOr,
@@ -161,7 +161,7 @@ struct Environment {
         }
     }
     
-    subscript(postfix op: Operator) -> TypeScheme? {
+    func resolve(postfix op: Operator) -> TypeScheme? {
         return switch op {
         case .collate: Builtins.concatOp
         case .escape: Builtins.escape

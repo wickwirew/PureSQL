@@ -111,7 +111,8 @@ fileprivate struct CompilerWithSource {
         var typeChecker = StmtTypeChecker(schema: schema, pragmas: pragmas.featherPragmas)
         let (parameters, type) = typeChecker.signature(for: stmt)
         
-        var cardinalityInferer = CardinalityInferrer(schema: schema)
+        // Note: Make sure to pass env from type checker to make sure all is imported
+        var cardinalityInferer = CardinalityInferrer(env: typeChecker.env)
         let cardinality = cardinalityInferer.cardinality(for: stmt)
         
         let uniqueParameters = uniquify(parameters: parameters)
