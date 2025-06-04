@@ -22,7 +22,7 @@ public struct DuplicateDictionary<Key: Hashable, Value> {
     internal var _values: ContiguousArray<_Element>
     /// A dictionary where each value is located.
     @usableFromInline
-    internal var positions: [Key: DuplicateDictionaryPositions]
+    internal var positions: [Key: Positions]
     
     public typealias Index = Int
     public typealias Element = (key: Key, value: Value)
@@ -46,12 +46,14 @@ public struct DuplicateDictionary<Key: Hashable, Value> {
     
     /// Result value from a key lookup.
     public struct Entries {
-        private let positions: DuplicateDictionaryPositions
-        private let owner: DuplicateDictionary
+        @usableFromInline
+        let positions: Positions
+        @usableFromInline
+        let owner: DuplicateDictionary
         
         @inline(__always)
         fileprivate init(
-            positions: DuplicateDictionaryPositions,
+            positions: Positions,
             owner: DuplicateDictionary
         ) {
             self.positions = positions
@@ -71,6 +73,65 @@ public struct DuplicateDictionary<Key: Hashable, Value> {
         }
     }
     
+    /// Where the element is location in the `values` array.
+    public enum Positions: Sendable, Equatable, Sequence {
+        public typealias Index = Int
+        public typealias Element = Int
+        
+        /// Nowhere
+        case empty
+        /// Just a single location
+        case single(Int)
+        /// In many spots
+        case many([Int])
+        
+        /// How many spots it exists
+        @inline(__always)
+        @inlinable
+        var count: Int {
+            return switch self {
+            case .empty: 0
+            case .single: 1
+            case .many(let i): i.count
+            }
+        }
+        
+        /// Adds the index to the positions
+        @inline(__always)
+        mutating func adding(_ index: Int) {
+            switch self {
+            case .empty:
+                self = .single(index)
+            case .single(let existing):
+                self = .many([existing, index])
+            case .many(var existing):
+                existing.append(index)
+                self = .many(existing)
+            }
+        }
+        
+        public func makeIterator() -> Iterator {
+            Iterator(positions: self)
+        }
+        
+        public struct Iterator: IteratorProtocol {
+            let positions: Positions
+            var currentIndex = 0
+            
+            public mutating func next() -> Element? {
+                switch positions {
+                case .empty:
+                    return nil
+                case .single(let index):
+                    return currentIndex == 0 ? index : nil
+                case .many(let indices):
+                    guard currentIndex < indices.count else { return nil }
+                    return indices[currentIndex]
+                }
+            }
+        }
+    }
+
     public init() {
         self._values = []
         self.positions = [:]
@@ -78,7 +139,7 @@ public struct DuplicateDictionary<Key: Hashable, Value> {
     
     private init(
         values: ContiguousArray<_Element>,
-        positions: [Key : DuplicateDictionaryPositions]
+        positions: [Key : Positions]
     ) {
         self._values = values
         self.positions = positions
@@ -90,6 +151,15 @@ public struct DuplicateDictionary<Key: Hashable, Value> {
         let index = _values.count
         _values.append(_Element(key, value))
         positions[key, default: .empty].adding(index)
+    }
+    
+    @inline(__always)
+    public mutating func append<S: Sequence>(
+        contentsOf collection: S
+    ) where S.Element == Element {
+        for (key, value) in  collection {
+            append(value, for: key)
+        }
     }
     
     /// Gets the values for the given key
@@ -107,6 +177,11 @@ public struct DuplicateDictionary<Key: Hashable, Value> {
         positions.reserveCapacity(minimumCapacity)
     }
     
+    public func contains(key: Key) -> Bool {
+        guard let p = positions[key] else { return false }
+        return p != .empty
+    }
+    
     /// Map over the values and transform them into a new dictionary
     /// with the same keys but with the transformed values.
     public func mapValues<T>(
@@ -116,7 +191,13 @@ public struct DuplicateDictionary<Key: Hashable, Value> {
             values: ContiguousArray(_values.map{
                 DuplicateDictionary<Key, T>._Element($0.key, try transform($0.value))
             }),
-            positions: positions
+            positions: positions.reduce(into: [:]) { r, p in
+                r[p.key] = switch p.value {
+                case .empty: .empty
+                case .single(let i): .single(i)
+                case .many(let i): .many(i)
+                }
+            }
         )
     }
 }
@@ -174,40 +255,39 @@ extension DuplicateDictionary: Collection {
     }
 }
 
-extension DuplicateDictionary.Entries: Sequence {
+extension DuplicateDictionary.Entries: Collection {
     public typealias Element = Value
+    public typealias Index = Int
 
     @inline(__always)
+    @inlinable
+    public subscript(index: Index) -> Element {
+        switch positions {
+        case .empty:
+            preconditionFailure("Index out of bounds")
+        case .single(let i):
+            guard index == 0 else { preconditionFailure("Index out of bounds") }
+            return owner._values[i].value
+        case .many(let i):
+            return owner._values[i[index]].value
+        }
+    }
+    
+    @inline(__always)
+    @inlinable
     public var count: Int { positions.count }
     
     @inline(__always)
-    public func makeIterator() -> Iterator {
-        Iterator(element: self)
-    }
+    @inlinable
+    public var startIndex: Int { 0 }
     
-    public struct Iterator: IteratorProtocol {
-        private let element: DuplicateDictionary.Entries
-        private var currentIndex = 0
-        
-        init(element: DuplicateDictionary.Entries) {
-            self.element = element
-        }
-        
-        @inline(__always)
-        public mutating func next() -> Value? {
-            defer { currentIndex += 1 }
-            
-            switch element.positions {
-            case .empty:
-                return nil
-            case .single(let index):
-                return currentIndex == 0 ? element.owner._values[index].value : nil
-            case .many(let indices):
-                guard currentIndex < indices.count else { return nil }
-                return element.owner._values[currentIndex].value
-            }
-        }
-    }
+    @inline(__always)
+    @inlinable
+    public var endIndex: Int { positions.count }
+    
+    @inline(__always)
+    @inlinable
+    public func index(after i: Index) -> Index { i + 1 }
 }
 
 extension DuplicateDictionary {
@@ -216,33 +296,36 @@ extension DuplicateDictionary {
         Values(dictionary: self)
     }
     
-    public struct Values: Sequence {
+    public struct Values: Collection {
         public typealias Element = Value
         
+        @usableFromInline
         let dictionary: DuplicateDictionary
         
         init(dictionary: DuplicateDictionary) {
             self.dictionary = dictionary
         }
         
-        public func makeIterator() -> Iterator {
-            return Iterator(dictionary: dictionary)
-        }
+        @inline(__always)
+        @inlinable
+        public subscript(index: Index) -> Element { dictionary._values[index].value }
         
-        public struct Iterator: IteratorProtocol {
-            private let dictionary: DuplicateDictionary
-            private var index = 0
-            
-            @usableFromInline
-            init(dictionary: DuplicateDictionary) {
-                self.dictionary = dictionary
-            }
-            
-            public mutating func next() -> Element? {
-                guard index < dictionary._values.count else { return nil }
-                defer { index += 1 }
-                return dictionary._values[index].value
-            }
+        @inline(__always)
+        @inlinable
+        public var count: Int { dictionary._values.count }
+        
+        @inline(__always)
+        @inlinable
+        public var startIndex: Int { dictionary._values.startIndex }
+        
+        @inline(__always)
+        @inlinable
+        public var endIndex: Int { dictionary._values.endIndex }
+        
+        @inline(__always)
+        @inlinable
+        public func index(after i: Index) -> Index {
+            dictionary._values.index(after: i)
         }
     }
 }
@@ -251,65 +334,3 @@ extension DuplicateDictionary: Sendable where Key: Sendable, Value: Sendable {}
 extension DuplicateDictionary._Element: Sendable where Key: Sendable, Value: Sendable {}
 extension DuplicateDictionary._Element: Equatable where Key: Equatable, Value: Equatable {}
 extension DuplicateDictionary: Equatable where Key: Equatable, Value: Equatable {}
-
-/// Where the element is location in the `values` array.
-///
-/// This cannot be nested in the `DuplicateDictionary` struct
-/// due to the `mapValues` since `DuplicateDictionary<T, V>.Positions`
-/// is not equal too `DuplicateDictionary<T, NewValue>.Positions`
-public enum DuplicateDictionaryPositions: Sendable, Equatable, Sequence {
-    public typealias Index = Int
-    public typealias Element = Int
-    
-    /// Nowhere
-    case empty
-    /// Just a single location
-    case single(Int)
-    /// In many spots
-    case many([Int])
-    
-    /// How many spots it exists
-    @inline(__always)
-    var count: Int {
-        return switch self {
-        case .empty: 0
-        case .single: 1
-        case .many(let i): i.count
-        }
-    }
-    
-    /// Adds the index to the positions
-    @inline(__always)
-    mutating func adding(_ index: Int) {
-        switch self {
-        case .empty:
-            self = .single(index)
-        case .single(let existing):
-            self = .many([existing, index])
-        case .many(var existing):
-            existing.append(index)
-            self = .many(existing)
-        }
-    }
-    
-    public func makeIterator() -> Iterator {
-        Iterator(positions: self)
-    }
-    
-    public struct Iterator: IteratorProtocol {
-        let positions: DuplicateDictionaryPositions
-        var currentIndex = 0
-        
-        public mutating func next() -> Element? {
-            switch positions {
-            case .empty:
-                return nil
-            case .single(let index):
-                return currentIndex == 0 ? index : nil
-            case .many(let indices):
-                guard currentIndex < indices.count else { return nil }
-                return indices[currentIndex]
-            }
-        }
-    }
-}
