@@ -29,8 +29,8 @@ public struct DuplicateDictionary<Key: Hashable, Value> {
     
     /// Tuples cannot be equatable...
     public struct _Element {
-        @usableFromInline let key: Key
-        @usableFromInline let value: Value
+        @usableFromInline var key: Key
+        @usableFromInline var value: Value
         
         @usableFromInline
         @inline(__always)
@@ -119,6 +119,7 @@ public struct DuplicateDictionary<Key: Hashable, Value> {
             var currentIndex = 0
             
             public mutating func next() -> Element? {
+                defer { currentIndex += 1 }
                 switch positions {
                 case .empty:
                     return nil
@@ -143,6 +144,16 @@ public struct DuplicateDictionary<Key: Hashable, Value> {
     ) {
         self._values = values
         self.positions = positions
+    }
+    
+    public init<S: Sequence>(
+        _ sequence: S
+    ) where S.Element == Element {
+        self = .init()
+        
+        for (k, v) in sequence {
+            append(v, for: k)
+        }
     }
     
     /// Appends the value for the given key
@@ -180,6 +191,28 @@ public struct DuplicateDictionary<Key: Hashable, Value> {
     public func contains(key: Key) -> Bool {
         guard let p = positions[key] else { return false }
         return p != .empty
+    }
+    
+    /// Renames all values under the `key` to the `newKey`
+    public mutating func rename(_ key: Key, to newKey: Key) {
+        guard let positions = positions[key] else { return }
+        
+        for index in positions {
+            _values[index].key = newKey
+        }
+        
+        // Insert positions for new key and remove old one.
+        self.positions[newKey] = positions
+        self.positions[key] = nil
+    }
+    
+    /// Updates all values for the given `key` to be the `newValue`
+    public mutating func updateAll(_ key: Key, to newValue: Value) {
+        guard let positions = positions[key] else { return }
+        
+        for index in positions {
+            _values[index].value = newValue
+        }
     }
     
     /// Map over the values and transform them into a new dictionary
@@ -334,3 +367,9 @@ extension DuplicateDictionary: Sendable where Key: Sendable, Value: Sendable {}
 extension DuplicateDictionary._Element: Sendable where Key: Sendable, Value: Sendable {}
 extension DuplicateDictionary._Element: Equatable where Key: Equatable, Value: Equatable {}
 extension DuplicateDictionary: Equatable where Key: Equatable, Value: Equatable {}
+
+extension DuplicateDictionary: CustomReflectable {
+    public var customMirror: Mirror {
+        Mirror(self, unlabeledChildren: self.map(\.self), displayStyle: .dictionary)
+    }
+}

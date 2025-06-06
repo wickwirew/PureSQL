@@ -153,7 +153,7 @@ public struct ResultColumns: Sendable {
         
         return chunks.reduce(into: [:]) { result, chunk in
             for column in chunk.columns {
-                result[column.key] = column.value
+                result.append(column.value, for: column.key)
             }
         }
     }

@@ -174,9 +174,13 @@ extension Environment {
     /// Imports the table into the environment.
     /// If `isOptional` is true all columns types will be
     /// forced to their optional value.
+    /// If `qualifiedAccessOnly` is true the columns will only be
+    /// available via qualified access with at least the table
+    /// name specified
     mutating func `import`(
         table: Table,
-        isOptional: Bool
+        isOptional: Bool,
+        qualifiedAccessOnly: Bool = false
     ) {
         let importedTable = ImportedTable(
             table: isOptional ? table.mapTypes { $0.coerceToOptional() } : table,
@@ -188,6 +192,9 @@ extension Environment {
         // Insert the tables type as well so it can be used like a column
         // in `MATCH` and `IN` statements.
         insert(detached: table.name.name, type: table.type, isOptional: false)
+        
+        // Don't insert columns into detached if they required qualified access
+        guard !qualifiedAccessOnly else { return }
         
         for (column, type) in table.columns {
             insert(detached: column, type: type, isOptional: isOptional)
@@ -267,11 +274,13 @@ extension Environment {
         in importedTable: ImportedTable,
         forceAmbiguous: Bool = false
     ) -> LookupResult<Type> {
-        if let column = importedTable.table.columns[column] {
-            return LookupResult(column, isAmbiguous: forceAmbiguous)
+        let entries = importedTable.table.columns[column]
+        
+        if let column = entries.first {
+            return LookupResult(column, isAmbiguous: forceAmbiguous || entries.count > 1)
         }
         
-        guard let column = importedTable.additionalColumns?[column] else {
+        guard let column = importedTable.additionalColumns?[column].first else {
             // If the table does not have it the parent won't either
             return .columnDoesNotExist(column)
         }

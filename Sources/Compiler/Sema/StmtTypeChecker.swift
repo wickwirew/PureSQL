@@ -277,7 +277,7 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
             let types = resultColumns.values
             let minCount = min(stmt.columnNames.count, types.count)
             columns = (0..<minCount).reduce(into: [:]) { columns, index in
-                columns[stmt.columnNames[index].value] = types[index]
+                columns.append(types[index], for: stmt.columnNames[index].value)
             }
         }
         
@@ -345,17 +345,17 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
         
         switch stmt.action {
         case .delete:
-            importTable(table, as: "old")
+            importTable(table, as: "old", qualifiedAccessOnly: true)
         case .insert:
-            importTable(table, as: "new")
+            importTable(table, as: "new", qualifiedAccessOnly: true)
         case let .update(columns):
-            importTable(table, as: "new")
-            importTable(table, as: "old")
+            importTable(table, as: "new", qualifiedAccessOnly: true)
+            importTable(table, as: "old", qualifiedAccessOnly: true)
             
             // Make sure all columns in the update statement actually exist
             if let columns {
                 for column in columns {
-                    if table.columns[column.value] == nil {
+                    if !table.columns.contains(key: column.value) {
                         diagnostics.add(.columnDoesNotExist(column))
                     }
                 }
@@ -502,7 +502,7 @@ extension StmtTypeChecker {
         if let columns = insert.columns {
             var columnTypes: [Type] = []
             for column in columns {
-                guard let def = table.columns[column.value] else {
+                guard let def = table.columns[column.value].first else {
                     diagnostics.add(.columnDoesNotExist(column))
                     columnTypes.append(.error)
                     continue
@@ -552,7 +552,7 @@ extension StmtTypeChecker {
             case let .single(column):
                 nameInferrer.suggest(name: column.value, for: valueName)
                 
-                guard let column = table.columns[column.value] else {
+                guard let column = table.columns[column.value].first else {
                     diagnostics.add(.columnDoesNotExist(column))
                     return .empty
                 }
@@ -616,7 +616,7 @@ extension StmtTypeChecker {
         var columns: [Type] = []
         
         for name in names {
-            if let column = table.columns[name.value] {
+            if let column = table.columns[name.value].first {
                 columns.append(column)
             } else {
                 diagnostics.add(.columnDoesNotExist(name))
@@ -640,10 +640,9 @@ extension StmtTypeChecker {
                 
                 let name = alias?.identifier.value ?? names.proposedName ?? "column\(offset + 1)"
                 
-                resultColumns[name] = type
+                resultColumns.append(type, for: name)
             case .all:
-                // TODO: See TODO on `Columns` typealias
-                resultColumns.merge(sourceTable.columns, uniquingKeysWith: { $1 })
+                resultColumns.append(contentsOf: sourceTable.columns)
             }
         }
         
@@ -678,7 +677,7 @@ extension StmtTypeChecker {
             }
             
             columns = (0 ..< min(columnTypes.count, cte.columns.count))
-                .reduce(into: [:]) { $0[cte.columns[$1].value] = columnTypes[$1] }
+                .reduce(into: [:]) { $0.append(columnTypes[$1], for: cte.columns[$1].value) }
         }
         
         return Table(
@@ -796,7 +795,7 @@ extension StmtTypeChecker {
     /// selected all columns from foo and bar so the table structs can be embded
     /// within the output type.
     private mutating func typeCheck(resultColumns: [ResultColumnSyntax]) -> ResultColumns {
-        var columns: OrderedDictionary<Substring, Type> = [:]
+        var columns: Columns = [:]
         var table: Substring?
         // Each chunk is either a list of specifically listed columns
         // or a select all of a table.
@@ -819,7 +818,7 @@ extension StmtTypeChecker {
                 let (type, names) = typeCheck(expr)
                 let name = alias?.identifier.value ?? names.proposedName ?? "column\(offset + 1)"
                 
-                columns[name] = type
+                columns.append(type, for: name)
                 nameInferrer.suggest(name: name, for: names)
                 
                 // We selected a single column, so clear out the table
@@ -960,17 +959,28 @@ extension StmtTypeChecker {
     private mutating func importTable(
         _ table: Table,
         as alias: Substring? = nil,
-        isOptional: Bool = false
+        isOptional: Bool = false,
+        qualifiedAccessOnly: Bool = false
     ) {
         // Insert real name not alias. These are used later for observation tracking
         // so an alias is no good since it will always be the actual table name.
         usedTableNames.insert(table.name.name)
         
         // Table is always accessible by it's name even if aliased
-        env.import(table: table, isOptional: isOptional)
+        env.import(
+            table: table,
+            isOptional: isOptional,
+            qualifiedAccessOnly: qualifiedAccessOnly
+        )
         
+        // Aliases can only ever be used qualifed since the original
+        // columns are already inserted
         if let alias {
-            env.import(table: table.aliased(to: alias), isOptional: isOptional)
+            env.import(
+                table: table.aliased(to: alias),
+                isOptional: isOptional,
+                qualifiedAccessOnly: true
+            )
         }
     }
     
@@ -994,11 +1004,12 @@ extension StmtTypeChecker {
         case let .columns(columnsDefs, constraints, options):
             var columns: Columns = [:]
             for (name, def) in columnsDefs {
-                columns[name.value] = typeFor(
+                let type = typeFor(
                     column: def,
                     tableColumns: columns,
                     tableName: createTable.name.value
                 )
+                columns.append(type, for: name.value)
             }
             
             validateTableConstraints(
@@ -1053,17 +1064,16 @@ extension StmtTypeChecker {
             tableName = QualifiedName(name: newTableName.value, schema: tableName.schema)
             table.name = tableName
         case let .renameColumn(oldName, newName):
-            table.columns = table.columns.reduce(into: [:]) { newColumns, column in
-                newColumns[column.key == oldName.value ? newName.value : column.key] = column.value
-            }
+            table.columns.rename(oldName.value, to: newName.value)
         case let .addColumn(column):
-            table.columns[column.name.value] = typeFor(
+            let newType = typeFor(
                 column: column,
                 tableColumns: table.columns,
                 tableName: table.name.name
             )
+            table.columns.append(newType, for: column.name.value)
         case let .dropColumn(column):
-            table.columns[column.value] = nil
+            table.columns = Columns(table.columns.filter { $0.key != column.value })
         }
         
         schema[tableName] = table
@@ -1127,13 +1137,13 @@ extension StmtTypeChecker {
                         // declared for so if its this table and this column then ignore it.
                         guard column.name.value != foreignColumn.value else { continue }
                         
-                        if tableColumns[foreignColumn.value] == nil {
+                        if !tableColumns.contains(key: foreignColumn.value) {
                             diagnostics.add(.columnDoesNotExist(foreignColumn))
                         }
                     }
                 } else if let table = schema[QualifiedName(name: fk.foreignTable.value, schema: .main)] {
                     for foreignColumn in fk.foreignColumns {
-                        if table.columns[foreignColumn.value] == nil {
+                        if !table.columns.contains(key: foreignColumn.value) {
                             diagnostics.add(.columnDoesNotExist(foreignColumn))
                         }
                     }
@@ -1179,10 +1189,10 @@ extension StmtTypeChecker {
         tableColumns: Columns
     ) {
         for foreignColumn in fk.foreignColumns {
-            // Column constraints can oddly reference themselves
+            // Column constraints can reference themselves
             guard column.name.value != foreignColumn.value else { continue }
             
-            if tableColumns[foreignColumn.value] == nil {
+            if !tableColumns.contains(key: foreignColumn.value) {
                 diagnostics.add(.columnDoesNotExist(foreignColumn))
             }
         }
@@ -1237,7 +1247,7 @@ extension StmtTypeChecker {
                 for column in constraint.0 {
                     guard let name = column.columnName else { continue }
                     
-                    if columns[name.value] == nil {
+                    if !columns.contains(key: name.value) {
                         diagnostics.add(.columnDoesNotExist(name))
                     } else {
                         columnNames.append(name.value)
@@ -1263,7 +1273,7 @@ extension StmtTypeChecker {
             case .foreignKey(let fkColumns, let fkClause):
                 // Make sure listed columns exist
                 for column in fkColumns {
-                    guard columns[column.value] == nil else { continue }
+                    guard !columns.contains(key: column.value) else { continue }
                     diagnostics.add(.columnDoesNotExist(column))
                 }
                 
@@ -1277,7 +1287,7 @@ extension StmtTypeChecker {
                 
                 // Make sure referenced columns exist
                 for column in fkClause.foreignColumns {
-                    guard foreignTable.columns[column.value] == nil else { continue }
+                    guard !foreignTable.columns.contains(key: column.value) else { continue }
                     diagnostics.add(.columnDoesNotExist(column))
                 }
             case .primaryKey, .unique:
@@ -1298,9 +1308,11 @@ extension StmtTypeChecker {
                     continue
                 }
                 
-                columns[name.value] = notNull != nil
+                let type: Type = notNull != nil
                     ? .nominal(typeName)
                     : .optional(.nominal(typeName))
+                
+                columns.append(type, for: name.value)
             case .fts5Option:
                 break // Nothing to do, maybe validate these in the future
             case .unknown:

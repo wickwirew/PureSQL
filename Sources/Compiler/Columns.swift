@@ -7,12 +7,14 @@
 
 import OrderedCollections
 
-public typealias Columns = OrderedDictionary<Substring, Type>
+public typealias Columns = DuplicateDictionary<Substring, Type>
 
 extension Columns {
     /// Initializes the columns with their default names that SQLite gives to them.
     init(withDefaultNames types: [Type]) {
         self = types.enumerated()
-            .reduce(into: [:]) { c, v in c["column\(v.offset + 1)"] = v.element }
+            .reduce(into: [:]) { c, v in
+                c.append(v.element, for: "column\(v.offset + 1)")
+            }
     }
 }
