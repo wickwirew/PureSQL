@@ -170,7 +170,7 @@ struct NameInferrer {
             return joinClauseSyntax.joins.reduce(.none) {
                 unify(names: $0, with: infer(tableOrSubquery: $1.tableOrSubquery))
             }
-        case .tableOrSubqueries(let tableOrSubqueries, _):
+        case .tableOrSubqueries(let tableOrSubqueries):
             return tableOrSubqueries.reduce(.none) {
                 unify(names: $0, with: infer(tableOrSubquery: $1))
             }

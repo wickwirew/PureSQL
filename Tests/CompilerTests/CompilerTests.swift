@@ -68,6 +68,10 @@ class CompilerTests: XCTestCase {
     func testTriggers() throws {
         try checkErrors(compile: "CompileTriggers")
     }
+    
+    func testTableOrSubquery() throws {
+        try checkQueries(compile: "CompileTableOrSubqueries")
+    }
 }
 
 struct CheckSignature: Checkable {

@@ -882,11 +882,15 @@ extension StmtTypeChecker {
             let (type, _) = typeCheck(expression)
             inferenceState.unify(type, with: .integer, at: expression.location)
         case let .using(columns):
-            typeCheck(
-                join.tableOrSubquery,
-                joinOp: join.op,
-                columns: columns.reduce(into: []) { $0.insert($1.value) }
-            )
+            // Need to make sure listed columns exist in both tables.
+            // JOIN foo USING (bar)
+            
+            for _ in columns {
+                // Also: See comment on tableOrSubqueries type check
+                fatalError("TODO: Need to pass LHS of the join clause")
+            }
+            
+            typeCheck(join.tableOrSubquery, joinOp: join.op)
         case .none:
             typeCheck(join.tableOrSubquery, joinOp: join.op)
         }
@@ -894,8 +898,7 @@ extension StmtTypeChecker {
     
     private mutating func typeCheck(
         _ tableOrSubquery: TableOrSubquerySyntax,
-        joinOp: JoinOperatorSyntax? = nil,
-        columns usedColumns: Set<Substring> = []
+        joinOp: JoinOperatorSyntax? = nil
     ) {
         switch tableOrSubquery.kind {
         case let .table(table):
@@ -937,11 +940,17 @@ extension StmtTypeChecker {
             }
         case let .join(joinClause):
             typeCheck(joinClause: joinClause)
-        case .tableOrSubqueries:
-            fatalError()
+        case let .tableOrSubqueries(tabelOrSubqueries):
+            // TODO: We need to make this return the table it is importing.
+            // Once thats done we run each of these in its own env since
+            // these currently right now allow you to reference the
+            // table imported before it.
+            for tabelOrSubquery in tabelOrSubqueries {
+                typeCheck(tabelOrSubquery)
+            }
         }
     }
-    
+
     private func assumeRow(_ ty: Type) -> Type.Row {
         guard case let .row(rowTy) = ty else {
             assertionFailure("This cannot happen")

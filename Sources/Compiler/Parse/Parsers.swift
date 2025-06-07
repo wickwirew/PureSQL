@@ -1073,16 +1073,15 @@ enum Parsers {
                 case let .join(joinClause):
                     kind = .join(joinClause)
                 case let .tableOrSubqueries(table):
-                    // Note: The alias is not mentioned at all in the documentation.
-                    // I think this is a bug in the docs, since you can clearly add one
-                    // unless im misinterpreting the diagram which is more than possible.
+                    // Note: Using SQLite directly it seems to allow an alias, but its not usable.
                     //
-                    // Valid SQL:
-                    // SELECT * FROM (foo, bar) AS baz;
+                    // Example:
+                    // `SELECT * FROM (foo, bar) AS baz` is valid
+                    // However doing then `SELECT baz.*` is not valid.
                     //
-                    // https://www.sqlite.org/syntax/table-or-subquery.html
-                    let alias = maybeAlias(state: &state, asRequired: false)
-                    kind = .tableOrSubqueries(table, alias: alias)
+                    // I could be misinterpreting the diagram and the alias is coming from
+                    // somewhere else but it is not clear to me at the moment.
+                    kind = .tableOrSubqueries(table)
                 }
             }
         default:
