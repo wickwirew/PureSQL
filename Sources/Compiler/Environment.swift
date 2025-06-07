@@ -9,7 +9,7 @@
 /// type checked against as well as any other static analysis.
 struct Environment {
     /// Any tables that are imported into the environment.
-    var importedTables: DuplicateDictionary<QualifiedName, ImportedTable> = [:]
+    private var importedTables: DuplicateDictionary<QualifiedName, ImportedTable> = [:]
     /// This is terribly named. I really can't think of a name for it other than this.
     /// When we import a table into the environment we can give it an alias `foo AS bar`
     /// which is nice. When that happens the original `foo` table is able to be access
@@ -19,12 +19,12 @@ struct Environment {
     /// those resurive statements are only available under the aliased name, not the original.
     /// So the original tables become "locally imported" meaning they are really only
     /// valid to the local scope and should not be merged into a parent scope.
-    var locallyImportedTables: DuplicateDictionary<QualifiedName, ImportedTable> = [:]
+    private var locallyImportedTables: DuplicateDictionary<QualifiedName, ImportedTable> = [:]
     /// Detached values are all of the columns but detached from under their
     /// table. Also any defined column that is inserted without a table is
     /// in here as well. As well as the table themselves which allows
     /// them to be used in a `IN` and `MATCH` statements
-    var detachedValues: DuplicateDictionary<Substring, Type> = [:]
+    private var detachedValues: DuplicateDictionary<Substring, Type> = [:]
     
     @Indirect private var parent: Environment?
 
@@ -126,7 +126,6 @@ struct Environment {
     }
     
     func resolve(function name: Substring, argCount: Int) -> TypeScheme? {
-        // TODO: Move this out of the env
         guard let scheme = Builtins.functions[name],
               case let .fn(params, ret) = scheme.type else { return nil }
         
@@ -183,9 +182,7 @@ struct Environment {
         default: nil
         }
     }
-}
 
-extension Environment {
     /// Imports the table into the environment.
     /// If `isOptional` is true all columns types will be
     /// forced to their optional value.

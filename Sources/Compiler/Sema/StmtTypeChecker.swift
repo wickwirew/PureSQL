@@ -881,15 +881,8 @@ extension StmtTypeChecker {
             
             let (type, _) = typeCheck(expression)
             inferenceState.unify(type, with: .integer, at: expression.location)
-        case let .using(columns):
-            // Need to make sure listed columns exist in both tables.
-            // JOIN foo USING (bar)
-            
-            for _ in columns {
-                // Also: See comment on tableOrSubqueries type check
-                fatalError("TODO: Need to pass LHS of the join clause")
-            }
-            
+        case .using:
+            // TODO: Actually check columns
             typeCheck(join.tableOrSubquery, joinOp: join.op)
         case .none:
             typeCheck(join.tableOrSubquery, joinOp: join.op)

@@ -25,8 +25,12 @@ struct GenCommand: AsyncParsableCommand {
     @Option(name: .shortAndLong, help: "Comma separated list of additional imports to add")
     var additionalImports: String?
     
-    @Flag var dontColorize = false
+    @Flag(help: "If set, any diagnostic message will not be colorized")
+    var dontColorize = false
     
+    @Flag(help: "If set, core parts of the compilation will be timed")
+    var time = false
+
     mutating func run() async throws {
         let options = GenerationOptions(
             databaseName: databaseName,
@@ -41,7 +45,11 @@ struct GenCommand: AsyncParsableCommand {
         options: GenerationOptions
     ) async throws {
         let driver = Driver()
-        await driver.add(reporter: StdoutDiagnosticReporter(dontColorize: dontColorize))
+        await driver.logTimes(time)
+        
+        await driver.add(
+            reporter: StdoutDiagnosticReporter(dontColorize: dontColorize)
+        )
         
         try await driver.compile(path: path)
         

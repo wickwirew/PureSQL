@@ -83,6 +83,35 @@ struct EnvironmentTests {
         #expect(.success(.optional(.integer)) == env.resolve(column: "bar", table: "foo", schema: "main"))
     }
     
+    @Test func nonLocalsAddedWithEmptyEnvironmentDoesNotCrash() {
+        let env = Environment()
+        let diff = env.nonLocalsAdded(in: Environment())
+        #expect(diff.tables.isEmpty)
+        #expect(diff.values.isEmpty)
+    }
+    
+    @Test func nonLocalsAddedReturnsNewlyInsertedTable() {
+        let env = Environment()
+        let table = table(name: "foo")
+        var newEnv = Environment()
+        newEnv.import(table: table, isOptional: false)
+        let diff = env.nonLocalsAdded(in: newEnv)
+        #expect(diff.tables[0].value.table == table)
+    }
+    
+    @Test func originalTableIsNotReturnedWhenAliased() {
+        var env = Environment()
+        let table = table(name: "foo")
+        
+        var newEnv = Environment()
+        newEnv.import(table: table, alias: "bar", isOptional: false)
+        
+        env.importNonLocals(in: newEnv)
+        
+        #expect(env.resolve(table: "bar", schema: nil).value == table)
+        #expect(env.resolve(table: "bar", schema: "main").value == nil)
+    }
+    
     private func table(
         name: Substring,
         schema: SchemaName? = .main,
