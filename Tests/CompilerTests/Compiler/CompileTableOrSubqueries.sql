@@ -86,3 +86,46 @@ SELECT quux.*, foo.* FROM (foo CROSS JOIN baz AS quux, foo);
 -- CHECK:     baz
 -- CHECK:     foo
 SELECT * FROM (foo INNER JOIN baz ON bar = qux);
+
+-- CHECK: SIGNATURE
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         bar INTEGER?
+-- CHECK:       OUTPUT_TABLE quux
+-- CHECK:   TABLES
+-- CHECK:     foo
+SELECT quux.* FROM (foo AS quux);
+
+-- CHECK: SIGNATURE
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT_TABLE foo
+-- CHECK:   TABLES
+-- CHECK:     foo
+-- CHECK-ERROR: Table 'foo' does not exist
+SELECT foo.* FROM (foo AS quux);
+
+-- CHECK: SIGNATURE
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         bar INTEGER?
+-- CHECK:       OUTPUT_TABLE foo
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         qux INTEGER?
+-- CHECK:       OUTPUT_TABLE baz
+-- CHECK:   TABLES
+-- CHECK:     baz
+-- CHECK:     foo
+SELECT * FROM foo AS quux CROSS JOIN baz;
+
+-- CHECK: SIGNATURE
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         quux INTEGER?
+-- CHECK:   TABLES
+-- CHECK:     foo
+SELECT quux FROM ((SELECT bar AS quux FROM foo));

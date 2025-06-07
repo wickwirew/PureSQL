@@ -52,7 +52,8 @@ public struct DuplicateDictionary<Key: Hashable, Value> {
         let owner: DuplicateDictionary
         
         @inline(__always)
-        fileprivate init(
+        @inlinable
+        init(
             positions: Positions,
             owner: DuplicateDictionary
         ) {
@@ -165,6 +166,7 @@ public struct DuplicateDictionary<Key: Hashable, Value> {
     }
     
     @inline(__always)
+    @inlinable
     public mutating func append<S: Sequence>(
         contentsOf collection: S
     ) where S.Element == Element {
@@ -175,6 +177,7 @@ public struct DuplicateDictionary<Key: Hashable, Value> {
     
     /// Gets the values for the given key
     @inline(__always)
+    @inlinable
     public subscript(key: Key) -> Entries {
         guard let positions = positions[key] else {
             return Entries(positions: .empty, owner: self)

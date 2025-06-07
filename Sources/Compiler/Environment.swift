@@ -10,6 +10,16 @@
 struct Environment {
     /// Any tables that are imported into the environment.
     var importedTables: DuplicateDictionary<QualifiedName, ImportedTable> = [:]
+    /// This is terribly named. I really can't think of a name for it other than this.
+    /// When we import a table into the environment we can give it an alias `foo AS bar`
+    /// which is nice. When that happens the original `foo` table is able to be access
+    /// via the original name `foo.baz` and aliased name `bar.baz`. There is a unique caveat
+    /// to this though. When building up the environment in a `FROM` any time there
+    /// is a recursive table or sub query `(foo AS bar)` the tables that were imported from
+    /// those resurive statements are only available under the aliased name, not the original.
+    /// So the original tables become "locally imported" meaning they are really only
+    /// valid to the local scope and should not be merged into a parent scope.
+    var locallyImportedTables: DuplicateDictionary<QualifiedName, ImportedTable> = [:]
     /// Detached values are all of the columns but detached from under their
     /// table. Also any defined column that is inserted without a table is
     /// in here as well. As well as the table themselves which allows
@@ -84,6 +94,11 @@ struct Environment {
         /// in `rank`. Those can be stored here so the table
         /// can remain intact.
         let additionalColumns: Columns?
+    }
+    
+    struct Diff {
+        let tables: Slice<DuplicateDictionary<QualifiedName, ImportedTable>>
+        let values: Slice<DuplicateDictionary<Substring, Type>>
     }
     
     init(parent: Environment? = nil) {
@@ -179,6 +194,7 @@ extension Environment {
     /// name specified
     mutating func `import`(
         table: Table,
+        alias: Substring? = nil,
         isOptional: Bool,
         qualifiedAccessOnly: Bool = false
     ) {
@@ -187,7 +203,12 @@ extension Environment {
             additionalColumns: table.kind == .fts5 ? ["rank": .real] : nil
         )
         
-        importedTables.append(importedTable, for: table.name)
+        if let alias {
+            importedTables.append(importedTable, for: QualifiedName(name: alias, schema: nil))
+            locallyImportedTables.append(importedTable, for: table.name)
+        } else {
+            importedTables.append(importedTable, for: table.name)
+        }
         
         // Insert the tables type as well so it can be used like a column
         // in `MATCH` and `IN` statements.
@@ -222,6 +243,40 @@ extension Environment {
     /// Resolves the table for the given name and schema
     func resolve(table: Substring, schema: Substring?) -> LookupResult<Table> {
         resolveImported(table: table, schema: schema).map(\.table)
+    }
+    
+    /// Will import all values imported in the `environment` vs `self`
+    /// that are not considered "local" to just that scope.
+    mutating func importNonLocals(in environment: Environment) {
+        add(diff: nonLocalsAdded(in: environment))
+    }
+    
+    /// Gets the diff of the values that were added in `environment` vs `self`
+    /// that are not considered "local" to just that scope.
+    func nonLocalsAdded(in environment: Environment) -> Diff {
+        precondition(
+            environment.importedTables.count - importedTables.count >= 0,
+            "Invalid usaged, only valid when merging an env that extended self"
+        )
+        
+        precondition(
+            environment.detachedValues.count - detachedValues.count >= 0,
+            "Invalid usaged, only valid when merging an env that extended self"
+        )
+        
+        let tablesStartOffset = max(importedTables.count - 1, 0)
+        let valuesStartOffset = max(detachedValues.count - 1, 0)
+        
+        return Diff(
+            tables: environment.importedTables[tablesStartOffset..<environment.importedTables.count],
+            values: environment.detachedValues[valuesStartOffset..<environment.detachedValues.count]
+        )
+    }
+    
+    /// Adds in the values from the diff
+    mutating func add(diff: Diff) {
+        importedTables.append(contentsOf: diff.tables)
+        detachedValues.append(contentsOf: diff.values)
     }
     
     /// Resolves the type of the column based off the
@@ -305,18 +360,18 @@ extension Environment {
     /// precedence orders to make sure the correc table is returned.
     private func resolveImported(table: Substring) -> LookupResult<ImportedTable> {
         // No schema means it was a CTE or aliased subquery which should take precedence
-        let noSchemaEntries = importedTables[QualifiedName(name: table, schema: nil)]
+        let noSchemaEntries = searchForImportedAndLocalTable(named: QualifiedName(name: table, schema: nil))
         if let importedTable = noSchemaEntries.first {
             return LookupResult(importedTable, isAmbiguous: noSchemaEntries.count > 1)
         }
         
         // SQLite actually lets `temp` take precedence over `main` so we need to check it first.
-        let tempEntries = importedTables[QualifiedName(name: table, schema: .temp)]
+        let tempEntries = searchForImportedAndLocalTable(named: QualifiedName(name: table, schema: .temp))
         if let importedTable = tempEntries.first {
             return LookupResult(importedTable, isAmbiguous: tempEntries.count > 1)
         }
         
-        let mainEntries = importedTables[QualifiedName(name: table, schema: .main)]
+        let mainEntries = searchForImportedAndLocalTable(named: QualifiedName(name: table, schema: .main))
         if let importedTable = mainEntries.first {
             return LookupResult(importedTable, isAmbiguous: mainEntries.count > 1)
         }
@@ -337,7 +392,7 @@ extension Environment {
         }
         
         let qualifiedName = QualifiedName(name: table, schema: schemaName)
-        let entries = importedTables[qualifiedName]
+        let entries = searchForImportedAndLocalTable(named: qualifiedName)
         
         guard let importedTable = entries.first else {
             return parent?.resolveImported(table: table, schema: schema)
@@ -350,6 +405,20 @@ extension Environment {
             return .ambiguous(importedTable)
         } else {
             return .success(importedTable)
+        }
+    }
+    
+    /// Searchs for the table name in both the `importedTables` and if it
+    /// is not found will then search in `locallyImportedTables`
+    private func searchForImportedAndLocalTable(
+        named name: QualifiedName
+    ) -> DuplicateDictionary<QualifiedName, ImportedTable>.Entries {
+        let imported = importedTables[name]
+        
+        if !imported.isEmpty {
+            return imported
+        } else {
+            return locallyImportedTables[name]
         }
     }
 }

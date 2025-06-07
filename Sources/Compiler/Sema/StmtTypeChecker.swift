@@ -939,14 +939,27 @@ extension StmtTypeChecker {
                 env.import(columns: resultColumns.allColumns)
             }
         case let .join(joinClause):
-            typeCheck(joinClause: joinClause)
-        case let .tableOrSubqueries(tabelOrSubqueries):
-            // TODO: We need to make this return the table it is importing.
-            // Once thats done we run each of these in its own env since
-            // these currently right now allow you to reference the
-            // table imported before it.
-            for tabelOrSubquery in tabelOrSubqueries {
-                typeCheck(tabelOrSubquery)
+            let joinEnv = inNewEnvironment { typeChecker in
+                typeChecker.typeCheck(joinClause: joinClause)
+                return typeChecker.env
+            }
+            
+            env.importNonLocals(in: joinEnv)
+        case let .tableOrSubqueries(tableOrSubqueries):
+            var envDiffs: [Environment.Diff] = []
+            let startingEnv = env
+            
+            for tableOrSubquery in tableOrSubqueries {
+                let newEnv = inNewEnvironment { typeChecker in
+                    typeChecker.typeCheck(tableOrSubquery)
+                    return typeChecker.env
+                }
+                
+                envDiffs.append(startingEnv.nonLocalsAdded(in: newEnv))
+            }
+            
+            for envDiff in envDiffs {
+                env.add(diff: envDiff)
             }
         }
     }
@@ -978,19 +991,10 @@ extension StmtTypeChecker {
         // Table is always accessible by it's name even if aliased
         env.import(
             table: table,
+            alias: alias,
             isOptional: isOptional,
             qualifiedAccessOnly: qualifiedAccessOnly
         )
-        
-        // Aliases can only ever be used qualifed since the original
-        // columns are already inserted
-        if let alias {
-            env.import(
-                table: table.aliased(to: alias),
-                isOptional: isOptional,
-                qualifiedAccessOnly: true
-            )
-        }
     }
     
     mutating func typeCheck(createTable: CreateTableStmtSyntax) {
@@ -1336,4 +1340,9 @@ extension StmtTypeChecker {
             kind: .fts5
         )
     }
+}
+
+enum TableOrSubqueryResult {
+    case table(Table)
+    case columns(Columns)
 }
