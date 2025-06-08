@@ -141,9 +141,10 @@ struct Environment {
     func resolve(infix op: Operator) -> Function? {
         return switch op {
         case .in, .not(.in): Builtins.in
-        case .plus, .minus, .multiply, .divide, .bitwuseOr,
+        case .plus, .minus, .multiply, .bitwuseOr,
              .bitwiseAnd, .shl, .shr, .mod:
             Builtins.arithmetic
+        case .divide: Builtins.divide
         case .eq, .eq2, .neq, .neq2, .lt, .gt, .lte, .gte, .is,
              .notNull, .notnull, .like, .isNot, .isDistinctFrom,
              .isNotDistinctFrom, .between, .and, .or, .isnull, .not:

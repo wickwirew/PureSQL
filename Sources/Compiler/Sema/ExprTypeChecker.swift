@@ -91,6 +91,22 @@ struct ExprTypeChecker {
             return nil
         }
     }
+    
+    /// Will instatiate the function's type scheme and perform any checks
+    /// define by the function.
+    private mutating func instanteAndCheck(
+        fn: Function,
+        argCount: Int,
+        argTypes: @autoclosure () -> [Type],
+        argExprs: @autoclosure () -> [ExpressionSyntax],
+        location: SourceLocation
+    ) -> Type {
+        let type = inferenceState.instantiate(fn, preferredArgCount: argCount)
+        
+        guard let check = fn.check else { return type }
+        check(argTypes(), argExprs(), location, &diagnostics)
+        return type
+    }
 }
 
 extension ExprTypeChecker: ExprSyntaxVisitor {
@@ -178,12 +194,20 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         }
         
         let tv = inferenceState.freshTyVar(for: expr)
-        let fnType = inferenceState.instantiate(fn, preferredArgCount: 2)
+        let fnType = instanteAndCheck(
+            fn: fn,
+            argCount: 2,
+            argTypes: [lTy, rTy],
+            argExprs: [expr.lhs, expr.rhs],
+            location: expr.location
+        )
+        
         inferenceState.unify(
             fnType,
             with: .fn(params: [inferenceState.solution(for: lTy), rTy], ret: tv),
             at: expr.location
         )
+        
         return inferenceState.solution(for: tv)
     }
     
@@ -199,7 +223,13 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         }
         
         let tv = inferenceState.freshTyVar(for: expr)
-        let fnType = inferenceState.instantiate(fn, preferredArgCount: 1)
+        let fnType = instanteAndCheck(
+            fn: fn,
+            argCount: 1,
+            argTypes: [lhs],
+            argExprs: [expr.lhs],
+            location: expr.location
+        )
         inferenceState.unify(fnType, with: .fn(params: [lhs], ret: tv), at: expr.location)
         return inferenceState.solution(for: tv)
     }
@@ -212,7 +242,13 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         
         inferenceState.unify(all: allTypes, at: expr.location)
         
-        let between = inferenceState.instantiate(Builtins.between, preferredArgCount: 3)
+        let between = instanteAndCheck(
+            fn: Builtins.between,
+            argCount: 3,
+            argTypes: allTypes,
+            argExprs: [expr.value, expr.lower, expr.upper],
+            location: expr.location
+        )
         inferenceState.unify(between, with: .fn(params: allTypes, ret: .integer), at: expr.location)
         return .integer
     }
@@ -226,13 +262,15 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         }
         
         let tv = inferenceState.freshTyVar(for: expr)
-        let fnType = inferenceState.instantiate(fn, preferredArgCount: argTys.count)
-        inferenceState.unify(fnType, with: .fn(params: argTys, ret: tv), at: expr.location)
+        let fnType = instanteAndCheck(
+            fn: fn,
+            argCount: argTys.count,
+            argTypes: argTys,
+            argExprs: expr.args,
+            location: expr.location
+        )
         
-        // If the function has any additional checks/validation to do perform it.
-        if let check = fn.check {
-            check(expr.args, expr.location, &diagnostics)
-        }
+        inferenceState.unify(fnType, with: .fn(params: argTys, ret: tv), at: expr.location)
         
         return inferenceState.solution(for: tv)
     }

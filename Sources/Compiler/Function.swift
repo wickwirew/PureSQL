@@ -5,13 +5,27 @@
 //  Created by Wes Wickwire on 6/7/25.
 //
 
+/// A function that is callable from SQL
 struct Function: Sendable {
+    /// While SQL functions are not explicitly noted as generic we will treat them
+    /// as such to retain the type as much as possible. Allows us to have one plus
+    /// function that can do `INT + REAL = REAL` sort of things.
+    ///
+    /// These values will be inferred upon initialization based off of
+    /// the `params` and `result`
     let genericTypes: [TypeVariable]
+    /// The parameter types these take in
     let params: [Type]
+    /// The return type
     let result: Type
+    /// Any additional overloads for the function
     let overloads: [Overload]?
+    /// Whether or not the function is variadic, meaning the last parameter type
+    /// can be added on indefinitely.
     let variadic: Bool
-    let check: (@Sendable ([ExpressionSyntax], SourceLocation, inout Diagnostics) -> Void)?
+    /// A custom check to be performed during type checking. Allows us to put in
+    /// custom error messages and linting if a function has odd usage.
+    let check: (@Sendable ([Type], [ExpressionSyntax], SourceLocation, inout Diagnostics) -> Void)?
     
     struct Overload: Sendable {
         let params: [Type]
@@ -28,7 +42,7 @@ struct Function: Sendable {
         returning result: Type,
         variadic: Bool = false,
         overloads: [Overload]? = nil,
-        check: (@Sendable ([ExpressionSyntax], SourceLocation, inout Diagnostics) -> Void)? = nil
+        check: (@Sendable ([Type], [ExpressionSyntax], SourceLocation, inout Diagnostics) -> Void)? = nil
     ) {
         assert(!(variadic && (overloads?.count ?? 0) > 1), "Cannot have overloads and be variadic")
         
@@ -37,8 +51,8 @@ struct Function: Sendable {
             genericTypes.append(result)
         }
         
-        // TODO: Remove ghetto distinct
-        self.genericTypes = Array(Set(genericTypes))
+        
+        self.genericTypes = genericTypes.distinct()
         self.params = params
         self.result = result
         self.overloads = overloads

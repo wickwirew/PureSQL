@@ -14,8 +14,25 @@ enum Builtins {
     static let pos = Function(.var(0), returning: .var(0))
     static let between = Function(.var(0), .var(0), .var(0), returning: .integer)
     static let arithmetic = Function(.var(0), .var(0), returning: .var(0))
-    static let divide = Function(.var(0), .var(0), returning: .var(0)) { _, _, _ in
-        fatalError("check for integer division")
+    static let divide = Function(.var(0), .var(0), returning: .var(0)) { types, exprs, location, diagnostics in
+        func isInt(_ type: Type, expr: ExpressionSyntax) -> Bool {
+            if type.root == .integer || type.root == .int { return true }
+            if case let .numeric(_, isInt) = expr.literal?.kind { return isInt }
+            return false
+        }
+        
+        // If both sides are integers than the output will always be an integer
+        // and not be floating point so emit a warning.
+        guard types.count == 2,
+                exprs.count == 2,
+                isInt(types[0], expr: exprs[0]),
+                isInt(types[1], expr: exprs[1]) else { return }
+        
+        diagnostics.add(.init(
+            "Integer division, result will not be floating point. 'CAST' or add '.0'",
+            level: .warning,
+            at: location
+        ))
     }
     static let comparison = Function(.var(0), .var(0), returning: .integer)
     static let `in` = Function(.var(0), .row(.unknown(.var(0))), returning: .integer)
@@ -87,7 +104,23 @@ enum Builtins {
         // Datetime
         "unixepoch": Function(returning: .integer),
         "julianday": Function(returning: .real),
-        "strftime": strftime,
+        "strftime": Function(
+            .text,
+            returning: .text,
+            variadic: true
+        ) { _, args, location, diagnostics in
+            guard args.count == 2,
+                  case let .string(first) = args[0].literal?.kind,
+                  case let .string(second) = args[1].literal?.kind,
+                  first == "%s",
+                  second == "now" else { return }
+            
+            diagnostics.add(.init(
+                "Function returns the seconds as TEXT, not an INTEGER. Use unixepoch() instead",
+                level: .warning,
+                at: location
+            ))
+        },
         "date": Function(.text, returning: .text, variadic: true),
         "time": Function(.text, returning: .text, variadic: true),
         "datetime": Function(.text, returning: .text, variadic: true),
@@ -96,35 +129,15 @@ enum Builtins {
         // Aggregate Functions
         "avg": Function(.var(.integer(0)), returning: .var(.integer(0))),
         "count": Function(.var(0), returning: .integer),
-        "group_concat": groupConcat,
+        "group_concat": Function(
+            .text,
+            returning: .text,
+            overloads: [Function.Overload(.text, .text, returning: .text)]
+        ),
         "string_agg": Function(.text, .text, returning: .text),
         // 'max' and 'min' are added through the scalar functions and can be reused.
         // In the future we may need to separate these if we store them separately
         "sum": Function(.var(.integer(0)), returning: .var(.integer(0))),
         "total": Function(.var(.integer(0)), returning: .var(.integer(0))),
     ]
-    
-    static let groupConcat = Function(
-        .text,
-        returning: .text,
-        overloads: [Function.Overload(.text, returning: .text)]
-    )
-    
-    static let strftime = Function(
-        .text,
-        returning: .text,
-        variadic: true
-    ) { args, location, diagnostics in
-        guard args.count == 2,
-              case let .string(first) = args[0].literal?.kind,
-              case let .string(second) = args[1].literal?.kind,
-              first == "%s",
-              second == "now" else { return }
-        
-        diagnostics.add(.init(
-            "Function returns the seconds as TEXT, not an INTEGER. Use unixepoch() instead",
-            level: .warning,
-            at: location
-        ))
-    }
 }

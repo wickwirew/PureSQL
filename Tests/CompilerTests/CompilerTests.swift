@@ -73,8 +73,8 @@ class CompilerTests: XCTestCase {
         try checkQueries(compile: "CompileTableOrSubqueries")
     }
     
-    func testLintChecks() throws {
-        try checkQueries(compile: "CompileLintChecks", dump: true)
+    func testFunctions() throws {
+        try checkQueries(compile: "CompileFunctions")
     }
 }
 
