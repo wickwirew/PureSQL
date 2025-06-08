@@ -25,10 +25,15 @@ public struct StdoutDiagnosticReporter: DiagnosticReporter {
     }
     
     static let red = ("\u{001B}[31m", "\u{001B}[0m")
+    static let yellow = ("\u{001B}[33m", "\u{001B}[0m")
     static let bold = ("\u{001B}[1m", "\u{001B}[22m")
     
     var red: (open: String, close: String) {
         dontColorize ? ("", "") : Self.red
+    }
+    
+    var yellow: (open: String, close: String) {
+        dontColorize ? ("", "") : Self.yellow
     }
     
     var bold: (open: String, close: String) {
@@ -48,11 +53,16 @@ public struct StdoutDiagnosticReporter: DiagnosticReporter {
         let line = diagnostic.location.line
         let column = diagnostic.location.column
         
+        let color = switch diagnostic.level {
+        case .warning: yellow
+        case .error: red
+        }
+        
         print("""
-        \(fileName):\(line):\(column): \(bold.open)\(red.open)error\(red.close)\(bold.close)
+        \(fileName):\(line):\(column): \(bold.open)\(color.open)\(diagnostic.level)\(color.close)\(bold.close)
         
         \(source)
-        \(indent)\(red.open)\(underline)\(red.close) - \(bold.open)\(diagnostic.message)\(bold.close)
+        \(indent)\(color.open)\(underline)\(color.close) - \(bold.open)\(diagnostic.message)\(bold.close)
         """)
     }
     

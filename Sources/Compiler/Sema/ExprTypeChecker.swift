@@ -151,7 +151,7 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
     mutating func visit(_ expr: borrowing PrefixExprSyntax) -> Type {
         let rhs = expr.rhs.accept(visitor: &self)
         
-        guard let scheme = env.resolve(prefix: expr.operator.operator) else {
+        guard let fn = env.resolve(prefix: expr.operator.operator) else {
             diagnostics.add(.init(
                 "'\(expr.operator.operator)' is not a valid prefix operator",
                 at: expr.operator.location
@@ -160,7 +160,7 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         }
         
         let tv = inferenceState.freshTyVar(for: expr)
-        let fnType = inferenceState.instantiate(scheme)
+        let fnType = inferenceState.instantiate(fn, preferredArgCount: 1)
         inferenceState.unify(fnType, with: .fn(params: [rhs], ret: tv), at: expr.location)
         return inferenceState.solution(for: tv)
     }
@@ -169,7 +169,7 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         let lTy = expr.lhs.accept(visitor: &self)
         let rTy = expr.rhs.accept(visitor: &self)
         
-        guard let scheme = env.resolve(infix: expr.operator.operator) else {
+        guard let fn = env.resolve(infix: expr.operator.operator) else {
             diagnostics.add(.init(
                 "'\(expr.operator.operator)' is not a valid infix operator",
                 at: expr.operator.location
@@ -178,7 +178,7 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         }
         
         let tv = inferenceState.freshTyVar(for: expr)
-        let fnType = inferenceState.instantiate(scheme)
+        let fnType = inferenceState.instantiate(fn, preferredArgCount: 2)
         inferenceState.unify(
             fnType,
             with: .fn(params: [inferenceState.solution(for: lTy), rTy], ret: tv),
@@ -190,7 +190,7 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
     mutating func visit(_ expr: borrowing PostfixExprSyntax) -> Type {
         let lhs = expr.lhs.accept(visitor: &self)
         
-        guard let scheme = env.resolve(postfix: expr.operator.operator) else {
+        guard let fn = env.resolve(postfix: expr.operator.operator) else {
             diagnostics.add(.init(
                 "'\(expr.operator.operator)' is not a valid postfix operator",
                 at: expr.operator.location
@@ -199,7 +199,7 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         }
         
         let tv = inferenceState.freshTyVar(for: expr)
-        let fnType = inferenceState.instantiate(scheme)
+        let fnType = inferenceState.instantiate(fn, preferredArgCount: 1)
         inferenceState.unify(fnType, with: .fn(params: [lhs], ret: tv), at: expr.location)
         return inferenceState.solution(for: tv)
     }
@@ -212,7 +212,7 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         
         inferenceState.unify(all: allTypes, at: expr.location)
         
-        let between = inferenceState.instantiate(Builtins.between)
+        let between = inferenceState.instantiate(Builtins.between, preferredArgCount: 3)
         inferenceState.unify(between, with: .fn(params: allTypes, ret: .integer), at: expr.location)
         return .integer
     }
@@ -220,13 +220,20 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
     mutating func visit(_ expr: borrowing FunctionExprSyntax) -> Type {
         let argTys = typeCheck(expr.args)
         
-        guard let scheme = env.resolve(function: expr.name.value, argCount: argTys.count) else {
+        guard let fn = env.resolve(function: expr.name.value) else {
             diagnostics.add(.init("No such function '\(expr.name)' exits", at: expr.location))
             return .error
         }
         
         let tv = inferenceState.freshTyVar(for: expr)
-        inferenceState.unify(inferenceState.instantiate(scheme), with: .fn(params: argTys, ret: tv), at: expr.location)
+        let fnType = inferenceState.instantiate(fn, preferredArgCount: argTys.count)
+        inferenceState.unify(fnType, with: .fn(params: argTys, ret: tv), at: expr.location)
+        
+        // If the function has any additional checks/validation to do perform it.
+        if let check = fn.check {
+            check(expr.args, expr.location, &diagnostics)
+        }
+        
         return inferenceState.solution(for: tv)
     }
     

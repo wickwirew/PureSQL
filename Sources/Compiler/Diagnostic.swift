@@ -7,6 +7,7 @@
 
 public struct Diagnostic: Error {
     public let message: String
+    public let level: Level
     public let location: SourceLocation
     public let suggestion: Suggestion?
     
@@ -15,26 +16,23 @@ public struct Diagnostic: Error {
         case append(String)
     }
     
+    public enum Level: Sendable {
+        case warning
+        case error
+    }
+    
     public init(
         _ message: String,
+        level: Level = .error,
         at location: SourceLocation,
         suggestion: Suggestion? = nil
     ) {
         self.message = message
+        self.level = level
         self.location = location
         self.suggestion = suggestion
     }
-    
-    init(
-        expected: TypeNameSyntax,
-        got actual: TypeNameSyntax,
-        at location: SourceLocation
-    ) {
-        self.message = "Incorrect type, expected '\(expected.name)' got '\(actual.name)'"
-        self.location = location
-        self.suggestion = .replace(expected.name.description)
-    }
-    
+
     static func placeholder(name: String) -> String {
         // So Xcode doesnt make this a placeholder
         return "<\("#name#>")"

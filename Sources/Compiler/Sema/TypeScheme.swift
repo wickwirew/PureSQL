@@ -8,22 +8,18 @@
 struct TypeScheme: CustomStringConvertible, Sendable {
     let typeVariables: [TypeVariable]
     let type: Type
-    let variadic: Bool
     
     init(
         typeVariables: [TypeVariable],
-        type: Type,
-        variadic: Bool = false
+        type: Type
     ) {
         self.typeVariables = typeVariables
         self.type = type
-        self.variadic = variadic
     }
     
     init(_ type: Type) {
         self.typeVariables = []
         self.type = type
-        self.variadic = false
     }
     
     var description : String {

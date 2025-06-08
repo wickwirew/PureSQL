@@ -125,28 +125,11 @@ struct Environment {
         return detachedValues[named].count > 0
     }
     
-    func resolve(function name: Substring, argCount: Int) -> TypeScheme? {
-        guard let scheme = Builtins.functions[name],
-              case let .fn(params, ret) = scheme.type else { return nil }
-        
-        // This is how variadics are handled. If a variadic function is called
-        // we extend the signature to match the input count. It is always
-        // assumed the last parameter is the variadic.
-        let numberOfArgsToAdd = argCount - params.count
-        
-        guard scheme.variadic, argCount > 0, let last = params.last else { return scheme }
-        
-        return TypeScheme(
-            typeVariables: scheme.typeVariables,
-            type: .fn(
-                params: params + (0..<numberOfArgsToAdd).map { _ in last },
-                ret: ret
-            ),
-            variadic: true
-        )
+    func resolve(function name: Substring) -> Function? {
+        Builtins.functions[name]
     }
     
-    func resolve(prefix op: Operator) -> TypeScheme? {
+    func resolve(prefix op: Operator) -> Function? {
         return switch op {
         case .plus: Builtins.pos
         case .minus: Builtins.negate
@@ -155,7 +138,7 @@ struct Environment {
         }
     }
     
-    func resolve(infix op: Operator) -> TypeScheme? {
+    func resolve(infix op: Operator) -> Function? {
         return switch op {
         case .in, .not(.in): Builtins.in
         case .plus, .minus, .multiply, .divide, .bitwuseOr,
@@ -175,7 +158,7 @@ struct Environment {
         }
     }
     
-    func resolve(postfix op: Operator) -> TypeScheme? {
+    func resolve(postfix op: Operator) -> Function? {
         return switch op {
         case .collate: Builtins.concatOp
         case .escape: Builtins.escape

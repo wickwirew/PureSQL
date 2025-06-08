@@ -146,6 +146,12 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
         }
     }
     
+    /// The inner type variable if it is one
+    var typeVariable: TypeVariable? {
+        guard case let .var(tv) = self else { return nil }
+        return tv
+    }
+    
     /// Will return the optional version of `self` if it is not already optional
     func coerceToOptional() -> Type {
         isOptional ? self : .optional(self)

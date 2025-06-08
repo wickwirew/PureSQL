@@ -91,7 +91,7 @@ public actor Driver {
                 .filter{ $0.usage == .queries }
                 .map { ($0.fileName.split(separator: ".").first?.description, $0.statements) }
             
-            let hasDiagnostics = results.contains { !$0.value.diagnostics.isEmpty }
+            let hasDiagnostics = results.contains { $0.value.diagnostics.contains { $0.level == .error } }
             
             guard !hasDiagnostics else {
                 return // Just skip, diagnostics should have already been emitted.

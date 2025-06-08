@@ -42,6 +42,12 @@ struct InferenceState {
         return typeScheme.type.apply(sub)
     }
     
+    /// Instantiates the function by substituting all free type variables
+    /// for new fresh type variables.
+    mutating func instantiate(_ function: Function, preferredArgCount: Int) -> Type {
+        return instantiate(function.typeScheme(preferredParameterCount: preferredArgCount))
+    }
+    
     /// Records the type for a given syntax.
     mutating func record<S: Syntax>(
         type: Type,

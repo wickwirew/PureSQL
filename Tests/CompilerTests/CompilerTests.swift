@@ -72,6 +72,10 @@ class CompilerTests: XCTestCase {
     func testTableOrSubquery() throws {
         try checkQueries(compile: "CompileTableOrSubqueries")
     }
+    
+    func testLintChecks() throws {
+        try checkQueries(compile: "CompileLintChecks", dump: true)
+    }
 }
 
 struct CheckSignature: Checkable {
@@ -179,7 +183,12 @@ func checkWithErrors<Output>(
 
     try check(
         sqlFile: sqlFile,
-        parse: { _ in diagnostics.map(\.message) },
+        parse: { _ in diagnostics.map { diag in
+            switch diag.level {
+            case .warning: "warn: \(diag.message)"
+            case .error: diag.message
+            }
+        }},
         prefix: "CHECK-ERROR",
         dump: dump,
         file: file,
