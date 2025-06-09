@@ -5,6 +5,8 @@
 -- CHECK:       VALUE INTEGER
 -- CHECK:       KEY baz
 -- CHECK:       VALUE TEXT?
+-- CHECK:       KEY qux
+-- CHECK:       VALUE TEXT?
 -- CHECK:   PRIMARY_KEY
 -- CHECK:     bar
 -- CHECK:   KIND normal
@@ -12,6 +14,8 @@ CREATE TABLE foo (
     bar INTEGER PRIMARY KEY,
     baz TEXT
 );
+
+ALTER TABLE foo ADD COLUMN qux TEXT;
 
 -- CHECK: TABLE
 -- CHECK:   NAME main.bar
@@ -147,5 +151,13 @@ CREATE TABLE hasTableCheck (
 -- CHECK:       VALUE INTEGER
 -- CHECK:       KEY baz
 -- CHECK:       VALUE TEXT?
+-- CHECK:       KEY qux
+-- CHECK:       VALUE TEXT?
 -- CHECK:   KIND normal
 CREATE TABLE fromSelect AS SELECT * FROM foo;
+
+CREATE TABLE wontShow (bar INTEGER) STRICT;
+DROP TABLE wontShow;
+
+-- CHECK-ERROR: Table 'dne' does not exist
+DROP TABLE dne;

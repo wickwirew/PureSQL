@@ -8,15 +8,9 @@ let package = Package(
     name: "Feather",
     platforms: [.macOS(.v10_15), .iOS(.v13), .tvOS(.v13), .watchOS(.v6), .macCatalyst(.v13)],
     products: [
-        .library(
-            name: "Feather",
-            targets: ["Feather"]
-        ),
-        
-        .executable(
-            name: "FeatherCLI",
-            targets: ["FeatherCLI"]
-        ),
+        .library(name: "Feather", targets: ["Feather"]),
+        .library(name: "Compiler", targets: ["Compiler"]),
+        .executable(name: "FeatherCLI", targets: ["FeatherCLI"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-syntax.git", from: "601.0.1"),

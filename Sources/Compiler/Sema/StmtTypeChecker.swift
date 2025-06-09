@@ -217,13 +217,18 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
     
     mutating func visit(_ stmt: borrowing CreateIndexStmtSyntax) -> ResultColumns {
         let name = qualifedName(for: stmt.name, in: stmt.schemaName)
-        
-        guard let table = schema[name] else {
+        let tableName = qualifedName(for: stmt.table, in: stmt.schemaName)
+
+        guard let table = schema[tableName] else {
             diagnostics.add(.tableDoesNotExist(stmt.table))
             return .empty
         }
         
         importTable(table)
+        
+        if !stmt.ifNotExists, schema[index: name] != nil {
+            diagnostics.add(.init("Index with name already exists", at: stmt.name.location))
+        }
         
         if let whereExpr = stmt.whereExpr {
             _ = typeCheck(whereExpr)

@@ -30,8 +30,8 @@ class CompilerTests: XCTestCase {
         try checkQueries(compile: "CompileDelete")
     }
     
-    func testCreateTable() throws {
-        try checkSchema(compile: "CompileCreateTable", dump: true)
+    func testTableSchema() throws {
+        try checkSchema(compile: "CompileTableSchema")
     }
     
     func testDropTable() throws {
@@ -75,6 +75,10 @@ class CompilerTests: XCTestCase {
     
     func testFunctions() throws {
         try checkQueries(compile: "CompileFunctions")
+    }
+    
+    func testIndex() throws {
+        try checkSchema(compile: "CompileIndex")
     }
 }
 

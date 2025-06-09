@@ -50,6 +50,8 @@ enum Parsers {
             return try createVirutalTable(state: &state)
         case (.create, .index):
             return try createIndex(state: &state)
+        case (.create, .unique) where state.peek2.kind == .index:
+            return try createIndex(state: &state)
         case (.alter, .table):
             return try alterStmt(state: &state)
         case (.create, .view),
