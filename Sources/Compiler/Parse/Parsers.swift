@@ -97,13 +97,83 @@ enum Parsers {
                 state.diagnostics.add(.unexpectedToken(of: state.current.kind, at: state.location))
                 return EmptyStmtSyntax(id: state.nextId(), location: state.current.location)
             }
+        case (.begin, _):
+            return begin(state: &state)
+        case (.commit, _), (.end, _):
+            return commit(state: &state)
+        case (.savepoint, _):
+            return savepoint(state: &state)
+        case (.release, _):
+            return release(state: &state)
+        case (.rollback, _):
+            return rollback(state: &state)
         case (.semiColon, _), (.eof, _):
             state.skip()
             return EmptyStmtSyntax(id: state.nextId(), location: state.current.location)
         default:
-            state.diagnostics.add(.unexpectedToken(of: state.current.kind, at: state.location))
-            return EmptyStmtSyntax(id: state.nextId(), location: state.current.location)
+            let token = state.take()
+            state.diagnostics.add(.unexpectedToken(of: token.kind, at: token.location))
+            return EmptyStmtSyntax(id: state.nextId(), location: token.location)
         }
+    }
+    
+    static func begin(state: inout ParserState) -> BeginStmtSyntax {
+        let start = state.take()
+        
+        let kind: BeginStmtSyntax.Kind? = if state.take(if: .deferred) {
+            .deferred
+        } else if state.take(if: .immediate) {
+            .immediate
+        } else if state.take(if: .exclusive) {
+            .exclusive
+        } else {
+            nil
+        }
+        
+        state.skip(if: .transaction)
+        return BeginStmtSyntax(id: state.nextId(), location: state.location(from: start), kind: kind)
+    }
+    
+    static func commit(state: inout ParserState) -> CommitStmtSyntax {
+        let start = state.take()
+        state.skip(if: .transaction)
+        return CommitStmtSyntax(id: state.nextId(), location: state.location(from: start))
+    }
+    
+    static func savepoint(state: inout ParserState) -> SavepointStmtSyntax {
+        let start = state.take()
+        let name = identifier(state: &state)
+        return SavepointStmtSyntax(
+            id: state.nextId(),
+            location: state.location(from: start),
+            name: name
+        )
+    }
+    
+    static func release(state: inout ParserState) -> ReleaseStmtSyntax {
+        let start = state.take()
+        let name = identifier(state: &state)
+        return ReleaseStmtSyntax(
+            id: state.nextId(),
+            location: state.location(from: start),
+            name: name
+        )
+    }
+    
+    static func rollback(state: inout ParserState) -> RollbackStmtSyntax {
+        let start = state.take()
+        let savepoint: IdentifierSyntax?
+        if state.take(if: .to) {
+            state.skip(if: .savepoint)
+            savepoint = identifier(state: &state)
+        } else {
+            savepoint = nil
+        }
+        return RollbackStmtSyntax(
+            id: state.nextId(),
+            location: state.location(from: start),
+            savepoint: savepoint
+        )
     }
     
     static func insertStmt(state: inout ParserState) throws -> InsertStmtSyntax {

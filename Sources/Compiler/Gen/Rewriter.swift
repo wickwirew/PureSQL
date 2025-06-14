@@ -164,4 +164,14 @@ extension Rewriter: StmtSyntaxVisitor {
     func visit(_ stmt: CreateTriggerStmtSyntax) -> [Range<Substring.Index>] { [] }
     
     func visit(_ stmt: DropTriggerStmtSyntax) -> [Range<Substring.Index>] { [] }
+    
+    func visit(_ stmt: BeginStmtSyntax) -> [Range<Substring.Index>] { [] }
+    
+    func visit(_ stmt: CommitStmtSyntax) -> [Range<Substring.Index>] { [] }
+    
+    func visit(_ stmt: RollbackStmtSyntax) -> [Range<Substring.Index>] { [] }
+    
+    func visit(_ stmt: SavepointStmtSyntax) -> [Range<Substring.Index>] { [] }
+    
+    func visit(_ stmt: ReleaseStmtSyntax) -> [Range<Substring.Index>] { [] }
 }

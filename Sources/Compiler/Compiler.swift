@@ -258,6 +258,16 @@ extension CompilerWithSource: StmtSyntaxVisitor {
     mutating func visit(_ stmt: DropTriggerStmtSyntax) -> (Statement, Diagnostics)? {
         return typeCheck(stmt, isReadOnly: false)
     }
+    
+    mutating func visit(_ stmt: BeginStmtSyntax) -> (Statement, Diagnostics)? { nil }
+    
+    mutating func visit(_ stmt: CommitStmtSyntax) -> (Statement, Diagnostics)? { nil }
+    
+    mutating func visit(_ stmt: RollbackStmtSyntax) -> (Statement, Diagnostics)? { nil }
+    
+    mutating func visit(_ stmt: SavepointStmtSyntax) -> (Statement, Diagnostics)? { nil }
+    
+    mutating func visit(_ stmt: ReleaseStmtSyntax) -> (Statement, Diagnostics)? { nil }
 }
 
 /// Used to validate whether a statement syntax is valid for use in migrations
@@ -280,6 +290,11 @@ struct IsValidForMigrations: StmtSyntaxVisitor {
     func visit(_ stmt: CreateVirtualTableStmtSyntax) -> Bool { true }
     func visit(_ stmt: CreateTriggerStmtSyntax) -> Bool { true }
     func visit(_ stmt: DropTriggerStmtSyntax) -> Bool { true }
+    func visit(_ stmt: BeginStmtSyntax) -> Bool { false }
+    func visit(_ stmt: CommitStmtSyntax) -> Bool { false }
+    func visit(_ stmt: RollbackStmtSyntax) -> Bool { false }
+    func visit(_ stmt: SavepointStmtSyntax) -> Bool { false }
+    func visit(_ stmt: ReleaseStmtSyntax) -> Bool { false }
 }
 
 /// Used to validate whether a statement syntax is valid for use in queries
@@ -302,6 +317,11 @@ struct IsValidForQueries: StmtSyntaxVisitor {
     func visit(_ stmt: CreateVirtualTableStmtSyntax) -> Bool { false }
     func visit(_ stmt: CreateTriggerStmtSyntax) -> Bool { false }
     func visit(_ stmt: DropTriggerStmtSyntax) -> Bool { false }
+    func visit(_ stmt: BeginStmtSyntax) -> Bool { false }
+    func visit(_ stmt: CommitStmtSyntax) -> Bool { false }
+    func visit(_ stmt: RollbackStmtSyntax) -> Bool { false }
+    func visit(_ stmt: SavepointStmtSyntax) -> Bool { false }
+    func visit(_ stmt: ReleaseStmtSyntax) -> Bool { false }
 }
 
 // Mainly used in tests, since they are usually a mix of migrations and queries
@@ -324,4 +344,9 @@ struct IsAlwaysValid: StmtSyntaxVisitor {
     func visit(_ stmt: CreateVirtualTableStmtSyntax) -> Bool { true }
     func visit(_ stmt: CreateTriggerStmtSyntax) -> Bool { true }
     func visit(_ stmt: DropTriggerStmtSyntax) -> Bool { true }
+    func visit(_ stmt: BeginStmtSyntax) -> Bool { true }
+    func visit(_ stmt: CommitStmtSyntax) -> Bool { true }
+    func visit(_ stmt: RollbackStmtSyntax) -> Bool { true }
+    func visit(_ stmt: SavepointStmtSyntax) -> Bool { true }
+    func visit(_ stmt: ReleaseStmtSyntax) -> Bool { true }
 }

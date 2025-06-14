@@ -407,6 +407,26 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
         schema[trigger: name] = nil
         return .empty
     }
+    
+    mutating func visit(_ stmt: BeginStmtSyntax) -> ResultColumns {
+        return .empty
+    }
+    
+    mutating func visit(_ stmt: CommitStmtSyntax) -> ResultColumns {
+        return .empty
+    }
+    
+    mutating func visit(_ stmt: SavepointStmtSyntax) -> ResultColumns {
+        return .empty
+    }
+    
+    mutating func visit(_ stmt: ReleaseStmtSyntax) -> ResultColumns {
+        return .empty
+    }
+    
+    mutating func visit(_ stmt: RollbackStmtSyntax) -> ResultColumns {
+        return .empty
+    }
 }
 
 extension StmtTypeChecker {

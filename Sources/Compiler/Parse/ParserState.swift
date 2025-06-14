@@ -108,6 +108,11 @@ struct ParserState {
         skip()
     }
     
+    mutating func skip(if kind: Token.Kind) {
+        guard current.kind == kind else { return }
+        skip()
+    }
+    
     mutating func skip() {
         previous = current
         current = peek

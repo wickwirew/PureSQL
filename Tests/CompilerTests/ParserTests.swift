@@ -154,6 +154,10 @@ final class ParserTests: XCTestCase {
     func testDropTrigger() throws {
         try check(sqlFile: "ParseDropTriggerStmt", parser: Parsers.dropTrigger) 
     }
+    
+    func testTransaction() throws {
+        try check(sqlFile: "ParseTransactionStmt", parser: Parsers.stmt, dump: true)
+    }
 }
 
 func check<Output>(
@@ -172,7 +176,9 @@ func check<Output>(
             
             while state.current.kind != .eof {
                 repeat {
-                    try lines.append(parser(&state))
+                    let stmt = try parser(&state)
+                    guard !(stmt is EmptyStmtSyntax) else { continue }
+                    lines.append(stmt)
                 } while state.take(if: .semiColon) && state.current.kind != .eof
             }
             

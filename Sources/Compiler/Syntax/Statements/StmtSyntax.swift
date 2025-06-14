@@ -31,4 +31,9 @@ protocol StmtSyntaxVisitor {
     mutating func visit(_ stmt: CreateVirtualTableStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: CreateTriggerStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: DropTriggerStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: BeginStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: CommitStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: RollbackStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: SavepointStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: ReleaseStmtSyntax) -> StmtOutput
 }

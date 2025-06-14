@@ -149,6 +149,16 @@ extension CardinalityInferrer: StmtSyntaxVisitor {
     mutating func visit(_ stmt: CreateTriggerStmtSyntax) -> Cardinality { .many }
     
     mutating func visit(_ stmt: DropTriggerStmtSyntax) -> Cardinality { .many }
+    
+    mutating func visit(_ stmt: BeginStmtSyntax) -> Cardinality { .many }
+    
+    mutating func visit(_ stmt: CommitStmtSyntax) -> Cardinality { .many }
+    
+    mutating func visit(_ stmt: RollbackStmtSyntax) -> Cardinality { .many }
+    
+    mutating func visit(_ stmt: SavepointStmtSyntax) -> Cardinality { .many }
+    
+    mutating func visit(_ stmt: ReleaseStmtSyntax) -> Cardinality { .many }
 }
 
 /// We need to look for a `primaryKey = value`. This can get complicated since
