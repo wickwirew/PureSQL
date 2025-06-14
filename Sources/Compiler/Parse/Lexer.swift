@@ -82,7 +82,9 @@ struct Lexer {
         
         let peek = peek
         
-        if current.isLetter {
+        // The x' is actually the start of a blob literal which
+        // will be handled later in the switch
+        if current.isLetter, !(current == "x" && peek == "'") {
             return parseWord()
         }
         
@@ -140,7 +142,14 @@ struct Lexer {
         case ("|", _): return consumeSingle(of: .pipe)
         case ("^", _): return consumeSingle(of: .carrot)
         case ("~", _): return consumeSingle(of: .tilde)
-        case ("'", _): return parseString()
+        case ("'", _):
+            let (contents, location) = parseStringContents()
+            return Token(kind: .string(contents), location: location)
+        case ("x", "'"):
+            let start = startLocation()
+            advance() // past the x
+            let (contents, _) = parseStringContents()
+            return Token(kind: .blob(contents), location: location(from: start))
         case ("\"", _): return parseEscapedIdentifier(closing: "\"")
         case ("[", _): return parseEscapedIdentifier(closing: "]")
         case ("`", _): return parseEscapedIdentifier(closing: "`")
@@ -331,7 +340,9 @@ struct Lexer {
         return Token(kind: .hex(value), location: location)
     }
     
-    private mutating func parseString() -> Token {
+    /// Gets the raw string between two `'`. Assumes that the starting char
+    /// is a quote and will consume both the starting and end.
+    private mutating func parseStringContents() -> (Substring, SourceLocation) {
         let tokenStart = startLocation()
         advance()
         let stringStart = currentIndex
@@ -348,7 +359,7 @@ struct Lexer {
             diagnostics.add(.init("Unterminated string", at: location(from: tokenStart)))
         }
         
-        return Token(kind: .string(source[stringRange]), location: location(from: tokenStart))
+        return (source[stringRange], location(from: tokenStart))
     }
     
     private mutating func skipWhitespace() {

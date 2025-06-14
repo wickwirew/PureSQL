@@ -31,6 +31,11 @@ class LexerTests: XCTestCase {
         XCTAssertEqual(tokens, [.int(100), .double(20.2), .int(123), .double(123.4), .double(1e2), .double(3.2e-3), .hex(0xFF), .eof])
     }
     
+    func testBlob() throws {
+        let tokens = tokens(of: "x'some words' x'select'")
+        XCTAssertEqual(tokens, [.blob("some words"), .blob("select"), .eof])
+    }
+    
     func testOperators() throws {
         let tokens = tokens(of: "<< <= >> >= || == != <> -> ->> * . ( ) , + - / % < > & | ^ ~")
         

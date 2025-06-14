@@ -2058,7 +2058,7 @@ enum Parsers {
         precedence: Operator.Precedence
     ) throws -> any ExprSyntax {
         switch state.current.kind {
-        case .double, .string, .int, .hex, .currentDate, .currentTime, .currentTimestamp, .true, .false:
+        case .double, .string, .int, .hex, .currentDate, .currentTime, .currentTimestamp, .true, .false, .blob:
             return literal(state: &state)
         case .identifier, .star:
             return try columnExpr(state: &state, schema: nil, table: nil)
@@ -2528,6 +2528,8 @@ enum Parsers {
             kind = .numeric(Double(value), isInt: true)
         case let .string(value):
             kind = .string(value)
+        case let .blob(value):
+            kind = .blob(value)
         case .true:
             kind = .true
         case .false:

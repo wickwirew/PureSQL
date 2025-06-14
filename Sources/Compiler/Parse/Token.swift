@@ -176,6 +176,7 @@ struct Token {
         case double(Double)
         case int(Int)
         case hex(Int)
+        case blob(Substring)
         
         case abort
         case action
@@ -387,6 +388,7 @@ struct Token {
             case let .double(value): value.description
             case let .int(value): value.description
             case let .hex(value): value.description
+            case let .blob(value): value.description
             case .abort: "ABORT"
             case .action: "ACTION"
             case .add: "ADD"
