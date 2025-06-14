@@ -217,7 +217,7 @@ extension InferenceState {
             validateCanUnify(type: ty, with: tv.kind, at: location)
             substitute(tv, for: ty)
             
-        case (.integer, .real), (.real, .integer), (.any, _), (_, .any):
+        case (.integer, .real), (.real, .integer), (.any, _), (_, .any), (.text, .blob), (.blob, .text):
             return // Not equal but valid to use together
             
         case let (.fn(args1, ret1), .fn(args2, ret2)) where args1.count == args2.count:
