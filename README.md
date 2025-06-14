@@ -33,7 +33,7 @@ CREATE TABLE todo (
 )
 
 -- Located in Queries/Todo/Todo.sql
-DEFINE QUERY selectTodos AS
+selectTodos:
 SELECT * FROM todo;
 ```
 
@@ -178,7 +178,7 @@ feather queries add --name <some-name>
 
 Open the file that was created in `/Queries`, it should be blank. Individual queries can be defined using the `DEFINE` keyword. At the moment queries can only have one statement.
 ```sql
-DEFINE QUERY fetchUsers AS
+fetchUsers:
 SELECT * FROM user;
 ```
 
@@ -191,7 +191,7 @@ let users: [User] = try await query.execute()
 ### Input and Output Types
 In the example above, since we selected all columns from a single table the query will return the `User` struct that was generated for the table. If additional columns are selected a new structure will be generated to match the selected columns. In the following example we will join in the `post` table to get a users post count.
 ```sql
-DEFINE QUERY fetchUsers AS
+fetchUsers:
 SELECT user.*, COUNT(post.*) AS numberOfPosts
 OUTER JOIN post ON post.userId = user.id
 GROUP BY user.id;
@@ -211,7 +211,7 @@ FetchUsersOutput {
 ### Inputs
 When a query has multiple inputs it will have a struct generated for it's inputs similar to the output. Also, so the input struct does not have to be initialized everytime, an extension will be created that takes each parameter individually, rather then the full type.
 ```sql
-DEFINE QUERY userPosts AS
+userPosts:
 SELECT * FROM post WHERE userId = ? AND date BETWEEN ? AND ?;
 ```
 
@@ -234,7 +234,8 @@ let posts = try await database.userQueries.userPosts.execute(with: UserPostInput
 ### Naming
 The `FetchUsersOutput` name, while clear where it came from, is not too great if we want to store it in a view model or model within our app. Some queries we want to give it a better name that has more meaning. In the `DEFINE` statement we can specify a name for the inputs and outputs.
 ```sql
-DEFINE QUERY queryName(input: InputName, output: OutputName) AS ...
+queryName(input: InputName, output: OutputName):
+...
 ```
 
 # Types
@@ -307,7 +308,7 @@ Most of the time we don't just have a query that has an input and output of simp
 They can be larger generated structs which can be a lot to type. To fix this typealiases are
 generated for a query to give them a simple readable name. For example
 ```sql
-DEFINE QUERY latestExpenses AS
+latestExpenses:
 SELECT id, title, amount FROM expense
 WHERE date BETWEEN ? AND ?;
 ```
