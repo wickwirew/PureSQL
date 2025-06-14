@@ -159,6 +159,8 @@ extension CardinalityInferrer: StmtSyntaxVisitor {
     mutating func visit(_ stmt: SavepointStmtSyntax) -> Cardinality { .many }
     
     mutating func visit(_ stmt: ReleaseStmtSyntax) -> Cardinality { .many }
+    
+    mutating func visit(_ stmt: VacuumStmtSyntax) -> Cardinality { .many }
 }
 
 /// We need to look for a `primaryKey = value`. This can get complicated since

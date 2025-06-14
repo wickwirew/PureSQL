@@ -36,4 +36,5 @@ protocol StmtSyntaxVisitor {
     mutating func visit(_ stmt: RollbackStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: SavepointStmtSyntax) -> StmtOutput
     mutating func visit(_ stmt: ReleaseStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: VacuumStmtSyntax) -> StmtOutput
 }

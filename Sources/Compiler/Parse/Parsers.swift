@@ -107,6 +107,8 @@ enum Parsers {
             return release(state: &state)
         case (.rollback, _):
             return rollback(state: &state)
+        case (.vacuum, _):
+            return vacuum(state: &state)
         case (.semiColon, _), (.eof, _):
             state.skip()
             return EmptyStmtSyntax(id: state.nextId(), location: state.current.location)
@@ -173,6 +175,18 @@ enum Parsers {
             id: state.nextId(),
             location: state.location(from: start),
             savepoint: savepoint
+        )
+    }
+    
+    static func vacuum(state: inout ParserState) -> VacuumStmtSyntax {
+        let start = state.take()
+        let schema = state.current.kind.isSymbol ? identifier(state: &state) : nil
+        let fileName = state.take(if: .into) ? identifier(state: &state) : nil
+        return VacuumStmtSyntax(
+            id: state.nextId(),
+            location: state.location(from: start),
+            schema: schema,
+            fileName: fileName
         )
     }
     

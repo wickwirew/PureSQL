@@ -174,4 +174,6 @@ extension Rewriter: StmtSyntaxVisitor {
     func visit(_ stmt: SavepointStmtSyntax) -> [Range<Substring.Index>] { [] }
     
     func visit(_ stmt: ReleaseStmtSyntax) -> [Range<Substring.Index>] { [] }
+    
+    func visit(_ stmt: VacuumStmtSyntax) -> [Range<Substring.Index>] { [] }
 }

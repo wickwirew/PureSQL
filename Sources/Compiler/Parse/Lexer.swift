@@ -95,7 +95,6 @@ struct Lexer {
         }
         
         switch (current, peek) {
-        case ("*", "/"): return consumeDouble(of: .starForwardSlash)
         case ("<", "<"): return consumeDouble(of: .shiftLeft)
         case ("<", "="): return consumeDouble(of: .lte)
         case (">", ">"): return consumeDouble(of: .shiftRight)

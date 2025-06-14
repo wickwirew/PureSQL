@@ -364,10 +364,6 @@ struct Token {
         case gt
         case gte
         
-        // Comments
-        case forwardSlashStar
-        case starForwardSlash
-        
         case eof
 
         init(word: Substring) {
@@ -573,8 +569,6 @@ struct Token {
             case .lte: "<="
             case .gt: ">"
             case .gte: ">="
-            case .forwardSlashStar: "/*"
-            case .starForwardSlash: "*/"
             case .eof: "EOF"
             }
         }

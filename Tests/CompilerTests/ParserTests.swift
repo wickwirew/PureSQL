@@ -156,7 +156,11 @@ final class ParserTests: XCTestCase {
     }
     
     func testTransaction() throws {
-        try check(sqlFile: "ParseTransactionStmt", parser: Parsers.stmt, dump: true)
+        try check(sqlFile: "ParseTransactionStmt", parser: Parsers.stmt)
+    }
+    
+    func testVacuum() throws {
+        try check(sqlFile: "ParseVacuumStmt", parser: Parsers.vacuum)
     }
 }
 

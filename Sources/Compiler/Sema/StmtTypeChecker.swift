@@ -427,6 +427,10 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
     mutating func visit(_ stmt: RollbackStmtSyntax) -> ResultColumns {
         return .empty
     }
+    
+    mutating func visit(_ stmt: VacuumStmtSyntax) -> ResultColumns {
+        return .empty
+    }
 }
 
 extension StmtTypeChecker {

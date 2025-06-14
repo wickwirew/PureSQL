@@ -268,6 +268,8 @@ extension CompilerWithSource: StmtSyntaxVisitor {
     mutating func visit(_ stmt: SavepointStmtSyntax) -> (Statement, Diagnostics)? { nil }
     
     mutating func visit(_ stmt: ReleaseStmtSyntax) -> (Statement, Diagnostics)? { nil }
+    
+    mutating func visit(_ stmt: VacuumStmtSyntax) -> (Statement, Diagnostics)? { nil }
 }
 
 /// Used to validate whether a statement syntax is valid for use in migrations
@@ -295,6 +297,7 @@ struct IsValidForMigrations: StmtSyntaxVisitor {
     func visit(_ stmt: RollbackStmtSyntax) -> Bool { false }
     func visit(_ stmt: SavepointStmtSyntax) -> Bool { false }
     func visit(_ stmt: ReleaseStmtSyntax) -> Bool { false }
+    func visit(_ stmt: VacuumStmtSyntax) -> Bool { true }
 }
 
 /// Used to validate whether a statement syntax is valid for use in queries
@@ -322,6 +325,7 @@ struct IsValidForQueries: StmtSyntaxVisitor {
     func visit(_ stmt: RollbackStmtSyntax) -> Bool { false }
     func visit(_ stmt: SavepointStmtSyntax) -> Bool { false }
     func visit(_ stmt: ReleaseStmtSyntax) -> Bool { false }
+    func visit(_ stmt: VacuumStmtSyntax) -> Bool { false }
 }
 
 // Mainly used in tests, since they are usually a mix of migrations and queries
@@ -349,4 +353,5 @@ struct IsAlwaysValid: StmtSyntaxVisitor {
     func visit(_ stmt: RollbackStmtSyntax) -> Bool { true }
     func visit(_ stmt: SavepointStmtSyntax) -> Bool { true }
     func visit(_ stmt: ReleaseStmtSyntax) -> Bool { true }
+    func visit(_ stmt: VacuumStmtSyntax) -> Bool { true }
 }
