@@ -96,7 +96,6 @@ struct Lexer {
         
         switch (current, peek) {
         case ("*", "/"): return consumeDouble(of: .starForwardSlash)
-        case ("/", "*"): return consumeDouble(of: .forwardSlashStar)
         case ("<", "<"): return consumeDouble(of: .shiftLeft)
         case ("<", "="): return consumeDouble(of: .lte)
         case (">", ">"): return consumeDouble(of: .shiftRight)
@@ -104,6 +103,9 @@ struct Lexer {
         case ("|", "|"): return consumeDouble(of: .concat)
         case ("-", "-"):
             skipSingleLineComment()
+            return next()
+        case ("/", "*"):
+            skipMultiLineComment()
             return next()
         case ("=", "="): return consumeDouble(of: .doubleEqual)
         case ("!", "="): return consumeDouble(of: .notEqual)
@@ -407,11 +409,29 @@ struct Lexer {
         return double
     }
     
+    /// Will skip a single line comment like "-- The comment"
     private mutating func skipSingleLineComment() {
         advance()
         advance()
         
         while let current, !current.isNewline {
+            advance()
+        }
+    }
+    
+    /// Will skip a multi line comment like "/* The comment */"
+    private mutating func skipMultiLineComment() {
+        advance()
+        advance()
+        
+        while let current {
+            // Hit end of comment
+            if current == "*", peek == "/" {
+                advance()
+                advance()
+                return
+            }
+            
             advance()
         }
     }

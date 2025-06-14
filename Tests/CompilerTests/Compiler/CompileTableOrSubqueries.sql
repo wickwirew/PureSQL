@@ -1,11 +1,13 @@
--- TableOrSubquery seems to be the trickiest part of the AST
--- and want to have lots of tests validating it matches SQLite
--- even for the weird use cases.
+/*
+TableOrSubquery seems to be the trickiest part of the AST
+and want to have lots of tests validating it matches SQLite
+even for the weird use cases.
 
--- Each test has a "SQLite Output" above it to show exact what SQLite
--- returns when run locally as a sanity check.
+Each test has a "SQLite Output" above it to show exact what SQLite
+returns when run locally as a sanity check.
 
--- https://www.sqlite.org/syntax/table-or-subquery.html
+https://www.sqlite.org/syntax/table-or-subquery.html
+ */
 
 CREATE TABLE foo (bar INTEGER);
 CREATE TABLE baz (qux INTEGER);
@@ -129,3 +131,7 @@ SELECT * FROM foo AS quux CROSS JOIN baz;
 -- CHECK:   TABLES
 -- CHECK:     foo
 SELECT quux FROM ((SELECT bar AS quux FROM foo));
+
+/*
+Comment at the end
+*/
