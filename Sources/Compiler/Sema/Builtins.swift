@@ -75,7 +75,11 @@ enum Builtins {
         "instr": Function(.text, .text, returning: .integer),
         "last_insert_rowid": Function(returning: .integer),
         "length": Function(.text, returning: .integer),
-        "like": Function(.text, .text, returning: .integer),
+        "like": Function(
+            .text, .text,
+            returning: .integer,
+            overloads: [Function.Overload(.text, .text, .text, returning: .integer)]
+        ),
         "likelihood": Function(.var(0), .real, returning: .var(0)),
         "likely": Function(.var(0), returning: .var(0)),
         "lower": Function(.text, returning: .text),
@@ -91,7 +95,11 @@ enum Builtins {
         "random": Function(returning: .integer),
         "randomblob": Function(.integer, returning: .blob),
         "replace": Function(.text, .text, .text, returning: .text),
-        "round": Function(.real, .integer, returning: .real),
+        "round": Function(
+            .real,
+            returning: .real,
+            overloads: [Function.Overload(.real, .integer, returning: .real)]
+        ),
         "rtrim": Function(
             .text,
             returning: .text,
@@ -99,11 +107,27 @@ enum Builtins {
         ),
         "sign": Function(.var(.integer(0)), returning: .integer),
         "soundex": Function(.text, returning: .text),
-        "substr": Function(.text, .integer, .integer, returning: .text),
-        "substring": Function(.text, .integer, .integer, returning: .text),
-        "trim": Function(.text, .text, returning: .text),
+        "substr": Function(
+            .text, .integer,
+            returning: .text,
+            overloads: [Function.Overload(.text, .integer, .integer, returning: .text)]
+        ),
+        "substring": Function(
+            .text, .integer,
+            returning: .text,
+            overloads: [Function.Overload(.text, .integer, .integer, returning: .text)]
+        ),
+        "trim": Function(
+            .text,
+            returning: .text,
+            overloads: [Function.Overload(.text, .text, returning: .text)]
+        ),
         "typeof": Function(.var(0), returning: .text),
-        "unhex": Function(.text, returning: .blob),
+        "unhex": Function(
+            .text,
+            returning: .blob,
+            overloads: [Function.Overload(.text, .text, returning: .blob)]
+        ),
         "unicode": Function(.text, returning: .integer),
         "unlikely": Function(.var(0), returning: .var(0)),
         "upper": Function(.text, returning: .text),

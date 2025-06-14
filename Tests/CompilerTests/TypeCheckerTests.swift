@@ -240,6 +240,7 @@ class TypeCheckerTests: XCTestCase {
             inferenceState: InferenceState(),
             env: scope,
             schema: Schema(),
+            ctes: [:],
             pragmas: []
         )
         var nameInferrer = NameInferrer()

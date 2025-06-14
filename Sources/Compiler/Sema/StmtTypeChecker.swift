@@ -20,7 +20,7 @@ struct StmtTypeChecker {
     private(set) var schema: Schema
     /// Any CTE that was declared with the statement.
     /// Keeping these separate from the schema so they don't get passed to the next statement
-    private(set) var ctes: [Substring: Table] = [:]
+    private(set) var ctes: [Substring: Table]
     /// Any diagnostics that are emitted during compilation
     private(set) var diagnostics = Diagnostics()
     /// Inferrer for any bind parameter names
@@ -41,11 +41,13 @@ struct StmtTypeChecker {
     init(
         env: Environment = Environment(),
         schema: Schema,
+        ctes: [Substring: Table] = [:],
         inferenceState: InferenceState = InferenceState(),
         pragmas: FeatherPragmas
     ) {
         self.env = env
         self.schema = schema
+        self.ctes = ctes
         self.inferenceState = inferenceState
         self.pragmas = pragmas
     }
@@ -67,6 +69,7 @@ struct StmtTypeChecker {
             inferenceState: inferenceState,
             env: env,
             schema: schema,
+            ctes: ctes,
             pragmas: pragmas
         )
         let type = exprTypeChecker.typeCheck(expr)
@@ -516,6 +519,7 @@ extension StmtTypeChecker {
             var index = 0
             let secondColumns = secondResult.allColumns.values
             return firstResult.mapTypes { type in
+                let type = inferenceState.solution(for: type)
                 inferenceState.unify(
                     type,
                     with: inferenceState.solution(for: secondColumns[index]),
@@ -690,6 +694,9 @@ extension StmtTypeChecker {
         return ResultColumns(columns: resultColumns, table: nil)
     }
     
+    /// Type checks the beginning of 1 or more CTE declarations.
+    /// Optional to help with the ease of the API since any time its
+    /// used its optionally at the beginning of some statements.
     private mutating func typeCheck(with: WithSyntax?) {
         guard let with else { return }
         
@@ -702,40 +709,50 @@ extension StmtTypeChecker {
         }
     }
     
+    /// Type checks the CTE expression. Will return the resultant table
+    /// representing the CTE.
     private mutating func typeCheck(
         cte: CommonTableExpressionSyntax,
         recursive: Bool
     ) -> Table {
         let cteName = QualifiedName(name: cte.table.value, schema: nil)
         
-        if cte.columns.isEmpty {
-            let resultColumns = typeCheck(select: cte.select)
-            return Table(name: cteName, columns: resultColumns.allColumns, kind: .cte)
+        // Recursive CTE's can reference themselves so we need to create a table to
+        // represent this CTE with all columns as type variables.
+        let recursiveCte: Table?
+        if recursive {
+            recursiveCte = Table(
+               name: cteName,
+               columns: cte.columns.reduce(into: [:]) { columns, name in
+                   columns.append(inferenceState.freshTyVar(for: name), for: name.value)
+               },
+               kind: .cte
+           )
+           
+           ctes[cteName.name] = recursiveCte
         } else {
-            // CTE's can reference themselves so we need to create a table to
-            // represent this CTE with all columns as type variables.
-            let thisCte = Table(
-                name: cteName,
-                columns: cte.columns.reduce(into: [:]) { columns, name in
-                    columns.append(inferenceState.freshTyVar(for: name), for: name.value)
-                },
-                kind: .cte
-            )
-            
-            ctes[thisCte.name.name] = thisCte
-            
-            let resultColumns = typeCheck(select: cte.select)
-            let columnTypes = resultColumns.allColumns.values
-            if columnTypes.count != cte.columns.count {
+            recursiveCte = nil
+        }
+        
+        let resultColumns = typeCheck(select: cte.select)
+        
+        // If the CTE defined columns make sure that they have the same amount of columns.
+        if !cte.columns.isEmpty {
+            if resultColumns.count != cte.columns.count {
                 diagnostics.add(.init(
-                    "CTE expected \(cte.columns.count) columns, but got \(columnTypes.count)",
+                    "CTE expected \(cte.columns.count) columns, but got \(resultColumns.count)",
                     at: cte.location
                 ))
             }
-            
+        }
+        
+        if let recursiveCte {
             // Simply return the table but getting the solution types so the substitution
             // map retains it's integrity.
-            return thisCte.mapTypes { inferenceState.solution(for: $0) }
+            return recursiveCte.mapTypes { inferenceState.solution(for: $0) }
+        } else {
+            // No recursive CTE, create a new table from the result columns.
+            return Table(name: cteName, columns: resultColumns.allColumns, kind: .cte)
         }
     }
     

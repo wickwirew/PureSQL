@@ -81,8 +81,8 @@ class CompilerTests: XCTestCase {
         try checkSchema(compile: "CompileIndex")
     }
     
-    func testCte() throws {
-        try checkQueries(compile: "CompileCTE", dump: true)
+    func testOutlandishCte() throws {
+        try checkQueries(compile: "CompileOutlandishCTE", dump: true)
     }
 }
 

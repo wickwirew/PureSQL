@@ -16,6 +16,8 @@ struct ExprTypeChecker {
     private(set) var env: Environment
     /// The entire database schema
     private let schema: Schema
+    /// Any CTEs available to the expression
+    private let ctes: [Substring: Table]
     /// Any diagnostics that are emitted during compilation
     private(set) var diagnostics = Diagnostics()
     /// Any table that is used
@@ -27,11 +29,13 @@ struct ExprTypeChecker {
         inferenceState: InferenceState,
         env: Environment,
         schema: Schema,
+        ctes: [Substring: Table],
         pragmas: FeatherPragmas
     ) {
         self.inferenceState = inferenceState
         self.env = env
         self.schema = schema
+        self.ctes = ctes
         self.pragmas = pragmas
     }
 
@@ -54,6 +58,7 @@ struct ExprTypeChecker {
         var typeChecker = StmtTypeChecker(
             env: Environment(parent: env),
             schema: schema,
+            ctes: ctes,
             inferenceState: inferenceState,
             pragmas: pragmas
         )
