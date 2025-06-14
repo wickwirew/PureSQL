@@ -5,7 +5,8 @@
 //  Created by Wes Wickwire on 10/19/24.
 //
 
-struct IdentifierSyntax: Sendable {
+struct IdentifierSyntax: Sendable, Syntax {
+    let id: SyntaxId
     private(set) var value: Substring
     private(set) var location: SourceLocation
 }

@@ -516,7 +516,11 @@ extension StmtTypeChecker {
             var index = 0
             let secondColumns = secondResult.allColumns.values
             return firstResult.mapTypes { type in
-                inferenceState.unify(type, with: secondColumns[index], at: location)
+                inferenceState.unify(
+                    type,
+                    with: inferenceState.solution(for: secondColumns[index]),
+                    at: location
+                )
                 index += 1
                 return type
             }
@@ -691,20 +695,36 @@ extension StmtTypeChecker {
         
         for cte in with.ctes {
             let table = inNewEnvironment { typeChecker in
-                typeChecker.typeCheck(cte: cte)
+                typeChecker.typeCheck(cte: cte, recursive: with.recursive)
             }
             
             ctes[cte.table.value] = table
         }
     }
     
-    private mutating func typeCheck(cte: CommonTableExpressionSyntax) -> Table {
-        let resultColumns = typeCheck(select: cte.select)
-
-        let columns: Columns
+    private mutating func typeCheck(
+        cte: CommonTableExpressionSyntax,
+        recursive: Bool
+    ) -> Table {
+        let cteName = QualifiedName(name: cte.table.value, schema: nil)
+        
         if cte.columns.isEmpty {
-            columns = resultColumns.allColumns
+            let resultColumns = typeCheck(select: cte.select)
+            return Table(name: cteName, columns: resultColumns.allColumns, kind: .cte)
         } else {
+            // CTE's can reference themselves so we need to create a table to
+            // represent this CTE with all columns as type variables.
+            let thisCte = Table(
+                name: cteName,
+                columns: cte.columns.reduce(into: [:]) { columns, name in
+                    columns.append(inferenceState.freshTyVar(for: name), for: name.value)
+                },
+                kind: .cte
+            )
+            
+            ctes[thisCte.name.name] = thisCte
+            
+            let resultColumns = typeCheck(select: cte.select)
             let columnTypes = resultColumns.allColumns.values
             if columnTypes.count != cte.columns.count {
                 diagnostics.add(.init(
@@ -713,16 +733,10 @@ extension StmtTypeChecker {
                 ))
             }
             
-            columns = (0 ..< min(columnTypes.count, cte.columns.count))
-                .reduce(into: [:]) { $0.append(columnTypes[$1], for: cte.columns[$1].value) }
+            // Simply return the table but getting the solution types so the substitution
+            // map retains it's integrity.
+            return thisCte.mapTypes { inferenceState.solution(for: $0) }
         }
-        
-        return Table(
-            name: QualifiedName(name: cte.table.value, schema: nil),
-            columns: columns,
-            primaryKey: [],
-            kind: .cte
-        )
     }
     
     /// Will infer the core part of the select.

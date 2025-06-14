@@ -79,7 +79,11 @@ enum Builtins {
         "likelihood": Function(.var(0), .real, returning: .var(0)),
         "likely": Function(.var(0), returning: .var(0)),
         "lower": Function(.text, returning: .text),
-        "ltrim": Function(.text, .text, returning: .text),
+        "ltrim": Function(
+            .text,
+            returning: .text,
+            overloads: [Function.Overload(.text, .text, returning: .text)]
+        ),
         "max": Function(.var(0), returning: .var(0), variadic: true),
         "min": Function(.var(0), returning: .var(0), variadic: true),
         "nullif": Function(.var(0), .var(0), returning: .optional(.var(0))),
@@ -88,7 +92,11 @@ enum Builtins {
         "randomblob": Function(.integer, returning: .blob),
         "replace": Function(.text, .text, .text, returning: .text),
         "round": Function(.real, .integer, returning: .real),
-        "rtrim": Function(.text, .text, returning: .text),
+        "rtrim": Function(
+            .text,
+            returning: .text,
+            overloads: [Function.Overload(.text, .text, returning: .text)]
+        ),
         "sign": Function(.var(.integer(0)), returning: .integer),
         "soundex": Function(.text, returning: .text),
         "substr": Function(.text, .integer, .integer, returning: .text),

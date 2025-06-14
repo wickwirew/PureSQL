@@ -80,6 +80,10 @@ class CompilerTests: XCTestCase {
     func testIndex() throws {
         try checkSchema(compile: "CompileIndex")
     }
+    
+    func testCte() throws {
+        try checkQueries(compile: "CompileCTE", dump: true)
+    }
 }
 
 struct CheckSignature: Checkable {

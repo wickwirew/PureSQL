@@ -24,6 +24,18 @@ public struct Table: Sendable, Equatable {
         case subquery
     }
     
+    init(
+        name: QualifiedName,
+        columns: Columns,
+        primaryKey: [Substring] = [],
+        kind: Kind
+    ) {
+        self.name = name
+        self.columns = columns
+        self.primaryKey = primaryKey
+        self.kind = kind
+    }
+    
     var type: Type {
         return .row(.fixed(columns.map(\.value)))
     }

@@ -1088,7 +1088,7 @@ enum Parsers {
                 location: state.location(from: start)
             )
         case let .identifier(table) where state.peek.kind == .dot && state.peek2.kind == .star:
-            let table = IdentifierSyntax(value: table, location: state.current.location)
+            let table = IdentifierSyntax(id: state.nextId(), value: table, location: state.current.location)
             state.skip()
             state.consume(.dot)
             state.consume(.star)
@@ -2443,10 +2443,10 @@ enum Parsers {
         
         guard case let .identifier(ident) = token.kind else {
             state.diagnostics.add(.init("Expected identifier", at: token.location))
-            return IdentifierSyntax(value: "<<error>>", location: token.location)
+            return IdentifierSyntax(id: state.nextId(), value: "<<error>>", location: token.location)
         }
         
-        return IdentifierSyntax(value: ident, location: token.location)
+        return IdentifierSyntax(id: state.nextId(), value: ident, location: token.location)
     }
     
     /// So this is to handle a weird edge case. SQLite apparently allows keywords
@@ -2457,7 +2457,7 @@ enum Parsers {
         let token = state.take()
         
         if case let .identifier(ident) = token.kind {
-            return IdentifierSyntax(value: ident, location: token.location)
+            return IdentifierSyntax(id: state.nextId(), value: ident, location: token.location)
         }
         
         // Since this is kind of edge casey instead of making all
@@ -2471,10 +2471,10 @@ enum Parsers {
         // should not allow
         guard isKeyword else {
             state.diagnostics.add(.init("Expected identifier", at: token.location))
-            return IdentifierSyntax(value: "<<error>>", location: token.location)
+            return IdentifierSyntax(id: state.nextId(), value: "<<error>>", location: token.location)
         }
         
-        return IdentifierSyntax(value: rawValue, location: token.location)
+        return IdentifierSyntax(id: state.nextId(), value: rawValue, location: token.location)
     }
     
     /// https://www.sqlite.org/syntax/numeric-literal.html
