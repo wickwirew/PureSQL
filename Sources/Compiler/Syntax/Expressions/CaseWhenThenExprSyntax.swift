@@ -21,20 +21,3 @@ struct CaseWhenThenExprSyntax: ExprSyntax {
         return visitor.visit(self)
     }
 }
-
-extension CaseWhenThenExprSyntax: CustomStringConvertible {
-    var description: String {
-        var str = "CASE"
-        if let `case` {
-            str += " \(`case`)"
-        }
-        for whenThen in whenThen {
-            str += " WHEN \(whenThen.when) THEN \(whenThen.then)"
-        }
-        if let `else` {
-            str += " ELSE \(`else`)"
-        }
-        str += " END"
-        return str
-    }
-}

@@ -251,6 +251,14 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
     }
     
     mutating func visit(_ stmt: ReindexStmtSyntax) -> ResultColumns {
+        guard let nameIdentifier = stmt.name else { return .empty }
+        let name = qualifedName(for: nameIdentifier, in: stmt.schemaName)
+        
+        guard schema[name] != nil || schema[index: name] != nil else {
+            diagnostics.add(.init("No table or index with name", at: nameIdentifier.location))
+            return .empty
+        }
+        
         return .empty
     }
     

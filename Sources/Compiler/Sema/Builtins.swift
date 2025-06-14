@@ -44,7 +44,8 @@ enum Builtins {
     static let match = Function(.var(0), .text, returning: .integer)
     static let regexp = Function(.text, .text, returning: .integer)
     static let glob = Function(.text, .text, returning: .integer)
-    
+    static let isNullPostfix = Function(.var(0), returning: .integer)
+
     static let functions: OrderedDictionary<Substring, Function> = {
         // TODO: Clean this up. SQLite isnt casing dependant but we are at the moment.
         // TODO: So insert each function twice, under the lower and upper cased name.

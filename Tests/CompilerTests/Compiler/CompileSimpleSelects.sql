@@ -230,5 +230,15 @@ WHERE id > (SELECT COUNT(*) FROM bar);
 -- CHECK:         value INTEGER
 -- CHECK:   TABLES
 -- CHECK:     foo
+SELECT -1 AS value FROM foo
+WHERE value = 1 AND value NOTNULL AND value NOT NULL AND value ISNULL ORDER BY value;
+
+-- CHECK: SIGNATURE
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         value INTEGER
+-- CHECK:   TABLES
+-- CHECK:     foo
 SELECT 1 AS value FROM foo
-WHERE value = 1 ORDER BY value;
+WHERE EXISTS (SELECT * FROM foo) value;

@@ -52,3 +52,10 @@ SELECT * FROM view1;
 -- CHECK-QUERIES:   TABLES
 -- CHECK-QUERIES:     view2
 SELECT * FROM view2;
+
+CREATE VIEW willDrop AS SELECT * FROM foo;
+DROP VIEW willDrop;
+DROP VIEW IF EXISTS willDrop;
+
+-- CHECK-ERROR: View with name does not exist
+DROP VIEW dne;

@@ -14,10 +14,5 @@ struct JoinConstraintSyntax: Syntax {
         case on(any ExprSyntax)
         case using([IdentifierSyntax])
         case none
-
-        var on: (any ExprSyntax)? {
-            if case let .on(e) = self { return e }
-            return nil
-        }
     }
 }

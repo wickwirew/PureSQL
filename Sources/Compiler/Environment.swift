@@ -163,6 +163,7 @@ struct Environment {
         return switch op {
         case .collate: Builtins.concatOp
         case .escape: Builtins.escape
+        case .isnull, .notnull, .notNull: Builtins.isNullPostfix
         default: nil
         }
     }
