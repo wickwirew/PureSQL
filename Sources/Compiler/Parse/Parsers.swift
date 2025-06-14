@@ -70,7 +70,7 @@ enum Parsers {
             return try updateStmt(state: &state)
         case (.delete, _):
             return try deleteStmt(state: &state)
-        case (.define, _):
+        case (.identifier, _):
             return try definition(state: &state)
         case (.pragma, _):
             return try pragma(state: &state)
@@ -180,7 +180,7 @@ enum Parsers {
     
     static func vacuum(state: inout ParserState) -> VacuumStmtSyntax {
         let start = state.take()
-        let schema = state.current.kind.isSymbol ? identifier(state: &state) : nil
+        let schema = state.current.kind.isIdentifier ? identifier(state: &state) : nil
         let fileName = state.take(if: .into) ? identifier(state: &state) : nil
         return VacuumStmtSyntax(
             id: state.nextId(),
@@ -400,7 +400,7 @@ enum Parsers {
             schema = nil
         }
         
-        let name = state.current.kind.isSymbol ? identifier(state: &state) : nil
+        let name = state.current.kind.isIdentifier ? identifier(state: &state) : nil
         return ReindexStmtSyntax(
             id: state.nextId(),
             schemaName: schema,
@@ -1461,7 +1461,7 @@ enum Parsers {
             } else {
                 let name = identifier(state: &state)
                 
-                let type = state.current.kind.isSymbol && state.current.kind != .unindexed
+                let type = state.current.kind.isIdentifier && state.current.kind != .unindexed
                     ? typeName(state: &state, doNotConsumeWords: ["UNINDEXED"])
                     : nil
                 
@@ -1504,7 +1504,7 @@ enum Parsers {
         repeat {
             let column = try columnDef(state: &state)
             columns[column.name] = column
-        } while state.take(if: .comma) && state.current.kind.isSymbol
+        } while state.take(if: .comma) && state.current.kind.isIdentifier
         
         return columns
     }
@@ -2302,10 +2302,8 @@ enum Parsers {
         }
     }
     
-    /// This is a custom thing, `DEFINE QUERY ...`
+    /// This is a custom thing, `queryName(input: Name): ...`
     static func definition(state: inout ParserState) throws -> StmtSyntax {
-        let define = state.take(.define)
-        state.skip(.query)
         let name = identifier(state: &state)
         
         let params: [Substring: IdentifierSyntax]? = take(if: .openParen, state: &state) { state in
@@ -2321,7 +2319,7 @@ enum Parsers {
             }
         }
         
-        state.skip(.as)
+        state.skip(.colon)
         let stmt = try stmt(state: &state)
         
         return QueryDefinitionStmtSyntax(
@@ -2330,7 +2328,7 @@ enum Parsers {
             input: params?["input"],
             output: params?["output"],
             statement: stmt,
-            location: define.location.spanning(state.current.location)
+            location: name.location.spanning(state.current.location)
         )
     }
     

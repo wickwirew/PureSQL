@@ -3,14 +3,14 @@
 -- CHECK:   NAME fetchUser
 -- CHECK:   STATEMENT
 -- CHECK:   ...
-DEFINE QUERY fetchUser AS
+fetchUser:
 SELECT * FROM user WHERE id = ?;
 
 -- CHECK: QUERY_DEFINITION_STMT_SYNTAX
 -- CHECK:   NAME insertUser
 -- CHECK:   STATEMENT
 -- CHECK:   ...
-DEFINE QUERY insertUser AS
+insertUser:
 INSERT INTO user (id, name) VALUES (1, 'Joe');
 
 -- CHECK: QUERY_DEFINITION_STMT_SYNTAX
@@ -18,7 +18,7 @@ INSERT INTO user (id, name) VALUES (1, 'Joe');
 -- CHECK:   OUTPUT FetchedUser
 -- CHECK:   STATEMENT
 -- CHECK:   ...
-DEFINE QUERY fetchUser(output: FetchedUser) AS
+fetchUser(output: FetchedUser):
 SELECT * FROM user WHERE id = ?;
 
 -- CHECK: QUERY_DEFINITION_STMT_SYNTAX
@@ -27,5 +27,5 @@ SELECT * FROM user WHERE id = ?;
 -- CHECK:   OUTPUT FetchedUser
 -- CHECK:   STATEMENT
 -- CHECK:   ...
-DEFINE QUERY fetchUser(input: TheBestInput, output: FetchedUser) AS
+fetchUser(input: TheBestInput, output: FetchedUser):
 SELECT * FROM user WHERE id = ?;
