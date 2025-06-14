@@ -19,8 +19,8 @@ struct SelectStmtSyntax: StmtSyntax {
     }
 
     struct Limit {
-        let expr: ExpressionSyntax
-        let offset: ExpressionSyntax?
+        let expr: any ExprSyntax
+        let offset: (any ExprSyntax)?
     }
 
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {

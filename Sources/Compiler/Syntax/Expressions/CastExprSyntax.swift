@@ -7,7 +7,7 @@
 
 struct CastExprSyntax: ExprSyntax, CustomStringConvertible {
     let id: SyntaxId
-    let expr: ExpressionSyntax
+    let expr: any ExprSyntax
     let ty: TypeNameSyntax
     let location: SourceLocation
     

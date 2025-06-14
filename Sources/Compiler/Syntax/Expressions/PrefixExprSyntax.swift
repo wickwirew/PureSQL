@@ -9,7 +9,7 @@
 struct PrefixExprSyntax: ExprSyntax, CustomStringConvertible {
     let id: SyntaxId
     let `operator`: OperatorSyntax
-    let rhs: ExpressionSyntax
+    let rhs: any ExprSyntax
     
     var description: String {
         return "(\(`operator`)\(rhs))"

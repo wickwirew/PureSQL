@@ -12,7 +12,7 @@ struct UpdateStmtSyntax: StmtSyntax {
     let tableName: QualifiedTableNameSyntax
     let sets: [SetActionSyntax]
     let from: FromSyntax?
-    let whereExpr: ExpressionSyntax?
+    let whereExpr: (any ExprSyntax)?
     let returningClause: ReturningClauseSyntax?
     let location: SourceLocation
     

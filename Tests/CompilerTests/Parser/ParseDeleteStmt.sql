@@ -9,13 +9,10 @@ DELETE FROM user;
 -- CHECK:     TABLE_NAME
 -- CHECK:       NAME user
 -- CHECK:   WHERE_EXPR
--- CHECK:     INFIX
 -- CHECK:       LHS
--- CHECK:         COLUMN
--- CHECK:           COLUMN id
+-- CHECK:         COLUMN id
 -- CHECK:       OPERATOR =
--- CHECK:       RHS
--- CHECK:         BIND_PARAMETER ?
+-- CHECK:       RHS ?
 DELETE FROM user WHERE id = ?;
 
 -- CHECK: DELETE_STMT_SYNTAX
@@ -23,13 +20,10 @@ DELETE FROM user WHERE id = ?;
 -- CHECK:     TABLE_NAME
 -- CHECK:       NAME user
 -- CHECK:   WHERE_EXPR
--- CHECK:     INFIX
 -- CHECK:       LHS
--- CHECK:         COLUMN
--- CHECK:           COLUMN id
+-- CHECK:         COLUMN id
 -- CHECK:       OPERATOR =
--- CHECK:       RHS
--- CHECK:         BIND_PARAMETER ?
+-- CHECK:       RHS ?
 -- CHECK:   RETURNING_CLAUSE
 -- CHECK:     VALUES
 -- CHECK:       VALUE all

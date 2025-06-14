@@ -13,11 +13,11 @@ struct UpsertClauseSyntax: Syntax {
 
     struct ConflictTarget {
         let columns: [IndexedColumnSyntax]
-        let condition: ExpressionSyntax?
+        let condition: (any ExprSyntax)?
     }
 
     enum Do {
         case nothing
-        case updateSet(sets: [SetActionSyntax], where: ExpressionSyntax?)
+        case updateSet(sets: [SetActionSyntax], where: (any ExprSyntax)?)
     }
 }

@@ -6,14 +6,10 @@
 //
 
 /// https://www.sqlite.org/lang_expr.html
-struct PostfixExprSyntax: ExprSyntax, CustomStringConvertible {
+struct PostfixExprSyntax: ExprSyntax {
     let id: SyntaxId
-    let lhs: ExpressionSyntax
+    let lhs: any ExprSyntax
     let `operator`: OperatorSyntax
-    
-    var description: String {
-        return "(\(lhs) \(`operator`))"
-    }
     
     var location: SourceLocation {
         return lhs.location.spanning(`operator`.location)

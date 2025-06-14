@@ -12,10 +12,8 @@
 -- CHECK:       SELECTS
 -- CHECK:         SINGLE
 -- CHECK:           VALUES
--- CHECK:             EXPRESSION_SYNTAX
--- CHECK:               LITERAL 1.0
--- CHECK:             EXPRESSION_SYNTAX
--- CHECK:               LITERAL 'two'
+-- CHECK:             1.0
+-- CHECK:             'two'
 INSERT INTO foo (bar, baz) VALUES (1, 'two');
 
 -- CHECK: INSERT_STMT_SYNTAX
@@ -35,8 +33,7 @@ INSERT INTO foo (bar, baz) VALUES (1, 'two');
 -- CHECK:               RESULT_COLUMN_SYNTAX
 -- CHECK:                 KIND
 -- CHECK:                   EXPR
--- CHECK:                       COLUMN
--- CHECK:                         COLUMN baz
+-- CHECK:                       COLUMN baz
 -- CHECK:             FROM
 -- CHECK:               JOIN
 -- CHECK:                 TABLE_OR_SUBQUERY
@@ -48,8 +45,7 @@ INSERT INTO foo (bar, baz) VALUES (1, 'two');
 -- CHECK:       VALUE
 -- CHECK:         EXPR
 -- CHECK:           EXPR
--- CHECK:             COLUMN
--- CHECK:               COLUMN bar
+-- CHECK:             COLUMN bar
 REPLACE INTO foo (bar) SELECT baz FROM qux RETURNING bar;
 
 -- CHECK: INSERT_STMT_SYNTAX
@@ -68,8 +64,7 @@ REPLACE INTO foo (bar) SELECT baz FROM qux RETURNING bar;
 -- CHECK:                   RESULT_COLUMN_SYNTAX
 -- CHECK:                     KIND
 -- CHECK:                       EXPR
--- CHECK:                           COLUMN
--- CHECK:                             COLUMN bar
+-- CHECK:                           COLUMN bar
 -- CHECK:                 FROM
 -- CHECK:                   JOIN
 -- CHECK:                     TABLE_OR_SUBQUERY

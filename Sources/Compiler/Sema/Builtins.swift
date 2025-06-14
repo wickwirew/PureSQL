@@ -15,9 +15,9 @@ enum Builtins {
     static let between = Function(.var(0), .var(0), .var(0), returning: .integer)
     static let arithmetic = Function(.var(0), .var(0), returning: .var(0))
     static let divide = Function(.var(0), .var(0), returning: .var(0)) { types, exprs, location, diagnostics in
-        func isInt(_ type: Type, expr: ExpressionSyntax) -> Bool {
+        func isInt(_ type: Type, expr: any ExprSyntax) -> Bool {
             if type.root == .integer || type.root == .int { return true }
-            if case let .numeric(_, isInt) = expr.literal?.kind { return isInt }
+            if let literal = expr as? LiteralExprSyntax, case let .numeric(_, isInt) = literal.kind { return isInt }
             return false
         }
         
@@ -110,8 +110,8 @@ enum Builtins {
             variadic: true
         ) { _, args, location, diagnostics in
             guard args.count == 2,
-                  case let .string(first) = args[0].literal?.kind,
-                  case let .string(second) = args[1].literal?.kind,
+                  case let .string(first) = (args[0] as? LiteralExprSyntax)?.kind,
+                  case let .string(second) = (args[1] as? LiteralExprSyntax)?.kind,
                   first == "%s",
                   second == "now" else { return }
             

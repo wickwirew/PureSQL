@@ -10,13 +10,13 @@ enum SelectCoreSyntax {
     /// SELECT column FROM foo
     case select(Select)
     /// VALUES (foo, bar baz)
-    case values([[ExpressionSyntax]])
+    case values([[any ExprSyntax]])
 
     struct Select {
         let distinct: Bool
         let columns: [ResultColumnSyntax]
         let from: FromSyntax?
-        let `where`: ExpressionSyntax?
+        let `where`: (any ExprSyntax)?
         let groupBy: GroupBy?
         let windows: [Window]
 
@@ -24,7 +24,7 @@ enum SelectCoreSyntax {
             distinct: Bool = false,
             columns: [ResultColumnSyntax],
             from: FromSyntax?,
-            where: ExpressionSyntax? = nil,
+            where: (any ExprSyntax)? = nil,
             groupBy: GroupBy? = nil,
             windows: [Window] = []
         ) {
@@ -43,8 +43,8 @@ enum SelectCoreSyntax {
     }
 
     struct GroupBy {
-        let expressions: [ExpressionSyntax]
-        let having: ExpressionSyntax?
+        let expressions: [any ExprSyntax]
+        let having: (any ExprSyntax)?
 
         enum Nulls {
             case first

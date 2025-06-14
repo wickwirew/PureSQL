@@ -181,13 +181,13 @@ struct NameInferrer {
 extension NameInferrer: ExprSyntaxVisitor {
     typealias ExprOutput = Name
     
-    mutating func visit(_ expr: borrowing LiteralExprSyntax) -> Name { .none }
-    mutating func visit(_ expr: borrowing InvalidExprSyntax) -> Name { .none }
+    mutating func visit(_ expr: LiteralExprSyntax) -> Name { .none }
+    mutating func visit(_ expr: InvalidExprSyntax) -> Name { .none }
     
-    mutating func visit(_ expr: borrowing PrefixExprSyntax) -> Name {
+    mutating func visit(_ expr: PrefixExprSyntax) -> Name {
         return expr.rhs.accept(visitor: &self)
     }
-    mutating func visit(_ expr: borrowing InfixExprSyntax) -> Name {
+    mutating func visit(_ expr: InfixExprSyntax) -> Name {
         let lhs = expr.lhs.accept(visitor: &self)
         let rhs = expr.rhs.accept(visitor: &self)
         
@@ -197,17 +197,17 @@ extension NameInferrer: ExprSyntaxVisitor {
             return unify(names: lhs, with: rhs)
         }
     }
-    mutating func visit(_ expr: borrowing PostfixExprSyntax) -> Name {
+    mutating func visit(_ expr: PostfixExprSyntax) -> Name {
         return expr.lhs.accept(visitor: &self)
     }
-    mutating func visit(_ expr: borrowing FunctionExprSyntax) -> Name {
+    mutating func visit(_ expr: FunctionExprSyntax) -> Name {
         return unify(all: expr.args.map { $0.accept(visitor: &self) })
     }
     
-    mutating func visit(_ expr: borrowing CastExprSyntax) -> Name {
+    mutating func visit(_ expr: CastExprSyntax) -> Name {
         return expr.expr.accept(visitor: &self)
     }
-    mutating func visit(_ expr: borrowing CaseWhenThenExprSyntax) -> Name {
+    mutating func visit(_ expr: CaseWhenThenExprSyntax) -> Name {
         let `case` = expr.case?.accept(visitor: &self) ?? .none
         
         let whenThen = expr.whenThen.map {
@@ -221,16 +221,16 @@ extension NameInferrer: ExprSyntaxVisitor {
             with: `else`
         )
     }
-    mutating func visit(_ expr: borrowing GroupedExprSyntax) -> Name {
+    mutating func visit(_ expr: GroupedExprSyntax) -> Name {
         return unify(all: expr.exprs.map{ $0.accept(visitor: &self) })
     }
     
-    mutating func visit(_ expr: borrowing SelectExprSyntax) -> Name {
+    mutating func visit(_ expr: SelectExprSyntax) -> Name {
         infer(select: expr.select)
         return .none
     }
     
-    mutating func visit(_ expr: borrowing ColumnExprSyntax) -> Name {
+    mutating func visit(_ expr: ColumnExprSyntax) -> Name {
         switch expr.column {
         case .column(let column):
             return .some(column.value)
@@ -239,7 +239,7 @@ extension NameInferrer: ExprSyntaxVisitor {
         }
     }
     
-    mutating func visit(_ expr: borrowing BindParameterSyntax) -> Name {
+    mutating func visit(_ expr: BindParameterSyntax) -> Name {
         if let name = expr.name {
             inferredNames[expr.index] = name[...]
             return .none
@@ -248,7 +248,7 @@ extension NameInferrer: ExprSyntaxVisitor {
         }
     }
     
-    mutating func visit(_ expr: borrowing BetweenExprSyntax) -> Name {
+    mutating func visit(_ expr: BetweenExprSyntax) -> Name {
         let value = expr.value.accept(visitor: &self)
         let lower = expr.lower.accept(visitor: &self)
         let upper = expr.upper.accept(visitor: &self)
@@ -259,7 +259,7 @@ extension NameInferrer: ExprSyntaxVisitor {
         )
     }
     
-    mutating func visit(_ expr: borrowing ExistsExprSyntax) -> Name {
+    mutating func visit(_ expr: ExistsExprSyntax) -> Name {
         infer(select: expr.select)
         return .none
     }

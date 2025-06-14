@@ -16,66 +16,66 @@ struct IsStaticallyTrue: ExprSyntaxVisitor {
         return expr.accept(visitor: &self)
     }
     
-    mutating func visit(_ expr: borrowing BindParameterSyntax) -> Bool {
+    mutating func visit(_ expr: BindParameterSyntax) -> Bool {
         emitNotBoolDiag(for: expr)
         return false
     }
     
-    mutating func visit(_ expr: borrowing ColumnExprSyntax) -> Bool {
+    mutating func visit(_ expr: ColumnExprSyntax) -> Bool {
         return false
     }
     
-    mutating func visit(_ expr: borrowing PrefixExprSyntax) -> Bool {
+    mutating func visit(_ expr: PrefixExprSyntax) -> Bool {
         emitNotBoolDiag(for: expr)
         return false
     }
     
-    mutating func visit(_ expr: borrowing InfixExprSyntax) -> Bool {
+    mutating func visit(_ expr: InfixExprSyntax) -> Bool {
         emitNotBoolDiag(for: expr)
         return false
     }
     
-    mutating func visit(_ expr: borrowing PostfixExprSyntax) -> Bool {
+    mutating func visit(_ expr: PostfixExprSyntax) -> Bool {
         emitNotBoolDiag(for: expr)
         return false
     }
     
-    mutating func visit(_ expr: borrowing BetweenExprSyntax) -> Bool {
+    mutating func visit(_ expr: BetweenExprSyntax) -> Bool {
         emitNotBoolDiag(for: expr)
         return false
     }
     
-    mutating func visit(_ expr: borrowing FunctionExprSyntax) -> Bool {
+    mutating func visit(_ expr: FunctionExprSyntax) -> Bool {
         emitNotBoolDiag(for: expr)
         return false
     }
     
-    mutating func visit(_ expr: borrowing CastExprSyntax) -> Bool {
+    mutating func visit(_ expr: CastExprSyntax) -> Bool {
         emitNotBoolDiag(for: expr)
         return false
     }
     
-    mutating func visit(_ expr: borrowing CaseWhenThenExprSyntax) -> Bool {
+    mutating func visit(_ expr: CaseWhenThenExprSyntax) -> Bool {
         emitNotBoolDiag(for: expr)
         return false
     }
     
-    mutating func visit(_ expr: borrowing GroupedExprSyntax) -> Bool {
+    mutating func visit(_ expr: GroupedExprSyntax) -> Bool {
         emitNotBoolDiag(for: expr)
         return false
     }
     
-    mutating func visit(_ expr: borrowing SelectExprSyntax) -> Bool {
+    mutating func visit(_ expr: SelectExprSyntax) -> Bool {
         emitNotBoolDiag(for: expr)
         return false
     }
     
-    mutating func visit(_ expr: borrowing InvalidExprSyntax) -> Bool {
+    mutating func visit(_ expr: InvalidExprSyntax) -> Bool {
         emitNotBoolDiag(for: expr)
         return false
     }
     
-    mutating func visit(_ expr: borrowing LiteralExprSyntax) -> Bool {
+    mutating func visit(_ expr: LiteralExprSyntax) -> Bool {
         switch expr.kind {
         case .numeric(let numericSyntax, _):
             return numericSyntax != 0
@@ -102,7 +102,7 @@ struct IsStaticallyTrue: ExprSyntaxVisitor {
         }
     }
     
-    mutating func visit(_ expr: borrowing ExistsExprSyntax) -> Bool {
+    mutating func visit(_ expr: ExistsExprSyntax) -> Bool {
         emitNotBoolDiag(for: expr)
         return false
     }

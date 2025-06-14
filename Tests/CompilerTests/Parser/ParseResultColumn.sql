@@ -12,19 +12,19 @@ foo.*;
 -- CHECK: RESULT_COLUMN_SYNTAX
 -- CHECK:   KIND
 -- CHECK:     EXPR
--- CHECK:         LITERAL 1.0
+-- CHECK:       1.0
 1;
 
 -- CHECK: RESULT_COLUMN_SYNTAX
 -- CHECK:   KIND
 -- CHECK:     EXPR
--- CHECK:         LITERAL 1.0
+-- CHECK:       1.0
 -- CHECK:       AS one
 1 AS one;
 
 -- CHECK: RESULT_COLUMN_SYNTAX
 -- CHECK:   KIND
 -- CHECK:     EXPR
--- CHECK:         LITERAL 1.0
+-- CHECK:       1.0
 -- CHECK:       AS one
 1 one;

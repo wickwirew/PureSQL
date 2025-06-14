@@ -15,7 +15,7 @@ struct TableOrSubquerySyntax: Syntax {
         /// `foo.bar.baz`
         case table(Table)
         /// `foo(1)`
-        case tableFunction(schema: IdentifierSyntax?, table: IdentifierSyntax, args: [ExpressionSyntax], alias: AliasSyntax?)
+        case tableFunction(schema: IdentifierSyntax?, table: IdentifierSyntax, args: [any ExprSyntax], alias: AliasSyntax?)
         /// `(SELECT * FROM foo)`
         case subquery(SelectStmtSyntax, alias: AliasSyntax?)
         /// `(foo JOIN bar)`

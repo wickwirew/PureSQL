@@ -116,8 +116,7 @@ CREATE TABLE user (
 -- CHECK:                 UNIQUE ignore
 -- CHECK:             COLUMN_CONSTRAINT_SYNTAX
 -- CHECK:               KIND
--- CHECK:                 DEFAULT
--- CHECK:                   LITERAL 100.0
+-- CHECK:                 DEFAULT 100.0
 -- CHECK:         KEY name
 -- CHECK:         VALUE
 -- CHECK:           NAME name
@@ -155,8 +154,7 @@ CREATE TABLE user (
 -- CHECK:                 UNIQUE ignore
 -- CHECK:             COLUMN_CONSTRAINT_SYNTAX
 -- CHECK:               KIND
--- CHECK:                 DEFAULT
--- CHECK:                   LITERAL 'Joe'
+-- CHECK:                 DEFAULT 'Joe'
 -- CHECK:         KEY age
 -- CHECK:         VALUE
 -- CHECK:           NAME age
@@ -173,7 +171,7 @@ CREATE TABLE user (
 -- CHECK:             COLUMN_CONSTRAINT_SYNTAX
 -- CHECK:               KIND
 -- CHECK:                 GENERATED
--- CHECK:                     BIND_PARAMETER ?
+-- CHECK:                   ?
 -- CHECK:                   virtual
 -- CHECK:         KEY countryId
 -- CHECK:         VALUE
@@ -257,12 +255,10 @@ CREATE TABLE user (
 -- CHECK:         PRIMARY_KEY
 -- CHECK:             INDEXED_COLUMN_SYNTAX
 -- CHECK:               EXPR
--- CHECK:                 COLUMN
--- CHECK:                   COLUMN id
+-- CHECK:                 COLUMN id
 -- CHECK:             INDEXED_COLUMN_SYNTAX
 -- CHECK:               EXPR
--- CHECK:                 COLUMN
--- CHECK:                   COLUMN name
+-- CHECK:                 COLUMN name
 -- CHECK:           CONFICT_CLAUSE_SYNTAX none
 -- CHECK:   OPTIONS []
 CREATE TABLE user (

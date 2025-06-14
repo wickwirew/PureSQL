@@ -35,11 +35,11 @@ struct ExprTypeChecker {
         self.pragmas = pragmas
     }
 
-    mutating func typeCheck<E: ExprSyntax>(_ expr: E) -> Type {
+    mutating func typeCheck(_ expr: any ExprSyntax) -> Type {
         return expr.accept(visitor: &self)
     }
     
-    private mutating func typeCheck<E: ExprSyntax>(_ exprs: [E]) -> [Type] {
+    private mutating func typeCheck(_ exprs: [any ExprSyntax]) -> [Type] {
         var types: [Type] = []
         
         for expr in exprs {
@@ -98,7 +98,7 @@ struct ExprTypeChecker {
         fn: Function,
         argCount: Int,
         argTypes: @autoclosure () -> [Type],
-        argExprs: @autoclosure () -> [ExpressionSyntax],
+        argExprs: borrowing @autoclosure () -> [any ExprSyntax],
         location: SourceLocation
     ) -> Type {
         let type = inferenceState.instantiate(fn, preferredArgCount: argCount)
@@ -110,7 +110,7 @@ struct ExprTypeChecker {
 }
 
 extension ExprTypeChecker: ExprSyntaxVisitor {
-    mutating func visit(_ expr: borrowing LiteralExprSyntax) -> Type {
+    mutating func visit(_ expr: LiteralExprSyntax) -> Type {
         return switch expr.kind {
         case let .numeric(_, isInt): inferenceState.freshTyVar(for: expr, kind: isInt ? .integer : .float)
         case .string: inferenceState.nominalType(of: "TEXT", for: expr)
@@ -123,11 +123,11 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         }
     }
     
-    mutating func visit(_ expr: borrowing BindParameterSyntax) -> Type {
+    mutating func visit(_ expr: BindParameterSyntax) -> Type {
         return inferenceState.freshTyVar(forParam: expr)
     }
     
-    mutating func visit(_ expr: borrowing ColumnExprSyntax) -> Type {
+    mutating func visit(_ expr: ColumnExprSyntax) -> Type {
         switch expr.column {
         case .all:
             if let tableName = expr.table {
@@ -164,7 +164,7 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         }
     }
     
-    mutating func visit(_ expr: borrowing PrefixExprSyntax) -> Type {
+    mutating func visit(_ expr: PrefixExprSyntax) -> Type {
         let rhs = expr.rhs.accept(visitor: &self)
         
         guard let fn = env.resolve(prefix: expr.operator.operator) else {
@@ -181,7 +181,7 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         return inferenceState.solution(for: tv)
     }
     
-    mutating func visit(_ expr: borrowing InfixExprSyntax) -> Type {
+    mutating func visit(_ expr: InfixExprSyntax) -> Type {
         let lTy = expr.lhs.accept(visitor: &self)
         let rTy = expr.rhs.accept(visitor: &self)
         
@@ -211,7 +211,7 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         return inferenceState.solution(for: tv)
     }
     
-    mutating func visit(_ expr: borrowing PostfixExprSyntax) -> Type {
+    mutating func visit(_ expr: PostfixExprSyntax) -> Type {
         let lhs = expr.lhs.accept(visitor: &self)
         
         guard let fn = env.resolve(postfix: expr.operator.operator) else {
@@ -234,7 +234,7 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         return inferenceState.solution(for: tv)
     }
     
-    mutating func visit(_ expr: borrowing BetweenExprSyntax) -> Type {
+    mutating func visit(_ expr: BetweenExprSyntax) -> Type {
         let value = expr.value.accept(visitor: &self)
         let lower = expr.lower.accept(visitor: &self)
         let upper = expr.upper.accept(visitor: &self)
@@ -253,7 +253,7 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         return .integer
     }
     
-    mutating func visit(_ expr: borrowing FunctionExprSyntax) -> Type {
+    mutating func visit(_ expr: FunctionExprSyntax) -> Type {
         let argTys = typeCheck(expr.args)
         
         guard let fn = env.resolve(function: expr.name.value) else {
@@ -275,17 +275,13 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         return inferenceState.solution(for: tv)
     }
     
-    mutating func visit(_ expr: borrowing CastExprSyntax) -> Type {
+    mutating func visit(_ expr: CastExprSyntax) -> Type {
         // We don't care about the output type, it is just going to be casted.
         _ = expr.expr.accept(visitor: &self)
         return inferenceState.nominalType(of: expr.ty.name.value, for: expr)
     }
     
-    mutating func visit(_ expr: borrowing ExpressionSyntax) -> Type {
-        fatalError("TODO: Clean this up. Should never get called. It's `accept` calls the wrapped method, not this")
-    }
-    
-    mutating func visit(_ expr: borrowing CaseWhenThenExprSyntax) -> Type {
+    mutating func visit(_ expr: CaseWhenThenExprSyntax) -> Type {
         let ret = inferenceState.freshTyVar(for: expr)
         var whenTys = typeCheck(expr.whenThen.map(\.when))
         
@@ -310,22 +306,22 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
         return inferenceState.solution(for: ret)
     }
     
-    mutating func visit(_ expr: borrowing GroupedExprSyntax) -> Type {
+    mutating func visit(_ expr: GroupedExprSyntax) -> Type {
         return .row(.fixed(typeCheck(expr.exprs)))
     }
     
-    mutating func visit(_ expr: borrowing SelectExprSyntax) -> Type {
+    mutating func visit(_ expr: SelectExprSyntax) -> Type {
         let type = typeCheck(select: expr.select)
         inferenceState.record(type: type, for: expr)
         return type
     }
     
-    mutating func visit(_ expr: borrowing ExistsExprSyntax) -> Type {
+    mutating func visit(_ expr: ExistsExprSyntax) -> Type {
         _ = typeCheck(select: expr.select)
         return .integer
     }
     
-    mutating func visit(_ expr: borrowing InvalidExprSyntax) -> Type {
+    mutating func visit(_ expr: InvalidExprSyntax) -> Type {
         return inferenceState.errorType(for: expr)
     }
 }

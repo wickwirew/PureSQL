@@ -80,7 +80,7 @@ END;
 -- CHECK:   ACTION delete
 -- CHECK:   TABLE_NAME bar
 -- CHECK:   WHEN
--- CHECK:     INFIX
+-- CHECK:     LHS
 -- CHECK:       ...
 -- CHECK:   STATEMENTS
 -- CHECK:     INSERT_STMT_SYNTAX
@@ -100,7 +100,7 @@ END;
 -- CHECK:   ACTION delete
 -- CHECK:   TABLE_NAME bar
 -- CHECK:   WHEN
--- CHECK:     INFIX
+-- CHECK:     LHS
 -- CHECK:       ...
 -- CHECK:   STATEMENTS
 -- CHECK:     INSERT_STMT_SYNTAX

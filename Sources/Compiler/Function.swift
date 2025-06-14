@@ -25,7 +25,7 @@ struct Function: Sendable {
     let variadic: Bool
     /// A custom check to be performed during type checking. Allows us to put in
     /// custom error messages and linting if a function has odd usage.
-    let check: (@Sendable ([Type], [ExpressionSyntax], SourceLocation, inout Diagnostics) -> Void)?
+    let check: (@Sendable ([Type], [any ExprSyntax], SourceLocation, inout Diagnostics) -> Void)?
     
     struct Overload: Sendable {
         let params: [Type]
@@ -42,7 +42,7 @@ struct Function: Sendable {
         returning result: Type,
         variadic: Bool = false,
         overloads: [Overload]? = nil,
-        check: (@Sendable ([Type], [ExpressionSyntax], SourceLocation, inout Diagnostics) -> Void)? = nil
+        check: (@Sendable ([Type], [any ExprSyntax], SourceLocation, inout Diagnostics) -> Void)? = nil
     ) {
         assert(!(variadic && (overloads?.count ?? 0) > 1), "Cannot have overloads and be variadic")
         

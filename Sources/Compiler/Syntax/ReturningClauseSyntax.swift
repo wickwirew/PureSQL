@@ -11,7 +11,7 @@ struct ReturningClauseSyntax: Syntax {
     let location: SourceLocation
 
     enum Value {
-        case expr(expr: ExpressionSyntax, alias: AliasSyntax?)
+        case expr(expr: any ExprSyntax, alias: AliasSyntax?)
         case all
     }
 }

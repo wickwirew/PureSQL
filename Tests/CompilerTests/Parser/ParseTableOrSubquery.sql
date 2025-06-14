@@ -84,8 +84,7 @@ foo.bar AS baz NOT INDEXED;
 -- CHECK:     TABLE_FUNCTION
 -- CHECK:       TABLE foo
 -- CHECK:       ARGS
--- CHECK:         EXPRESSION_SYNTAX
--- CHECK:           LITERAL 1.0
+-- CHECK:         1.0
 foo(1);
 
 -- CHECK: TABLE_OR_SUBQUERY_SYNTAX
@@ -93,7 +92,6 @@ foo(1);
 -- CHECK:     TABLE_FUNCTION
 -- CHECK:       TABLE foo
 -- CHECK:       ARGS
--- CHECK:         EXPRESSION_SYNTAX
--- CHECK:           LITERAL 1.0
+-- CHECK:         1.0
 -- CHECK:       ALIAS bar
 foo(1) AS bar;

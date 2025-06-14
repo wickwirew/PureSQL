@@ -8,7 +8,7 @@
 struct SetActionSyntax: Syntax {
     let id: SyntaxId
     let column: Column
-    let expr: ExpressionSyntax
+    let expr: any ExprSyntax
     
     var location: SourceLocation {
         return column.location.spanning(expr.location)

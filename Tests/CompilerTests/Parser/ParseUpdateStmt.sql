@@ -6,8 +6,7 @@
 -- CHECK:     SET_ACTION_SYNTAX
 -- CHECK:       COLUMN
 -- CHECK:         SINGLE bar
--- CHECK:       EXPR
--- CHECK:         LITERAL 1.0
+-- CHECK:       EXPR 1.0
 UPDATE foo SET bar = 1;
 
 -- CHECK: UPDATE_STMT_SYNTAX
@@ -26,8 +25,7 @@ UPDATE foo SET bar = 1;
 -- CHECK:                   RESULT_COLUMN_SYNTAX
 -- CHECK:                     KIND
 -- CHECK:                       EXPR
--- CHECK:                           COLUMN
--- CHECK:                             COLUMN foo
+-- CHECK:                           COLUMN foo
 -- CHECK:                 FROM
 -- CHECK:                   JOIN
 -- CHECK:                     TABLE_OR_SUBQUERY
@@ -41,28 +39,22 @@ UPDATE foo SET bar = 1;
 -- CHECK:     SET_ACTION_SYNTAX
 -- CHECK:       COLUMN
 -- CHECK:         SINGLE bar
--- CHECK:       EXPR
--- CHECK:         LITERAL 1.0
+-- CHECK:       EXPR 1.0
 -- CHECK:     SET_ACTION_SYNTAX
 -- CHECK:       COLUMN
 -- CHECK:         SINGLE baz
--- CHECK:       EXPR
--- CHECK:         LITERAL 'two'
+-- CHECK:       EXPR 'two'
 -- CHECK:   WHERE_EXPR
--- CHECK:     INFIX
 -- CHECK:       LHS
--- CHECK:         COLUMN
--- CHECK:           COLUMN bar
+-- CHECK:         COLUMN bar
 -- CHECK:       OPERATOR >
--- CHECK:       RHS
--- CHECK:         LITERAL 2.0
+-- CHECK:       RHS 2.0
 -- CHECK:   RETURNING_CLAUSE
 -- CHECK:     VALUES
 -- CHECK:       VALUE
 -- CHECK:         EXPR
 -- CHECK:           EXPR
--- CHECK:             COLUMN
--- CHECK:               COLUMN bar
+-- CHECK:             COLUMN bar
 WITH foo AS (SELECT foo FROM bar)
 UPDATE foo SET bar = 1, baz = 'two'
 WHERE bar > 2

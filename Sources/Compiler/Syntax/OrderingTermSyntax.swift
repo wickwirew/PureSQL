@@ -7,7 +7,7 @@
 
 struct OrderingTermSyntax: Syntax {
     let id: SyntaxId
-    let expr: ExpressionSyntax
+    let expr: any ExprSyntax
     let order: OrderSyntax?
     let nulls: Nulls?
     let location: SourceLocation

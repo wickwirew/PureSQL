@@ -172,50 +172,50 @@ struct StmtTypeChecker {
 }
 
 extension StmtTypeChecker: StmtSyntaxVisitor {
-    mutating func visit(_ stmt: borrowing CreateTableStmtSyntax) -> ResultColumns {
+    mutating func visit(_ stmt: CreateTableStmtSyntax) -> ResultColumns {
         typeCheck(createTable: stmt)
         return .empty
     }
     
-    mutating func visit(_ stmt: borrowing AlterTableStmtSyntax) -> ResultColumns {
+    mutating func visit(_ stmt: AlterTableStmtSyntax) -> ResultColumns {
         typeCheck(alterTable: stmt)
         return .empty
     }
     
-    mutating func visit(_ stmt: borrowing SelectStmtSyntax) -> ResultColumns {
+    mutating func visit(_ stmt: SelectStmtSyntax) -> ResultColumns {
         return typeCheck(select: stmt)
     }
     
-    mutating func visit(_ stmt: borrowing InsertStmtSyntax) -> ResultColumns {
+    mutating func visit(_ stmt: InsertStmtSyntax) -> ResultColumns {
         return typeCheck(insert: stmt)
     }
     
-    mutating func visit(_ stmt: borrowing UpdateStmtSyntax) -> ResultColumns {
+    mutating func visit(_ stmt: UpdateStmtSyntax) -> ResultColumns {
         return typeCheck(update: stmt)
     }
     
-    mutating func visit(_ stmt: borrowing DeleteStmtSyntax) -> ResultColumns {
+    mutating func visit(_ stmt: DeleteStmtSyntax) -> ResultColumns {
         return typeCheck(delete: stmt)
     }
     
-    mutating func visit(_ stmt: borrowing EmptyStmtSyntax) -> ResultColumns {
+    mutating func visit(_ stmt: EmptyStmtSyntax) -> ResultColumns {
         return .empty
     }
     
-    mutating func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> ResultColumns {
+    mutating func visit(_ stmt: QueryDefinitionStmtSyntax) -> ResultColumns {
         return stmt.statement.accept(visitor: &self)
     }
     
-    mutating func visit(_ stmt: borrowing PragmaStmtSyntax) -> ResultColumns {
+    mutating func visit(_ stmt: PragmaStmtSyntax) -> ResultColumns {
         return .empty
     }
     
-    mutating func visit(_ stmt: borrowing DropTableStmtSyntax) -> ResultColumns {
+    mutating func visit(_ stmt: DropTableStmtSyntax) -> ResultColumns {
         typeCheck(dropTable: stmt)
         return .empty
     }
     
-    mutating func visit(_ stmt: borrowing CreateIndexStmtSyntax) -> ResultColumns {
+    mutating func visit(_ stmt: CreateIndexStmtSyntax) -> ResultColumns {
         let name = qualifedName(for: stmt.name, in: stmt.schemaName)
         let tableName = qualifedName(for: stmt.table, in: stmt.schemaName)
 
@@ -239,7 +239,7 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
         return .empty
     }
     
-    mutating func visit(_ stmt: borrowing DropIndexStmtSyntax) -> ResultColumns {
+    mutating func visit(_ stmt: DropIndexStmtSyntax) -> ResultColumns {
         let name = qualifedName(for: stmt.name, in: stmt.schemaName)
         
         if !stmt.ifExists, schema[index: name] == nil {
@@ -250,11 +250,11 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
         return .empty
     }
     
-    mutating func visit(_ stmt: borrowing ReindexStmtSyntax) -> ResultColumns {
+    mutating func visit(_ stmt: ReindexStmtSyntax) -> ResultColumns {
         return .empty
     }
     
-    mutating func visit(_ stmt: borrowing CreateViewStmtSyntax) -> ResultColumns {
+    mutating func visit(_ stmt: CreateViewStmtSyntax) -> ResultColumns {
         let name = qualifedName(for: stmt.name, in: stmt.schemaName, isTemp: stmt.temp)
         
         guard schema[name] == nil else {
@@ -296,7 +296,7 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
         return .empty
     }
     
-    mutating func visit(_ stmt: borrowing DropViewStmtSyntax) -> ResultColumns {
+    mutating func visit(_ stmt: DropViewStmtSyntax) -> ResultColumns {
         let name = qualifedName(for: stmt.viewName, in: stmt.schemaName)
         
         guard let table = schema[name] else {
@@ -315,7 +315,7 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
         return .empty
     }
     
-    mutating func visit(_ stmt: borrowing CreateVirtualTableStmtSyntax) -> ResultColumns {
+    mutating func visit(_ stmt: CreateVirtualTableStmtSyntax) -> ResultColumns {
         let name = qualifedName(for: stmt.tableName.name, in: stmt.tableName.schema)
         
         if !stmt.ifNotExists, schema[name] != nil {
@@ -332,7 +332,7 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
         return .empty
     }
     
-    mutating func visit(_ stmt: borrowing CreateTriggerStmtSyntax) -> ResultColumns {
+    mutating func visit(_ stmt: CreateTriggerStmtSyntax) -> ResultColumns {
         let name = qualifedName(for: stmt.triggerName, in: stmt.schemaName)
         let tableName = qualifedName(for: stmt.tableName, in: stmt.tableSchemaName)
         
@@ -390,7 +390,7 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
         return .empty
     }
     
-    mutating func visit(_ stmt: borrowing DropTriggerStmtSyntax) -> ResultColumns {
+    mutating func visit(_ stmt: DropTriggerStmtSyntax) -> ResultColumns {
         let name = qualifedName(for: stmt.triggerName, in: stmt.schemaName)
         if !stmt.ifExists, schema[trigger: name] == nil {
             diagnostics.add(.init("Trigger with name does not exist", at: stmt.triggerName.location))
@@ -786,7 +786,7 @@ extension StmtTypeChecker {
     }
     
     /// Type checks a `WHERE` expression
-    private mutating func typeCheck(where expr: ExpressionSyntax) {
+    private mutating func typeCheck(where expr: any ExprSyntax) {
         let (type, _) = typeCheck(expr)
         // Needs to return an `INTEGER` e.g. boolean
         inferenceState.unify(type, with: .integer, at: expr.location)

@@ -106,7 +106,7 @@ struct Rewriter {
 }
 
 extension Rewriter: StmtSyntaxVisitor {
-    func visit(_ stmt: borrowing CreateTableStmtSyntax) -> [Range<Substring.Index>] {
+    func visit(_ stmt: CreateTableStmtSyntax) -> [Range<Substring.Index>] {
         switch stmt.kind {
         case .columns(let columns, _, _):
             return columns.values.compactMap { $0.type.alias?.location.range }
@@ -115,43 +115,43 @@ extension Rewriter: StmtSyntaxVisitor {
         }
     }
     
-    func visit(_ stmt: borrowing AlterTableStmtSyntax) -> [Range<Substring.Index>] {
+    func visit(_ stmt: AlterTableStmtSyntax) -> [Range<Substring.Index>] {
         return switch stmt.kind {
         case .addColumn(let c): c.type.alias.map { [$0.location.range] } ?? []
         default: []
         }
     }
     
-    func visit(_ stmt: borrowing EmptyStmtSyntax) -> [Range<Substring.Index>] { [] }
+    func visit(_ stmt: EmptyStmtSyntax) -> [Range<Substring.Index>] { [] }
     
-    func visit(_ stmt: borrowing SelectStmtSyntax) -> [Range<Substring.Index>] { [] }
+    func visit(_ stmt: SelectStmtSyntax) -> [Range<Substring.Index>] { [] }
     
-    func visit(_ stmt: borrowing InsertStmtSyntax) -> [Range<Substring.Index>] { [] }
+    func visit(_ stmt: InsertStmtSyntax) -> [Range<Substring.Index>] { [] }
     
-    func visit(_ stmt: borrowing UpdateStmtSyntax) -> [Range<Substring.Index>] { [] }
+    func visit(_ stmt: UpdateStmtSyntax) -> [Range<Substring.Index>] { [] }
     
-    func visit(_ stmt: borrowing DeleteStmtSyntax) -> [Range<Substring.Index>] { [] }
+    func visit(_ stmt: DeleteStmtSyntax) -> [Range<Substring.Index>] { [] }
     
-    func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> [Range<Substring.Index>] {
+    func visit(_ stmt: QueryDefinitionStmtSyntax) -> [Range<Substring.Index>] {
         // Remove the `DEFINE QUERY name AS`
         return [stmt.location.lowerBound..<stmt.statement.location.lowerBound]
     }
     
-    func visit(_ stmt: borrowing PragmaStmtSyntax) -> [Range<Substring.Index>] { [] }
+    func visit(_ stmt: PragmaStmtSyntax) -> [Range<Substring.Index>] { [] }
     
-    func visit(_ stmt: borrowing DropTableStmtSyntax) -> [Range<Substring.Index>] { [] }
+    func visit(_ stmt: DropTableStmtSyntax) -> [Range<Substring.Index>] { [] }
     
-    func visit(_ stmt: borrowing CreateIndexStmtSyntax) -> [Range<Substring.Index>] { [] }
+    func visit(_ stmt: CreateIndexStmtSyntax) -> [Range<Substring.Index>] { [] }
     
-    func visit(_ stmt: borrowing DropIndexStmtSyntax) -> [Range<Substring.Index>] { [] }
+    func visit(_ stmt: DropIndexStmtSyntax) -> [Range<Substring.Index>] { [] }
     
-    func visit(_ stmt: borrowing ReindexStmtSyntax) -> [Range<Substring.Index>] { [] }
+    func visit(_ stmt: ReindexStmtSyntax) -> [Range<Substring.Index>] { [] }
     
-    func visit(_ stmt: borrowing CreateViewStmtSyntax) -> [Range<Substring.Index>] { [] }
+    func visit(_ stmt: CreateViewStmtSyntax) -> [Range<Substring.Index>] { [] }
     
-    func visit(_ stmt: borrowing DropViewStmtSyntax) -> [Range<Substring.Index>] { [] }
+    func visit(_ stmt: DropViewStmtSyntax) -> [Range<Substring.Index>] { [] }
     
-    func visit(_ stmt: borrowing CreateVirtualTableStmtSyntax) -> [Range<Substring.Index>] {
+    func visit(_ stmt: CreateVirtualTableStmtSyntax) -> [Range<Substring.Index>] {
         return stmt.arguments.flatMap { argument -> [Range<Substring.Index>] in
             guard case let .fts5Column(_, typeName, notNull, _) = argument else { return [] }
             if let typeName, let notNull { return [typeName.location.range, notNull.range] }
@@ -161,7 +161,7 @@ extension Rewriter: StmtSyntaxVisitor {
         }
     }
     
-    func visit(_ stmt: borrowing CreateTriggerStmtSyntax) -> [Range<Substring.Index>] { [] }
+    func visit(_ stmt: CreateTriggerStmtSyntax) -> [Range<Substring.Index>] { [] }
     
-    func visit(_ stmt: borrowing DropTriggerStmtSyntax) -> [Range<Substring.Index>] { [] }
+    func visit(_ stmt: DropTriggerStmtSyntax) -> [Range<Substring.Index>] { [] }
 }

@@ -7,7 +7,7 @@
 
 struct IndexedColumnSyntax: Syntax {
     let id: SyntaxId
-    let expr: ExpressionSyntax
+    let expr: any ExprSyntax
     let collation: IdentifierSyntax?
     let order: OrderSyntax?
     
@@ -17,7 +17,7 @@ struct IndexedColumnSyntax: Syntax {
     }
     
     var columnName: IdentifierSyntax? {
-        guard case let .column(column) = expr,
+        guard let column = expr as? ColumnExprSyntax,
                 case let .column(name) = column.column else { return nil }
         return name
     }

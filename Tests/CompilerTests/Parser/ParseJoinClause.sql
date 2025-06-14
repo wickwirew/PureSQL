@@ -68,8 +68,7 @@ foo INNER JOIN bar LEFT JOIN baz;
 -- CHECK:               NAME bar
 -- CHECK:         CONSTRAINT
 -- CHECK:           KIND
--- CHECK:             ON
--- CHECK:               LITERAL 1.0
+-- CHECK:             ON 1.0
 foo INNER JOIN bar ON 1;
 
 -- CHECK: JOIN_CLAUSE_OR_TABLE_OR_SUBQUERIES

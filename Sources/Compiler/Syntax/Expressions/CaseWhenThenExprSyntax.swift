@@ -7,14 +7,14 @@
 
 struct CaseWhenThenExprSyntax: ExprSyntax {
     let id: SyntaxId
-    let `case`: ExpressionSyntax?
+    let `case`: (any ExprSyntax)?
     let whenThen: [WhenThen]
-    let `else`: ExpressionSyntax?
+    let `else`: (any ExprSyntax)?
     let location: SourceLocation
     
     struct WhenThen {
-        let when: ExpressionSyntax
-        let then: ExpressionSyntax
+        let when: any ExprSyntax
+        let then: any ExprSyntax
     }
     
     func accept<V: ExprSyntaxVisitor>(visitor: inout V) -> V.ExprOutput {

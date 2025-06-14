@@ -251,77 +251,77 @@ extension CompilerWithSource: StmtSyntaxVisitor {
         return typeCheck(stmt, isReadOnly: false)
     }
     
-    mutating func visit(_ stmt: borrowing CreateTriggerStmtSyntax) -> (Statement, Diagnostics)? {
+    mutating func visit(_ stmt: CreateTriggerStmtSyntax) -> (Statement, Diagnostics)? {
         return typeCheck(stmt, isReadOnly: false)
     }
     
-    mutating func visit(_ stmt: borrowing DropTriggerStmtSyntax) -> (Statement, Diagnostics)? {
+    mutating func visit(_ stmt: DropTriggerStmtSyntax) -> (Statement, Diagnostics)? {
         return typeCheck(stmt, isReadOnly: false)
     }
 }
 
 /// Used to validate whether a statement syntax is valid for use in migrations
 struct IsValidForMigrations: StmtSyntaxVisitor {
-    func visit(_ stmt: borrowing CreateTableStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing AlterTableStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing SelectStmtSyntax) -> Bool { false }
-    func visit(_ stmt: borrowing InsertStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing UpdateStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing DeleteStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> Bool { false }
-    func visit(_ stmt: borrowing PragmaStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing EmptyStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing DropTableStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing CreateIndexStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing DropIndexStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing ReindexStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing CreateViewStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing DropViewStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing CreateVirtualTableStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing CreateTriggerStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing DropTriggerStmtSyntax) -> Bool { true }
+    func visit(_ stmt: CreateTableStmtSyntax) -> Bool { true }
+    func visit(_ stmt: AlterTableStmtSyntax) -> Bool { true }
+    func visit(_ stmt: SelectStmtSyntax) -> Bool { false }
+    func visit(_ stmt: InsertStmtSyntax) -> Bool { true }
+    func visit(_ stmt: UpdateStmtSyntax) -> Bool { true }
+    func visit(_ stmt: DeleteStmtSyntax) -> Bool { true }
+    func visit(_ stmt: QueryDefinitionStmtSyntax) -> Bool { false }
+    func visit(_ stmt: PragmaStmtSyntax) -> Bool { true }
+    func visit(_ stmt: EmptyStmtSyntax) -> Bool { true }
+    func visit(_ stmt: DropTableStmtSyntax) -> Bool { true }
+    func visit(_ stmt: CreateIndexStmtSyntax) -> Bool { true }
+    func visit(_ stmt: DropIndexStmtSyntax) -> Bool { true }
+    func visit(_ stmt: ReindexStmtSyntax) -> Bool { true }
+    func visit(_ stmt: CreateViewStmtSyntax) -> Bool { true }
+    func visit(_ stmt: DropViewStmtSyntax) -> Bool { true }
+    func visit(_ stmt: CreateVirtualTableStmtSyntax) -> Bool { true }
+    func visit(_ stmt: CreateTriggerStmtSyntax) -> Bool { true }
+    func visit(_ stmt: DropTriggerStmtSyntax) -> Bool { true }
 }
 
 /// Used to validate whether a statement syntax is valid for use in queries
 struct IsValidForQueries: StmtSyntaxVisitor {
-    func visit(_ stmt: borrowing CreateTableStmtSyntax) -> Bool { false }
-    func visit(_ stmt: borrowing AlterTableStmtSyntax) -> Bool { false }
-    func visit(_ stmt: borrowing SelectStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing InsertStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing UpdateStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing DeleteStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing PragmaStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing EmptyStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing DropTableStmtSyntax) -> Bool { false }
-    func visit(_ stmt: borrowing CreateIndexStmtSyntax) -> Bool { false }
-    func visit(_ stmt: borrowing DropIndexStmtSyntax) -> Bool { false }
-    func visit(_ stmt: borrowing ReindexStmtSyntax) -> Bool { false }
-    func visit(_ stmt: borrowing CreateViewStmtSyntax) -> Bool { false }
-    func visit(_ stmt: borrowing DropViewStmtSyntax) -> Bool { false }
-    func visit(_ stmt: borrowing CreateVirtualTableStmtSyntax) -> Bool { false }
-    func visit(_ stmt: borrowing CreateTriggerStmtSyntax) -> Bool { false }
-    func visit(_ stmt: borrowing DropTriggerStmtSyntax) -> Bool { false }
+    func visit(_ stmt: CreateTableStmtSyntax) -> Bool { false }
+    func visit(_ stmt: AlterTableStmtSyntax) -> Bool { false }
+    func visit(_ stmt: SelectStmtSyntax) -> Bool { true }
+    func visit(_ stmt: InsertStmtSyntax) -> Bool { true }
+    func visit(_ stmt: UpdateStmtSyntax) -> Bool { true }
+    func visit(_ stmt: DeleteStmtSyntax) -> Bool { true }
+    func visit(_ stmt: QueryDefinitionStmtSyntax) -> Bool { true }
+    func visit(_ stmt: PragmaStmtSyntax) -> Bool { true }
+    func visit(_ stmt: EmptyStmtSyntax) -> Bool { true }
+    func visit(_ stmt: DropTableStmtSyntax) -> Bool { false }
+    func visit(_ stmt: CreateIndexStmtSyntax) -> Bool { false }
+    func visit(_ stmt: DropIndexStmtSyntax) -> Bool { false }
+    func visit(_ stmt: ReindexStmtSyntax) -> Bool { false }
+    func visit(_ stmt: CreateViewStmtSyntax) -> Bool { false }
+    func visit(_ stmt: DropViewStmtSyntax) -> Bool { false }
+    func visit(_ stmt: CreateVirtualTableStmtSyntax) -> Bool { false }
+    func visit(_ stmt: CreateTriggerStmtSyntax) -> Bool { false }
+    func visit(_ stmt: DropTriggerStmtSyntax) -> Bool { false }
 }
 
 // Mainly used in tests, since they are usually a mix of migrations and queries
 struct IsAlwaysValid: StmtSyntaxVisitor {
-    func visit(_ stmt: borrowing CreateTableStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing AlterTableStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing SelectStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing InsertStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing UpdateStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing DeleteStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing PragmaStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing EmptyStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing DropTableStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing CreateIndexStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing DropIndexStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing ReindexStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing CreateViewStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing DropViewStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing CreateVirtualTableStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing CreateTriggerStmtSyntax) -> Bool { true }
-    func visit(_ stmt: borrowing DropTriggerStmtSyntax) -> Bool { true }
+    func visit(_ stmt: CreateTableStmtSyntax) -> Bool { true }
+    func visit(_ stmt: AlterTableStmtSyntax) -> Bool { true }
+    func visit(_ stmt: SelectStmtSyntax) -> Bool { true }
+    func visit(_ stmt: InsertStmtSyntax) -> Bool { true }
+    func visit(_ stmt: UpdateStmtSyntax) -> Bool { true }
+    func visit(_ stmt: DeleteStmtSyntax) -> Bool { true }
+    func visit(_ stmt: QueryDefinitionStmtSyntax) -> Bool { true }
+    func visit(_ stmt: PragmaStmtSyntax) -> Bool { true }
+    func visit(_ stmt: EmptyStmtSyntax) -> Bool { true }
+    func visit(_ stmt: DropTableStmtSyntax) -> Bool { true }
+    func visit(_ stmt: CreateIndexStmtSyntax) -> Bool { true }
+    func visit(_ stmt: DropIndexStmtSyntax) -> Bool { true }
+    func visit(_ stmt: ReindexStmtSyntax) -> Bool { true }
+    func visit(_ stmt: CreateViewStmtSyntax) -> Bool { true }
+    func visit(_ stmt: DropViewStmtSyntax) -> Bool { true }
+    func visit(_ stmt: CreateVirtualTableStmtSyntax) -> Bool { true }
+    func visit(_ stmt: CreateTriggerStmtSyntax) -> Bool { true }
+    func visit(_ stmt: DropTriggerStmtSyntax) -> Bool { true }
 }

@@ -413,7 +413,7 @@ enum Parsers {
         
         let sets = try delimited(by: .comma, state: &state, element: setAction)
         
-        let whereExpr: ExpressionSyntax? = if state.take(if: .where) {
+        let whereExpr: (any ExprSyntax)? = if state.take(if: .where) {
             try expr(state: &state)
         } else {
             nil
@@ -459,7 +459,7 @@ enum Parsers {
             try delimited(by: .comma, state: &state, element: indexedColumn)
         }
         
-        let condition: ExpressionSyntax? = if state.take(if: .where) {
+        let condition: (any ExprSyntax)? = if state.take(if: .where) {
             try expr(state: &state)
         } else {
             nil
@@ -1903,14 +1903,14 @@ enum Parsers {
     static func expr(
         state: inout ParserState,
         precedence: Operator.Precedence = 0
-    ) throws -> ExpressionSyntax {
+    ) throws -> any ExprSyntax {
         var expr = try primaryExpr(state: &state, precedence: precedence)
         
         while true {
             // If the lhs was a column refernce with no table/schema and we are
             // at an open paren treat as a function call.
             if state.is(of: .openParen),
-                case let .column(columnExpr) = expr,
+                let columnExpr = expr as? ColumnExprSyntax,
                 case let .column(column) = columnExpr.column,
                 columnExpr.schema == nil {
                 let args = try parensOrEmpty(state: &state) { state in
@@ -1922,12 +1922,12 @@ enum Parsers {
                     return try commaDelimited(state: &state)  { try Parsers.expr(state: &$0) }
                 }
                 
-                expr = .fn(FunctionExprSyntax(
+                expr = FunctionExprSyntax(
                     id: state.nextId(),
                     table: columnExpr.table,
                     name: column,
                     args: args ?? [],
-                    location: state.location(from: expr.location))
+                    location: state.location(from: expr.location)
                 )
             } else {
                 guard let op = Operator.guess(for: state.current.kind, after: state.peek.kind),
@@ -1952,12 +1952,12 @@ enum Parsers {
                     let lowerBound = try Parsers.expr(state: &state, precedence: precAboveAnd)
                     state.consume(.and)
                     let upperBound = try Parsers.expr(state: &state, precedence: precAboveAnd)
-                    expr = .between(BetweenExprSyntax(
+                    expr = BetweenExprSyntax(
                         id: state.nextId(),
                         not: op.operator == .not(.between),
                         value: expr,
                         lower: lowerBound,
-                        upper: upperBound)
+                        upper: upperBound
                     )
                 } else {
                     expr = try infixExpr(state: &state, lhs: expr)
@@ -1972,36 +1972,35 @@ enum Parsers {
     static func primaryExpr(
         state: inout ParserState,
         precedence: Operator.Precedence
-    ) throws -> ExpressionSyntax {
+    ) throws -> any ExprSyntax {
         switch state.current.kind {
         case .double, .string, .int, .hex, .currentDate, .currentTime, .currentTimestamp, .true, .false:
-            return .literal(literal(state: &state))
+            return literal(state: &state)
         case .identifier, .star:
-            let column = try columnExpr(state: &state, schema: nil, table: nil)
-            return .column(column)
+            return try columnExpr(state: &state, schema: nil, table: nil)
         case .questionMark, .colon, .dollarSign, .at:
-            return .bindParameter(bindParameter(state: &state))
+            return bindParameter(state: &state)
         case .plus:
             let token = state.take()
             let op = OperatorSyntax(id: state.nextId(), operator: .plus, location: token.location)
-            return try .prefix(PrefixExprSyntax(id: state.nextId(), operator: op, rhs: expr(state: &state, precedence: precedence)))
+            return try PrefixExprSyntax(id: state.nextId(), operator: op, rhs: expr(state: &state, precedence: precedence))
         case .tilde:
             let token = state.take()
             let op = OperatorSyntax(id: state.nextId(), operator: .tilde, location: token.location)
-            return try .prefix(PrefixExprSyntax(id: state.nextId(), operator: op, rhs: expr(state: &state, precedence: precedence)))
+            return try PrefixExprSyntax(id: state.nextId(), operator: op, rhs: expr(state: &state, precedence: precedence))
         case .minus:
             let token = state.take()
             let op = OperatorSyntax(id: state.nextId(), operator: .minus, location: token.location)
-            return try .prefix(PrefixExprSyntax(id: state.nextId(), operator: op, rhs: expr(state: &state, precedence: precedence)))
+            return try PrefixExprSyntax(id: state.nextId(), operator: op, rhs: expr(state: &state, precedence: precedence))
         case .null:
             let token = state.take()
-            return .literal(LiteralExprSyntax(id: state.nextId(),kind: .null, location: token.location))
+            return LiteralExprSyntax(id: state.nextId(),kind: .null, location: token.location)
         case .openParen:
             let start = state.current.location
             let expr = try parens(state: &state) { state in
                 try commaDelimited(state: &state) { try Parsers.expr(state: &$0) }
             }
-            return .grouped(GroupedExprSyntax(id: state.nextId(), exprs: expr, location: state.location(from: start)))
+            return GroupedExprSyntax(id: state.nextId(), exprs: expr, location: state.location(from: start))
         case .cast:
             let start = state.take()
             state.consume(.openParen)
@@ -2009,15 +2008,15 @@ enum Parsers {
             state.consume(.as)
             let type = typeName(state: &state)
             state.consume(.closeParen)
-            return .cast(CastExprSyntax(id: state.nextId(), expr: expr, ty: type, location: state.location(from: start.location)))
+            return CastExprSyntax(id: state.nextId(), expr: expr, ty: type, location: state.location(from: start.location))
         case .select:
             let select = try selectStmt(state: &state)
-            return .select(SelectExprSyntax(id: state.nextId(), select: select))
+            return SelectExprSyntax(id: state.nextId(), select: select)
         case .exists:
-            return try .exists(exists(state: &state, not: false, start: state.location))
+            return try exists(state: &state, not: false, start: state.location)
         case .not where state.peek.kind == .exists:
             let start = state.take()
-            return try .exists(exists(state: &state, not: true, start: start.location))
+            return try exists(state: &state, not: true, start: start.location)
         case .case:
             let start = state.take()
             let `case` = try take(ifNot: .when, state: &state) { try expr(state: &$0) }
@@ -2027,7 +2026,7 @@ enum Parsers {
                 try whenThens.append(whenThen(state: &state))
             }
             
-            let el: ExpressionSyntax? = if state.take(if: .else) {
+            let el: (any ExprSyntax)? = if state.take(if: .else) {
                 try expr(state: &state)
             } else {
                 nil
@@ -2035,33 +2034,33 @@ enum Parsers {
             
             state.consume(.end)
             
-            return .caseWhenThen(.init(
+            return CaseWhenThenExprSyntax(
                 id: state.nextId(),
                 case: `case`,
                 whenThen: whenThens,
                 else: el,
                 location: state.location(from: start.location)
-            ))
+            )
         default:
             let tok = state.take()
             state.diagnostics.add(.init(
                 "Expected expression, but got '\(tok.kind)' instead",
                 at: state.location
             ))
-            return .invalid(InvalidExprSyntax(id: state.nextId(), location: tok.location))
+            return InvalidExprSyntax(id: state.nextId(), location: tok.location)
         }
     }
     
     /// https://www.sqlite.org/syntax/expr.html
     static func infixExpr(
         state: inout ParserState,
-        lhs: ExpressionSyntax
-    ) throws -> ExpressionSyntax {
+        lhs: any ExprSyntax
+    ) throws -> any ExprSyntax {
         let op = Parsers.operator(state: &state)
         
         switch op.operator {
         case .isnull, .notnull, .notNull, .collate:
-            return .postfix(PostfixExprSyntax(id: state.nextId(), lhs: lhs, operator: op))
+            return PostfixExprSyntax(id: state.nextId(), lhs: lhs, operator: op)
         default: break
         }
         
@@ -2070,7 +2069,7 @@ enum Parsers {
             precedence: op.operator.precedence(usage: .infix) + 1
         )
         
-        return .infix(InfixExprSyntax(id: state.nextId(), lhs: lhs, operator: op, rhs: rhs))
+        return InfixExprSyntax(id: state.nextId(), lhs: lhs, operator: op, rhs: rhs)
     }
 
     static func exists(

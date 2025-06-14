@@ -13,22 +13,22 @@ protocol StmtSyntax: Syntax {
 
 protocol StmtSyntaxVisitor {
     associatedtype StmtOutput
-    mutating func visit(_ stmt: borrowing CreateTableStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: borrowing AlterTableStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: borrowing EmptyStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: borrowing SelectStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: borrowing InsertStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: borrowing UpdateStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: borrowing DropTableStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: borrowing DeleteStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: borrowing QueryDefinitionStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: borrowing PragmaStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: borrowing CreateIndexStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: borrowing DropIndexStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: borrowing ReindexStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: borrowing CreateViewStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: borrowing DropViewStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: borrowing CreateVirtualTableStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: borrowing CreateTriggerStmtSyntax) -> StmtOutput
-    mutating func visit(_ stmt: borrowing DropTriggerStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: CreateTableStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: AlterTableStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: EmptyStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: SelectStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: InsertStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: UpdateStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: DropTableStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: DeleteStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: QueryDefinitionStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: PragmaStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: CreateIndexStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: DropIndexStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: ReindexStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: CreateViewStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: DropViewStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: CreateVirtualTableStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: CreateTriggerStmtSyntax) -> StmtOutput
+    mutating func visit(_ stmt: DropTriggerStmtSyntax) -> StmtOutput
 }

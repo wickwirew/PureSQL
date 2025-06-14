@@ -14,7 +14,7 @@ struct TableConstraintSyntax: Syntax {
     enum Kind {
         case primaryKey([IndexedColumnSyntax], ConfictClauseSyntax)
         case unique(IndexedColumnSyntax, ConfictClauseSyntax)
-        case check(ExpressionSyntax)
+        case check(any ExprSyntax)
         case foreignKey([IdentifierSyntax], ForeignKeyClauseSyntax)
     }
 }

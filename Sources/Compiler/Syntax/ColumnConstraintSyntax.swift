@@ -15,11 +15,11 @@ struct ColumnConstraintSyntax: Syntax {
         case primaryKey(order: OrderSyntax?, ConfictClauseSyntax, autoincrement: Bool)
         case notNull(ConfictClauseSyntax)
         case unique(ConfictClauseSyntax)
-        case check(ExpressionSyntax)
-        case `default`(ExpressionSyntax)
+        case check(any ExprSyntax)
+        case `default`(any ExprSyntax)
         case collate(IdentifierSyntax)
         case foreignKey(ForeignKeyClauseSyntax)
-        case generated(ExpressionSyntax, GeneratedKind?)
+        case generated(any ExprSyntax, GeneratedKind?)
     }
 
     enum GeneratedKind {

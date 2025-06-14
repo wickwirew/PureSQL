@@ -9,7 +9,7 @@ struct DeleteStmtSyntax: StmtSyntax {
     let id: SyntaxId
     let with: WithSyntax?
     let table: QualifiedTableNameSyntax
-    let whereExpr: ExpressionSyntax?
+    let whereExpr: (any ExprSyntax)?
     let returningClause: ReturningClauseSyntax?
     let location: SourceLocation
     

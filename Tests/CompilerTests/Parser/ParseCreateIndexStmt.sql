@@ -6,8 +6,7 @@
 -- CHECK:   INDEXED_COLUMNS
 -- CHECK:     INDEXED_COLUMN_SYNTAX
 -- CHECK:       EXPR
--- CHECK:         COLUMN
--- CHECK:           COLUMN baz
+-- CHECK:         COLUMN baz
 CREATE UNIQUE INDEX foo ON bar (baz);
 
 -- CHECK: CREATE_INDEX_STMT_SYNTAX
@@ -18,12 +17,10 @@ CREATE UNIQUE INDEX foo ON bar (baz);
 -- CHECK:   INDEXED_COLUMNS
 -- CHECK:     INDEXED_COLUMN_SYNTAX
 -- CHECK:       EXPR
--- CHECK:         COLUMN
--- CHECK:           COLUMN baz
+-- CHECK:         COLUMN baz
 -- CHECK:     INDEXED_COLUMN_SYNTAX
 -- CHECK:       EXPR
--- CHECK:         COLUMN
--- CHECK:           COLUMN qux
+-- CHECK:         COLUMN qux
 CREATE INDEX IF NOT EXISTS foo ON bar (baz, qux);
 
 -- CHECK: CREATE_INDEX_STMT_SYNTAX
@@ -35,8 +32,7 @@ CREATE INDEX IF NOT EXISTS foo ON bar (baz, qux);
 -- CHECK:   INDEXED_COLUMNS
 -- CHECK:     INDEXED_COLUMN_SYNTAX
 -- CHECK:       EXPR
--- CHECK:         COLUMN
--- CHECK:           COLUMN baz
+-- CHECK:         COLUMN baz
 -- CHECK:   WHERE_EXPR
 -- CHECK:     ...
 CREATE INDEX meow.foo ON bar (baz) WHERE qux = 1;

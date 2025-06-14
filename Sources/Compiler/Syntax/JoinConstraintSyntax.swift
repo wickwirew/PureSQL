@@ -11,11 +11,11 @@ struct JoinConstraintSyntax: Syntax {
     let location: SourceLocation
     
     enum Kind {
-        case on(ExpressionSyntax)
+        case on(any ExprSyntax)
         case using([IdentifierSyntax])
         case none
 
-        var on: ExpressionSyntax? {
+        var on: (any ExprSyntax)? {
             if case let .on(e) = self { return e }
             return nil
         }
