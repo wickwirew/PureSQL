@@ -59,7 +59,7 @@ public actor ConnectionPool: Sendable {
     }
     
     /// Whether or not we have created all the connections we are allowed too
-    private var isAtConnectionLimit: Bool {
+    var isAtConnectionLimit: Bool {
         return count >= limit
     }
     
@@ -89,7 +89,7 @@ public actor ConnectionPool: Sendable {
     private func getConnection() async throws(FeatherError) -> SQLiteConnection {
         guard availableConnections.isEmpty else {
             // Have an available connection, just use it
-            return availableConnections.removeFirst()
+            return availableConnections.removeLast()
         }
         
         guard !isAtConnectionLimit else {

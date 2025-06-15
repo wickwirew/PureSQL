@@ -9,7 +9,6 @@ import SQLite3
 
 public struct Cursor<Element: RowDecodable>: ~Copyable {
     private let statement: Statement
-    private var column: Int32 = 0
     
     public init(of statement: consuming Statement) {
         self.statement = statement

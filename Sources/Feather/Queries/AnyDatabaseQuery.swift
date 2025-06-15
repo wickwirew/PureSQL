@@ -44,7 +44,11 @@ public struct AnyDatabaseQuery<Input, Output>: DatabaseQuery
         with input: Input,
         tx: borrowing Transaction
     ) throws -> Output {
-        try execute(input, tx)
+        guard tx.kind >= transactionKind else {
+            throw FeatherError.cannotWriteInAReadTransaction
+        }
+        
+        return try execute(input, tx)
     }
 }
 

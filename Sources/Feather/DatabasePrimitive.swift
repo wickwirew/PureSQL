@@ -10,6 +10,10 @@ import Foundation
 
 @usableFromInline let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
 
+/// A type that is mapped directly to a SQLite type.
+///
+/// You **should not** be conforming any of your types to this directly.
+/// It will have no effect. For custom type conversion see `DatabasePrimitiveConvertible`
 public protocol DatabasePrimitive: RowDecodable {
     init(from cursor: OpaquePointer, at index: Int32) throws(FeatherError)
     func bind(to statement: OpaquePointer, at index: Int32) throws(FeatherError)

@@ -5,6 +5,7 @@
 //  Created by Wes Wickwire on 11/9/24.
 //
 
+/// A query which reads or writes to a database.
 public protocol DatabaseQuery<Input, Output>: Query {
     /// Whether the query requires a read or write transaction.
     var transactionKind: Transaction.Kind { get }
