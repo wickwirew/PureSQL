@@ -16,6 +16,7 @@
 Otter is a pure Swift SQL compiler that allow developers to write plain compile time safe SQL.
 
 - [Installation](#installation)
+- [Macros](#or-use-the-swift-macro)
 - [Queries](#queries)
 - [Types](#types)
 - [Operators](#operators)
@@ -103,6 +104,14 @@ that won't scale well beyond a fairly simple schema and a handfull of queries.
 # Installation
 Otter supports Swift Package Manager. To install add the following to your `Package.swift` file.
 
+> [!TIP]
+> If don't want to read any of the README, here are some quick tips:
+> * Use singular table names, it is the SQL standard.
+> * Orgranize queries in files by usage, not by table.
+> * Use `SELECT table.*` to embed the table structs within the results
+> * Inject queries and avoid the repository pattern
+> * Let SQL answer the questions about your data. Many queries are perfectly fine
+
 ```swift
 let package = Package(
     [...]
@@ -140,7 +149,7 @@ feather gen
 
 This will compile and check all migrations and queries, then generate all Swift required to talk to the database.
 
-#### Adding a New Migration
+### Adding a New Migration
 When a new migration is needed, you can simply add a new file with a number 1 higher than the previous. To automatically do this the cli tool can do it for you by running
 ```
 feather migrate add
@@ -173,22 +182,51 @@ All queries will be stored in the `/Queries` directory. More than one query can 
 feather queries add --name <some-name>
 ```
 
-> [!TIP]
-> Organize queries by usage, not by table. This will become more useful later on when we talk about dependency injection.
-
-Open the file that was created in `/Queries`, it should be blank. Individual queries can be defined using the `DEFINE` keyword. At the moment queries can only have one statement.
+Open the file that was created in `/Queries`, it should be blank. Individual queries can be defined using the the following format. At the moment a single query can only have one statement.
 ```sql
 fetchUsers:
 SELECT * FROM user;
+
+-- Or optionally supply either an input or output name
+fetchUsers(input: InputName, output: OutputName):
+SELECT * FROM user;
 ```
 
-If the queries file was named `User.sql` this would be accessible via
+> [!TIP]
+> Organize queries by usage, not by table.
+> This will allow queries to be injected together
+
+Each queries file will get it's own `Queries` types generated. To allow the queries defined in a file to be 
+passed around and injected together. For example, if we have a `Library.sql` the following types will be generated:
 ```swift
-let query: any FetchUsersQuery = database.userQueries.fetchUsers
-let users: [User] = try await query.execute()
+// Protocol that defines all queries in the file
+let queries: any LibraryQueriesType = database.libraryQueries
+
+// Concrete implementaion
+let concreteType: LibraryQueriesImpl
+
+// NO-OP version, can be injected into unit tests/previews
+let noopType: LibraryQueriesNoop
+```
+
+For the `Noop` queries, we can override any query optionally. Each query be default will return `nil` or an empty `[]`. To override a query you can set it in the initializer.
+```swift
+LibraryQueriesNoop(getLibrary: Queries.Just([...]))
 ```
 
 ### Input and Output Types
+Otter will, if needed, generate types for the inputs and outputs. If a type is a single primitive it will be mapped to the Swift equivalent.
+```sql
+-- Will return the User struct
+fetchUsers:
+SELECT * FROM user;
+
+-- Will generate a type for the id and name
+fetchUserIdAndNames:
+SELECT id, name FROM user;
+```
+
+#### Embedding Table Structs
 In the example above, since we selected all columns from a single table the query will return the `User` struct that was generated for the table. If additional columns are selected a new structure will be generated to match the selected columns. In the following example we will join in the `post` table to get a users post count.
 ```sql
 fetchUsers:
@@ -319,3 +357,10 @@ class ViewModel {
   let query: any LatestExpensesQuery
 }
 ```
+
+## Upcoming Features
+* Support for multiple statements in a single query
+* Kotlin library/generation
+
+## Contributions
+Contributions are welcome and encouraged! Feel free to make a PR or open an issue. If the change is large please open an issue first to make sure the change is desired.
