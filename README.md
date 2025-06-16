@@ -358,9 +358,28 @@ class ViewModel {
 }
 ```
 
+## FTS5
+FTS5 is supported but has some additional requirements.
+To generate usable structs Otter needs type information even though they not valid FTS arguments.
+FTS 5 currently is the only virtual table module supported at this time.
+```sql
+CREATE VIRTUAL TABLE searchIndex USING fts5 (
+    id INTEGER NOT NULL,
+    text TEXT
+);
+
+SELECT * FROM searchIndex
+WHERE foo MATCH 'search terms'
+ORDER BY rank;
+```
+
+> [!NOTE]
+> All types and not `NOT NULL` constraints will be removed from the final migration.
+
 ## Upcoming Features
 * Support for multiple statements in a single query
 * Kotlin library/generation
+* Custom functions
 
 ## Contributions
 Contributions are welcome and encouraged! Feel free to make a PR or open an issue. If the change is large please open an issue first to make sure the change is desired.
