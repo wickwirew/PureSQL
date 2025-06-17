@@ -58,4 +58,8 @@ public extension Query {
     ) -> Queries.MapInput<Self, NewInput> {
         return Queries.MapInput(base: self, transform: transform)
     }
+    
+    func with(input: Input) -> Queries.MapInput<Self, ()> {
+        Queries.MapInput(base: self) { input }
+    }
 }

@@ -26,9 +26,12 @@ public final class DatabaseQueryObservation<Query>: DatabaseSubscriber, QueryObs
         self.input = input
     }
     
-    public func receive(event: DatabaseEvent) {
-        guard let tableName = event.tableName,
-              query.watchedTables.contains(tableName) else { return }
+    public func receive(change: DatabaseChange) {
+        // If any table that we are watching changed
+        // reexecute the query.
+        guard !change.affectedTables
+            .intersection(query.watchedTables)
+            .isEmpty else { return }
         enqueueNext()
     }
     
@@ -109,4 +112,9 @@ extension QueryObservation {
             }
         }
     }
+}
+
+
+public final class QueryObservation2 {
+    
 }

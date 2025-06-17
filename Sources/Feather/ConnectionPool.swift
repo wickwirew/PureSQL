@@ -106,7 +106,9 @@ public actor ConnectionPool: Sendable {
     private func newConnection() throws(FeatherError) -> SQLiteConnection {
         assert(count < limit)
         count += 1
-        return try SQLiteConnection(path: path)
+        let connection = try SQLiteConnection(path: path)
+        observer.installHooks(into: connection)
+        return connection
     }
     
     /// Called when we receive a connection back into the pool
