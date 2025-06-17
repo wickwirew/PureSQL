@@ -361,7 +361,8 @@ class ViewModel {
 ## FTS5
 FTS5 is supported but has some additional requirements.
 To generate usable structs Otter needs type information even though they not valid FTS arguments.
-FTS 5 currently is the only virtual table module supported at this time.
+Specifying the type is **required** and an optional `NOT NULL` is allowed. These are not FTS5
+arguments so they will be removed from the final migration.
 ```sql
 CREATE VIRTUAL TABLE searchIndex USING fts5 (
     id INTEGER NOT NULL,
@@ -373,13 +374,17 @@ WHERE foo MATCH 'search terms'
 ORDER BY rank;
 ```
 
-> [!NOTE]
-> All types and not `NOT NULL` constraints will be removed from the final migration.
-
 ## Upcoming Features
+Otter is a young project and there are a lot of new features and functionality I want to add.
+Below are some idea that I would love input on!
 * Support for multiple statements in a single query
 * Kotlin library/generation
-* Custom functions
+  * Generating Kotlin would allow SQLite based apps to basically share their model/data layer
+* User defined functions
+  * SQLite supports custom functions which are a great way to share common logic amongst queries
+* Queries with multiple statements
+  * Would allow for easier loading of more complex models that have many joins
+  * Want to allow other queries to be called from within the body to help centrize logic.
 
 ## Contributions
 Contributions are welcome and encouraged! Feel free to make a PR or open an issue. If the change is large please open an issue first to make sure the change is desired.
