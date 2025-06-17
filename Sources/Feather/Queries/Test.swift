@@ -35,7 +35,7 @@ extension Queries {
         public private(set) var cancelObservationCallCount = 0
         private let lock = NSLock()
         
-        public init(execute:@escaping  @Sendable (Input) throws -> Output) {
+        public init(execute: @escaping @Sendable (Input) throws -> Output) {
             self.execute = execute
         }
         
@@ -75,14 +75,15 @@ extension Queries {
 
             func start(
                 onChange: @escaping (Output) -> Void,
-                onError: @escaping (any Error) -> Void
+                onComplete: @escaping (Error?) -> Void
             ) {
                 query.incrementStartObservationCallCount()
                 
                 do {
                     try onChange(query.execute(input))
+                    onComplete(nil)
                 } catch {
-                    onError(error)
+                    onComplete(error)
                 }
             }
             

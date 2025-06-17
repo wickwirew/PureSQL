@@ -47,6 +47,8 @@ extension Queries.MapInput: DatabaseQuery where Base: DatabaseQuery {
 
 public extension Query {
     /// Transforms the input value before passing it to the query.
+    /// Allows you to change the input type of a query. Useful if
+    /// merging multiple queries together using `then`.
     ///
     /// - Parameter transform: The closure to transform the input
     /// - Returns: A query with a input type of the resulting closure.

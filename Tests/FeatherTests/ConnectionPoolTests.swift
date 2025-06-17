@@ -42,4 +42,17 @@ struct ConnectionPoolTests {
             }
         }
     }
+    
+    @Test func modificationsAreRolledBackOnError() async throws {
+        let db = try TestDB.inMemory()
+        struct Err: Error {}
+        
+        try? await db.connection.begin(.write) { tx in
+            try db.insertFoo.execute(with: 1, tx: tx)
+            throw Err()
+        }
+        
+        let foos = try await db.selectFoos.execute()
+        #expect(foos.isEmpty)
+    }
 }

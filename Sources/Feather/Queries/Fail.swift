@@ -13,6 +13,12 @@ extension Queries {
         /// The error to throw on execution
         let error: any Error
         
+        /// Initializes a query that always fails with an error.
+        /// This is useful for unit tests and previews to test
+        /// how a part of an application behaives when an error
+        /// is thrown.
+        ///
+        /// - Parameter error: The error to throw
         public init(_ error: any Error) {
             self.error = error
         }
@@ -34,9 +40,9 @@ extension Queries {
             
             func start(
                 onChange: @escaping (Output) -> Void,
-                onError: @escaping (any Error) -> Void
+                onComplete: @escaping (Error?) -> Void
             ) {
-                onError(error)
+                onComplete(error)
             }
             
             func cancel() {}

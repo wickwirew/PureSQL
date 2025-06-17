@@ -16,7 +16,7 @@ public final class DatabaseQueryObservation<Query>: DatabaseSubscriber, QueryObs
     private let queue = Queue()
     
     private var onChange: (@Sendable (Query.Output) -> Void)?
-    private var onError: (@Sendable (Error) -> Void)?
+    private var onComplete: (@Sendable (Error?) -> Void)?
     
     init(
         query: Query,
@@ -35,7 +35,7 @@ public final class DatabaseQueryObservation<Query>: DatabaseSubscriber, QueryObs
     public func cancel() {
         lock.withLock {
             onChange = nil
-            onError = nil
+            onComplete = nil
         }
         
         query.connection.cancel(subscriber: self)
@@ -44,11 +44,11 @@ public final class DatabaseQueryObservation<Query>: DatabaseSubscriber, QueryObs
     
     public func start(
         onChange: @escaping @Sendable (Query.Output) -> Void,
-        onError: @escaping @Sendable (Error) -> Void
+        onComplete: @escaping @Sendable (Error?) -> Void
     ) {
         lock.withLock {
             self.onChange = onChange
-            self.onError = onError
+            self.onComplete = onComplete
         }
         
         query.connection.observe(subscriber: self)
@@ -68,7 +68,7 @@ public final class DatabaseQueryObservation<Query>: DatabaseSubscriber, QueryObs
             let output = try await query.execute(with: input)
             onChange(output)
         } catch {
-            onError?(error)
+            onComplete?(error)
             cancel()
         }
     }
@@ -85,7 +85,7 @@ public protocol QueryObservation<Output>: Sendable, AsyncSequence {
     
     func start(
         onChange: @escaping @Sendable (Output) -> Void,
-        onError: @escaping @Sendable (Error) -> Void
+        onComplete: @escaping @Sendable (Error?) -> Void
     )
     
     func cancel()
@@ -100,7 +100,7 @@ extension QueryObservation {
         AsyncThrowingStream<Output, Error> { continuation in
             start { output in
                 continuation.yield(output)
-            } onError: { error in
+            } onComplete: { error in
                 continuation.finish(throwing: error)
             }
             

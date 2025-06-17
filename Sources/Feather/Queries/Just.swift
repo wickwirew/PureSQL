@@ -56,9 +56,11 @@ extension Queries {
             
             func start(
                 onChange: @escaping (Output) -> Void,
-                onError: @escaping (any Error) -> Void
+                onComplete: @escaping (Error?) -> Void
             ) {
                 onChange(output)
+                // Complete instantly
+                onComplete(nil)
             }
             
             func cancel() {}
