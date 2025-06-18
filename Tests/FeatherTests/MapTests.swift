@@ -19,9 +19,10 @@ struct MapTests {
     }
     
     @Test func mapTransformsOutput_Observation() async throws {
-        let query = Queries.Just<(), Int>(100)
+        let query = Queries.Just<(), Int>(100).map(\.description)
+        
         var count = 0
-        for try await output in query.map(\.description).observe() {
+        for try await output in query.observe() {
             count += 1
             #expect(output == "100")
         }

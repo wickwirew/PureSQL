@@ -98,16 +98,21 @@ public struct QueryPublisher<Output>: Publisher {
 }
 
 public extension Query {
-    /// Returns a Combine publisher to observes the query
+    /// Returns a Combine publisher that will fire once
+    /// and then observe changes as the database changes.
     ///
     /// - Parameter input: The input for the query
-    /// - Returns: A p
+    /// - Returns: A combine publisher
     func publisher(with input: Input) -> QueryPublisher<Output> {
         QueryPublisher(query: self.with(input: input))
     }
 }
 
 public extension Query where Input == () {
+    /// Returns a Combine publisher that will fire once
+    /// and then observe changes as the database changes.
+    ///
+    /// - Returns: A combine publisher
     func publisher() -> QueryPublisher<Output> {
         QueryPublisher(query: self)
     }
