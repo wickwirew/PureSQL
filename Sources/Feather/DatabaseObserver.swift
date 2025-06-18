@@ -82,7 +82,7 @@ class DatabaseObserver: @unchecked Sendable {
             
             // Merge all events into a single change
             let change = DatabaseChange(
-                affectedTables: Set(events.compactMap(\.databaseName)),
+                affectedTables: Set(events.compactMap(\.tableName)),
                 events: events
             )
             
