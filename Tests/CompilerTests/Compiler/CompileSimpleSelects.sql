@@ -184,9 +184,9 @@ SELECT id, ? AS value FROM bar;
 -- CHECK:     CHUNK
 -- CHECK:       OUTPUT
 -- CHECK:         id INTEGER
--- CHECK:         bestValue (INTEGER)
--- CHECK:         secondBestValue (INTEGER)
--- CHECK:         thirdBestValue (INTEGER)
+-- CHECK:         bestValue INTEGER
+-- CHECK:         secondBestValue INTEGER
+-- CHECK:         thirdBestValue INTEGER
 -- CHECK:   TABLES
 -- CHECK:     bar
 SELECT id,
@@ -234,6 +234,11 @@ SELECT -1 AS value FROM foo
 WHERE value = 1 AND value NOTNULL AND value NOT NULL AND value ISNULL ORDER BY value;
 
 -- CHECK: SIGNATURE
+-- CHECK:   PARAMETERS
+-- CHECK:     PARAMETER
+-- CHECK:       TYPE INTEGER
+-- CHECK:       INDEX 1
+-- CHECK:       NAME limit
 -- CHECK:   OUTPUT_CHUNKS
 -- CHECK:     CHUNK
 -- CHECK:       OUTPUT
@@ -241,4 +246,5 @@ WHERE value = 1 AND value NOTNULL AND value NOT NULL AND value ISNULL ORDER BY v
 -- CHECK:   TABLES
 -- CHECK:     foo
 SELECT 1 AS value FROM foo
-WHERE EXISTS (SELECT * FROM foo) value;
+WHERE EXISTS (SELECT * FROM foo)
+LIMIT ?;

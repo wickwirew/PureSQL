@@ -446,7 +446,9 @@ extension StmtTypeChecker {
         // Type check limit before since it does not have access
         // to any selected columns
         if let limit = select.limit {
-            _ = typeCheck(limit.expr)
+            let (type, name) = typeCheck(limit.expr)
+            nameInferrer.suggest(name: "limit", for: name)
+            inferenceState.unify(type, with: .integer, at: limit.expr.location)
         }
         
         let resultColumns = typeCheck(

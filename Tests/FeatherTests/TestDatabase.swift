@@ -22,7 +22,7 @@ struct TestDB {
     
     static var migrations: [String] {
         return [
-            "CREATE TABLE foo (bar INTEGER);"
+            "CREATE TABLE foo (bar INTEGER PRIMARY KEY);"
         ]
     }
 }

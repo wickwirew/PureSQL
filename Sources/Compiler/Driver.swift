@@ -109,8 +109,12 @@ public actor Driver {
                 // The output path contains the file we are writing too
                 // so removing the last component gives us just the directory.
                 var directory = path.split(separator: "/")
-                directory.removeLast()
-                try fileSystem.create(directory: directory.joined(separator: "/"))
+                
+                if directory.count > 1 {
+                    directory.removeLast()
+                    try fileSystem.create(directory: directory.joined(separator: "/"))
+                }
+                
                 try file.write(toFile: path, atomically: true, encoding: .utf8)
             } else {
                 // No output path, default to stdout.

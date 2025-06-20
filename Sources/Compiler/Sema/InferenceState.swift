@@ -135,7 +135,11 @@ struct InferenceState {
         case let .alias(ty, alias):
             return .alias(solution(for: ty, defaultIfTyVar: true), alias)
         case let .row(row):
-            return .row(row.mapTypes { solution(for: $0, defaultIfTyVar: true) })
+            if let type = row.first, row.count == 1, !row.isUnknown {
+                return solution(for: type, defaultIfTyVar: true)
+            } else {
+                return .row(row.mapTypes { solution(for: $0, defaultIfTyVar: true) })
+            }
         default:
             return result
         }

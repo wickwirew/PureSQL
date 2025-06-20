@@ -77,6 +77,11 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
             }
         }
         
+        var isUnknown: Bool {
+            guard case .unknown = self else { return false }
+            return true
+        }
+        
         func apply(_ s: Substitution) -> Row {
             return switch self {
             case let .fixed(v): .fixed(v.map { $0.apply(s) })

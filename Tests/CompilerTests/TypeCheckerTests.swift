@@ -192,7 +192,7 @@ class TypeCheckerTests: XCTestCase {
     }
     
     func testExprInParens() {
-        XCTAssertEqual(.row(.fixed([.integer])), try check("(1 + 1) + 1"))
+        XCTAssertEqual(.integer, try check("(1 + 1) + 1"))
     }
     
     func scope(table: String, schema: String) throws -> Environment {

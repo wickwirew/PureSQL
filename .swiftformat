@@ -1,2 +1,3 @@
 --swiftversion 60.
 --disable unusedArguments, opaqueGenericParameters, redundantSelf, trailingSpace, redundantReturn, spaceAroundOperators
+--ifdef no-indent

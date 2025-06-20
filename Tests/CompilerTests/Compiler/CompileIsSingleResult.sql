@@ -9,6 +9,8 @@ CREATE TABLE employee (
     PRIMARY KEY(companyId, userId)
 );
 
+CREATE TABLE noPk (value INTEGER);
+
 -- CHECK: SINGLE
 SELECT * FROM user WHERE id = 1;
 
@@ -29,3 +31,6 @@ SELECT * FROM employee WHERE companyId = 1 AND userId = 1;
 
 -- CHECK: MANY
 SELECT * FROM employee WHERE companyId = 1 OR userId = 1;
+
+-- CHECK: MANY
+SELECT * FROM noPk WHERE value = ?;

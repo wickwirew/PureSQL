@@ -117,6 +117,7 @@ enum Builtins {
             returning: .text,
             overloads: [Function.Overload(.text, .integer, .integer, returning: .text)]
         ),
+        "sqrt": Function(.var(.integer(0)), returning: .var(.integer(0))),
         "trim": Function(
             .text,
             returning: .text,

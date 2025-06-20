@@ -27,6 +27,7 @@ struct CardinalityInferrer {
         _ expr: any ExprSyntax,
         for table: Table
     ) -> Cardinality {
+        guard !table.primaryKey.isEmpty else { return .many }
         let filteredPrimaryKeys = expr.accept(visitor: &self)
         let didFilterByPrimaryKey = !table.primaryKey.contains{ !filteredPrimaryKeys.contains($0) }
         return didFilterByPrimaryKey ? .single : .many
