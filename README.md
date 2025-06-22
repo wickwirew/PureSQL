@@ -123,7 +123,8 @@ let package = Package(
 
 Also the cli tool will be needed to be installed.
 ```
-brew install TODO FIX THIS ONCE IT IS ACTUALLY IN BREW
+brew tap wickwirew/wickwirew
+brew install otter
 ```
 
 Once the project has been added it is time to setup the queries and migrations folders. In the root of the project where you want everything to live, in terminal run the following command
