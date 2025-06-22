@@ -80,17 +80,7 @@ struct ParserState {
         return true
     }
     
-    /// Consumes the next token and validates it is of the input kind
-    mutating func consume(_ kind: Token.Kind) {
-        guard current.kind == kind else {
-            diagnostics.add(.unexpectedToken(of: current.kind, expected: kind, at: location))
-            return
-        }
-        
-        skip()
-    }
-    
-    /// Consumes the next token and validates it is of the input kind
+    /// Consumes the next token and validates it is of the input `kind`
     mutating func take(_ kind: Token.Kind) -> Token {
         guard current.kind == kind else {
             diagnostics.add(.unexpectedToken(of: current.kind, expected: kind, at: location))
@@ -100,19 +90,24 @@ struct ParserState {
         return take()
     }
     
+    /// Skips the current token and validates its the correct `kind`.
+    /// If its not a diagnostic will be emitted and the token will not be skipped.
     mutating func skip(_ kind: Token.Kind) {
         if current.kind != kind {
             diagnostics.add(.unexpectedToken(of: current.kind, expected: kind, at: location))
+            return
         }
         
         skip()
     }
     
+    /// Skips the current token if it is the `kind`
     mutating func skip(if kind: Token.Kind) {
         guard current.kind == kind else { return }
         skip()
     }
     
+    /// Skips to the next token
     mutating func skip() {
         previous = current
         current = peek
@@ -120,6 +115,7 @@ struct ParserState {
         peek2 = lexer.next()
     }
     
+    /// Whether or not the current token is of the input `kind`
     func `is`(of kind: Token.Kind) -> Bool {
         return current.kind == kind
     }
