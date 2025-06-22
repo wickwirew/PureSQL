@@ -52,7 +52,15 @@ public struct SwiftLanguage: Language {
         case let .optional(ty): "\(builtinType(for: ty))?"
         case let .row(.unknown(ty)): "[\(builtinType(for: ty))]"
         case .var, .fn, .row, .error: "Any"
-        case .alias(_, let alias): alias.description
+        case .alias(_, let alias):
+            switch alias {
+            case .explicit(let type):
+                type.description
+            case .hint(let hint):
+                switch hint {
+                case .bool: "Bool"
+                }
+            }
         }
     }
     

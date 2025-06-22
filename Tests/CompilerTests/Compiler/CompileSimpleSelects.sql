@@ -248,3 +248,12 @@ WHERE value = 1 AND value NOTNULL AND value NOT NULL AND value ISNULL ORDER BY v
 SELECT 1 AS value FROM foo
 WHERE EXISTS (SELECT * FROM foo)
 LIMIT ?;
+
+-- CHECK: SIGNATURE
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         isOne (INTEGER AS Bool)
+-- CHECK:   TABLES
+-- CHECK:     foo
+SELECT id = 1 AS isOne FROM foo;

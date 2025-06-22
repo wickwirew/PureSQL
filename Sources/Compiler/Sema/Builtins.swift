@@ -12,7 +12,7 @@ enum Builtins {
     static let negate = Function(.var(0), returning: .var(0))
     static let bitwiseNot = Function(.var(0), returning: .var(0))
     static let pos = Function(.var(0), returning: .var(0))
-    static let between = Function(.var(0), .var(0), .var(0), returning: .integer)
+    static let between = Function(.var(0), .var(0), .var(0), returning: .boolean)
     static let arithmetic = Function(.var(0), .var(0), returning: .var(0))
     static let divide = Function(.var(0), .var(0), returning: .var(0)) { types, exprs, location, diagnostics in
         func isInt(_ type: Type, expr: any ExprSyntax) -> Bool {
@@ -34,8 +34,8 @@ enum Builtins {
             at: location
         ))
     }
-    static let comparison = Function(.var(0), .var(0), returning: .integer)
-    static let `in` = Function(.var(0), .row(.unknown(.var(0))), returning: .integer)
+    static let comparison = Function(.var(0), .var(0), returning: .boolean)
+    static let `in` = Function(.var(0), .row(.unknown(.var(0))), returning: .boolean)
     static let concatOp = Function(.var(0), .var(1), returning: .text)
     static let extract = Function(.var(0), returning: .var(1))
     static let extractJson = Function(.var(0), returning: .any)
@@ -44,7 +44,7 @@ enum Builtins {
     static let match = Function(.var(0), .text, returning: .integer)
     static let regexp = Function(.text, .text, returning: .integer)
     static let glob = Function(.text, .text, returning: .integer)
-    static let isNullPostfix = Function(.var(0), returning: .integer)
+    static let isNullPostfix = Function(.var(0), returning: .boolean)
 
     static let functions: OrderedDictionary<Substring, Function> = {
         // TODO: Clean this up. SQLite isnt casing dependant but we are at the moment.

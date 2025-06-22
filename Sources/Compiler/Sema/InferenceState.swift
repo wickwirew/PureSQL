@@ -117,6 +117,15 @@ struct InferenceState {
         return .var(TypeVariable(tyVarCounter, kind: kind))
     }
     
+    /// Gives the type a hint
+    mutating func hint(
+        type hint: Type.Alias.Hint,
+        for type: Type,
+        at location: SourceLocation
+    ) {
+        unify(type, with: .alias(type, .hint(hint)), at: location)
+    }
+    
     /// Gets the final type from the solution for the type if its a ty var.
     /// If `defaultIfTyVar` is true, the type will be given a
     /// default value if it is a type var.

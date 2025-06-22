@@ -24,7 +24,7 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
     /// A type that has been aliased. These are not in SQL by default
     /// but are from the layer on top that we are adding so a user
     /// can replace a `INTEGER` with a `Bool`
-    indirect case alias(Type, Substring)
+    indirect case alias(Type, Alias)
     /// There was an error somewhere in the analysis. We can just return
     /// an `error` type and continue the analysis. So if the user makes up
     /// 3 columns, they can get all 3 errors at once.
@@ -37,78 +37,47 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
     /// `error + INTEGER = INTEGER` - Good
     case error
     
-    /// Rows or "Tables" can come in the form of two ways.
-    /// Named and unnamed. Named is obviously a table from
-    /// a FROM or JOIN. Unnamed would be from a subquery or
-    /// a row expression `(?, ?, ?)`.
-    public enum Row: Equatable, Sendable, ExpressibleByArrayLiteral {
-        /// A row of a defined set of types.
-        case fixed([Type])
-        /// This is a special row that we don't know the inner types of.
-        /// It assumes that all types in it are the same type and of an
-        /// unbounded length. Allows us to define functions like `IN` that
-        /// take a row as an input but we are unsure of what the inner values are.
-        indirect case unknown(Type)
-        
-        public static let empty: Row = .fixed([])
-        
-        public init(arrayLiteral elements: Type...) {
-            self = .fixed(elements)
-        }
-        
-        var first: Type? {
-            return switch self {
-            case let .fixed(v): v.first
-            case let .unknown(t): t
-            }
-        }
-        
-        var count: Int {
-            return switch self {
-            case let .fixed(v): v.count
-            case .unknown: 1
-            }
-        }
-        
-        var types: [Type] {
-            return switch self {
-            case let .fixed(v): v
-            case let .unknown(t): [t]
-            }
-        }
-        
-        var isUnknown: Bool {
-            guard case .unknown = self else { return false }
-            return true
-        }
-        
-        func apply(_ s: Substitution) -> Row {
-            return switch self {
-            case let .fixed(v): .fixed(v.map { $0.apply(s) })
-            case let .unknown(t): .unknown(t.apply(s))
-            }
-        }
-        
-        func mapTypes(_ transform: (Type) -> Type) -> Row {
-            switch self {
-            case let .fixed(values):
-                return .fixed(values.map(transform))
-            case let .unknown(value):
-                return .unknown(transform(value))
-            }
-        }
-    }
-    
     static let text: Type = .nominal("TEXT")
     static let int: Type = .nominal("INT")
     static let integer: Type = .nominal("INTEGER")
     static let real: Type = .nominal("REAL")
     static let blob: Type = .nominal("BLOB")
     static let any: Type = .nominal("ANY")
+    static let boolean: Type = .alias(.integer, .hint(.bool))
     
     static let validTypeNames: Set<Substring> = [
         "TEXT", "INT", "INTEGER", "REAL", "BLOB", "ANY"
     ]
+    
+    /// An alias for a SQL type. e.g. `INTEGER AS Bool`
+    public enum Alias: Hashable, Sendable, CustomStringConvertible {
+        /// Explicitly defined by the user `INTEGER AS Bool`
+        case explicit(Substring)
+        /// Used for when the compiler wants to hint at a better type
+        /// that would be in the final language like a boolean for a
+        /// equality check, which would normally be an `INTEGER`.
+        /// We cannot just always use `explicit` since the goal is
+        /// to lower into many different languages and they might have
+        /// different names. e.g. `Bool` vs `Boolean` vs `bool`
+        case hint(Hint)
+        
+        public enum Hint: Hashable, Sendable, CustomStringConvertible {
+            case bool
+            
+            public var description: String {
+                switch self {
+                case .bool: "Bool"
+                }
+            }
+        }
+        
+        public var description: String {
+            switch self {
+            case .explicit(let type): type.description
+            case .hint(let hint): hint.description
+            }
+        }
+    }
     
     public var description: String {
         return switch self {
@@ -260,5 +229,67 @@ public struct TypeVariable: Hashable, CustomStringConvertible, ExpressibleByInte
     
     static func float(_ n: Int) -> TypeVariable {
         return TypeVariable(n, kind: .float)
+    }
+}
+
+/// Rows or "Tables" can come in the form of two ways.
+/// Named and unnamed. Named is obviously a table from
+/// a FROM or JOIN. Unnamed would be from a subquery or
+/// a row expression `(?, ?, ?)`.
+public enum Row: Equatable, Sendable, ExpressibleByArrayLiteral {
+    /// A row of a defined set of types.
+    case fixed([Type])
+    /// This is a special row that we don't know the inner types of.
+    /// It assumes that all types in it are the same type and of an
+    /// unbounded length. Allows us to define functions like `IN` that
+    /// take a row as an input but we are unsure of what the inner values are.
+    indirect case unknown(Type)
+    
+    public static let empty: Row = .fixed([])
+    
+    public init(arrayLiteral elements: Type...) {
+        self = .fixed(elements)
+    }
+    
+    var first: Type? {
+        return switch self {
+        case let .fixed(v): v.first
+        case let .unknown(t): t
+        }
+    }
+    
+    var count: Int {
+        return switch self {
+        case let .fixed(v): v.count
+        case .unknown: 1
+        }
+    }
+    
+    var types: [Type] {
+        return switch self {
+        case let .fixed(v): v
+        case let .unknown(t): [t]
+        }
+    }
+    
+    var isUnknown: Bool {
+        guard case .unknown = self else { return false }
+        return true
+    }
+    
+    func apply(_ s: Substitution) -> Row {
+        return switch self {
+        case let .fixed(v): .fixed(v.map { $0.apply(s) })
+        case let .unknown(t): .unknown(t.apply(s))
+        }
+    }
+    
+    func mapTypes(_ transform: (Type) -> Type) -> Row {
+        switch self {
+        case let .fixed(values):
+            return .fixed(values.map(transform))
+        case let .unknown(value):
+            return .unknown(transform(value))
+        }
     }
 }

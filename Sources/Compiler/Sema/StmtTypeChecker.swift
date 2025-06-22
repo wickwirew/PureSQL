@@ -1027,7 +1027,7 @@ extension StmtTypeChecker {
         }
     }
 
-    private func assumeRow(_ ty: Type) -> Type.Row {
+    private func assumeRow(_ ty: Type) -> Row {
         guard case let .row(rowTy) = ty else {
             assertionFailure("This cannot happen")
             return .fixed([])
@@ -1247,7 +1247,7 @@ extension StmtTypeChecker {
         let nominal: Type = .nominal(column.type.name.value)
         
         let type: Type = if let alias = column.type.alias {
-            .alias(nominal, alias.identifier.value)
+            .alias(nominal, .explicit(alias.identifier.value))
         } else {
             nominal
         }
