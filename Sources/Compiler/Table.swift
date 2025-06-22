@@ -40,6 +40,22 @@ public struct Table: Sendable, Equatable {
         return .row(.fixed(columns.map(\.value.type)))
     }
     
+    /// A set of all required columns that need to be set on insert
+    var nonGeneratedColumns: [(Substring, Column)] {
+        return columns.reduce(into: []) { result, column in
+            guard !column.value.isGenerated else { return }
+            result.append((column.key, column.value))
+        }
+    }
+    
+    /// A set of all required columns that need to be set on insert
+    var requiredColumnsNames: Set<Substring> {
+        return columns.reduce(into: []) { result, column in
+            guard column.value.isRequired else { return }
+            result.insert(column.key)
+        }
+    }
+    
     /// A table to be returned incase of an error in type checking
     static let error = Table(
         name: QualifiedName(name: "<<error>>", schema: nil),

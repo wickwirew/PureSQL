@@ -1,4 +1,8 @@
-CREATE TABLE user (id INTEGER, name TEXT);
+CREATE TABLE user (
+    id INTEGER,
+    name TEXT,
+    description TEXT GENERATED ALWAYS AS (name || 'is a user')
+);
 
 -- CHECK: SIGNATURE
 -- CHECK:   PARAMETERS
@@ -29,6 +33,7 @@ INSERT INTO user (id, name) VALUES (?, ?);
 -- CHECK:       OUTPUT
 -- CHECK:         id INTEGER?
 -- CHECK:         name TEXT?
+-- CHECK:         description TEXT?
 -- CHECK:     TABLES
 -- CHECK:       user
 INSERT INTO user (id, name) VALUES (?, ?) RETURNING *;
@@ -64,6 +69,54 @@ INSERT INTO user (id, name) VALUES (?, ?) RETURNING *;
 -- CHECK:       OUTPUT
 -- CHECK:         id INTEGER?
 -- CHECK:         name TEXT?
+-- CHECK:         description TEXT?
 -- CHECK:     TABLES
 -- CHECK:       user
 INSERT INTO user (id, name) VALUES (?, ?), (?, ?), (?, ?) RETURNING *;
+
+-- CHECK: SIGNATURE
+-- CHECK:   PARAMETERS
+-- CHECK:     PARAMETER
+-- CHECK:       TYPE INTEGER?
+-- CHECK:       INDEX 1
+-- CHECK:       NAME id
+-- CHECK:     PARAMETER
+-- CHECK:       TYPE TEXT?
+-- CHECK:       INDEX 2
+-- CHECK:       NAME name
+-- CHECK:     TABLES
+-- CHECK:       user
+INSERT INTO user VALUES (?, ?);
+
+-- CHECK: SIGNATURE
+-- CHECK:   PARAMETERS
+-- CHECK:     PARAMETER
+-- CHECK:       TYPE INTEGER?
+-- CHECK:       INDEX 1
+-- CHECK:       NAME id
+-- CHECK:     PARAMETER
+-- CHECK:       TYPE TEXT?
+-- CHECK:       INDEX 2
+-- CHECK:       NAME name
+-- CHECK:     PARAMETER
+-- CHECK:       TYPE TEXT?
+-- CHECK:       INDEX 3
+-- CHECK:       NAME description
+-- CHECK:   TABLES
+-- CHECK:     user
+-- CHECK-ERROR: Column is generated and not able to be set
+INSERT INTO user (id, name, description) VALUES (?, ?, ?);
+
+-- CHECK: SIGNATURE
+-- CHECK:   PARAMETERS
+-- CHECK:     PARAMETER
+-- CHECK:       TYPE TEXT?
+-- CHECK:       INDEX 1
+-- CHECK:       NAME name
+-- CHECK:     PARAMETER
+-- CHECK:       TYPE INTEGER?
+-- CHECK:       INDEX 2
+-- CHECK:       NAME id
+-- CHECK:     TABLES
+-- CHECK:       user
+INSERT INTO user (name, id) VALUES (?, ?);

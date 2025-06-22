@@ -439,7 +439,7 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
 extension StmtTypeChecker {
     mutating func typeCheck(
         select: SelectStmtSyntax,
-        potentialNames: [IdentifierSyntax]? = nil
+        potentialNames: [Substring]? = nil
     ) -> ResultColumns {
         typeCheck(with: select.with)
         
@@ -483,7 +483,7 @@ extension StmtTypeChecker {
     mutating func typeCheck(
         selects: SelectStmtSyntax.Selects,
         at location: SourceLocation,
-        potentialNames: [IdentifierSyntax]? = nil
+        potentialNames: [Substring]? = nil
     ) -> ResultColumns {
         switch selects {
         case let .single(selectCore):
@@ -545,9 +545,14 @@ extension StmtTypeChecker {
         
         usedTableNames.insert(table.name.name)
         
+        // If there is an error upstream that will cause unification to fail for sure
+        // we can just skip it so the real error does not get hidden by all the other errors
+        var skipInputUnification = false
+        let columNames: [Substring]
         let inputType: Type
         if let columns = insert.columns {
             var columnTypes: [Type] = []
+            var setColumns: Set<Substring> = []
             for column in columns {
                 guard let def = table.columns[column.value].first else {
                     diagnostics.add(.columnDoesNotExist(column))
@@ -555,16 +560,40 @@ extension StmtTypeChecker {
                     continue
                 }
                 
+                if def.isGenerated {
+                    diagnostics.add(.init("Column is generated and not able to be set", at: column.location))
+                }
+                
                 columnTypes.append(def.type)
+                setColumns.insert(column.value)
             }
+            
+            let requiredColumns = Set(table.requiredColumnsNames)
+            let missingColumns = requiredColumns.subtracting(setColumns)
+            
+            if !missingColumns.isEmpty {
+                let names = missingColumns.map{ "'\($0)'" }.joined(separator: ",")
+                diagnostics.add(.init("Missing required columns \(names)", at: insert.location))
+                // Skip unification since it will fail for sure, and this diag is more specific
+                // to their issue.
+                skipInputUnification = true
+            }
+            
             inputType = .row(.fixed(columnTypes))
+            columNames = columns.map(\.value)
         } else {
-            inputType = table.type
+            let columns = table.nonGeneratedColumns
+            inputType = .row(.fixed(columns.map(\.1.type)))
+            columNames = columns.map(\.0)
         }
         
         if let values = insert.values {
-            let resultColumns = typeCheck(select: values.select, potentialNames: insert.columns)
-            inferenceState.unify(inputType, with: resultColumns.type, at: insert.location)
+            let resultColumns = typeCheck(select: values.select, potentialNames: columNames)
+            
+            // Unify the input columns with the actual input values
+            if !skipInputUnification {
+                inferenceState.unify(inputType, with: resultColumns.type, at: insert.location)
+            }
         } else {
             // TODO: Using 'DEFALUT VALUES' make sure all columns
             // TODO: actually have default values or null
@@ -770,7 +799,7 @@ extension StmtTypeChecker {
     private mutating func typeCheck(
         select: SelectCoreSyntax,
         at range: SourceLocation,
-        potentialNames: [IdentifierSyntax]? = nil
+        potentialNames: [Substring]? = nil
     ) -> ResultColumns {
         switch select {
         case let .select(select):
@@ -788,7 +817,7 @@ extension StmtTypeChecker {
                     // If there are potential names to match with check to
                     // see if there is one at the index of this expression.
                     if let potentialNames, index < potentialNames.count {
-                        nameInferrer.suggest(name: potentialNames[index].value, for: name)
+                        nameInferrer.suggest(name: potentialNames[index], for: name)
                     }
                 }
                 

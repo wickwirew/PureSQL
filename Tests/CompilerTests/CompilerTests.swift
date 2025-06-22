@@ -31,7 +31,7 @@ class CompilerTests: XCTestCase {
     }
     
     func testTableSchema() throws {
-        try checkSchema(compile: "CompileTableSchema", dump: true)
+        try checkSchema(compile: "CompileTableSchema")
     }
     
     func testDropTable() throws {
