@@ -17,6 +17,24 @@
             "name": "Release OtterCLI",
             "program": "${workspaceFolder:Otter}/.build/release/OtterCLI",
             "preLaunchTask": "swift: Build Release OtterCLI"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Otter}",
+            "name": "Debug otter",
+            "program": "${workspaceFolder:Otter}/.build/debug/otter",
+            "preLaunchTask": "swift: Build Debug otter"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Otter}",
+            "name": "Release otter",
+            "program": "${workspaceFolder:Otter}/.build/release/otter",
+            "preLaunchTask": "swift: Build Release otter"
         }
     ]
 }

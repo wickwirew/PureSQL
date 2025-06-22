@@ -6,11 +6,17 @@ import PackageDescription
 
 let package = Package(
     name: "Otter",
-    platforms: [.macOS(.v10_15), .iOS(.v13), .tvOS(.v13), .watchOS(.v6), .macCatalyst(.v13)],
+    platforms: [
+        .macOS(.v10_15),
+        .iOS(.v13),
+        .tvOS(.v13),
+        .watchOS(.v6),
+        .macCatalyst(.v13)
+    ],
     products: [
         .library(name: "Otter", targets: ["Otter"]),
         .library(name: "Compiler", targets: ["Compiler"]),
-        .executable(name: "OtterCLI", targets: ["OtterCLI"]),
+        .executable(name: "otter", targets: ["OtterCLI"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-syntax.git", from: "601.0.1"),
