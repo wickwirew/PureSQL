@@ -1,5 +1,5 @@
 //
-//  Feather.swift
+//  Otter.swift
 //  OtterCLI
 //
 //  Created by Wes Wickwire on 1/18/24.

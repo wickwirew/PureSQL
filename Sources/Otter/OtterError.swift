@@ -1,5 +1,5 @@
 //
-//  FeatherError.swift
+//  OtterError.swift
 //  Otter
 //
 //  Created by Wes Wickwire on 2/16/25.

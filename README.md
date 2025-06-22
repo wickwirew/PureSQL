@@ -128,14 +128,13 @@ brew install TODO FIX THIS ONCE IT IS ACTUALLY IN BREW
 
 Once the project has been added it is time to setup the queries and migrations folders. In the root of the project where you want everything to live, in terminal run the following command
 ```
-feather init
+otter init
 ```
 
-This will create all diretories needed and will create your first migration. Your project should have 2 new folders and a swift file. In the migrations folder you will have a file named `1.sql`. You put your first migration code in there. The `Queries.swift` file is what the generated Swift code will be written too. The `gen` command will automatically recreate this if it gets deleted.
+This will create all diretories needed and will create your first migration. Your project should have 2 new folders and a swift file. In the migrations folder you will have a file named `1.sql`. You put your first migration code in there.
 ```
 /Migrations/1.sql
 /Queries
-Queries.swift
 ```
 
 > [!TIP]
@@ -144,7 +143,7 @@ Queries.swift
 #### Generating the Database
 Once you have your first migration in and the project setup you can now generate the database. In the same directory where `init` was run, you run the `gen` command.
 ```
-feather gen
+otter gen --output Queries.swift
 ```
 
 This will compile and check all migrations and queries, then generate all Swift required to talk to the database.
@@ -152,7 +151,7 @@ This will compile and check all migrations and queries, then generate all Swift 
 ### Adding a New Migration
 When a new migration is needed, you can simply add a new file with a number 1 higher than the previous. To automatically do this the cli tool can do it for you by running
 ```
-feather migrate add
+otter migrate add
 ```
 
 # Opening a Connection
@@ -179,7 +178,7 @@ let database = try DB(config: config)
 # Queries
 All queries will be stored in the `/Queries` directory. More than one query can go in each file. To get started, create a new file in the `/Queries` directory. The cli can do this automatically. In the same directory where `init` was run, execute
 ```
-feather queries add --name <some-name>
+otter queries add --name <some-name>
 ```
 
 Open the file that was created in `/Queries`, it should be blank. Individual queries can be defined using the the following format. At the moment a single query can only have one statement.

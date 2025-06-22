@@ -108,7 +108,7 @@ private struct CompilerWithSource {
     ) -> (Statement, Diagnostics) {
         // Calculating the statement signature will type check it.
         // We can just ignore the output
-        var typeChecker = StmtTypeChecker(schema: schema, pragmas: pragmas.featherPragmas)
+        var typeChecker = StmtTypeChecker(schema: schema, pragmas: pragmas.otterPragmas)
         let (parameters, type) = typeChecker.signature(for: stmt)
         
         // Note: Make sure to pass env from type checker to make sure all is imported

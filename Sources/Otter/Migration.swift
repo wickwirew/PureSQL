@@ -6,7 +6,7 @@
 //
 
 public enum MigrationRunner {
-    static let migrationTableName = "__featherMigrations"
+    static let migrationTableName = "__otterMigrations"
     
     public static func execute(migrations: [String], pool: ConnectionPool) async throws {
         try await pool.begin(.write) { tx in

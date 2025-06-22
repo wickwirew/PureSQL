@@ -34,7 +34,7 @@ CREATE TABLE bar (
     PRIMARY KEY (foo, baz)
 );
 
-PRAGMA feather_require_strict_tables = TRUE;
+PRAGMA otter_require_strict_tables = TRUE;
 
 -- CHECK: TABLE
 -- CHECK:   NAME main.baz
