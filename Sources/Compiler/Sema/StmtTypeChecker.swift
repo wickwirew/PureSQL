@@ -594,6 +594,10 @@ extension StmtTypeChecker {
             if !skipInputUnification {
                 inferenceState.unify(inputType, with: resultColumns.type, at: insert.location)
             }
+            
+            if let upsertClause = values.upsertClause {
+                typeCheck(upsertClause: upsertClause, table: table)
+            }
         } else {
             // TODO: Using 'DEFALUT VALUES' make sure all columns
             // TODO: actually have default values or null
@@ -606,6 +610,55 @@ extension StmtTypeChecker {
         }
         
         return resultColumns
+    }
+    
+    mutating func typeCheck(upsertClause: UpsertClauseSyntax, table: Table) {
+        if let conflictTarget = upsertClause.confictTarget {
+            // Make sure all columns exist
+            for column in conflictTarget.columns {
+                guard let name = column.columnName,
+                      table.columns[name.value].isEmpty else { continue }
+                diagnostics.add(.columnDoesNotExist(name))
+            }
+        }
+        
+        // In new env since we are inserting excluded
+        inNewEnvironment(extendCurrentEnv: true) { typeChecker in
+            // Insert the table aliased to `excluded` to allow access
+            // like `SET foo = excluded.foo`.
+            let excluded = table.aliased(to: "excluded")
+            typeChecker.importTable(excluded)
+            
+            switch upsertClause.doAction {
+            case .nothing:
+                break
+            case .updateSet(let sets, let `where`):
+                for set in sets {
+                    let (_, name) = typeChecker.typeCheck(set.expr)
+                    
+                    switch set.column {
+                    case .single(let column):
+                        // Single column being set, suggest the name for the param
+                        // if it is one.
+                        typeChecker.nameInferrer.suggest(name: column.value, for: name)
+                        
+                        if table.columns[column.value].isEmpty {
+                            typeChecker.diagnostics.add(.columnDoesNotExist(column))
+                        }
+                    case .list(let columns):
+                        for column in columns {
+                            if table.columns[column.value].isEmpty {
+                                typeChecker.diagnostics.add(.columnDoesNotExist(column))
+                            }
+                        }
+                    }
+                }
+                
+                if let `where` {
+                    _ = typeChecker.typeCheck(`where`)
+                }
+            }
+        }
     }
     
     mutating func typeCheck(update: UpdateStmtSyntax) -> ResultColumns {
@@ -1079,7 +1132,9 @@ extension StmtTypeChecker {
     ) {
         // Insert real name not alias. These are used later for observation tracking
         // so an alias is no good since it will always be the actual table name.
-        usedTableNames.insert(table.name.name)
+        if table.name.schema == .main {
+            usedTableNames.insert(table.name.name)
+        }
         
         // Table is always accessible by it's name even if aliased
         env.import(

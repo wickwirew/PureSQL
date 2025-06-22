@@ -120,3 +120,20 @@ INSERT INTO user (id, name, description) VALUES (?, ?, ?);
 -- CHECK:     TABLES
 -- CHECK:       user
 INSERT INTO user (name, id) VALUES (?, ?);
+
+-- CHECK: SIGNATURE
+-- CHECK:   PARAMETERS
+-- CHECK:     PARAMETER
+-- CHECK:       TYPE INTEGER?
+-- CHECK:       INDEX 1
+-- CHECK:       NAME id
+-- CHECK:     PARAMETER
+-- CHECK:       TYPE TEXT?
+-- CHECK:       INDEX 2
+-- CHECK:       NAME name
+-- CHECK:   TABLES
+-- CHECK:     user
+INSERT INTO user (id, name) VALUES (?, ?)
+ON CONFLICT (id) DO UPDATE
+SET name = excluded.name
+WHERE excluded.name = 'bob';
