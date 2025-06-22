@@ -377,14 +377,15 @@ ORDER BY rank;
 ## Upcoming Features
 Otter is a young project and there are a lot of new features and functionality I want to add.
 Below are some idea that I would love input on!
-* Support for multiple statements in a single query
-* Kotlin library/generation
-  * Generating Kotlin would allow SQLite based apps to basically share their model/data layer
-* User defined functions
-  * SQLite supports custom functions which are a great way to share common logic amongst queries
-* Queries with multiple statements
-  * Would allow for easier loading of more complex models that have many joins
-  * Want to allow other queries to be called from within the body to help centrize logic.
+- Support for multiple statements in a single query
+- Kotlin library/generation
+  - Generating Kotlin would allow SQLite based apps to basically share their model/data layer
+- User defined functions
+  - SQLite supports custom functions which are a great way to share common logic amongst queries
+- Queries with multiple statements
+  - Would allow for easier loading of more complex models that have many joins
+  - Want to allow other queries to be called from within the body to help centrize logic.
+- Postgres support for server side swift ❤️
 
 ## Contributions
 Contributions are welcome and encouraged! Feel free to make a PR or open an issue. If the change is large please open an issue first to make sure the change is desired.
