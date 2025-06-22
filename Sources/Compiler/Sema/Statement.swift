@@ -131,7 +131,7 @@ public struct ResultColumns: Sendable {
     
     /// The columns as a row type.
     public var type: Type {
-        return .row(.fixed(allColumns.map(\.value)))
+        return .row(.fixed(allColumns.map(\.value.type)))
     }
     
     /// Whether or not there are any columns returned
@@ -161,7 +161,7 @@ public struct ResultColumns: Sendable {
     public func mapTypes(_ transform: (Type) -> Type) -> ResultColumns {
         return ResultColumns(
             chunks: chunks.map { chunk in
-                Chunk(columns: chunk.columns.mapValues(transform), table: chunk.table)
+                Chunk(columns: chunk.columns.mapValues{ $0.mapType(transform) }, table: chunk.table)
             }
         )
     }

@@ -16,7 +16,7 @@ let package = Package(
     products: [
         .library(name: "Otter", targets: ["Otter"]),
         .library(name: "Compiler", targets: ["Compiler"]),
-        .executable(name: "otter", targets: ["OtterCLI"]),
+        .executable(name: "OtterCLI", targets: ["OtterCLI"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-syntax.git", from: "601.0.1"),

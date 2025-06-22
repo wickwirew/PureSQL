@@ -469,7 +469,7 @@ extension StmtTypeChecker {
         // to say this stays for now but I dont like it.
         inNewEnvironment(extendCurrentEnv: true) { typeChecker in
             for column in resultColumns.allColumns where !typeChecker.env.hasColumn(named: column.key) {
-                typeChecker.env.import(column: column.key, with: column.value)
+                typeChecker.env.import(column: column.key, with: column.value.type)
             }
             
             for term in select.orderBy {
@@ -524,7 +524,7 @@ extension StmtTypeChecker {
                 let type = inferenceState.solution(for: type)
                 inferenceState.unify(
                     type,
-                    with: inferenceState.solution(for: secondColumns[index]),
+                    with: inferenceState.solution(for: secondColumns[index].type),
                     at: location
                 )
                 index += 1
@@ -555,7 +555,7 @@ extension StmtTypeChecker {
                     continue
                 }
                 
-                columnTypes.append(def)
+                columnTypes.append(def.type)
             }
             inputType = .row(.fixed(columnTypes))
         } else {
@@ -604,7 +604,7 @@ extension StmtTypeChecker {
                     return .empty
                 }
                 
-                inferenceState.unify(column, with: valueType, at: set.location)
+                inferenceState.unify(column.type, with: valueType, at: set.location)
             // SET (column1, column2) = (value1, value2)
             case let .list(columnNames):
                 // TODO: Names will not be inferred here. Names only handles
@@ -664,7 +664,7 @@ extension StmtTypeChecker {
         
         for name in names {
             if let column = table.columns[name.value].first {
-                columns.append(column)
+                columns.append(column.type)
             } else {
                 diagnostics.add(.columnDoesNotExist(name))
                 columns.append(.error)
@@ -687,7 +687,7 @@ extension StmtTypeChecker {
                 
                 let name = alias?.identifier.value ?? names.proposedName ?? "column\(offset + 1)"
                 
-                resultColumns.append(type, for: name)
+                resultColumns.append(Column(type: type), for: name)
             case .all:
                 resultColumns.append(contentsOf: sourceTable.columns)
             }
@@ -726,7 +726,8 @@ extension StmtTypeChecker {
             recursiveCte = Table(
                 name: cteName,
                 columns: cte.columns.reduce(into: [:]) { columns, name in
-                    columns.append(inferenceState.freshTyVar(for: name), for: name.value)
+                    let type = inferenceState.freshTyVar(for: name)
+                    columns.append(Column(type: type), for: name.value)
                 },
                 kind: .cte
             )
@@ -888,7 +889,7 @@ extension StmtTypeChecker {
                 let (type, names) = typeCheck(expr)
                 let name = alias?.identifier.value ?? names.proposedName ?? "column\(offset + 1)"
                 
-                columns.append(type, for: name)
+                columns.append(Column(type: type), for: name)
                 nameInferrer.suggest(name: name, for: names)
                 
                 // We selected a single column, so clear out the table
@@ -1085,7 +1086,9 @@ extension StmtTypeChecker {
                     tableColumns: columns,
                     tableName: createTable.name.value
                 )
-                columns.append(type, for: name.value)
+                let isGenerated = def.constraints.contains { $0.isGenerated }
+                let column = Column(type: type, isGenerated: isGenerated)
+                columns.append(column, for: name.value)
             }
             
             validateTableConstraints(
@@ -1148,7 +1151,9 @@ extension StmtTypeChecker {
                 tableColumns: table.columns,
                 tableName: table.name.name
             )
-            table.columns.append(newType, for: column.name.value)
+            let isGenerated = column.constraints.contains { $0.isGenerated }
+            let newColumn = Column(type: newType, isGenerated: isGenerated)
+            table.columns.append(newColumn, for: column.name.value)
         case let .dropColumn(column):
             table.columns = Columns(table.columns.filter { $0.key != column.value })
         }
@@ -1389,7 +1394,7 @@ extension StmtTypeChecker {
                     ? .nominal(typeName)
                     : .optional(.nominal(typeName))
                 
-                columns.append(type, for: name.value)
+                columns.append(Column(type: type), for: name.value)
             case .fts5Option:
                 break // Nothing to do, maybe validate these in the future
             case .unknown:

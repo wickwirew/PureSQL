@@ -11,7 +11,7 @@ import XCTest
 
 class CompilerTests: XCTestCase {
     func testCheckSimpleSelects() throws {
-        try checkQueries(compile: "CompileSimpleSelects", dump: true)
+        try checkQueries(compile: "CompileSimpleSelects")
     }
 
     func testSelectWithJoins() throws {
@@ -31,7 +31,7 @@ class CompilerTests: XCTestCase {
     }
     
     func testTableSchema() throws {
-        try checkSchema(compile: "CompileTableSchema")
+        try checkSchema(compile: "CompileTableSchema", dump: true)
     }
     
     func testDropTable() throws {
@@ -99,7 +99,7 @@ struct CheckSignature: Checkable {
     init(_ statement: Statement) {
         self.parameters = statement.parameters
         self.outputChunks = statement.resultColumns.chunks.map { chunk in
-            Chunk(output: chunk.columns.map{ "\($0) \($1)" }, outputTable: chunk.table)
+            Chunk(output: chunk.columns.map{ "\($0) \($1.type)" }, outputTable: chunk.table)
         }
         self.tables = statement.usedTableNames.sorted()
     }

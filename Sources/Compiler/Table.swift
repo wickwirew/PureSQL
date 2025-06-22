@@ -37,7 +37,7 @@ public struct Table: Sendable, Equatable {
     }
     
     var type: Type {
-        return .row(.fixed(columns.map(\.value)))
+        return .row(.fixed(columns.map(\.value.type)))
     }
     
     /// A table to be returned incase of an error in type checking
@@ -62,7 +62,7 @@ public struct Table: Sendable, Equatable {
     /// transformations needed
     func mapTypes(_ transform: (Type) -> Type) -> Table {
         var copy = self
-        copy.columns = columns.mapValues(transform)
+        copy.columns = columns.mapValues { $0.mapType(transform) }
         return copy
     }
 }

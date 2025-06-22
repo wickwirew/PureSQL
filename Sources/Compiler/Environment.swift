@@ -182,7 +182,7 @@ struct Environment {
     ) {
         let importedTable = ImportedTable(
             table: isOptional ? table.mapTypes { $0.coerceToOptional() } : table,
-            additionalColumns: table.kind == .fts5 ? ["rank": .real] : nil
+            additionalColumns: table.kind == .fts5 ? ["rank": Column(type: .real)] : nil
         )
         
         if let alias {
@@ -199,21 +199,21 @@ struct Environment {
         // Don't insert columns into detached if they required qualified access
         guard !qualifiedAccessOnly else { return }
         
-        for (column, type) in table.columns {
-            insert(detached: column, type: type, isOptional: isOptional)
+        for (name, column) in table.columns {
+            insert(detached: name, type: column.type, isOptional: isOptional)
         }
         
         if let additionalColumns = importedTable.additionalColumns {
-            for (column, type) in additionalColumns {
-                insert(detached: column, type: type, isOptional: isOptional)
+            for (name, column) in additionalColumns {
+                insert(detached: name, type: column.type, isOptional: isOptional)
             }
         }
     }
     
     /// Imports all columns into the environment
     mutating func `import`(columns: Columns) {
-        for (column, type) in columns {
-            insert(detached: column, type: type, isOptional: false)
+        for (name, column) in columns {
+            insert(detached: name, type: column.type, isOptional: false)
         }
     }
     
@@ -314,7 +314,7 @@ struct Environment {
         let entries = importedTable.table.columns[column]
         
         if let column = entries.first {
-            return LookupResult(column, isAmbiguous: forceAmbiguous || entries.count > 1)
+            return LookupResult(column.type, isAmbiguous: forceAmbiguous || entries.count > 1)
         }
         
         guard let column = importedTable.additionalColumns?[column].first else {
@@ -322,7 +322,7 @@ struct Environment {
             return .columnDoesNotExist(column)
         }
         
-        return LookupResult(column, isAmbiguous: forceAmbiguous)
+        return LookupResult(column.type, isAmbiguous: forceAmbiguous)
     }
     
     /// Inserts a type into the map of detached values.

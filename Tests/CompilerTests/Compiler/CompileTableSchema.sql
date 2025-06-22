@@ -109,9 +109,9 @@ CREATE TABLE allValidTypes (
 -- CHECK:       KEY foo
 -- CHECK:       VALUE INTEGER?
 -- CHECK:       KEY bar
--- CHECK:       VALUE INTEGER?
+-- CHECK:       VALUE INTEGER? generated
 -- CHECK:       KEY baz
--- CHECK:       VALUE INTEGER?
+-- CHECK:       VALUE INTEGER? generated
 -- CHECK:       KEY ref
 -- CHECK:       VALUE INTEGER?
 -- CHECK:   KIND normal

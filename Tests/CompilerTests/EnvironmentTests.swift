@@ -74,7 +74,7 @@ struct EnvironmentTests {
     }
     
     @Test func optionalColumnsAreNotCoercedToDoubleOptional() async throws {
-        let table = table(name: "foo", columns: ["bar": .optional(.integer)])
+        let table = table(name: "foo", columns: ["bar": Column(type: .optional(.integer))])
         var env = Environment()
         env.import(table: table, isOptional: true)
         
@@ -115,7 +115,11 @@ struct EnvironmentTests {
     private func table(
         name: Substring,
         schema: SchemaName? = .main,
-        columns: Columns = ["foo": .text, "bar": .integer, "baz": .text],
+        columns: Columns = [
+            "foo": Column(type: .text),
+            "bar": Column(type: .integer),
+            "baz": Column(type: .text)
+        ],
         kind: Table.Kind = .normal
     ) -> Table {
         return Table(

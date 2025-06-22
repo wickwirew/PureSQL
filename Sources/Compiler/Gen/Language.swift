@@ -118,7 +118,7 @@ extension Language {
             name: table.name.name.capitalizedFirst,
             fields: table.columns.reduce(into: [:]) { fields, column in
                 let name = column.key.description
-                let type = column.value
+                let type = column.value.type
                 fields[name] = GeneratedField(
                     name: name,
                     type: .builtin(
@@ -191,7 +191,7 @@ extension Language {
         }
         
         // Make sure there is at least one column else return void
-        guard let firstColumn = firstResultColumns.columns.values.first else {
+        guard let firstColumn = firstResultColumns.columns.values.first?.type else {
             return nil
         }
         
@@ -219,7 +219,7 @@ extension Language {
                 } else {
                     for column in chunk.columns {
                         let name = column.key.description
-                        let type = column.value
+                        let type = column.value.type
                         fields[name] = GeneratedField(
                             name: name,
                             type: .builtin(

@@ -40,4 +40,11 @@ struct ColumnConstraintSyntax: Syntax {
         default: return false
         }
     }
+    
+    var isGenerated: Bool {
+        switch kind {
+        case .generated: return true
+        default: return false
+        }
+    }
 }

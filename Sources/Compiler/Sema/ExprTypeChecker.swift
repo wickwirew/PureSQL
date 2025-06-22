@@ -63,7 +63,7 @@ struct ExprTypeChecker {
             pragmas: pragmas
         )
         let signature = typeChecker.signature(for: select)
-        let type: Type = .row(.fixed(signature.output.allColumns.map(\.value)))
+        let type: Type = .row(.fixed(signature.output.allColumns.map(\.value.type)))
         // Make sure to update our inference state
         inferenceState = typeChecker.inferenceState
         // Using typeCheckers `allDiagnostics` would include diags
