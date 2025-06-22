@@ -1,12 +1,12 @@
 //
 //  NameTests.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 3/5/25.
 //
 
-import Testing
 @testable import Compiler
+import Testing
 
 @Test func testPluralize() async throws {
     #expect(Name.some("id").pluralize() == .some("ids"))

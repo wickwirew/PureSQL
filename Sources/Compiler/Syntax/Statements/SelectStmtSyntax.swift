@@ -1,6 +1,6 @@
 //
 //  SelectStmtSyntax.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 5/7/25.
 //

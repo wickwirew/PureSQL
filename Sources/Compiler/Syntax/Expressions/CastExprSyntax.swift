@@ -1,6 +1,6 @@
 //
 //  CastExprSyntax.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 5/7/25.
 //
@@ -10,11 +10,11 @@ struct CastExprSyntax: ExprSyntax, CustomStringConvertible {
     let expr: any ExprSyntax
     let ty: TypeNameSyntax
     let location: SourceLocation
-    
+
     var description: String {
         return "CAST(\(expr) AS \(ty))"
     }
-    
+
     func accept<V: ExprSyntaxVisitor>(visitor: inout V) -> V.ExprOutput {
         return visitor.visit(self)
     }

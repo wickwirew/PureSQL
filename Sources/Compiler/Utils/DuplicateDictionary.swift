@@ -1,6 +1,6 @@
 //
 //  DuplicateDictionary.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 5/31/25.
 //
@@ -19,10 +19,10 @@
 public struct DuplicateDictionary<Key: Hashable, Value> {
     /// All elements of the dictionary appended in order
     @usableFromInline
-    internal var _values: ContiguousArray<_Element>
+    var _values: ContiguousArray<_Element>
     /// A dictionary where each value is located.
     @usableFromInline
-    internal var positions: [Key: Positions]
+    var positions: [Key: Positions]
     
     public typealias Index = Int
     public typealias Element = (key: Key, value: Value)
@@ -68,8 +68,8 @@ public struct DuplicateDictionary<Key: Hashable, Value> {
         var first: Value? {
             return switch positions {
             case .empty: nil
-            case .single(let i): owner._values[i].value
-            case .many(let i): i.first.map { owner._values[$0].value }
+            case let .single(i): owner._values[i].value
+            case let .many(i): i.first.map { owner._values[$0].value }
             }
         }
     }
@@ -93,7 +93,7 @@ public struct DuplicateDictionary<Key: Hashable, Value> {
             return switch self {
             case .empty: 0
             case .single: 1
-            case .many(let i): i.count
+            case let .many(i): i.count
             }
         }
         
@@ -103,9 +103,9 @@ public struct DuplicateDictionary<Key: Hashable, Value> {
             switch self {
             case .empty:
                 self = .single(index)
-            case .single(let existing):
+            case let .single(existing):
                 self = .many([existing, index])
-            case .many(var existing):
+            case var .many(existing):
                 existing.append(index)
                 self = .many(existing)
             }
@@ -124,9 +124,9 @@ public struct DuplicateDictionary<Key: Hashable, Value> {
                 switch positions {
                 case .empty:
                     return nil
-                case .single(let index):
+                case let .single(index):
                     return currentIndex == 0 ? index : nil
-                case .many(let indices):
+                case let .many(indices):
                     guard currentIndex < indices.count else { return nil }
                     return indices[currentIndex]
                 }
@@ -170,7 +170,7 @@ public struct DuplicateDictionary<Key: Hashable, Value> {
     public mutating func append<S: Sequence>(
         contentsOf collection: S
     ) where S.Element == Element {
-        for (key, value) in  collection {
+        for (key, value) in collection {
             append(value, for: key)
         }
     }
@@ -224,14 +224,14 @@ public struct DuplicateDictionary<Key: Hashable, Value> {
         _ transform: (Value) throws -> T
     ) rethrows -> DuplicateDictionary<Key, T> {
         return try DuplicateDictionary<Key, T>(
-            values: ContiguousArray(_values.map{
-                DuplicateDictionary<Key, T>._Element($0.key, try transform($0.value))
+            values: ContiguousArray(_values.map {
+                try DuplicateDictionary<Key, T>._Element($0.key, transform($0.value))
             }),
             positions: positions.reduce(into: [:]) { r, p in
                 r[p.key] = switch p.value {
                 case .empty: .empty
-                case .single(let i): .single(i)
-                case .many(let i): .many(i)
+                case let .single(i): .single(i)
+                case let .many(i): .many(i)
                 }
             }
         )
@@ -301,10 +301,10 @@ extension DuplicateDictionary.Entries: Collection {
         switch positions {
         case .empty:
             preconditionFailure("Index out of bounds")
-        case .single(let i):
+        case let .single(i):
             guard index == 0 else { preconditionFailure("Index out of bounds") }
             return owner._values[i].value
-        case .many(let i):
+        case let .many(i):
             return owner._values[i[index]].value
         }
     }
@@ -326,13 +326,13 @@ extension DuplicateDictionary.Entries: Collection {
     public func index(after i: Index) -> Index { i + 1 }
 }
 
-extension DuplicateDictionary {
+public extension DuplicateDictionary {
     /// All values in the dictionary without their key.
-    public var values: Values {
+    var values: Values {
         Values(dictionary: self)
     }
     
-    public struct Values: Collection {
+    struct Values: Collection {
         public typealias Element = Value
         
         @usableFromInline

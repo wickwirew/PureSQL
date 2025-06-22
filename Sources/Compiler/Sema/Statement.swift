@@ -1,6 +1,6 @@
 //
 //  Statement.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 2/14/25.
 //
@@ -136,12 +136,12 @@ public struct ResultColumns: Sendable {
     
     /// Whether or not there are any columns returned
     public var isEmpty: Bool {
-        return chunks.isEmpty || chunks.allSatisfy { $0.columns.isEmpty }
+        return chunks.isEmpty || chunks.allSatisfy(\.columns.isEmpty)
     }
     
     /// How many columns there are total
     public var count: Int {
-        return chunks.reduce(0, { $0 + $1.columns.count })
+        return chunks.reduce(0) { $0 + $1.columns.count }
     }
     
     /// All of the columns in all of the chunks

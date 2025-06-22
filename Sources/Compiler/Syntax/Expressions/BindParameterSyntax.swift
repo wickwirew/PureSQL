@@ -1,6 +1,6 @@
 //
 //  BindParameterSyntax.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 5/7/25.
 //
@@ -23,9 +23,9 @@ struct BindParameterSyntax: ExprSyntax, Hashable, CustomStringConvertible {
         var name: String? {
             return switch self {
             case .questionMark, .number: nil
-            case .colon(let s): s.description
-            case .at(let s): s.description
-            case .tcl(let s, let suffix): s.map(\.value).joined() + (suffix?.description ?? "")
+            case let .colon(s): s.description
+            case let .at(s): s.description
+            case let .tcl(s, suffix): s.map(\.value).joined() + (suffix?.description ?? "")
             }
         }
     }
@@ -37,10 +37,10 @@ struct BindParameterSyntax: ExprSyntax, Hashable, CustomStringConvertible {
     var description: String {
         return switch kind {
         case .questionMark: "?"
-        case .number(let n): "?\(n)"
-        case .colon(let s): ":\(s)"
-        case .at(let s): "@\(s)"
-        case .tcl(let s, let suffix): "$\(s.map(\.value).joined(separator: "::"))\(suffix.map { "(\($0))" } ?? "")"
+        case let .number(n): "?\(n)"
+        case let .colon(s): ":\(s)"
+        case let .at(s): "@\(s)"
+        case let .tcl(s, suffix): "$\(s.map(\.value).joined(separator: "::"))\(suffix.map { "(\($0))" } ?? "")"
         }
     }
     

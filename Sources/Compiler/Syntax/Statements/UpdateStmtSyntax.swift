@@ -1,6 +1,6 @@
 //
 //  UpdateStmtSyntax.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 5/7/25.
 //
@@ -15,7 +15,7 @@ struct UpdateStmtSyntax: StmtSyntax {
     let whereExpr: (any ExprSyntax)?
     let returningClause: ReturningClauseSyntax?
     let location: SourceLocation
-    
+
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
         return visitor.visit(self)
     }

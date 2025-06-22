@@ -1,6 +1,6 @@
 //
 //  Either.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 6/7/25.
 //

@@ -1,8 +1,8 @@
 <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/wickwirew/Feather/blob/main/Otter~dark.png?raw=true">
-    <source media="(prefers-color-scheme: light)" srcset="https://github.com/wickwirew/Feather/blob/main/Otter.png?raw=true">
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/wickwirew/Otter/blob/main/Otter~dark.png?raw=true">
+    <source media="(prefers-color-scheme: light)" srcset="https://github.com/wickwirew/Otter/blob/main/Otter.png?raw=true">
     <p align="center">
-      <img alt="Otter" src="https://github.com/wickwirew/Feather/blob/main/Otter.png?raw=true" width=40% height=40%>
+      <img alt="Otter" src="https://github.com/wickwirew/Otter/blob/main/Otter.png?raw=true" width=40% height=40%>
     </p>
 </picture>
 
@@ -116,7 +116,7 @@ Otter supports Swift Package Manager. To install add the following to your `Pack
 let package = Package(
     [...]
     dependencies: [
-        .Package(url: "https://github.com/wickwirew/Feather.git", from: "...")
+        .Package(url: "https://github.com/wickwirew/Otter.git", from: "...")
     ]
 )
 ```

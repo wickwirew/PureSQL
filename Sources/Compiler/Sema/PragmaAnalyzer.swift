@@ -1,18 +1,18 @@
 //
 //  PragmaAnalyzer.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 2/21/25.
 //
 
-public struct FeatherPragmas: OptionSet, Sendable {
+public struct OtterPragmas: OptionSet, Sendable {
     public let rawValue: UInt8
     
     public init(rawValue: UInt8) {
         self.rawValue = rawValue
     }
     
-    public static let requireStrictTables = FeatherPragmas(rawValue: 1 << 0)
+    public static let requireStrictTables = OtterPragmas(rawValue: 1 << 0)
     
     public enum Keys {
         public static let requireStrictTables = "feather_require_strict_tables"
@@ -20,11 +20,11 @@ public struct FeatherPragmas: OptionSet, Sendable {
 }
 
 struct PragmaAnalyzer {
-    private(set) var featherPragmas: FeatherPragmas
+    private(set) var featherPragmas: OtterPragmas
     private var diagnostics = Diagnostics()
     private var isStaticallyTrue = IsStaticallyTrue(allowOnOffYesNo: true)
     
-    init(featherPragmas: FeatherPragmas = FeatherPragmas()) {
+    init(featherPragmas: OtterPragmas = OtterPragmas()) {
         self.featherPragmas = featherPragmas
     }
     
@@ -32,13 +32,13 @@ struct PragmaAnalyzer {
         return diagnostics.merging(isStaticallyTrue.diagnostics)
     }
     
-    func isOn(_ pragma: FeatherPragmas) -> Bool {
+    func isOn(_ pragma: OtterPragmas) -> Bool {
         return featherPragmas.contains(pragma)
     }
     
     mutating func handle(pragma: PragmaStmtSyntax) {
         switch pragma.name.value {
-        case FeatherPragmas.Keys.requireStrictTables:
+        case OtterPragmas.Keys.requireStrictTables:
             guard let expr = pragma.value else {
                 diagnostics.add(.init("Missing value, expected integerean", at: pragma.location))
                 return

@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Otter}",
+            "name": "Debug OtterCLI",
+            "program": "${workspaceFolder:Otter}/.build/debug/OtterCLI",
+            "preLaunchTask": "swift: Build Debug OtterCLI"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Otter}",
+            "name": "Release OtterCLI",
+            "program": "${workspaceFolder:Otter}/.build/release/OtterCLI",
+            "preLaunchTask": "swift: Build Release OtterCLI"
+        }
+    ]
+}

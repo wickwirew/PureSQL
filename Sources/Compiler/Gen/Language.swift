@@ -1,6 +1,6 @@
 //
 //  Language.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 4/28/25.
 //
@@ -66,7 +66,7 @@ extension Language {
         queries: [(String?, [GeneratedQuery])]
     ) {
         let tables = Dictionary(schema.tables.map { ($0.key.name, model(for: $0.value)) }, uniquingKeysWith: { $1 })
-        let queries = queries.map { ($0.map { "\($0)Queries" }, $1.map{ query(for: $0, tables: tables) }) }
+        let queries = queries.map { ($0.map { "\($0)Queries" }, $1.map { query(for: $0, tables: tables) }) }
         return (Array(tables.values), queries)
     }
     
@@ -85,9 +85,9 @@ extension Language {
         // question marks for any input.
         let sql = statement.sourceSegments.map { segment in
             switch segment {
-            case .text(let text):
+            case let .text(text):
                 return text.description
-            case .rowParam(let param):
+            case let .rowParam(param):
                 return interpolatedQuestionMarks(
                     for: statement.parameters.count > 1 ? param.name : "input"
                 )
@@ -185,7 +185,8 @@ extension Language {
         // Output can be mapped to a table struct
         if statement.resultColumns.chunks.count == 1,
            let tableName = firstResultColumns.table,
-            let table = tables[tableName] {
+           let table = tables[tableName]
+        {
             return .model(table)
         }
         
@@ -302,16 +303,16 @@ public enum BuiltinOrGenerated: CustomStringConvertible {
     
     public var description: String {
         switch self {
-        case .builtin(let builtin, let isArray, _):
+        case let .builtin(builtin, isArray, _):
             isArray ? "[\(builtin)]" : builtin
-        case .model(let model):
+        case let .model(model):
             model.name
         }
     }
     
     public func namespaced(to namespace: String) -> String {
         switch self {
-        case .model(let model) where !model.isTable: "\(namespace).\(self)"
+        case let .model(model) where !model.isTable: "\(namespace).\(self)"
         default: description
         }
     }

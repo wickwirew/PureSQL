@@ -1,6 +1,6 @@
 //
 //  SchemaName.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 6/2/25.
 //
@@ -11,11 +11,11 @@
 public enum SchemaName: Hashable, Sendable {
     case main
     case temp
-    
+
     init(isTemp: Bool) {
         self = isTemp ? .temp : .main
     }
-    
+
     init?(_ name: Substring) {
         switch name {
         case "main": self = .main

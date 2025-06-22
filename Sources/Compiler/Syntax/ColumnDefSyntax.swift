@@ -1,6 +1,6 @@
 //
 //  ColumnDefSyntax.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 5/7/25.
 //
@@ -10,7 +10,7 @@ struct ColumnDefSyntax: Syntax {
     var name: IdentifierSyntax
     var type: TypeNameSyntax
     var constraints: [ColumnConstraintSyntax]
-    
+
     var location: SourceLocation {
         let upper = constraints.last?.location ?? type.location
         return name.location.spanning(upper)

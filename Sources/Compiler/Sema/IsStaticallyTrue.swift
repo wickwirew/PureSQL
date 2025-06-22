@@ -1,6 +1,6 @@
 //
 //  IsStaticallyTrue.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 2/21/25.
 //
@@ -77,13 +77,13 @@ struct IsStaticallyTrue: ExprSyntaxVisitor {
     
     mutating func visit(_ expr: LiteralExprSyntax) -> Bool {
         switch expr.kind {
-        case .numeric(let numericSyntax, _):
+        case let .numeric(numericSyntax, _):
             return numericSyntax != 0
         case .true:
             return true
         case .false:
             return false
-        case .string(let text):
+        case let .string(text):
             guard allowOnOffYesNo else {
                 emitNotBoolDiag(for: expr)
                 return false

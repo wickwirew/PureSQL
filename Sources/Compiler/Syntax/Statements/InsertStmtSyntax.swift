@@ -1,6 +1,6 @@
 //
 //  InsertStmtSyntax.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 5/7/25.
 //
@@ -20,7 +20,7 @@ struct InsertStmtSyntax: StmtSyntax, Syntax {
         let id: SyntaxId
         let select: SelectStmtSyntax
         let upsertClause: UpsertClauseSyntax?
-        
+
         var location: SourceLocation {
             let lower = select.location
             let upper = upsertClause?.location ?? select.location
@@ -32,7 +32,7 @@ struct InsertStmtSyntax: StmtSyntax, Syntax {
         let id: SyntaxId
         let kind: Kind
         let location: SourceLocation
-        
+
         enum Kind {
             case replace
             case insert(OrSyntax?)

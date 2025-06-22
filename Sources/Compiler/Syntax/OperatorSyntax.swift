@@ -1,6 +1,6 @@
 //
 //  OperatorSyntax.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 5/7/25.
 //
@@ -10,7 +10,7 @@ struct OperatorSyntax: CustomStringConvertible, Syntax {
     let id: SyntaxId
     let `operator`: Operator
     let location: SourceLocation
-    
+
     var description: String {
         return `operator`.description
     }

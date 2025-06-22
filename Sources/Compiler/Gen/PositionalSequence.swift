@@ -1,6 +1,6 @@
 //
 //  PositionalSequence.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 4/29/25.
 //

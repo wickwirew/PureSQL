@@ -1,6 +1,6 @@
 //
 //  DiagnosticReporter.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 5/3/25.
 //

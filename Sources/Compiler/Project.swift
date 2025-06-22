@@ -1,6 +1,6 @@
 //
 //  Project.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 5/21/25.
 //
@@ -64,7 +64,7 @@ public struct Project {
         
         let latestMigration = try fileSystem.files(at: migrationsDirectory)
             .compactMap { $0.split(separator: ".").first }
-            .compactMap{ Int($0) }
+            .compactMap { Int($0) }
             .sorted(by: >)
             .first ?? 0
         

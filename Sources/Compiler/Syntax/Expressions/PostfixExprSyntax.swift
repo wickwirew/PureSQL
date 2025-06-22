@@ -1,6 +1,6 @@
 //
 //  PostfixExprSyntax.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 5/7/25.
 //
@@ -10,11 +10,11 @@ struct PostfixExprSyntax: ExprSyntax {
     let id: SyntaxId
     let lhs: any ExprSyntax
     let `operator`: OperatorSyntax
-    
+
     var location: SourceLocation {
         return lhs.location.spanning(`operator`.location)
     }
-    
+
     func accept<V: ExprSyntaxVisitor>(visitor: inout V) -> V.ExprOutput {
         return visitor.visit(self)
     }

@@ -1,6 +1,6 @@
 //
 //  TableOptionsSyntax.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 5/7/25.
 //
@@ -12,11 +12,11 @@ struct TableOptionsSyntax: Syntax, Sendable, CustomStringConvertible {
 
     struct Kind: OptionSet {
         let rawValue: UInt8
-        
+
         init(rawValue: UInt8) {
             self.rawValue = rawValue
         }
-        
+
         static let withoutRowId = Kind(rawValue: 1 << 0)
         static let strict = Kind(rawValue: 1 << 1)
     }

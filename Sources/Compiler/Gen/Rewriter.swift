@@ -1,6 +1,6 @@
 //
 //  Rewriter.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 2/22/25.
 //
@@ -108,7 +108,7 @@ struct Rewriter {
 extension Rewriter: StmtSyntaxVisitor {
     func visit(_ stmt: CreateTableStmtSyntax) -> [Range<Substring.Index>] {
         switch stmt.kind {
-        case .columns(let columns, _, _):
+        case let .columns(columns, _, _):
             return columns.values.compactMap { $0.type.alias?.location.range }
         case .select:
             return []
@@ -117,7 +117,7 @@ extension Rewriter: StmtSyntaxVisitor {
     
     func visit(_ stmt: AlterTableStmtSyntax) -> [Range<Substring.Index>] {
         return switch stmt.kind {
-        case .addColumn(let c): c.type.alias.map { [$0.location.range] } ?? []
+        case let .addColumn(c): c.type.alias.map { [$0.location.range] } ?? []
         default: []
         }
     }

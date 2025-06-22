@@ -1,6 +1,6 @@
 //
 //  CreateTriggerStmtSyntax.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 5/17/25.
 //

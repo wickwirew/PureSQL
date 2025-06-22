@@ -1,6 +1,6 @@
 //
 //  CreateIndexStmtSyntax.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 5/7/25.
 //
@@ -15,7 +15,7 @@ struct CreateIndexStmtSyntax: StmtSyntax {
     let indexedColumns: [IndexedColumnSyntax]
     let whereExpr: ExprSyntax?
     let location: SourceLocation
-    
+
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
         return visitor.visit(self)
     }

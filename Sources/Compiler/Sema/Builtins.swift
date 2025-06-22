@@ -1,6 +1,6 @@
 //
 //  Builtins.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 3/3/25.
 //
@@ -20,20 +20,21 @@ enum Builtins {
             if let literal = expr as? LiteralExprSyntax, case let .numeric(_, isInt) = literal.kind { return isInt }
             return false
         }
-        
+
         // If both sides are integers than the output will always be an integer
         // and not be floating point so emit a warning.
         guard types.count == 2,
-                exprs.count == 2,
-                isInt(types[0], expr: exprs[0]),
-                isInt(types[1], expr: exprs[1]) else { return }
-        
+              exprs.count == 2,
+              isInt(types[0], expr: exprs[0]),
+              isInt(types[1], expr: exprs[1]) else { return }
+
         diagnostics.add(.init(
             "Integer division, result will not be floating point. 'CAST' or add '.0'",
             level: .warning,
             at: location
         ))
     }
+
     static let comparison = Function(.var(0), .var(0), returning: .boolean)
     static let `in` = Function(.var(0), .row(.unknown(.var(0))), returning: .boolean)
     static let concatOp = Function(.var(0), .var(1), returning: .text)
@@ -49,13 +50,13 @@ enum Builtins {
     static let functions: OrderedDictionary<Substring, Function> = {
         // TODO: Clean this up. SQLite isnt casing dependant but we are at the moment.
         // TODO: So insert each function twice, under the lower and upper cased name.
-        
+
         var functions = baseFunctions
-        
+
         for (name, fn) in baseFunctions {
             functions[name.uppercased()[...]] = fn
         }
-        
+
         return functions
     }()
 
@@ -148,7 +149,7 @@ enum Builtins {
                   case let .string(second) = (args[1] as? LiteralExprSyntax)?.kind,
                   first == "%s",
                   second == "now" else { return }
-            
+
             diagnostics.add(.init(
                 "Function returns the seconds as TEXT, not an INTEGER. Use unixepoch() instead",
                 level: .warning,

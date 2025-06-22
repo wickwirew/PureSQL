@@ -1,6 +1,6 @@
 //
-//  DropTriggerStmt.swift
-//  Feather
+//  DropTriggerStmtSyntax.swift
+//  Otter
 //
 //  Created by Wes Wickwire on 5/17/25.
 //
@@ -11,7 +11,7 @@ struct DropTriggerStmtSyntax: StmtSyntax {
     let ifExists: Bool
     let schemaName: IdentifierSyntax?
     let triggerName: IdentifierSyntax
-    
+
     func accept<V>(visitor: inout V) -> V.StmtOutput where V : StmtSyntaxVisitor {
         visitor.visit(self)
     }

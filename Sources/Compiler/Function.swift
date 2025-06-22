@@ -1,6 +1,6 @@
 //
 //  Function.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 6/7/25.
 //
@@ -50,7 +50,6 @@ struct Function: Sendable {
         if let result = result.typeVariable {
             genericTypes.append(result)
         }
-        
         
         self.genericTypes = genericTypes.distinct()
         self.params = params

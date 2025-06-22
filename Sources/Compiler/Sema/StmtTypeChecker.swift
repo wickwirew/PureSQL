@@ -36,14 +36,14 @@ struct StmtTypeChecker {
     /// Its a `Set` to not bring in duplicates
     private(set) var usedTableNames: Set<Substring> = []
     
-    private let pragmas: FeatherPragmas
+    private let pragmas: OtterPragmas
     
     init(
         env: Environment = Environment(),
         schema: Schema,
         ctes: [Substring: Table] = [:],
         inferenceState: InferenceState = InferenceState(),
-        pragmas: FeatherPragmas
+        pragmas: OtterPragmas
     ) {
         self.env = env
         self.schema = schema
@@ -156,9 +156,9 @@ struct StmtTypeChecker {
         for identifier: IdentifierSyntax
     ) -> Value? {
         switch result {
-        case .success(let value):
+        case let .success(value):
             return value
-        case .ambiguous(let value):
+        case let .ambiguous(value):
             diagnostics.add(.ambiguous(identifier.value, at: identifier.location))
             return value
         case .columnDoesNotExist:
@@ -300,7 +300,7 @@ extension StmtTypeChecker: StmtSyntaxVisitor {
         schema[name] = Table(
             name: name,
             columns: columns,
-            primaryKey: [/* In the future we can analyze the select to see if we can do better */],
+            primaryKey: [ /* In the future we can analyze the select to see if we can do better */ ],
             kind: .view
         )
         
@@ -724,14 +724,14 @@ extension StmtTypeChecker {
         let recursiveCte: Table?
         if recursive {
             recursiveCte = Table(
-               name: cteName,
-               columns: cte.columns.reduce(into: [:]) { columns, name in
-                   columns.append(inferenceState.freshTyVar(for: name), for: name.value)
-               },
-               kind: .cte
-           )
+                name: cteName,
+                columns: cte.columns.reduce(into: [:]) { columns, name in
+                    columns.append(inferenceState.freshTyVar(for: name), for: name.value)
+                },
+                kind: .cte
+            )
            
-           ctes[cteName.name] = recursiveCte
+            ctes[cteName.name] = recursiveCte
         } else {
             recursiveCte = nil
         }
@@ -1101,8 +1101,9 @@ extension StmtTypeChecker {
                 kind: .normal
             )
             
-            if pragmas.contains(.requireStrictTables)
-                && !options.kind.contains(.strict) {
+            if pragmas.contains(.requireStrictTables),
+               !options.kind.contains(.strict)
+            {
                 diagnostics.add(.init(
                     "Missing STRICT table option",
                     at: createTable.location,
@@ -1159,7 +1160,7 @@ extension StmtTypeChecker {
         let tableName = qualifedName(for: dropTable.tableName)
         let tableExists = schema[tableName] != nil
         
-        if !tableExists && !dropTable.ifExists {
+        if !tableExists, !dropTable.ifExists {
             diagnostics.add(.tableDoesNotExist(dropTable.tableName.name))
         }
         
@@ -1197,16 +1198,16 @@ extension StmtTypeChecker {
                 // Technically you can have a NULL primary key but I don't
                 // think people actually do that...
                 isNotNullable = true
-            case .check(let expr):
+            case let .check(expr):
                 inNewEnvironment { typeChecker in
                     typeChecker.env.import(columns: tableColumns)
                     _ = typeChecker.typeCheck(expr)
                 }
-            case .default(let expr):
+            case let .default(expr):
                 inNewEnvironment { typeChecker in
                     _ = typeChecker.typeCheck(expr)
                 }
-            case .foreignKey(let fk):
+            case let .foreignKey(fk):
                 if fk.foreignTable.value == tableName {
                     for foreignColumn in fk.foreignColumns {
                         // Column constraints can reference the column they are
@@ -1226,7 +1227,7 @@ extension StmtTypeChecker {
                 } else {
                     diagnostics.add(.tableDoesNotExist(fk.foreignTable))
                 }
-            case .generated(let expr, _):
+            case let .generated(expr, _):
                 inNewEnvironment { typeChecker in
                     typeChecker.env.import(columns: tableColumns)
                     _ = typeChecker.typeCheck(expr)
@@ -1290,7 +1291,7 @@ extension StmtTypeChecker {
         let byColumnConstraints: [IdentifierSyntax]
         if case let .columns(columns, _, _) = stmt.kind {
             byColumnConstraints = columns.values
-                .filter{ $0.constraints.contains(where: \.isPkConstraint) }
+                .filter { $0.constraints.contains(where: \.isPkConstraint) }
                 .map(\.name)
         } else {
             // Due to parsing this should never be allowed to happen but easy to check
@@ -1314,7 +1315,7 @@ extension StmtTypeChecker {
             diagnostics.add(.alreadyHasPrimaryKey(stmt.name.value, at: constraint.1.location))
         }
         
-        if !byColumnConstraints.isEmpty && byTableConstraints.isEmpty {
+        if !byColumnConstraints.isEmpty, byTableConstraints.isEmpty {
             return byColumnConstraints.map(\.value)
         } else {
             // Make sure the columns actually exist since they are define afterwards
@@ -1341,12 +1342,12 @@ extension StmtTypeChecker {
     ) {
         for constraint in constraints {
             switch constraint.kind {
-            case .check(let expr):
+            case let .check(expr):
                 inNewEnvironment { typeChecker in
                     typeChecker.env.import(columns: columns)
                     _ = typeChecker.typeCheck(expr)
                 }
-            case .foreignKey(let fkColumns, let fkClause):
+            case let .foreignKey(fkColumns, fkClause):
                 // Make sure listed columns exist
                 for column in fkColumns {
                     guard !columns.contains(key: column.value) else { continue }

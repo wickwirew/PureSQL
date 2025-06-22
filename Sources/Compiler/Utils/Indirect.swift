@@ -1,6 +1,6 @@
 //
 //  Indirect.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 1/13/25.
 //
@@ -13,11 +13,11 @@ final class Indirect<Wrapped> {
     init(_ wrappedValue: Wrapped) {
         self.wrappedValue = wrappedValue
     }
-    
+
     init(wrappedValue: Wrapped) {
         self.wrappedValue = wrappedValue
     }
-    
+
     var value: Wrapped {
         self.wrappedValue
     }

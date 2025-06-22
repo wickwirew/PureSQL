@@ -1,6 +1,6 @@
 //
 //  QualifiedName.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 6/2/25.
 //
@@ -14,12 +14,12 @@ public struct QualifiedName: Hashable, Sendable, CustomStringConvertible {
     /// Tables like CTE's do not have a schema so
     /// it needs to be optional.
     public let schema: SchemaName?
-    
+
     public init(name: Substring, schema: SchemaName?) {
         self.name = name
         self.schema = schema
     }
-    
+
     public var description: String {
         return if let schema {
             "\(schema).\(name)"

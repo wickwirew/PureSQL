@@ -1,6 +1,6 @@
 //
 //  ColumnExprSyntax.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 5/7/25.
 //
@@ -17,15 +17,15 @@ struct ColumnExprSyntax: ExprSyntax, CustomStringConvertible {
         
         var description: String {
             return switch self {
-            case .column(let c): c.description
+            case let .column(c): c.description
             case .all: "*"
             }
         }
         
         var location: SourceLocation {
             return switch self {
-            case .column(let c): c.location
-            case .all(let l): l
+            case let .column(c): c.location
+            case let .all(l): l
             }
         }
     }

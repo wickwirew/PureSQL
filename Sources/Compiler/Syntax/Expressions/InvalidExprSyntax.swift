@@ -1,6 +1,6 @@
 //
 //  InvalidExprSyntax.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 5/7/25.
 //
@@ -10,11 +10,11 @@
 struct InvalidExprSyntax: ExprSyntax, CustomStringConvertible {
     let id: SyntaxId
     let location: SourceLocation
-    
+
     var description: String {
         return "<<invalid>>"
     }
-    
+
     func accept<V>(visitor: inout V) -> V.ExprOutput where V : ExprSyntaxVisitor {
         return visitor.visit(self)
     }

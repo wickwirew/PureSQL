@@ -1,6 +1,6 @@
 //
 //  Type.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 12/17/24.
 //
@@ -46,7 +46,7 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
     static let boolean: Type = .alias(.integer, .hint(.bool))
     
     static let validTypeNames: Set<Substring> = [
-        "TEXT", "INT", "INTEGER", "REAL", "BLOB", "ANY"
+        "TEXT", "INT", "INTEGER", "REAL", "BLOB", "ANY",
     ]
     
     /// An alias for a SQL type. e.g. `INTEGER AS Bool`
@@ -73,8 +73,8 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
         
         public var description: String {
             switch self {
-            case .explicit(let type): type.description
-            case .hint(let hint): hint.description
+            case let .explicit(type): type.description
+            case let .hint(hint): hint.description
             }
         }
     }
@@ -97,8 +97,8 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
     /// The underlying root inner type
     var root: Type {
         return switch self {
-        case .alias(let t, _): t.root
-        case .optional(let t): t.root
+        case let .alias(t, _): t.root
+        case let .optional(t): t.root
         default: self
         }
     }
@@ -115,7 +115,7 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
     var isOptional: Bool {
         switch self {
         case .nominal, .error, .row, .fn, .var: false
-        case .alias(let t, _): t.isOptional
+        case let .alias(t, _): t.isOptional
         case .optional: true
         }
     }

@@ -23,14 +23,14 @@ struct ExprTypeChecker {
     /// Any table that is used
     private(set) var usedTableNames: Set<Substring> = []
     
-    private let pragmas: FeatherPragmas
+    private let pragmas: OtterPragmas
     
     init(
         inferenceState: InferenceState,
         env: Environment,
         schema: Schema,
         ctes: [Substring: Table],
-        pragmas: FeatherPragmas
+        pragmas: OtterPragmas
     ) {
         self.inferenceState = inferenceState
         self.env = env
@@ -80,9 +80,9 @@ struct ExprTypeChecker {
         name: Substring
     ) -> Value? {
         switch result {
-        case .success(let value):
+        case let .success(value):
             return value
-        case .ambiguous(let value):
+        case let .ambiguous(value):
             diagnostics.add(.ambiguous(name, at: location))
             return value
         case let .columnDoesNotExist(column):
@@ -149,7 +149,7 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
             } else {
                 return .row(.fixed(env.allColumnTypes))
             }
-        case .column(let column):
+        case let .column(column):
             guard let column = value(
                 from: env.resolve(
                     column: column.value,

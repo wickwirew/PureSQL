@@ -1,6 +1,6 @@
 //
 //  CreateTableStmtSyntax.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 5/7/25.
 //
@@ -17,17 +17,17 @@ struct CreateTableStmtSyntax: StmtSyntax {
     let location: SourceLocation
 
     typealias Columns = OrderedDictionary<IdentifierSyntax, ColumnDefSyntax>
-    
+
     var constraints: [TableConstraintSyntax]? {
         guard case let .columns(_, constraints, _) = kind else { return nil }
         return constraints
     }
-    
+
     var options: TableOptionsSyntax? {
         guard case let .columns(_, _, options) = kind else { return nil }
         return options
     }
-    
+
     enum Kind {
         case select(SelectStmtSyntax)
         case columns(Columns, constraints: [TableConstraintSyntax], options: TableOptionsSyntax)

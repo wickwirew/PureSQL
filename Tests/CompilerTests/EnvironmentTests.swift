@@ -1,12 +1,12 @@
 //
 //  EnvironmentTests.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 6/1/25.
 //
 
-import Testing
 @testable import Compiler
+import Testing
 
 @Suite
 struct EnvironmentTests {

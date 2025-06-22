@@ -1,6 +1,6 @@
 //
 //  SourceLocation.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 5/3/25.
 //
@@ -49,8 +49,8 @@ public struct SourceLocation: Hashable, Sendable {
     }
 }
 
-extension String {
-    public subscript(_ location: SourceLocation) -> Substring {
+public extension String {
+    subscript(_ location: SourceLocation) -> Substring {
         return self[location.range]
     }
 }

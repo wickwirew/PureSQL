@@ -5,12 +5,12 @@ import CompilerPluginSupport
 import PackageDescription
 
 let package = Package(
-    name: "Feather",
+    name: "Otter",
     platforms: [.macOS(.v10_15), .iOS(.v13), .tvOS(.v13), .watchOS(.v6), .macCatalyst(.v13)],
     products: [
-        .library(name: "Feather", targets: ["Feather"]),
+        .library(name: "Otter", targets: ["Otter"]),
         .library(name: "Compiler", targets: ["Compiler"]),
-        .executable(name: "FeatherCLI", targets: ["FeatherCLI"]),
+        .executable(name: "OtterCLI", targets: ["OtterCLI"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-syntax.git", from: "601.0.1"),
@@ -19,7 +19,7 @@ let package = Package(
     ],
     targets: [
         .macro(
-            name: "FeatherMacros",
+            name: "OtterMacros",
             dependencies: [
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
@@ -28,13 +28,13 @@ let package = Package(
         ),
 
         .target(
-            name: "Feather",
+            name: "Otter",
             dependencies: [
-                "FeatherMacros",
-                .product(name: "Collections", package: "swift-collections")
+                "OtterMacros",
+                .product(name: "Collections", package: "swift-collections"),
             ]
         ),
-        
+
         .target(
             name: "Compiler",
             dependencies: [
@@ -45,16 +45,16 @@ let package = Package(
         ),
 
         .executableTarget(
-            name: "FeatherCLI",
+            name: "OtterCLI",
             dependencies: [
                 "Compiler",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
         ),
-        
+
         .testTarget(
-            name: "FeatherTests",
-            dependencies: ["Feather", "Compiler"]
+            name: "OtterTests",
+            dependencies: ["Otter", "Compiler"]
         ),
 
         .testTarget(

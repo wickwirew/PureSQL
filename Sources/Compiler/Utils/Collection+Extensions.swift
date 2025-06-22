@@ -1,6 +1,6 @@
 //
 //  Collection+Extensions.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 6/8/25.
 //
@@ -20,7 +20,7 @@ extension RangeReplaceableCollection where Self: ExpressibleByArrayLiteral, Elem
         
         // Given that there are probably duplicates, the require capacity
         // is probably lower so we can start out at half
-        let expectedCapacity = count /  2
+        let expectedCapacity = count / 2
         
         // Anything less than 2 isnt worth doing since the first append
         // will bump the capacity to 2.

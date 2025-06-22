@@ -1,6 +1,6 @@
 //
 //  Diagnostic.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 2/16/25.
 //

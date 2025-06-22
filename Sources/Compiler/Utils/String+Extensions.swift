@@ -1,6 +1,6 @@
 //
 //  String+Extensions.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 2/15/25.
 //
@@ -12,7 +12,7 @@ extension StringProtocol {
         let rest = self[index(after: startIndex)..<endIndex]
         return "\(first.uppercased())\(rest)"
     }
-    
+
     var lowercaseFirst: String {
         guard !isEmpty else { return self.description }
         let first = self[startIndex]

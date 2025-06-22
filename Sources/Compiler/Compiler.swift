@@ -1,6 +1,6 @@
 //
 //  Compiler.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 2/21/25.
 //
@@ -96,7 +96,7 @@ public struct Compiler {
 ///
 /// Having a basically a wrapper that just holds onto the source
 /// and kicks off the compilation seemed cleaner.
-fileprivate struct CompilerWithSource {
+private struct CompilerWithSource {
     var schema: Schema
     let source: String
     var pragmas: PragmaAnalyzer

@@ -1,6 +1,6 @@
 //
 //  JoinOperatorSyntax.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 5/7/25.
 //
@@ -9,7 +9,7 @@ struct JoinOperatorSyntax: Syntax {
     let id: SyntaxId
     let kind: Kind
     let location: SourceLocation
-    
+
     enum Kind {
         case comma
         case join

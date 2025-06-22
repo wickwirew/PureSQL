@@ -1,6 +1,6 @@
 //
 //  Checkable.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 2/25/25.
 //

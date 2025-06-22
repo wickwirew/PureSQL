@@ -1,6 +1,6 @@
 //
 //  Driver.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 5/14/25.
 //
@@ -81,14 +81,14 @@ public actor Driver {
         try measure("Generation") {
             // An array of all migrations source code
             let migrations = results.values
-                .filter{ $0.usage == .migration }
+                .filter { $0.usage == .migration }
                 .sorted(by: { $0.fileName < $1.fileName })
                 .flatMap(\.statements)
                 .map(\.sanitizedSource)
             
             // An array of all queries grouped by their file name
             let queries = results.values
-                .filter{ $0.usage == .queries }
+                .filter { $0.usage == .queries }
                 .map { ($0.fileName.split(separator: ".").first?.description, $0.statements) }
             
             let hasDiagnostics = results.contains { $0.value.diagnostics.contains { $0.level == .error } }

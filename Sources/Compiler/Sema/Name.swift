@@ -1,6 +1,6 @@
 //
-//  Names.swift
-//  Feather
+//  Name.swift
+//  Otter
 //
 //  Created by Wes Wickwire on 12/17/24.
 //
@@ -36,13 +36,13 @@ enum Name: Equatable {
     
     static let vowels: Set<Character> = [
         "A", "E", "I", "O", "U",
-        "a", "e", "i", "o", "u"
+        "a", "e", "i", "o", "u",
     ]
     
     /// Appends the postfix to the name if it is `some`
     func append(_ postfix: @autoclosure () -> String) -> Name {
         return switch self {
-        case .some(let name): .some("\(name)\(postfix())")
+        case let .some(name): .some("\(name)\(postfix())")
         case .needed, .none: self
         }
     }
@@ -50,7 +50,7 @@ enum Name: Equatable {
     /// Returns a plural version of the Name if it is `some`
     func pluralize() -> Name {
         switch self {
-        case .some(var name):
+        case var .some(name):
             // Note: This is pretty primitive and will likely need
             // expanding on as usage grows and this spits out some
             // odd pluralizations.
@@ -63,7 +63,7 @@ enum Name: Equatable {
                 
                 // Only append `ies` id the second to last char
                 // in the original string is a consonant
-                if let last = name.last, !Self.vowels.contains(last)  {
+                if let last = name.last, !Self.vowels.contains(last) {
                     pluralName = "\(name)ies"
                 } else {
                     return self

@@ -1,6 +1,6 @@
 //
 //  SwiftLanguage.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 4/29/25.
 //
@@ -35,7 +35,7 @@ public struct SwiftLanguage: Language {
     }
     
     public static func interpolatedQuestionMarks(for param: String) -> String {
-        return  "\\(\(param).sqlQuestionMarks)"
+        return "\\(\(param).sqlQuestionMarks)"
     }
     
     public static func builtinType(for type: Type) -> String {
@@ -52,11 +52,11 @@ public struct SwiftLanguage: Language {
         case let .optional(ty): "\(builtinType(for: ty))?"
         case let .row(.unknown(ty)): "[\(builtinType(for: ty))]"
         case .var, .fn, .row, .error: "Any"
-        case .alias(_, let alias):
+        case let .alias(_, alias):
             switch alias {
-            case .explicit(let type):
+            case let .explicit(type):
                 type.description
-            case .hint(let hint):
+            case let .hint(hint):
                 switch hint {
                 case .bool: "Bool"
                 }
@@ -74,7 +74,7 @@ public struct SwiftLanguage: Language {
         
         let file = try SourceFileSyntax {
             try ImportDeclSyntax("import Foundation")
-            try ImportDeclSyntax("import Feather")
+            try ImportDeclSyntax("import Otter")
             
             for `import` in options.imports {
                 try ImportDeclSyntax("import \(raw: `import`)")
@@ -99,7 +99,7 @@ public struct SwiftLanguage: Language {
             }
             
             try StructDeclSyntax("struct \(raw: options.databaseName): Database") {
-                "let connection: any Feather.Connection"
+                "let connection: any Otter.Connection"
                 
                 try declaration(for: migrations, options: options)
                 
@@ -141,7 +141,7 @@ public struct SwiftLanguage: Language {
         var decls: [DeclSyntax] = []
         
         if addConnection {
-            decls.append("let connection: any Feather.Connection")
+            decls.append("let connection: any Otter.Connection")
         }
         
         for table in tables {
@@ -290,13 +290,13 @@ public struct SwiftLanguage: Language {
             ) {
                 let sql = stringLiteral(of: query.sourceSql, multiline: true)
                 let statementBinding: TokenSyntax = .keyword(query.input == nil ? .let : .var)
-                "\(statementBinding) statement = try Feather.Statement(\(sql), \ntransaction: tx\n)"
+                "\(statementBinding) statement = try Otter.Statement(\(sql), \ntransaction: tx\n)"
                 
                 if let input = query.input {
                     switch input {
                     case let .builtin(_, isArray, encodedAs):
                         bind(field: nil, encodeToType: encodedAs, isArray: isArray)
-                    case .model(let model):
+                    case let .model(model):
                         for field in model.fields.values {
                             bind(field: field.name, encodeToType: field.encodedAsType, isArray: field.isArray)
                         }
@@ -368,7 +368,7 @@ public struct SwiftLanguage: Language {
                     parameterClause: FunctionParameterClauseSyntax(
                         parameters: FunctionParameterListSyntax(
                             queries.positional()
-                                .map { (position, query) in
+                                .map { position, query in
                                     FunctionParameterSyntax(
                                         leadingTrivia: position.isFirst ? .newline : nil,
                                         firstName: .identifier(query.variableName),
@@ -439,7 +439,7 @@ public struct SwiftLanguage: Language {
             }
             
             if isOutput {
-                InheritedTypeSyntax(type: TypeSyntax("Feather.RowDecodable"))
+                InheritedTypeSyntax(type: TypeSyntax("Otter.RowDecodable"))
             }
         }
         
@@ -496,7 +496,7 @@ public struct SwiftLanguage: Language {
                         secondName: "dynamicMember",
                         type: IdentifierTypeSyntax(name: "KeyPath<\(raw: typeName), Value>"),
                         trailingComma: nil
-                    )
+                    ),
                 ]
             ),
             returnClause: ReturnClauseSyntax(type: IdentifierTypeSyntax(name: "Value")),
@@ -525,21 +525,21 @@ public struct SwiftLanguage: Language {
                     parameters: [
                         FunctionParameterSyntax(
                             firstName: "row",
-                            type: IdentifierTypeSyntax(name: "borrowing Feather.Row"),
+                            type: IdentifierTypeSyntax(name: "borrowing Otter.Row"),
                             trailingComma: TokenSyntax.commaToken()
                         ),
                         FunctionParameterSyntax(
                             firstName: "startingAt",
                             secondName: "start",
                             type: IdentifierTypeSyntax(name: "Int32")
-                        )
+                        ),
                     ]
                 ),
                 effectSpecifiers: FunctionEffectSpecifiersSyntax(
                     throwsClause: ThrowsClauseSyntax(
                         throwsSpecifier: TokenSyntax.keyword(.throws),
                         leftParen: TokenSyntax.leftParenToken(),
-                        type: TypeSyntax("FeatherError"),
+                        type: TypeSyntax("OtterError"),
                         rightParen: TokenSyntax.rightParenToken()
                     )
                 )
@@ -548,7 +548,7 @@ public struct SwiftLanguage: Language {
             var index = 0
             for field in model.fields.values {
                 switch field.type {
-                case .builtin(_, _, let encodedAs):
+                case let .builtin(_, _, encodedAs):
                     if let encodedAs {
                         "self.\(raw: field.name) = try \(raw: field.type)(primitive: row.value(at: start + \(raw: index), as: \(raw: encodedAs).self))"
                     } else {
@@ -556,7 +556,7 @@ public struct SwiftLanguage: Language {
                     }
                     
                     let _ = index += 1
-                case .model(let model):
+                case let .model(model):
                     "self.\(raw: field.name) = try \(raw: field.type)(row: row, startingAt: start + \(raw: index))"
                     let _ = index += model.fields.count
                 }
@@ -573,7 +573,7 @@ public struct SwiftLanguage: Language {
                 parameterClause: FunctionParameterClauseSyntax(
                     parameters: FunctionParameterListSyntax(
                         model.fields.values.positional()
-                            .map { (position, field) in
+                            .map { position, field in
                                 FunctionParameterSyntax(
                                     firstName: .identifier(field.name),
                                     type: IdentifierTypeSyntax(name: .identifier(field.type.description)),
@@ -609,12 +609,12 @@ public struct SwiftLanguage: Language {
         multiline: Bool = false
     ) -> StringLiteralExprSyntax {
         let openingQuote: TokenSyntax = multiline
-        ? .multilineStringQuoteToken(trailingTrivia: .newline)
-        : .singleQuoteToken()
+            ? .multilineStringQuoteToken(trailingTrivia: .newline)
+            : .singleQuoteToken()
         
         let closingQuote: TokenSyntax = multiline
-        ? .multilineStringQuoteToken(leadingTrivia: .newline)
-        : .singleQuoteToken()
+            ? .multilineStringQuoteToken(leadingTrivia: .newline)
+            : .singleQuoteToken()
         
         let segments: StringLiteralSegmentListSyntax
         if multiline {
@@ -623,11 +623,11 @@ public struct SwiftLanguage: Language {
             segments = StringLiteralSegmentListSyntax(
                 lines
                     .enumerated()
-                    .map { (i, s) in
-                            .stringSegment(StringSegmentSyntax(
-                                content: .stringSegment(s.description),
-                                trailingTrivia: i == lines.count - 1 ? nil : .newline
-                            ))
+                    .map { i, s in
+                        .stringSegment(StringSegmentSyntax(
+                            content: .stringSegment(s.description),
+                            trailingTrivia: i == lines.count - 1 ? nil : .newline
+                        ))
                     }
             )
         } else {

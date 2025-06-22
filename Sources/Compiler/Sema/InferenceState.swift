@@ -1,6 +1,6 @@
 //
 //  InferenceState.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 2/24/25.
 //
@@ -160,7 +160,7 @@ struct InferenceState {
     func parameterSolutions(
         defaultIfTyVar: Bool = false
     ) -> [(index: BindParameterSyntax.Index, type: Type, locations: [SourceLocation])] {
-        return bindIndexToSyntaxIds.map { (index, syntaxId) in
+        return bindIndexToSyntaxIds.map { index, syntaxId in
             let type = self.syntaxTypes[syntaxId] ?? .error
             let locations = self.bindIndexLocations[index] ?? []
             return (index, solution(for: type, defaultIfTyVar: defaultIfTyVar), locations)
@@ -343,7 +343,7 @@ extension InferenceState {
         case .integer:
             switch type {
             case .int, .integer, .real: return
-            case .row(let row) where row.count == 1:
+            case let .row(row) where row.count == 1:
                 validateCanUnify(type: row.first!, with: tvKind, at: location)
             default:
                 diagnostics.add(.unableToUnify(type, with: .integer, at: location))
@@ -351,7 +351,7 @@ extension InferenceState {
         case .float:
             switch type {
             case .int, .integer, .real: return
-            case .row(let row) where row.count == 1:
+            case let .row(row) where row.count == 1:
                 validateCanUnify(type: row.first!, with: tvKind, at: location)
             default:
                 diagnostics.add(.unableToUnify(type, with: .real, at: location))

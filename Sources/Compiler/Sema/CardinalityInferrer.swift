@@ -1,6 +1,6 @@
 //
 //  CardinalityInferrer.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 2/16/25.
 //
@@ -29,7 +29,7 @@ struct CardinalityInferrer {
     ) -> Cardinality {
         guard !table.primaryKey.isEmpty else { return .many }
         let filteredPrimaryKeys = expr.accept(visitor: &self)
-        let didFilterByPrimaryKey = !table.primaryKey.contains{ !filteredPrimaryKeys.contains($0) }
+        let didFilterByPrimaryKey = !table.primaryKey.contains { !filteredPrimaryKeys.contains($0) }
         return didFilterByPrimaryKey ? .single : .many
     }
 }
@@ -75,7 +75,7 @@ extension CardinalityInferrer: StmtSyntaxVisitor {
         }
         
         switch selectCore {
-        case .select(let select):
+        case let .select(select):
             // If its not filtered down with a `WHERE` it will always return more
             guard let filter = select.where else { return .many }
             
@@ -101,7 +101,7 @@ extension CardinalityInferrer: StmtSyntaxVisitor {
                 // result will be returned.
                 return cadinalityForFilter(filter, for: t)
             }
-        case .values(let values):
+        case let .values(values):
             // VALUES (1, 2), (3, 4)
             if values.count > 1 {
                 return .many
@@ -176,7 +176,7 @@ extension CardinalityInferrer: ExprSyntaxVisitor {
     
     mutating func visit(_ expr: ColumnExprSyntax) -> ExprOutput {
         return switch expr.column {
-        case .column(let column): [column.value]
+        case let .column(column): [column.value]
         case .all: []
         }
     }
@@ -208,8 +208,8 @@ extension CardinalityInferrer: ExprSyntaxVisitor {
         // Example: `id = 1 OR id = 2`. Each side of the expr filtered on the pk
         // but it can return multiple values. We might be able to in the future do more.
         guard expr.operator.operator == .eq
-                || expr.operator.operator == .eq2
-                || expr.operator.operator == .and else { return [] }
+            || expr.operator.operator == .eq2
+            || expr.operator.operator == .and else { return [] }
         
         // `id = 1 AND parentId = 2` should return [id, parentId]
         return expr.lhs.accept(visitor: &self).union(expr.rhs.accept(visitor: &self))

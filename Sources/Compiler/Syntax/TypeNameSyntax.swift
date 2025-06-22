@@ -1,6 +1,6 @@
 //
 //  TypeNameSyntax.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 5/7/25.
 //
@@ -21,7 +21,7 @@ struct TypeNameSyntax: Syntax, CustomStringConvertible, Sendable {
         } else {
             name.description
         }
-        
+
         if let alias {
             return "\(type) AS \(alias)"
         } else {

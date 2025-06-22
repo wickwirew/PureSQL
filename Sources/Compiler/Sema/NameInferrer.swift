@@ -1,6 +1,6 @@
 //
 //  NameInferrer.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 2/23/25.
 //
@@ -112,7 +112,7 @@ struct NameInferrer {
     
     private mutating func infer(select: SelectCoreSyntax) {
         switch select {
-        case .select(let select):
+        case let .select(select):
             for column in select.columns {
                 switch column.kind {
                 case let .expr(e, alias):
@@ -127,9 +127,9 @@ struct NameInferrer {
             }
             
             switch select.from {
-            case .join(let join):
+            case let .join(join):
                 _ = infer(tableOrSubquery: join.tableOrSubquery)
-            case .tableOrSubqueries(let tableOrSubqueries):
+            case let .tableOrSubqueries(tableOrSubqueries):
                 for tableOrSubquery in tableOrSubqueries {
                     _ = infer(tableOrSubquery: tableOrSubquery)
                 }
@@ -146,7 +146,7 @@ struct NameInferrer {
                     _ = expr.accept(visitor: &self)
                 }
             }
-        case .values(let groups):
+        case let .values(groups):
             for group in groups {
                 for value in group {
                     _ = value.accept(visitor: &self)
@@ -159,18 +159,18 @@ struct NameInferrer {
         switch tableOrSubquery.kind {
         case .table:
             return .none
-        case .tableFunction(_, _, let args, _):
+        case let .tableFunction(_, _, args, _):
             return args.reduce(.none) {
                 unify(names: $0, with: $1.accept(visitor: &self))
             }
-        case .subquery(let selectStmtSyntax, _):
+        case let .subquery(selectStmtSyntax, _):
             infer(select: selectStmtSyntax)
             return .none
-        case .join(let joinClauseSyntax):
+        case let .join(joinClauseSyntax):
             return joinClauseSyntax.joins.reduce(.none) {
                 unify(names: $0, with: infer(tableOrSubquery: $1.tableOrSubquery))
             }
-        case .tableOrSubqueries(let tableOrSubqueries):
+        case let .tableOrSubqueries(tableOrSubqueries):
             return tableOrSubqueries.reduce(.none) {
                 unify(names: $0, with: infer(tableOrSubquery: $1))
             }
@@ -187,6 +187,7 @@ extension NameInferrer: ExprSyntaxVisitor {
     mutating func visit(_ expr: PrefixExprSyntax) -> Name {
         return expr.rhs.accept(visitor: &self)
     }
+
     mutating func visit(_ expr: InfixExprSyntax) -> Name {
         let lhs = expr.lhs.accept(visitor: &self)
         let rhs = expr.rhs.accept(visitor: &self)
@@ -197,9 +198,11 @@ extension NameInferrer: ExprSyntaxVisitor {
             return unify(names: lhs, with: rhs)
         }
     }
+
     mutating func visit(_ expr: PostfixExprSyntax) -> Name {
         return expr.lhs.accept(visitor: &self)
     }
+
     mutating func visit(_ expr: FunctionExprSyntax) -> Name {
         return unify(all: expr.args.map { $0.accept(visitor: &self) })
     }
@@ -207,6 +210,7 @@ extension NameInferrer: ExprSyntaxVisitor {
     mutating func visit(_ expr: CastExprSyntax) -> Name {
         return expr.expr.accept(visitor: &self)
     }
+
     mutating func visit(_ expr: CaseWhenThenExprSyntax) -> Name {
         let `case` = expr.case?.accept(visitor: &self) ?? .none
         
@@ -221,8 +225,9 @@ extension NameInferrer: ExprSyntaxVisitor {
             with: `else`
         )
     }
+
     mutating func visit(_ expr: GroupedExprSyntax) -> Name {
-        return unify(all: expr.exprs.map{ $0.accept(visitor: &self) })
+        return unify(all: expr.exprs.map { $0.accept(visitor: &self) })
     }
     
     mutating func visit(_ expr: SelectExprSyntax) -> Name {
@@ -232,7 +237,7 @@ extension NameInferrer: ExprSyntaxVisitor {
     
     mutating func visit(_ expr: ColumnExprSyntax) -> Name {
         switch expr.column {
-        case .column(let column):
+        case let .column(column):
             return .some(column.value)
         case .all:
             return .none

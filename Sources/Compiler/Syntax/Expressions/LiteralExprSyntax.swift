@@ -1,6 +1,6 @@
 //
 //  LiteralExprSyntax.swift
-//  Feather
+//  Otter
 //
 //  Created by Wes Wickwire on 5/7/25.
 //
@@ -10,7 +10,7 @@ struct LiteralExprSyntax: ExprSyntax {
     let id: SyntaxId
     let kind: Kind
     let location: SourceLocation
-    
+
     enum Kind {
         case numeric(NumericSyntax, isInt: Bool)
         case string(Substring)
@@ -23,7 +23,7 @@ struct LiteralExprSyntax: ExprSyntax {
         case currentTimestamp
         case invalid
     }
-    
+
     func accept<V>(visitor: inout V) -> V.ExprOutput where V : ExprSyntaxVisitor {
         return visitor.visit(self)
     }
