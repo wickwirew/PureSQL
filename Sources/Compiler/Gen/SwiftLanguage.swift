@@ -54,7 +54,7 @@ public struct SwiftLanguage: Language {
             default: "SQLAny"
             }
         case let .optional(ty): "\(builtinType(for: ty))?"
-        case let .row(.unknown(ty)): "[\(builtinType(for: ty))]"
+        case let .row(.unknown(ty)): "\(builtinType(for: ty))"
         case .var, .fn, .row, .error: "Any"
         case let .alias(_, alias):
             switch alias {
