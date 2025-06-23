@@ -23,15 +23,20 @@ extension Columns {
 public struct Column: Equatable, Sendable {
     public let type: Type
     public let isGenerated: Bool
+    public let hasDefault: Bool
     
-    public init(type: Type, isGenerated: Bool = false) {
+    public init(
+        type: Type,
+        hasDefault: Bool = false,
+        isGenerated: Bool = false
+    ) {
         self.type = type
+        self.hasDefault = hasDefault
         self.isGenerated = isGenerated
     }
     
     public var isRequired: Bool {
-        guard !isGenerated else { return false }
-        return !type.isOptional
+        return !isGenerated && !hasDefault && !type.isOptional
     }
     
     public func mapType(_ transform: (Type) -> Type) -> Column {

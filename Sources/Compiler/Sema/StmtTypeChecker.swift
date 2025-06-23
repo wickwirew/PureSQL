@@ -1165,13 +1165,7 @@ extension StmtTypeChecker {
         case let .columns(columnsDefs, constraints, options):
             var columns: Columns = [:]
             for (name, def) in columnsDefs {
-                let type = typeFor(
-                    column: def,
-                    tableColumns: columns,
-                    tableName: createTable.name.value
-                )
-                let isGenerated = def.constraints.contains { $0.isGenerated }
-                let column = Column(type: type, isGenerated: isGenerated)
+                let column = column(for: def, columns: columns, tableName: createTable.name.value)
                 columns.append(column, for: name.value)
             }
             
@@ -1198,6 +1192,37 @@ extension StmtTypeChecker {
                 ))
             }
         }
+    }
+    
+    mutating func column(
+        for columnDef: ColumnDefSyntax,
+        columns: Columns,
+        tableName: Substring
+    ) -> Column {
+        let type = typeFor(
+            column: columnDef,
+            tableColumns: columns,
+            tableName: tableName
+        )
+        
+        var isGenerated = false
+        var hasDefault = false
+        
+        for constraint in columnDef.constraints {
+            isGenerated = constraint.isGenerated || isGenerated
+            hasDefault = constraint.isDefault || isGenerated
+            
+            switch constraint.kind {
+            case .primaryKey(_, _, true), .default:
+                hasDefault = true
+            case .generated:
+                isGenerated = true
+            default:
+                break
+            }
+        }
+        
+        return Column(type: type, hasDefault: hasDefault, isGenerated: isGenerated)
     }
     
     mutating func typeCheck(alterTable: AlterTableStmtSyntax) {
@@ -1229,15 +1254,9 @@ extension StmtTypeChecker {
             table.name = tableName
         case let .renameColumn(oldName, newName):
             table.columns.rename(oldName.value, to: newName.value)
-        case let .addColumn(column):
-            let newType = typeFor(
-                column: column,
-                tableColumns: table.columns,
-                tableName: table.name.name
-            )
-            let isGenerated = column.constraints.contains { $0.isGenerated }
-            let newColumn = Column(type: newType, isGenerated: isGenerated)
-            table.columns.append(newColumn, for: column.name.value)
+        case let .addColumn(def):
+            let column = column(for: def, columns: table.columns, tableName: table.name.name)
+            table.columns.append(column, for: def.name.value)
         case let .dropColumn(column):
             table.columns = Columns(table.columns.filter { $0.key != column.value })
         }

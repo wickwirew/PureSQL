@@ -1,27 +1,32 @@
 CREATE TABLE user (
-    id INTEGER,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT,
+    age INTEGER NOT NULL DEFAULT 0,
     description TEXT GENERATED ALWAYS AS (name || 'is a user')
 );
 
 -- CHECK: SIGNATURE
 -- CHECK:   PARAMETERS
 -- CHECK:     PARAMETER
--- CHECK:       TYPE INTEGER?
+-- CHECK:       TYPE INTEGER
 -- CHECK:       INDEX 1
 -- CHECK:       NAME id
 -- CHECK:     PARAMETER
 -- CHECK:       TYPE TEXT?
 -- CHECK:       INDEX 2
 -- CHECK:       NAME name
+-- CHECK:     PARAMETER
+-- CHECK:       TYPE INTEGER
+-- CHECK:       INDEX 3
+-- CHECK:       NAME age
 -- CHECK:     TABLES
 -- CHECK:       user
-INSERT INTO user (id, name) VALUES (?, ?);
+INSERT INTO user (id, name, age) VALUES (?, ?, ?);
 
 -- CHECK: SIGNATURE
 -- CHECK:   PARAMETERS
 -- CHECK:     PARAMETER
--- CHECK:       TYPE INTEGER?
+-- CHECK:       TYPE INTEGER
 -- CHECK:       INDEX 1
 -- CHECK:       NAME id
 -- CHECK:     PARAMETER
@@ -31,8 +36,9 @@ INSERT INTO user (id, name) VALUES (?, ?);
 -- CHECK:   OUTPUT_CHUNKS
 -- CHECK:     CHUNK
 -- CHECK:       OUTPUT
--- CHECK:         id INTEGER?
+-- CHECK:         id INTEGER
 -- CHECK:         name TEXT?
+-- CHECK:         age INTEGER
 -- CHECK:         description TEXT?
 -- CHECK:     TABLES
 -- CHECK:       user
@@ -41,7 +47,7 @@ INSERT INTO user (id, name) VALUES (?, ?) RETURNING *;
 -- CHECK: SIGNATURE
 -- CHECK:   PARAMETERS
 -- CHECK:     PARAMETER
--- CHECK:       TYPE INTEGER?
+-- CHECK:       TYPE INTEGER
 -- CHECK:       INDEX 1
 -- CHECK:       NAME id
 -- CHECK:     PARAMETER
@@ -49,7 +55,7 @@ INSERT INTO user (id, name) VALUES (?, ?) RETURNING *;
 -- CHECK:       INDEX 2
 -- CHECK:       NAME name
 -- CHECK:     PARAMETER
--- CHECK:       TYPE INTEGER?
+-- CHECK:       TYPE INTEGER
 -- CHECK:       INDEX 3
 -- CHECK:       NAME id2
 -- CHECK:     PARAMETER
@@ -57,7 +63,7 @@ INSERT INTO user (id, name) VALUES (?, ?) RETURNING *;
 -- CHECK:       INDEX 4
 -- CHECK:       NAME name2
 -- CHECK:     PARAMETER
--- CHECK:       TYPE INTEGER?
+-- CHECK:       TYPE INTEGER
 -- CHECK:       INDEX 5
 -- CHECK:       NAME id3
 -- CHECK:     PARAMETER
@@ -67,8 +73,9 @@ INSERT INTO user (id, name) VALUES (?, ?) RETURNING *;
 -- CHECK:   OUTPUT_CHUNKS
 -- CHECK:     CHUNK
 -- CHECK:       OUTPUT
--- CHECK:         id INTEGER?
+-- CHECK:         id INTEGER
 -- CHECK:         name TEXT?
+-- CHECK:         age INTEGER
 -- CHECK:         description TEXT?
 -- CHECK:     TABLES
 -- CHECK:       user
@@ -77,21 +84,25 @@ INSERT INTO user (id, name) VALUES (?, ?), (?, ?), (?, ?) RETURNING *;
 -- CHECK: SIGNATURE
 -- CHECK:   PARAMETERS
 -- CHECK:     PARAMETER
--- CHECK:       TYPE INTEGER?
+-- CHECK:       TYPE INTEGER
 -- CHECK:       INDEX 1
 -- CHECK:       NAME id
 -- CHECK:     PARAMETER
 -- CHECK:       TYPE TEXT?
 -- CHECK:       INDEX 2
 -- CHECK:       NAME name
+-- CHECK:     PARAMETER
+-- CHECK:       TYPE INTEGER
+-- CHECK:       INDEX 3
+-- CHECK:       NAME age
 -- CHECK:     TABLES
 -- CHECK:       user
-INSERT INTO user VALUES (?, ?);
+INSERT INTO user VALUES (?, ?, ?);
 
 -- CHECK: SIGNATURE
 -- CHECK:   PARAMETERS
 -- CHECK:     PARAMETER
--- CHECK:       TYPE INTEGER?
+-- CHECK:       TYPE INTEGER
 -- CHECK:       INDEX 1
 -- CHECK:       NAME id
 -- CHECK:     PARAMETER
@@ -114,7 +125,7 @@ INSERT INTO user (id, name, description) VALUES (?, ?, ?);
 -- CHECK:       INDEX 1
 -- CHECK:       NAME name
 -- CHECK:     PARAMETER
--- CHECK:       TYPE INTEGER?
+-- CHECK:       TYPE INTEGER
 -- CHECK:       INDEX 2
 -- CHECK:       NAME id
 -- CHECK:     TABLES
@@ -124,7 +135,17 @@ INSERT INTO user (name, id) VALUES (?, ?);
 -- CHECK: SIGNATURE
 -- CHECK:   PARAMETERS
 -- CHECK:     PARAMETER
--- CHECK:       TYPE INTEGER?
+-- CHECK:       TYPE TEXT?
+-- CHECK:       INDEX 1
+-- CHECK:       NAME name
+-- CHECK:     TABLES
+-- CHECK:       user
+INSERT INTO user (name) VALUES (?);
+
+-- CHECK: SIGNATURE
+-- CHECK:   PARAMETERS
+-- CHECK:     PARAMETER
+-- CHECK:       TYPE INTEGER
 -- CHECK:       INDEX 1
 -- CHECK:       NAME id
 -- CHECK:     PARAMETER

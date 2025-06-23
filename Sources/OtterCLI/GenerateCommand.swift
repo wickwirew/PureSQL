@@ -1,5 +1,5 @@
 //
-//  GenCommand.swift
+//  GenerateCommand.swift
 //  Otter
 //
 //  Created by Wes Wickwire on 5/21/25.
@@ -10,8 +10,8 @@ import Compiler
 import Foundation
 import SwiftSyntax
 
-struct GenCommand: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "gen")
+struct GenerateCommand: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "generate")
     
     @Option(name: .shortAndLong, help: "The root directory of the Otter sources")
     var path: String = FileManager.default.currentDirectoryPath

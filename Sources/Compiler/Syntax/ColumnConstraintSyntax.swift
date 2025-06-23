@@ -47,4 +47,11 @@ struct ColumnConstraintSyntax: Syntax {
         default: return false
         }
     }
+    
+    var isDefault: Bool {
+        switch kind {
+        case .default: return true
+        default: return false
+        }
+    }
 }

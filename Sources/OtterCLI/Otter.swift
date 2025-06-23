@@ -13,8 +13,8 @@ import SwiftSyntax
 @main
 struct Otter: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        subcommands: [GenCommand.self, InitCommand.self, MigrateCommand.self, QueriesCommand.self],
-        defaultSubcommand: GenCommand.self
+        subcommands: [GenerateCommand.self, InitCommand.self, MigrateCommand.self, QueriesCommand.self],
+        defaultSubcommand: GenerateCommand.self
     )
 }
 
