@@ -6,7 +6,7 @@
 //
 
 public protocol RowDecodable {
-    init(row: borrowing Row, startingAt column: Int32) throws(OtterError)
+    init(row: borrowing Row, startingAt start: Int32) throws(OtterError)
 }
 
 extension Optional: RowDecodable where Wrapped: DatabasePrimitive {
