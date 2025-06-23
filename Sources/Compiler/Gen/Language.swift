@@ -87,9 +87,10 @@ extension Language {
             case let .text(text):
                 return text.description
             case let .rowParam(param):
-                return interpolatedQuestionMarks(
+                let qs = interpolatedQuestionMarks(
                     for: statement.parameters.count > 1 ? param.name : "input"
                 )
+                return "(\(qs))"
             }
         }.joined()
         

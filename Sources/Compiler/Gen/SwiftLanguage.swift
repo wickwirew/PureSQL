@@ -100,6 +100,7 @@ public struct SwiftLanguage: Language {
         }
         
         dbStruct(queries: queries, migrations: migrations)
+        writer.blankLine()
         
         for query in allQueries {
             typeAlias(for: query)
@@ -163,9 +164,9 @@ public struct SwiftLanguage: Language {
             writer.write(line: "let connection: any Otter.Connection")
             writer.newline()
             
-            writer.write(line: "static var migrations: [String]")
+            writer.write(line: "static var migrations: [String] ")
             writer.braces {
-                writer.write("return ")
+                writer.write(line: "return ")
                 writer.brackets {
                     for (position, migration) in migrations.positional() {
                         multilineStringLiteral(of: migration)
