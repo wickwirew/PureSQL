@@ -2,25 +2,29 @@
 //  SwiftLanguage.swift
 //  Otter
 //
-//  Created by Wes Wickwire on 4/29/25.
+//  Created by Wes Wickwire on 6/8/25.
 //
 
-import SwiftSyntax
-import SwiftSyntaxBuilder
-
 public struct SwiftLanguage: Language {
-    public static func queryTypeName(
+    let options: GenerationOptions
+    private var writer = SourceWriter()
+    
+    public init(options: GenerationOptions) {
+        self.options = options
+    }
+    
+    public func queryTypeName(
         input: String,
         output: String
     ) -> String {
         return "AnyDatabaseQuery<\(input), \(output)>"
     }
     
-    public static func inputTypeName(input: BuiltinOrGenerated?) -> String {
+    public func inputTypeName(input: BuiltinOrGenerated?) -> String {
         return input?.description ?? "()"
     }
     
-    public static func outputTypeName(
+    public func outputTypeName(
         output: BuiltinOrGenerated?,
         cardinality: Cardinality
     ) -> String {
@@ -34,11 +38,11 @@ public struct SwiftLanguage: Language {
         }
     }
     
-    public static func interpolatedQuestionMarks(for param: String) -> String {
-        return "\\(\(param).sqlQuestionMarks)"
+    public func interpolatedQuestionMarks(for param: String) -> String {
+        return  "\\(\(param).sqlQuestionMarks)"
     }
     
-    public static func builtinType(for type: Type) -> String {
+    public func builtinType(for type: Type) -> String {
         return switch type {
         case let .nominal(name):
             switch name.uppercased() {
@@ -64,385 +68,296 @@ public struct SwiftLanguage: Language {
         }
     }
     
-    public static func file(
+    public func file(
         migrations: [String],
         tables: [GeneratedModel],
-        queries: [(String?, [GeneratedQuery])],
-        options: GenerationOptions
+        queries: [(String?, [GeneratedQuery])]
     ) throws -> String {
         let allQueries = queries.flatMap(\.1)
         
-        let file = try SourceFileSyntax {
-            try ImportDeclSyntax("import Foundation")
-            try ImportDeclSyntax("import Otter")
-            
-            for `import` in options.imports {
-                try ImportDeclSyntax("import \(raw: `import`)")
-            }
-            
-            for table in tables {
-                try declaration(for: table, isOutput: true, options: options)
-            }
-            
-            for query in allQueries {
-                for model in try modelsFor(query: query, options: options) {
-                    model
-                }
-            }
-            
-            for (namespace, queries) in queries {
-                if let namespace {
-                    try queriesProtocol(name: namespace, queries: queries)
-                    try queriesNoop(name: namespace, queries: queries)
-                    try queriesImpl(name: namespace, queries: queries)
-                }
-            }
-            
-            try StructDeclSyntax("struct \(raw: options.databaseName): Database") {
-                "let connection: any Otter.Connection"
-                
-                try declaration(for: migrations, options: options)
-                
-                for (namespace, queries) in queries {
-                    if let namespace {
-                        try queriesVariable(name: namespace, queries: queries)
-                    } else {
-                        // Generate queries with `nil` namespace which would make it global.
-                        // This is really only used by the macro since it doesnt have file names
-                        // which really wont happen here but still implement it for completeness.
-                        for query in queries {
-                            try declaration(for: query, databaseName: options.databaseName, options: options)
-                        }
-                    }
-                }
-            }
-            
-            for query in allQueries {
-                try typealiasFor(query: query)
-                
-                if let input = query.input, case let .model(model) = input {
-                    try inputExtension(for: query, input: model)
-                }
+        writer.write("import Foundation")
+        writer.write(line: "import Otter")
+        writer.blankLine()
+        
+        for `import` in options.imports {
+            writer.write(line: "import \(`import`)")
+        }
+        
+        for table in tables {
+            declaration(for: table, isOutput: true)
+        }
+        
+        for query in allQueries {
+            modelsFor(query: query)
+        }
+        
+        for (namespace, queries) in queries {
+            if let namespace {
+                queriesProtocol(name: namespace, queries: queries)
+                queriesNoop(name: namespace, queries: queries)
+                queriesImpl(name: namespace, queries: queries)
             }
         }
         
-        return file.formatted().description
+        dbStruct(queries: queries, migrations: migrations)
+        
+        for query in allQueries {
+            typeAlias(for: query)
+            
+            if let input = query.input, case let .model(model) = input {
+                inputExtension(for: query, input: model)
+            }
+        }
+        
+        return writer.description
     }
     
     /// Called by the actual Swift macro since it doesnt generate an entire
     /// file and requires a little extra treatment
-    public static func macro(
+    public func macro(
         databaseName: String,
         tables: [GeneratedModel],
         queries: [GeneratedQuery],
-        options: GenerationOptions,
         addConnection: Bool
-    ) throws -> [DeclSyntax] {
-        var decls: [DeclSyntax] = []
+    ) -> [String] {
+        var decls: [String] = []
         
-        if addConnection {
-            decls.append("let connection: any Otter.Connection")
+        // SwiftSyntax wants each decl in its own string
+        // so we will just break it up.
+        func take() {
+            decls.append(writer.description)
+            writer.reset()
         }
         
+        writer.write("let connection: any Otter.Connection")
+        take()
+        
         for table in tables {
-            try decls.append(declaration(for: table, isOutput: true, options: options))
+            declaration(for: table, isOutput: true)
+            take()
         }
         
         // Always do this at the top level since it will automatically namespaced under the
         // struct that the macro is attached too.
         for query in queries {
-            try decls.append(contentsOf: modelsFor(query: query, options: options))
-            try decls.append(declaration(for: query, underscoreName: true, databaseName: databaseName, options: options))
-            try decls.append(DeclSyntax(dbTypealiasFor(query: query)))
-            try decls.append(DeclSyntax(typealiasFor(query: query)))
-        }
-        
-        // TODO: Generate extensions if this can be done.
-        
-        return decls
-    }
-    
-    /// Generates the variable for the namespaced queries object within the database struct
-    private static func queriesVariable(
-        name: String,
-        queries: [GeneratedQuery]
-    ) throws -> DeclSyntax {
-        let typeName = "\(name)Impl"
-        
-        let variable = try VariableDeclSyntax("var \(raw: name.lowercaseFirst): \(raw: typeName)") {
-            "\(raw: typeName)(connection: connection)"
-        }
-        
-        return DeclSyntax(variable)
-    }
-    
-    /// Of the models needed to be generated for a query
-    private static func modelsFor(
-        query: GeneratedQuery,
-        options: GenerationOptions
-    ) throws -> [DeclSyntax] {
-        var decls: [DeclSyntax] = []
-        
-        if case let .model(model) = query.input, !model.isTable {
-            try decls.append(declaration(for: model, isOutput: false, options: options))
-        }
-        
-        if case let .model(model) = query.output, !model.isTable {
-            try decls.append(declaration(for: model, isOutput: true, options: options))
+            modelsFor(query: query)
+            take()
+            declaration(for: query, underscoreName: true, databaseName: databaseName)
+            take()
+            typeAlias(for: query)
+            take()
+            dbTypeAlias(for: query)
+            take()
         }
         
         return decls
     }
     
-    /// The migrations variable
-    private static func declaration(
-        for migrations: [String],
-        options: GenerationOptions
-    ) throws -> DeclSyntax {
-        let variable = try VariableDeclSyntax("static var migrations: [String]") {
-            ArrayExprSyntax(
-                expressions: migrations.map { source in
-                    SwiftSyntax.ExprSyntax(stringLiteral(of: source, multiline: true)
-                        .with(\.trailingTrivia, .newline))
-                }
-            )
-        }
+    private func dbStruct(
+        queries: [(String?, [GeneratedQuery])],
+        migrations: [String]
+    ) {
+        writer.write(line: "struct ", options.databaseName, ": Database")
         
-        return DeclSyntax(variable)
-    }
-    
-    /// Generates the expression to initialize the query.
-    ///
-    /// ```swift
-    /// var theQuery: AnyDatabaseQuery<In, Out> { ... }
-    /// ```
-    private static func declaration(
-        for query: GeneratedQuery,
-        underscoreName: Bool = false,
-        databaseName: String,
-        options: GenerationOptions
-    ) throws -> DeclSyntax {
-        let variableName = underscoreName ? "_\(query.variableName)" : query.variableName
-        
-        let query = try VariableDeclSyntax("var \(raw: variableName): \(raw: query.typeName)") {
-            try queryExpression(for: query)
-        }
-        
-        return DeclSyntax(query)
-    }
-    
-    /// Generates the expression to initialize the query.
-    ///
-    /// ```swift
-    /// AnyDatabaseQuery<In, Out>(...)
-    /// ```
-    private static func queryExpression(for query: GeneratedQuery) throws -> SwiftSyntax.ExprSyntax {
-        let value = FunctionCallExprSyntax(
-            calledExpression: DeclReferenceExprSyntax(
-                baseName: .identifier(query.typeName)
-            ),
-            leftParen: .leftParenToken(),
-            arguments: LabeledExprListSyntax {
-                let hasWatchingTables = query.isReadOnly
-                
-                LabeledExprSyntax(
-                    leadingTrivia: hasWatchingTables ? .newline : nil,
-                    label: nil,
-                    colon: nil,
-                    expression: DeclReferenceExprSyntax(
-                        baseName: query.isReadOnly ? ".read" : ".write"
-                    ),
-                    trailingComma: TokenSyntax.commaToken()
-                )
-                LabeledExprSyntax(
-                    leadingTrivia: hasWatchingTables ? .newline : nil,
-                    label: TokenSyntax.identifier("in"),
-                    colon: TokenSyntax.colonToken(),
-                    expression: DeclReferenceExprSyntax(baseName: .identifier("connection")),
-                    trailingComma: hasWatchingTables ? TokenSyntax.commaToken() : nil
-                )
-                
-                if hasWatchingTables {
-                    LabeledExprSyntax(
-                        leadingTrivia: .newline,
-                        label: TokenSyntax.identifier("watchingTables"),
-                        colon: TokenSyntax.colonToken(),
-                        expression: ArrayExprSyntax {
-                            if query.isReadOnly {
-                                for table in query.usedTableNames {
-                                    ArrayElementSyntax(expression: StringLiteralExprSyntax(content: table.description))
-                                }
-                            }
-                        },
-                        trailingComma: nil,
-                        trailingTrivia: .newline
-                    )
-                }
-            },
-            rightParen: .rightParenToken(),
-            trailingClosure: ClosureExprSyntax(
-                signature: ClosureSignatureSyntax(
-                    parameterClause: .simpleInput(.init {
-                        ClosureShorthandParameterSyntax(name: "input")
-                        ClosureShorthandParameterSyntax(name: "tx")
-                    })
-                )
-            ) {
-                let sql = stringLiteral(of: query.sourceSql, multiline: true)
-                let statementBinding: TokenSyntax = .keyword(query.input == nil ? .let : .var)
-                "\(statementBinding) statement = try Otter.Statement(\(sql), \ntransaction: tx\n)"
-                
-                if let input = query.input {
-                    switch input {
-                    case let .builtin(_, isArray, encodedAs):
-                        bind(field: nil, encodeToType: encodedAs, isArray: isArray)
-                    case let .model(model):
-                        for field in model.fields.values {
-                            bind(field: field.name, encodeToType: field.encodedAsType, isArray: field.isArray)
+        writer.braces {
+            writer.write(line: "let connection: any Otter.Connection")
+            writer.newline()
+            
+            writer.write(line: "static var migrations: [String]")
+            writer.braces {
+                writer.write("return ")
+                writer.brackets {
+                    for (position, migration) in migrations.positional() {
+                        multilineStringLiteral(of: migration)
+                        
+                        if !position.isLast {
+                            writer.write(",")
                         }
                     }
                 }
-                
-                if query.output == nil {
-                    "_ = try statement.step()"
+            }
+            
+            for (namespace, queries) in queries {
+                if let namespace {
+                    writer.write(line: "var ", namespace.lowercaseFirst, ": ", namespace, "Impl ")
+                    
+                    // Initialize queries object
+                    writer.braces {
+                        writer.write(line: namespace, "Impl", "(connection: connection)")
+                    }
                 } else {
-                    switch query.outputCardinality {
-                    case .single:
-                        "return try statement.fetchOne()"
-                    case .many:
-                        "return try statement.fetchAll()"
+                    // Generate queries with `nil` namespace which would make it global.
+                    // This is really only used by the macro since it doesnt have file names
+                    // which really wont happen here but still implement it for completeness.
+                    for query in queries {
+                        declaration(for: query, databaseName: options.databaseName)
                     }
                 }
             }
-        )
-        
-        return SwiftSyntax.ExprSyntax(value)
+        }
     }
     
-    /// The namespaced queries protocol
-    private static func queriesProtocol(
-        name: String,
-        queries: [GeneratedQuery]
-    ) throws -> DeclSyntax {
-        let protocl = try ProtocolDeclSyntax("protocol \(raw: name)") {
-            for query in queries {
-                let associatedType = query.name.capitalizedFirst
-                "associatedtype \(raw: associatedType): \(raw: query.typealiasName)"
-                "var \(raw: query.variableName): \(raw: associatedType) { get }"
+    private func queriesProtocol(name: String, queries: [GeneratedQuery]) {
+        writer.write(line: "protocol ", name, " {")
+        
+        writer.indent()
+        
+        for query in queries {
+            let associatedType = query.name.capitalizedFirst
+            writer.write(line: "associatedtype ", associatedType, ": ", query.typealiasName)
+            writer.write(line: "var ", query.variableName, ": ", associatedType, " { get }")
+        }
+        
+        writer.unindent()
+        writer.write(line: "}")
+        writer.blankLine()
+    }
+    
+    private func queriesNoop(name: String, queries: [GeneratedQuery]) {
+        writer.write(line: "struct ", name, "Noop: ", name, " {")
+        writer.indent()
+        
+        for query in queries {
+            writer.write(line: "let ")
+            writer.write(query.variableName)
+            writer.write(": AnyQuery<")
+            writer.write(query.inputName)
+            writer.write(", ")
+            writer.write(query.outputName)
+            writer.write(">")
+        }
+        
+        writer.blankLine()
+        writer.write(line: "init(")
+        writer.indent()
+        for (position, query) in queries.positional() {
+            writer.write(line: query.variableName, ": any ", query.typealiasName, " = Queries.Just()")
+            
+            if !position.isLast {
+                writer.write(",")
+            }
+        }
+        writer.unindent()
+        writer.write(line: ") {")
+        writer.indent()
+        
+        for query in queries {
+            writer.write(line: "self.", query.variableName, " = ", query.variableName, ".eraseToAnyQuery()")
+        }
+        
+        writer.unindent()
+        writer.write(line: "}")
+        
+        writer.unindent()
+        writer.write(line: "}")
+        writer.blankLine()
+    }
+    
+    private func queriesImpl(name: String, queries: [GeneratedQuery]) {
+        writer.write(line: "struct ", name, "Impl: ", name, " {")
+        writer.indent()
+        
+        writer.write(line: "let connection: any Connection")
+        writer.blankLine()
+        
+        for (position, query) in queries.positional() {
+            writer.write(line: "var ", query.variableName, ": ", query.typeName, " {")
+            
+            writer.indented {
+                expression(for: query)
+            }
+            
+            writer.write(line: "}")
+            
+            if !position.isLast {
+                writer.newline()
             }
         }
         
-        return DeclSyntax(protocl)
+        writer.unindent()
+        writer.write(line: "}")
+        writer.blankLine()
     }
     
-    /// The namespaced queries protocol implementation
-    private static func queriesImpl(
-        name: String,
-        queries: [GeneratedQuery]
-    ) throws -> DeclSyntax {
-        let strct = try StructDeclSyntax("struct \(raw: name)Impl: \(raw: name)") {
-            "let connection: any Connection"
+    private func expression(for query: GeneratedQuery) {
+        writer.write(line: query.typeName)
+        writer.write("(")
+        
+        writer.indented {
+            writer.write(line: query.isReadOnly ? ".read," : ".write,")
+            writer.write(line: "in: connection,")
+            writer.write(line: "watchingTables: [")
             
-            for query in queries {
-                try VariableDeclSyntax("var \(raw: query.variableName): \(raw: query.typeName)") {
-                    try queryExpression(for: query)
+            for (position, table) in query.usedTableNames.positional() {
+                writer.write("\"", table, "\"")
+                
+                if !position.isLast {
+                    writer.write(",")
+                }
+            }
+            
+            writer.write("]")
+        }
+        
+        writer.write(line: ") { input, tx in")
+        writer.indent()
+        
+        if query.input == nil {
+            writer.write(line: "let")
+        } else {
+            writer.write(line: "var")
+        }
+        
+        writer.write(" statement = try Otter.Statement(")
+        writer.indent()
+        multilineStringLiteral(of: query.sourceSql)
+        writer.write(",")
+        writer.write(line: "transaction: tx")
+        writer.unindent()
+        writer.write(line: ")")
+        
+        if let input = query.input {
+            switch input {
+            case let .builtin(_, isArray, encodedAs):
+                bind(field: nil, encodeToType: encodedAs, isArray: isArray)
+            case .model(let model):
+                for field in model.fields.values {
+                    bind(field: field.name, encodeToType: field.encodedAsType, isArray: field.isArray)
                 }
             }
         }
         
-        return DeclSyntax(strct)
-    }
-    
-    /// Generates the no-op implementation of the queries.
-    private static func queriesNoop(
-        name: String,
-        queries: [GeneratedQuery]
-    ) throws -> DeclSyntax {
-        let strct = try StructDeclSyntax("struct \(raw: name)Noop: \(raw: name)") {
-            for query in queries {
-                "let \(raw: query.variableName): AnyQuery<\(raw: query.inputName), \(raw: query.outputName)>"
-            }
-            
-            InitializerDeclSyntax(
-                signature: FunctionSignatureSyntax(
-                    parameterClause: FunctionParameterClauseSyntax(
-                        parameters: FunctionParameterListSyntax(
-                            queries.positional()
-                                .map { position, query in
-                                    FunctionParameterSyntax(
-                                        leadingTrivia: position.isFirst ? .newline : nil,
-                                        firstName: .identifier(query.variableName),
-                                        type: IdentifierTypeSyntax(name: .identifier("any \(query.typealiasName)")),
-                                        defaultValue: InitializerClauseSyntax(value: DeclReferenceExprSyntax(baseName: TokenSyntax.identifier("Queries.Just()"))),
-                                        trailingComma: position .isLast ? nil : TokenSyntax.commaToken(),
-                                        trailingTrivia: .newline
-                                    )
-                                }
-                        )
-                    )
-                )
-            ) {
-                for query in queries {
-                    "self.\(raw: query.variableName) = \(raw: query.variableName).eraseToAnyQuery()"
-                }
+        if query.output == nil {
+            writer.write(line: "_ = try statement.step()")
+        } else {
+            switch query.outputCardinality {
+            case .single:
+                writer.write(line: "return try statement.fetchOne()")
+            case .many:
+                writer.write(line: "return try statement.fetchAll()")
             }
         }
         
-        return DeclSyntax(strct)
+        writer.unindent()
+        writer.write(line: "}")
     }
     
-    private static func typealiasFor(query: GeneratedQuery) throws -> TypeAliasDeclSyntax {
-        return try TypeAliasDeclSyntax(
-            "typealias \(raw: query.typealiasName) = Query<\(raw: query.inputName), \(raw: query.outputName)>"
-        )
-    }
-    
-    private static func dbTypealiasFor(query: GeneratedQuery) throws -> TypeAliasDeclSyntax {
-        let name = query.typealiasName.replacingOccurrences(of: "Query", with: "DatabaseQuery")
-        return try TypeAliasDeclSyntax(
-            "typealias \(raw: name) = AnyDatabaseQuery<\(raw: query.inputName), \(raw: query.outputName)>"
-        )
-    }
-    
-    private static func inputExtension(
+    private func declaration(
         for query: GeneratedQuery,
-        input: GeneratedModel
-    ) throws -> ExtensionDeclSyntax {
-        return try ExtensionDeclSyntax("extension Query where Input == \(raw: query.inputName)") {
-            let parameters = input.fields.map { parameter in
-                "\(parameter.key): \(parameter.value.type)"
-            }.joined(separator: ", ")
-            
-            let args = input.fields.map { parameter in
-                "\(parameter.key): \(parameter.key)"
-            }.joined(separator: ", ")
-            
-            """
-            func execute(\(raw: parameters)) async throws -> Output {
-                try await execute(with: \(raw: query.inputName)(\(raw: args)))
-            }
-            """
+        underscoreName: Bool = false,
+        databaseName: String
+    ) {
+        let variableName = underscoreName ? "_\(query.variableName)" : query.variableName
+        writer.write("var ", variableName, ": ", query.typeName)
+        writer.braces {
+            expression(for: query)
         }
     }
     
-    private static func declaration(
+    private func declaration(
         for model: GeneratedModel,
-        isOutput: Bool,
-        options: GenerationOptions
-    ) throws -> DeclSyntax {
-        let inheretance = InheritanceClauseSyntax {
-            InheritedTypeSyntax(type: TypeSyntax("Hashable"))
-            InheritedTypeSyntax(type: TypeSyntax("Sendable"))
-            
-            if model.fields["id"] != nil {
-                InheritedTypeSyntax(type: TypeSyntax("Identifiable"))
-            }
-            
-            if isOutput {
-                InheritedTypeSyntax(type: TypeSyntax("Otter.RowDecodable"))
-            }
-        }
-        
+        isOutput: Bool
+    ) {
         let dynamicLookupTables = model.fields.values.compactMap { value -> (String, GeneratedModel)? in
             guard case let .model(model) = value.type else { return nil }
             return (value.name, model)
@@ -450,225 +365,241 @@ public struct SwiftLanguage: Language {
         
         let addDynamicLookup = isOutput && !dynamicLookupTables.isEmpty && model.fields.count > 1
         
-        let strct = StructDeclSyntax(
-            attributes: AttributeListSyntax {
-                if addDynamicLookup {
-                    let attr: AttributeSyntax = "@dynamicMemberLookup"
-                    attr.with(\.trailingTrivia, .newline)
-                }
-            },
-            name: TokenSyntax.identifier(model.name),
-            inheritanceClause: inheretance
-        ) {
-            for field in model.fields.values {
-                variableDecl(name: field.name, type: field.type)
-            }
-            
-            if isOutput {
-                rowDecodableInit(for: model)
-                memberwiseInit(for: model)
-            }
-            
-            if addDynamicLookup {
-                for (fieldName, table) in dynamicLookupTables {
-                    dynamicMemberLookup(fieldName: fieldName, typeName: table.name)
-                }
+        if addDynamicLookup {
+            writer.write(line: "@dynamicMemberLookup")
+        }
+        
+        writer.write(line: "struct ", model.name, ": Hashable, Sendable")
+        
+        if model.fields["id"] != nil {
+            writer.write(", Identifiable")
+        }
+        
+        if isOutput {
+            writer.write(", RowDecodable")
+        }
+        
+        writer.write(" {")
+        
+        // Indent for start of variables
+        writer.indent()
+        
+        // Write out fields of struct
+        for field in model.fields.values {
+            writer.write(line: "let ", field.name, ": ", field.type.description)
+        }
+        
+        if addDynamicLookup {
+            for (fieldName, table) in dynamicLookupTables {
+                dynamicMemberLookup(fieldName: fieldName, typeName: table.name)
             }
         }
         
-        return DeclSyntax(strct)
+        if isOutput {
+            writer.blankLine()
+            rowDecodableInit(for: model)
+            writer.blankLine()
+            memberWiseInit(for: model)
+        }
+        
+        writer.unindent()
+        writer.write(line: "}")
+        writer.blankLine()
     }
     
-    private static func dynamicMemberLookup(
+    private func modelsFor(query: GeneratedQuery) {
+        if case let .model(model) = query.input, !model.isTable {
+            declaration(for: model, isOutput: false)
+        }
+        
+        if case let .model(model) = query.output, !model.isTable {
+            declaration(for: model, isOutput: true)
+        }
+    }
+    
+    private func dynamicMemberLookup(
         fieldName: String,
         typeName: String
-    ) -> SubscriptDeclSyntax {
-        return SubscriptDeclSyntax(
-            subscriptKeyword: TokenSyntax.keyword(.subscript)
-                .with(\.trailingTrivia, .spaces(0)),
-            genericParameterClause: GenericParameterClauseSyntax {
-                GenericParameterSyntax(name: "Value")
-            },
-            parameterClause: FunctionParameterClauseSyntax(
-                parameters: [
-                    FunctionParameterSyntax(
-                        firstName: "dynamicMember",
-                        secondName: "dynamicMember",
-                        type: IdentifierTypeSyntax(name: "KeyPath<\(raw: typeName), Value>"),
-                        trailingComma: nil
-                    ),
-                ]
-            ),
-            returnClause: ReturnClauseSyntax(type: IdentifierTypeSyntax(name: "Value")),
-            accessorBlock: AccessorBlockSyntax(accessors: .getter(CodeBlockItemListSyntax {
-                SubscriptCallExprSyntax(
-                    calledExpression: DeclReferenceExprSyntax(baseName: TokenSyntax.identifier(fieldName)),
-                    arguments: LabeledExprListSyntax {
-                        LabeledExprSyntax(
-                            label: "keyPath",
-                            colon: TokenSyntax.colonToken(),
-                            expression: DeclReferenceExprSyntax(baseName: "dynamicMember"),
-                            trailingComma: nil
-                        )
-                    }
-                )
-            }))
-        )
+    ) {
+        writer.newline()
+        writer.write(line: "subscript<Value>(dynamicMember dynamicMember: ")
+        writer.write("KeyPath<", typeName, ", Value>) -> Value ")
+        writer.braces {
+            writer.write(line: "self.", fieldName, "[keyPath: dynamicMember]")
+        }
     }
     
-    private static func rowDecodableInit(
+    private func rowDecodableInit(
         for model: GeneratedModel
-    ) -> InitializerDeclSyntax {
-        return InitializerDeclSyntax(
-            signature: FunctionSignatureSyntax(
-                parameterClause: FunctionParameterClauseSyntax(
-                    parameters: [
-                        FunctionParameterSyntax(
-                            firstName: "row",
-                            type: IdentifierTypeSyntax(name: "borrowing Otter.Row"),
-                            trailingComma: TokenSyntax.commaToken()
-                        ),
-                        FunctionParameterSyntax(
-                            firstName: "startingAt",
-                            secondName: "start",
-                            type: IdentifierTypeSyntax(name: "Int32")
-                        ),
-                    ]
-                ),
-                effectSpecifiers: FunctionEffectSpecifiersSyntax(
-                    throwsClause: ThrowsClauseSyntax(
-                        throwsSpecifier: TokenSyntax.keyword(.throws),
-                        leftParen: TokenSyntax.leftParenToken(),
-                        type: TypeSyntax("OtterError"),
-                        rightParen: TokenSyntax.rightParenToken()
-                    )
-                )
-            )
-        ) {
-            var index = 0
-            for field in model.fields.values {
-                switch field.type {
-                case let .builtin(_, _, encodedAs):
-                    if let encodedAs {
-                        "self.\(raw: field.name) = try \(raw: field.type)(primitive: row.value(at: start + \(raw: index), as: \(raw: encodedAs).self))"
-                    } else {
-                        "self.\(raw: field.name) = try row.value(at: start + \(raw: index))"
-                    }
-                    
-                    let _ = index += 1
-                case let .model(model):
-                    "self.\(raw: field.name) = try \(raw: field.type)(row: row, startingAt: start + \(raw: index))"
-                    let _ = index += model.fields.count
+    ) {
+        // Initializer signature
+        writer.write(line: "init(")
+        writer.indent()
+        writer.write(line: "row: borrowing Otter.Row,")
+        writer.write(line: "startingAt start: Int32")
+        writer.unindent()
+        writer.write(line: ") throws(Otter.OtterError) {")
+        
+        writer.indent()
+        var index = 0
+        for field in model.fields.values {
+            writer.write(line: "self.")
+            writer.write(field.name)
+            writer.write(" = try ")
+            
+            switch field.type {
+            case .builtin(_, _, let encodedAs):
+                if let encodedAs {
+                    // Custom type
+                    writer.write(field.type.description)
+                    writer.write("(primitive: row.value(at: start + ")
+                    writer.write(index.description)
+                    writer.write(", as: ")
+                    writer.write(encodedAs)
+                    writer.write(".self))")
+                } else {
+                    // Decode primitive
+                    writer.write("row.value(at: start + ", index.description, ")")
+                }
+                
+                index += 1
+            case .model(let model):
+                // Model initializer
+                writer.write(field.type.description, "(row: row, startingAt: start + ", index.description, ")")
+                index += model.fields.count
+            }
+        }
+        writer.unindent()
+        
+        writer.write(line: "}")
+    }
+    
+    private func memberWiseInit(
+        for model: GeneratedModel
+    ) {
+        // Initializer signature
+        writer.write(line: "init(")
+        writer.indent()
+        
+        for (position, (name, field)) in model.fields.elements.positional() {
+            writer.write(line: name, ": ", field.type.description)
+            
+            if !position.isLast {
+                writer.write(",")
+            }
+        }
+        
+        writer.unindent()
+        writer.write(line: ") {")
+        
+        writer.indent()
+        for field in model.fields.values {
+            writer.write(line: "self.", field.name, " = ", field.name)
+        }
+        writer.unindent()
+        
+        writer.write(line: "}")
+    }
+    
+    /// Creates a type alias for the query so it can be referenced as an existential
+    private func typeAlias(for query: GeneratedQuery) {
+        writer.write(line: "typealias ", query.typealiasName, " = Query<", query.inputName, ", ", query.outputName, ">")
+    }
+    
+    /// Used in the macros, to create a typealias for the database query since those need
+    /// to be referenced explicitly in their decl.
+    private func dbTypeAlias(for query: GeneratedQuery, queryType: String = "Query") {
+        let name = query.typealiasName.replacingOccurrences(of: "Query", with: "DatabaseQuery")
+        writer.write(line: "typealias ", name, " = AnyDatabaseQuery<", query.inputName, ", ", query.outputName, ">")
+    }
+    
+    private func inputExtension(
+        for query: GeneratedQuery,
+        input: GeneratedModel
+    ) {
+        extensionOn("Query") {
+            self.writer.write("Input == ", query.inputName)
+        } builder: {
+            writer.write("func execute(")
+            for (position, field) in input.fields.elements.positional() {
+                writer.write(field.value.name, ": ", field.value.type.description)
+                
+                if !position.isLast {
+                    writer.write(", ")
                 }
             }
-        }
-    }
-    
-    /// Generates a memberwise initializer for the model
-    private static func memberwiseInit(
-        for model: GeneratedModel
-    ) -> InitializerDeclSyntax {
-        return InitializerDeclSyntax(
-            signature: FunctionSignatureSyntax(
-                parameterClause: FunctionParameterClauseSyntax(
-                    parameters: FunctionParameterListSyntax(
-                        model.fields.values.positional()
-                            .map { position, field in
-                                FunctionParameterSyntax(
-                                    firstName: .identifier(field.name),
-                                    type: IdentifierTypeSyntax(name: .identifier(field.type.description)),
-                                    trailingComma: position .isLast ? nil : TokenSyntax.commaToken()
-                                )
-                            }
-                    )
-                )
-            )
-        ) {
-            for field in model.fields.values {
-                "self.\(raw: field.name) = \(raw: field.name)"
+            
+            writer.write(") async throws -> Output ")
+            writer.braces {
+                writer.write(line: "try await execute(with: ", query.inputName, "(")
+                
+                for (position, field) in input.fields.elements.positional() {
+                    writer.write(field.key, ": ", field.key)
+                    
+                    if !position.isLast {
+                        writer.write(", ")
+                    }
+                }
+                
+                writer.write("))")
             }
         }
     }
     
-    private static func variableDecl(
-        binding: Keyword = .let,
-        name: String,
-        type: BuiltinOrGenerated
-    ) -> VariableDeclSyntax {
-        VariableDeclSyntax(
-            .let,
-            name: "\(raw: name)",
-            type: TypeAnnotationSyntax(
-                type: IdentifierTypeSyntax(name: .identifier(type.description))
-            )
-        )
-    }
-    
-    private static func stringLiteral(
-        of contents: String,
-        multiline: Bool = false
-    ) -> StringLiteralExprSyntax {
-        let openingQuote: TokenSyntax = multiline
-            ? .multilineStringQuoteToken(trailingTrivia: .newline)
-            : .singleQuoteToken()
+    private func extensionOn(
+        _ type: String,
+        conformance: String? = nil,
+        condition: (() -> Void)? = nil,
+        builder: () -> Void
+    ) {
+        writer.write(line: "extension ", type)
         
-        let closingQuote: TokenSyntax = multiline
-            ? .multilineStringQuoteToken(leadingTrivia: .newline)
-            : .singleQuoteToken()
-        
-        let segments: StringLiteralSegmentListSyntax
-        if multiline {
-            let lines = contents.split(separator: "\n")
-            
-            segments = StringLiteralSegmentListSyntax(
-                lines
-                    .enumerated()
-                    .map { i, s in
-                        .stringSegment(StringSegmentSyntax(
-                            content: .stringSegment(s.description),
-                            trailingTrivia: i == lines.count - 1 ? nil : .newline
-                        ))
-                    }
-            )
-        } else {
-            segments = [.stringSegment(.init(content: .stringSegment(contents)))]
+        if let conformance {
+            writer.write(": ", conformance)
         }
         
-        return StringLiteralExprSyntax(
-            leadingTrivia: multiline ? Trivia.newline : nil,
-            openingQuote: openingQuote,
-            segments: segments,
-            closingQuote: closingQuote,
-            trailingTrivia: nil // Seems like a newline is added automatically?
-        )
+        writer.write(" ")
+        
+        if let condition {
+            writer.write("where ")
+            condition()
+            writer.write(" ")
+        }
+        
+        writer.braces {
+            builder()
+        }
+        writer.blankLine()
     }
     
-    @CodeBlockItemListBuilder
-    private static func bind(
+    private func multilineStringLiteral(of string: String) {
+        writer.write(line: "\"\"\"")
+        
+        for line in string.split(separator: "\n") {
+            writer.write(line: line)
+        }
+        
+        writer.write(line: "\"\"\"")
+    }
+    
+    private func bind(
         field: String?,
         encodeToType: String?,
         isArray: Bool
-    ) -> CodeBlockItemListSyntax {
-        let paramName = if let field {
-            "input.\(field)"
-        } else {
-            "input"
-        }
-        
-        let encode = if let encodeToType {
-            ".encodeTo\(encodeToType)()"
-        } else {
-            ""
-        }
+    ) {
+        let paramName = field.map{ "input.\($0)" } ?? "input"
+        let encode = encodeToType.map{ ".encodeTo\($0)()" } ?? ""
         
         if isArray {
-            """
-            for element in \(raw: paramName) {
-                try statement.bind(value: element\(raw: encode))
+            writer.write(line: "for element in ", paramName, " {")
+            
+            writer.indented {
+                writer.write(line: "try statement.bind(value: element", encode, ")")
             }
-            """
+            
+            writer.write(line: "}")
         } else {
-            "try statement.bind(value: \(raw: paramName)\(raw: encode))"
+            writer.write(line: "try statement.bind(value: ", paramName, encode, ")")
         }
     }
 }

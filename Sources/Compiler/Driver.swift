@@ -97,11 +97,12 @@ public actor Driver {
                 return // Just skip, diagnostics should have already been emitted.
             }
             
-            let file = try Lang.generate(
+            let lang = Lang(options: options)
+            
+            let file = try lang.generate(
                 migrations: migrations,
                 queries: queries,
-                schema: currentSchema,
-                options: options
+                schema: currentSchema
             )
             
             if let path {

@@ -10,24 +10,25 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 
 public protocol Language {
-    static func queryTypeName(input: String, output: String) -> String
+    init(options: GenerationOptions)
     
-    static func inputTypeName(input: BuiltinOrGenerated?) -> String
+    func queryTypeName(input: String, output: String) -> String
     
-    static func outputTypeName(
+    func inputTypeName(input: BuiltinOrGenerated?) -> String
+    
+    func outputTypeName(
         output: BuiltinOrGenerated?,
         cardinality: Cardinality
     ) -> String
     
     /// Returns the Language builtin for the given SQL type
-    static func builtinType(for type: Type) -> String
+    func builtinType(for type: Type) -> String
     
     /// A file source code containing all of the generated tables, queries and migrations.
-    static func file(
+    func file(
         migrations: [String],
         tables: [GeneratedModel],
-        queries: [(String?, [GeneratedQuery])],
-        options: GenerationOptions
+        queries: [(String?, [GeneratedQuery])]
     ) throws -> String
     
     /// Function to generate a interpolation segment in a string
@@ -38,27 +39,25 @@ public protocol Language {
     /// ```swift
     /// \(input.sqlQuestionMarks)
     /// ```
-    static func interpolatedQuestionMarks(for param: String) -> String
+    func interpolatedQuestionMarks(for param: String) -> String
 }
 
 extension Language {
-    public static func generate(
+    public func generate(
         migrations: [String],
         queries: [(String?, [Statement])],
-        schema: Schema,
-        options: GenerationOptions
+        schema: Schema
     ) throws -> String {
         let values = try assemble(queries: queries, schema: schema)
         
         return try file(
             migrations: migrations,
             tables: values.tables,
-            queries: values.queries,
-            options: options
+            queries: values.queries
         )
     }
     
-    public static func assemble(
+    public func assemble(
         queries: [(String?, [Statement])],
         schema: Schema
     ) throws -> (
@@ -70,7 +69,7 @@ extension Language {
         return (Array(tables.values), queries)
     }
     
-    private static func query(
+    private func query(
         for statement: Statement,
         tables: [Substring: GeneratedModel]
     ) -> GeneratedQuery {
@@ -113,7 +112,7 @@ extension Language {
         )
     }
     
-    private static func model(for table: Table) -> GeneratedModel {
+    private func model(for table: Table) -> GeneratedModel {
         GeneratedModel(
             name: table.name.name.capitalizedFirst,
             fields: table.columns.reduce(into: [:]) { fields, column in
@@ -135,12 +134,12 @@ extension Language {
     
     /// If the column type was aliased then this will return the `builtin`
     /// type for the root type of the alias.
-    private static func builtinForAliasedType(for type: Type) -> String? {
+    private func builtinForAliasedType(for type: Type) -> String? {
         guard case let .alias(root, _) = type else { return nil }
         return builtinType(for: root)
     }
     
-    private static func inputTypeIfNeeded(
+    private func inputTypeIfNeeded(
         statement: Statement,
         definition: Definition
     ) -> BuiltinOrGenerated? {
@@ -175,7 +174,7 @@ extension Language {
         return .model(model)
     }
     
-    private static func outputTypeIfNeeded(
+    private func outputTypeIfNeeded(
         statement: Statement,
         definition: Definition,
         tables: [Substring: GeneratedModel]

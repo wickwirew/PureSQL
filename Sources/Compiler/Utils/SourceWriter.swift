@@ -127,6 +127,12 @@ final class SourceWriter {
             }
         }
     }
+    
+    func reset() {
+        currentIndent = 0
+        segments = []
+        currentCharacterCount = 0
+    }
 }
 
 extension SourceWriter: CustomStringConvertible {

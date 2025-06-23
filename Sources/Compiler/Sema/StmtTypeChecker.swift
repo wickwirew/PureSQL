@@ -1301,7 +1301,7 @@ extension StmtTypeChecker {
     ) -> Type {
         let nominal: Type = .nominal(column.type.name.value)
         
-        var type: Type = if let alias = column.type.alias {
+        let type: Type = if let alias = column.type.alias {
             .alias(nominal, .explicit(alias.identifier.value))
         } else {
             nominal
