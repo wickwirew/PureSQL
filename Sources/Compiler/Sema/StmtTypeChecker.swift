@@ -1299,6 +1299,14 @@ extension StmtTypeChecker {
         tableColumns: borrowing Columns,
         tableName: Substring
     ) -> Type {
+        let nominal: Type = .nominal(column.type.name.value)
+        
+        var type: Type = if let alias = column.type.alias {
+            .alias(nominal, .explicit(alias.identifier.value))
+        } else {
+            nominal
+        }
+        
         var isNotNullable = false
         for constraint in column.constraints {
             switch constraint.kind {
@@ -1309,6 +1317,12 @@ extension StmtTypeChecker {
             case let .check(expr):
                 inNewEnvironment { typeChecker in
                     typeChecker.env.import(columns: tableColumns)
+                    // Technically this could be incorrect if the check
+                    // comes before the not null. But it'll do.
+                    typeChecker.env.import(
+                        column: column.name.value,
+                        with: isNotNullable ? type : .optional(type)
+                    )
                     _ = typeChecker.typeCheck(expr)
                 }
             case let .default(expr):
@@ -1353,19 +1367,7 @@ extension StmtTypeChecker {
             ))
         }
         
-        let nominal: Type = .nominal(column.type.name.value)
-        
-        let type: Type = if let alias = column.type.alias {
-            .alias(nominal, .explicit(alias.identifier.value))
-        } else {
-            nominal
-        }
-        
-        if isNotNullable {
-            return type
-        } else {
-            return .optional(type)
-        }
+        return isNotNullable ? type : .optional(type)
     }
     
     private mutating func typeCheck(

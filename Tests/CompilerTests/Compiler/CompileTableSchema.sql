@@ -12,7 +12,7 @@
 -- CHECK:   KIND normal
 CREATE TABLE foo (
     bar INTEGER PRIMARY KEY,
-    baz TEXT
+    baz TEXT CHECK (baz = 'baz')
 );
 
 ALTER TABLE foo ADD COLUMN qux TEXT;

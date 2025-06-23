@@ -140,7 +140,7 @@ enum Builtins {
         "unixepoch": Function(returning: .integer),
         "julianday": Function(returning: .real),
         "strftime": Function(
-            .text,
+            .text, .any,
             returning: .text,
             variadic: true
         ) { _, args, location, diagnostics in
