@@ -1,0 +1,218 @@
+import Foundation
+import Otter
+
+struct User: Hashable, Sendable, Identifiable, RowDecodable {
+    let id: Int
+    let firstName: String
+    let lastName: String
+    let fullName: String
+    
+    init(
+        row: borrowing Otter.Row,
+        startingAt start: Int32
+    ) throws(Otter.OtterError) {
+        self.id = try row.value(at: start + 0)
+        self.firstName = try row.value(at: start + 1)
+        self.lastName = try row.value(at: start + 2)
+        self.fullName = try row.value(at: start + 3)
+    }
+    
+    init(
+        id: Int,
+        firstName: String,
+        lastName: String,
+        fullName: String
+    ) {
+        self.id = id
+        self.firstName = firstName
+        self.lastName = lastName
+        self.fullName = fullName
+    }
+}
+
+struct SelectUserWithManyInputsInput: Hashable, Sendable, Identifiable {
+    let id: Int
+    let firstName: String
+}
+
+@dynamicMemberLookup
+struct SelectUserWithManyInputsOutput: Hashable, Sendable, RowDecodable {
+    let user: User
+    let favoriteNumber: Int
+    
+    init(
+        row: borrowing Otter.Row,
+        startingAt start: Int32
+    ) throws(Otter.OtterError) {
+        self.user = try User(row: row, startingAt: start + 0)
+        self.favoriteNumber = try row.value(at: start + 4)
+    }
+    
+    init(
+        user: User,
+        favoriteNumber: Int
+    ) {
+        self.user = user
+        self.favoriteNumber = favoriteNumber
+    }
+    
+    subscript<Value>(dynamicMember dynamicMember: KeyPath<User, Value>) -> Value {
+        self.user[keyPath: dynamicMember]
+    }
+}
+
+protocol QueriesQueries {
+    associatedtype SelectUsers: SelectUsersQuery
+    var selectUsers: SelectUsers { get }
+    associatedtype SelectUserById: SelectUserByIdQuery
+    var selectUserById: SelectUserById { get }
+    associatedtype SelectUserByIds: SelectUserByIdsQuery
+    var selectUserByIds: SelectUserByIds { get }
+    associatedtype SelectUserByName: SelectUserByNameQuery
+    var selectUserByName: SelectUserByName { get }
+    associatedtype SelectUserWithManyInputs: SelectUserWithManyInputsQuery
+    var selectUserWithManyInputs: SelectUserWithManyInputs { get }
+}
+
+struct QueriesQueriesNoop: QueriesQueries {
+    let selectUsers: AnyQuery<(), [User]>
+    let selectUserById: AnyQuery<Int, User?>
+    let selectUserByIds: AnyQuery<[Int], [User]>
+    let selectUserByName: AnyQuery<String, [User]>
+    let selectUserWithManyInputs: AnyQuery<SelectUserWithManyInputsInput, SelectUserWithManyInputsOutput?>
+    
+    init(
+        selectUsers: any SelectUsersQuery = Queries.Just(),
+        selectUserById: any SelectUserByIdQuery = Queries.Just(),
+        selectUserByIds: any SelectUserByIdsQuery = Queries.Just(),
+        selectUserByName: any SelectUserByNameQuery = Queries.Just(),
+        selectUserWithManyInputs: any SelectUserWithManyInputsQuery = Queries.Just()
+    ) {
+        self.selectUsers = selectUsers.eraseToAnyQuery()
+        self.selectUserById = selectUserById.eraseToAnyQuery()
+        self.selectUserByIds = selectUserByIds.eraseToAnyQuery()
+        self.selectUserByName = selectUserByName.eraseToAnyQuery()
+        self.selectUserWithManyInputs = selectUserWithManyInputs.eraseToAnyQuery()
+    }
+}
+
+struct QueriesQueriesImpl: QueriesQueries {
+    let connection: any Connection
+    
+    var selectUsers: AnyDatabaseQuery<(), [User]> {
+        AnyDatabaseQuery<(), [User]>(
+            .read,
+            in: connection,
+            watchingTables: ["user"]
+        ) { input, tx in
+            let statement = try Otter.Statement(
+                """
+                SELECT * FROM user
+                """,
+                transaction: tx
+            )
+            return try statement.fetchAll()
+        }
+    }
+    
+    var selectUserById: AnyDatabaseQuery<Int, User?> {
+        AnyDatabaseQuery<Int, User?>(
+            .read,
+            in: connection,
+            watchingTables: ["user"]
+        ) { input, tx in
+            var statement = try Otter.Statement(
+                """
+                SELECT * FROM user WHERE id = ?
+                """,
+                transaction: tx
+            )
+            try statement.bind(value: input)
+            return try statement.fetchOne()
+        }
+    }
+    
+    var selectUserByIds: AnyDatabaseQuery<[Int], [User]> {
+        AnyDatabaseQuery<[Int], [User]>(
+            .read,
+            in: connection,
+            watchingTables: ["user"]
+        ) { input, tx in
+            var statement = try Otter.Statement(
+                """
+                SELECT * FROM user WHERE id IN (\(input.sqlQuestionMarks))
+                """,
+                transaction: tx
+            )
+            for element in input {
+                try statement.bind(value: element)
+            }
+            return try statement.fetchAll()
+        }
+    }
+    
+    var selectUserByName: AnyDatabaseQuery<String, [User]> {
+        AnyDatabaseQuery<String, [User]>(
+            .read,
+            in: connection,
+            watchingTables: ["user"]
+        ) { input, tx in
+            var statement = try Otter.Statement(
+                """
+                SELECT * FROM user WHERE fullName LIKE ?
+                """,
+                transaction: tx
+            )
+            try statement.bind(value: input)
+            return try statement.fetchAll()
+        }
+    }
+    
+    var selectUserWithManyInputs: AnyDatabaseQuery<SelectUserWithManyInputsInput, SelectUserWithManyInputsOutput?> {
+        AnyDatabaseQuery<SelectUserWithManyInputsInput, SelectUserWithManyInputsOutput?>(
+            .read,
+            in: connection,
+            watchingTables: ["user"]
+        ) { input, tx in
+            var statement = try Otter.Statement(
+                """
+                SELECT *, 1 AS favoriteNumber FROM user WHERE id = ? AND firstName = ?
+                """,
+                transaction: tx
+            )
+            try statement.bind(value: input.id)
+            try statement.bind(value: input.firstName)
+            return try statement.fetchOne()
+        }
+    }
+}
+
+struct DB: Database{
+    let connection: any Otter.Connection
+    
+    static var migrations: [String] {
+        return [
+            """
+            CREATE TABLE user (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                firstName TEXT NOT NULL,
+                lastName TEXT NOT NULL,
+                fullName TEXT NOT NULL GENERATED ALWAYS AS (firstName || ' ' || lastName)
+            );;
+            """
+        ]
+    }
+    var queriesQueries: QueriesQueriesImpl {
+        QueriesQueriesImpl(connection: connection)
+    }
+}
+
+typealias SelectUsersQuery = Query<(), [User]>
+typealias SelectUserByIdQuery = Query<Int, User?>
+typealias SelectUserByIdsQuery = Query<[Int], [User]>
+typealias SelectUserByNameQuery = Query<String, [User]>
+typealias SelectUserWithManyInputsQuery = Query<SelectUserWithManyInputsInput, SelectUserWithManyInputsOutput?>
+extension Query where Input == SelectUserWithManyInputsInput {func execute(id: Int, firstName: String) async throws -> Output {
+        try await execute(with: SelectUserWithManyInputsInput(id: id, firstName: firstName))
+    }
+}

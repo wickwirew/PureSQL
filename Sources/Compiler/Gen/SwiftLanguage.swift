@@ -390,17 +390,17 @@ public struct SwiftLanguage: Language {
             writer.write(line: "let ", field.name, ": ", field.type.description)
         }
         
-        if addDynamicLookup {
-            for (fieldName, table) in dynamicLookupTables {
-                dynamicMemberLookup(fieldName: fieldName, typeName: table.name)
-            }
-        }
-        
         if isOutput {
             writer.blankLine()
             rowDecodableInit(for: model)
             writer.blankLine()
             memberWiseInit(for: model)
+        }
+        
+        if addDynamicLookup {
+            for (fieldName, table) in dynamicLookupTables {
+                dynamicMemberLookup(fieldName: fieldName, typeName: table.name)
+            }
         }
         
         writer.unindent()

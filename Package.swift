@@ -66,7 +66,7 @@ let package = Package(
         .testTarget(
             name: "CompilerTests",
             dependencies: ["Compiler"],
-            resources: [.process("Compiler"), .process("Parser")]
+            resources: [.process("Compiler"), .process("Parser"), .process("Gen")]
         ),
     ]
 )

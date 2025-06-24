@@ -46,28 +46,6 @@ extension Diagnostic: CustomStringConvertible {
 }
 
 extension Diagnostic {
-    static func incorrectType(
-        _ actual: TypeNameSyntax,
-        expected: TypeNameSyntax,
-        at location: SourceLocation
-    ) -> Diagnostic {
-        Diagnostic(
-            "Incorrect type, expected '\(expected.name)' got '\(actual.name)'",
-            at: location,
-            suggestion: .replace(expected.name.description)
-        )
-    }
-    
-    static func expectedNumber(
-        _ actual: TypeNameSyntax,
-        at location: SourceLocation
-    ) -> Diagnostic {
-        Diagnostic(
-            "Incorrect type, expected number got '\(actual.name)'",
-            at: location
-        )
-    }
-    
     static func ambiguous(
         _ identifier: Substring,
         at location: SourceLocation
