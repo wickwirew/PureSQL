@@ -13,7 +13,10 @@
 </p>
 
 # Overview
-Otter is a pure Swift SQL compiler that allow developers to write plain compile time safe SQL.
+Otter is a pure Swift SQL compiler that allow developers to simply write plain SQL with compile time safety.
+If your database schema changes, you will get compile time errors for the places that need to be fixed.
+It just doesn't generate the code to talk to SQLite, but rather your entire data layer in a testable
+flexible manner. No more writing mocks or wrappers. Just pass in the query.
 
 - [Installation](#installation)
 - [Macros](#or-use-the-swift-macro)
@@ -57,6 +60,19 @@ for todo in todos {
 for try await todos in database.todoQueries.selectTodos.observe() {
   print("Got todos", todos)
 }
+```
+
+Otter is built with testing in mind. Dependency injection is possible right out of the box.
+No need to wrap your database in repositories. Just pass in the `any <Name>Query` and
+you can pass in `Queries.Just`, `Queries.Fail` or even `Queries.Test` for call counts.
+```swift
+class ViewModel {
+  let selectTodos: any SelectTodosQuery
+}
+
+let live = ViewModel(selectTodos: db.todoQueries.selectTodos)
+
+let test = ViewModel(selectTodos: Queries.Just([...]))
 ```
 
 ### Or Use the Swift Macro
@@ -377,6 +393,7 @@ ORDER BY rank;
 ## Upcoming Features
 Otter is a young project and there are a lot of new features and functionality I want to add.
 Below are some idea that I would love input on!
+- LSP and vscode plugin
 - Support for multiple statements in a single query
 - Kotlin library/generation
   - Generating Kotlin would allow SQLite based apps to basically share their model/data layer
@@ -385,7 +402,7 @@ Below are some idea that I would love input on!
 - Queries with multiple statements
   - Would allow for easier loading of more complex models that have many joins
   - Want to allow other queries to be called from within the body to help centrize logic.
-- Postgres support for server side swift ❤️
+- Postgres support for server side swift
 
 ## Contributions
 Contributions are welcome and encouraged! Feel free to make a PR or open an issue. If the change is large please open an issue first to make sure the change is desired.
