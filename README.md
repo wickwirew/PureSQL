@@ -49,6 +49,7 @@ let database = try DB(path: "...")
 
 // Execute the query
 let todos = try await database.todoQueries.selectTodos.execute()
+
 for todo in todos {
   print(todo.id, todo.name, todo.completedOn)
 }
