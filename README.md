@@ -49,9 +49,6 @@ let database = try DB(path: "...")
 
 // Execute the query
 let todos = try await database.todoQueries.selectTodos.execute()
-
-// The `Todo` struct is automatically generated for the table
-// meaning your schema and swift code will never get out of sync
 for todo in todos {
   print(todo.id, todo.name, todo.completedOn)
 }
@@ -72,7 +69,7 @@ class ViewModel {
 
 let live = ViewModel(selectTodos: db.todoQueries.selectTodos)
 
-let test = ViewModel(selectTodos: Queries.Just([...]))
+let test = ViewModel(selectTodos: Queries.Just([Todo(...)]))
 ```
 
 ### Or Use the Swift Macro
