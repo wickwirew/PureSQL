@@ -125,5 +125,6 @@ public enum SQLiteCode: Int32, Error {
 
 func throwing(_ rc: Int32, connection: OpaquePointer? = nil) throws(OtterError) {
     guard rc != SQLITE_OK, let code = SQLiteCode(rawValue: rc) else { return }
+    // Memory for the error is managed by SQLite so we don't need to free it.
     throw .sqlite(code, String(cString: sqlite3_errmsg(connection)))
 }

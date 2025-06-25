@@ -40,7 +40,12 @@ class SQLiteConnection: @unchecked Sendable {
             return
         }
         
-        let message = error.map { String(cString: $0) }
+        var message: String?
+        if let error {
+            message = String(cString: error)
+            sqlite3_free(error)
+        }
+        
         throw .sqlite(SQLiteCode(rc), message)
     }
 
