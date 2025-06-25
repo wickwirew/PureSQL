@@ -5,40 +5,43 @@
 //  Created by Wes Wickwire on 2/16/25.
 //
 
-public enum MigrationRunner {
+/// Executes the migrations and ensures it is up to date.
+enum MigrationRunner {
     static let migrationTableName = "__otterMigrations"
-    
-    public static func execute(migrations: [String], pool: ConnectionPool) async throws {
-        try await pool.begin(.write) { tx in
-            try execute(migrations: migrations, tx: tx)
-        }
-    }
-    
-    public static func execute(migrations: [String], tx: borrowing Transaction) throws {
-        try createTableIfNeeded(tx: tx)
-        
-        let lastMigration = try lastMigration(tx: tx)
+
+    static func execute(migrations: [String], connection: SQLiteConnection) throws {
+        let previouslyRunMigrations = try runMigrations(connection: connection)
+        let lastMigration = previouslyRunMigrations.last ?? Int.min
         
         let pendingMigrations = migrations.enumerated()
-            .map { (number: $0.offset + 1, migration: $0.element) }
+            .map { (number: $0.offset, migration: $0.element) }
             .filter { $0.number > lastMigration }
-            .sorted { $0.number < $1.number }
         
         for (number, migration) in pendingMigrations {
-            try execute(migration: migration, number: number, tx: tx)
+            // Run each migration in it's own transaction.
+            let tx = try Transaction(connection: connection, kind: .write)
+            
+            let result = Result {
+                try execute(migration: migration, number: number, tx: tx)
+            }
+            
+            switch result {
+            case .success:
+                try tx.commit()
+            case .failure(let error):
+                try tx.commitOrRollback()
+                throw error
+            }
         }
     }
     
-    static func createTableIfNeeded(tx: borrowing Transaction) throws(OtterError) {
-        try tx.execute(sql: """
-        CREATE TABLE IF NOT EXISTS \(migrationTableName)(
-            number INTEGER PRIMARY KEY
-        ) STRICT;
-        """)
-    }
-    
-    /// Executes the migration, if the `number` exists it will be recorded in the migrations table.
-    static func execute(migration: String, number: Int?, tx: borrowing Transaction) throws {
+    /// Executes the migration, if the `number` exists it will be
+    /// recorded in the migrations table.
+    private static func execute(
+        migration: String,
+        number: Int?,
+        tx: borrowing Transaction
+    ) throws {
         try tx.execute(sql: migration)
         
         if let number {
@@ -46,12 +49,23 @@ public enum MigrationRunner {
         }
     }
     
-    private static func lastMigration(tx: borrowing Transaction) throws -> Int {
+    /// Creates the migrations table and gets the last migration that ran.
+    private static func runMigrations(connection: SQLiteConnection) throws -> [Int] {
+        let tx = try Transaction(connection: connection, kind: .write)
+        
+        // Create the migration table if need be.
+        try tx.execute(sql: """
+        CREATE TABLE IF NOT EXISTS \(migrationTableName)(
+            number INTEGER PRIMARY KEY
+        ) STRICT;
+        """)
+        
         let statement = try Statement(in: tx) {
-            "SELECT MAX(number) FROM \(MigrationRunner.migrationTableName)"
+            "SELECT * FROM \(MigrationRunner.migrationTableName) ORDER BY number ASC"
         }
         
-        return try statement.fetchOne(of: Int.self) ?? 0
+        try tx.commit()
+        return try statement.fetchAll()
     }
     
     private static func insertMigration(version: Int, tx: borrowing Transaction) throws {

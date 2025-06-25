@@ -50,14 +50,10 @@ public actor ConnectionPool: Sendable {
         
         // Turn on WAL mode
         try connection.execute(sql: "PRAGMA journal_mode=WAL;")
-        
-        let tx = try Transaction(connection: connection, kind: .write)
-        try MigrationRunner.execute(migrations: migrations, tx: tx)
-        try tx.commit()
-        
+        try MigrationRunner.execute(migrations: migrations, connection: connection)
         self.availableConnections = [connection]
     }
-    
+
     /// Whether or not we have created all the connections we are allowed too
     var isAtConnectionLimit: Bool {
         return count >= limit

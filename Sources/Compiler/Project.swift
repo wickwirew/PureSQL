@@ -62,13 +62,14 @@ public struct Project {
             fatalError("Failed to get blank string data")
         }
         
-        let latestMigration = try fileSystem.files(at: migrationsDirectory)
+        let nextMigration = try fileSystem.files(at: migrationsDirectory)
             .compactMap { $0.split(separator: ".").first }
             .compactMap { Int($0) }
             .sorted(by: >)
-            .first ?? 0
+            .first
+            .map { $0 + 1 } ?? 0
         
-        let fileUrl = migrationsDirectory.appendingPathComponent("\(latestMigration + 1).sql")
+        let fileUrl = migrationsDirectory.appendingPathComponent("\(nextMigration).sql")
         
         fileSystem.write(data, to: fileUrl)
     }

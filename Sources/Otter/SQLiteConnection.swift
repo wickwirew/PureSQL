@@ -33,7 +33,15 @@ class SQLiteConnection: @unchecked Sendable {
     }
 
     func execute(sql: String) throws(OtterError) {
-        try throwing(sqlite3_exec(sqliteConnection, sql, nil, nil, nil))
+        var error: UnsafeMutablePointer<CChar>?
+        let rc = sqlite3_exec(sqliteConnection, sql, nil, nil, &error)
+        
+        if rc == SQLITE_OK {
+            return
+        }
+        
+        let message = error.map { String(cString: $0) }
+        throw .sqlite(SQLiteCode(rc), message)
     }
 
     deinit {
