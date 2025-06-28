@@ -356,8 +356,13 @@ typealias SelectUserByIdQuery = Query<Int, User?>
 typealias SelectUserByIdsQuery = Query<[Int], [User]>
 typealias SelectUserByNameQuery = Query<String, [User]>
 typealias SelectUserWithManyInputsQuery = Query<SelectUserWithManyInputsInput, SelectUserWithManyInputsOutput?>
-extension Query where Input == SelectUserWithManyInputsInput {func execute(id: Int, firstName: String) async throws -> Output {
+extension Query where Input == SelectUserWithManyInputsInput {
+    func execute(id: Int, firstName: String) async throws -> Output {
         try await execute(with: SelectUserWithManyInputsInput(id: id, firstName: firstName))
+    }
+    
+    func observe(id: Int, firstName: String) -> any QueryObservation<Output> {
+        observe(with: SelectUserWithManyInputsInput(id: id, firstName: firstName))
     }
 }
 

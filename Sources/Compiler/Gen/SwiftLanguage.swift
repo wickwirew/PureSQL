@@ -545,10 +545,7 @@ public struct SwiftLanguage: Language {
         for query: GeneratedQuery,
         input: GeneratedModel
     ) {
-        extensionOn("Query") {
-            self.writer.write("Input == ", query.inputName)
-        } builder: {
-            writer.write("func execute(")
+        let writeInput: () -> Void = {
             for (position, field) in input.fields.elements.positional() {
                 writer.write(field.value.name, ": ", field.value.type.description)
                 
@@ -556,19 +553,39 @@ public struct SwiftLanguage: Language {
                     writer.write(", ")
                 }
             }
-            
+        }
+        
+        let initInput: () -> Void = {
+            for (position, field) in input.fields.elements.positional() {
+                writer.write(field.key, ": ", field.key)
+                
+                if !position.isLast {
+                    writer.write(", ")
+                }
+            }
+        }
+        
+        extensionOn("Query") {
+            self.writer.write("Input == ", query.inputName)
+        } builder: {
+            writer.write("func execute(")
+            writeInput()
             writer.write(") async throws -> Output ")
+            
             writer.braces {
                 writer.write(line: "try await execute(with: ", query.inputName, "(")
-                
-                for (position, field) in input.fields.elements.positional() {
-                    writer.write(field.key, ": ", field.key)
-                    
-                    if !position.isLast {
-                        writer.write(", ")
-                    }
-                }
-                
+                initInput()
+                writer.write("))")
+            }
+            
+            writer.blankLine()
+            writer.write(line: "func observe(")
+            writeInput()
+            writer.write(") -> any QueryObservation<Output> ")
+            
+            writer.braces {
+                writer.write(line: "observe(with: ", query.inputName, "(")
+                initInput()
                 writer.write("))")
             }
         }
@@ -595,6 +612,7 @@ public struct SwiftLanguage: Language {
         }
         
         writer.braces {
+            writer.blankLine()
             builder()
         }
         writer.blankLine()
