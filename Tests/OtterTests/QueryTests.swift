@@ -51,4 +51,25 @@ struct QueryTests {
             }
         }
     }
+    
+    @Test func optionallyIncludedEmbeddedJoin_Exists() async throws {
+        let db = try TestDB.inMemory()
+        
+        try await db.insertFoo.execute(with: 1)
+        try await db.insertBaz.execute(with: 1)
+        
+        let result = try await db.selectFooAndBaz.execute()
+        
+        #expect(result == [.init(foo: .init(bar: 1), baz: .init(qux: 1))])
+    }
+    
+    @Test func optionallyIncludedEmbeddedJoin_DoesNotExists() async throws {
+        let db = try TestDB.inMemory()
+        
+        try await db.insertFoo.execute(with: 1)
+        
+        let result = try await db.selectFooAndBaz.execute()
+        
+        #expect(result == [.init(foo: .init(bar: 1), baz: nil)])
+    }
 }

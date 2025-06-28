@@ -28,10 +28,16 @@ public struct Cursor<Element: RowDecodable>: ~Copyable {
 public struct Row: ~Copyable {
     @usableFromInline let sqliteStatement: OpaquePointer
 
+    /// Decodes the column at the index as the `Value` type.
     @inlinable public func value<Value: DatabasePrimitive>(
         at column: Int32,
         as _: Value.Type = Value.self
     ) throws(OtterError) -> Value {
         return try Value(from: sqliteStatement, at: column)
+    }
+    
+    /// Whether or not the column has a non null table at the column index
+    @inlinable public func hasValue(at column: Int32) -> Bool {
+        sqlite3_column_type(sqliteStatement, column) != SQLITE_NULL
     }
 }

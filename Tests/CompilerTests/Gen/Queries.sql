@@ -12,3 +12,9 @@ SELECT * FROM user WHERE fullName LIKE ?;
 
 selectUserWithManyInputs:
 SELECT *, 1 AS favoriteNumber FROM user WHERE id = ? AND firstName = ?;
+
+selectWithInterest:
+SELECT user.*, interest.* FROM user INNER JOIN interest ON user.id = interest.userId;
+
+selectWithOptionalInterest:
+SELECT user.*, interest.* FROM user LEFT OUTER JOIN interest ON user.id = interest.userId;

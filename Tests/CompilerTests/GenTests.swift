@@ -24,7 +24,6 @@ struct GenTests {
             schema: compiler.schema
         )
         
-        print(rawOutput)
         let expected = try load(file: "Swift", ext: "output")
             .split(separator: "\n")
             .filter{ !$0.isEmpty }
@@ -35,6 +34,10 @@ struct GenTests {
         
         for (expected, output) in zip(expected, output) {
             #expect(expected == output)
+            
+            if expected != output {
+                break
+            }
         }
         
         #expect(output.count == expected.count)

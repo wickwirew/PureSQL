@@ -105,7 +105,7 @@ public struct SwiftLanguage: Language {
         for query in allQueries {
             typeAlias(for: query)
             
-            if let input = query.input, case let .model(model) = input {
+            if let input = query.input, case let .model(model, _) = input {
                 inputExtension(for: query, input: model)
             }
         }
@@ -321,7 +321,7 @@ public struct SwiftLanguage: Language {
             switch input {
             case let .builtin(_, isArray, encodedAs):
                 bind(field: nil, encodeToType: encodedAs, isArray: isArray)
-            case .model(let model):
+            case .model(let model, _):
                 for field in model.fields.values {
                     bind(field: field.name, encodeToType: field.encodedAsType, isArray: field.isArray)
                 }
@@ -359,9 +359,9 @@ public struct SwiftLanguage: Language {
         for model: GeneratedModel,
         isOutput: Bool
     ) {
-        let dynamicLookupTables = model.fields.values.compactMap { value -> (String, GeneratedModel)? in
-            guard case let .model(model) = value.type else { return nil }
-            return (value.name, model)
+        let dynamicLookupTables = model.fields.values.compactMap { value -> (String, GeneratedModel, Bool)? in
+            guard case let .model(model, isOptional) = value.type else { return nil }
+            return (value.name, model, isOptional)
         }
         
         let addDynamicLookup = isOutput && !dynamicLookupTables.isEmpty && model.fields.count > 1
@@ -392,14 +392,30 @@ public struct SwiftLanguage: Language {
         
         if isOutput {
             writer.blankLine()
+            
+            writer.write(line: "static var nonOptionalIndices: [Int32] { [")
+            for (position, index) in model.nonOptionalIndices.positional() {
+                writer.write(index.description)
+                
+                if !position.isLast {
+                    writer.write(", ")
+                }
+            }
+            writer.write("] }")
+            
+            writer.blankLine()
             rowDecodableInit(for: model)
             writer.blankLine()
             memberWiseInit(for: model)
         }
         
         if addDynamicLookup {
-            for (fieldName, table) in dynamicLookupTables {
-                dynamicMemberLookup(fieldName: fieldName, typeName: table.name)
+            for (fieldName, table, isOptional) in dynamicLookupTables {
+                dynamicMemberLookup(
+                    fieldName: fieldName,
+                    typeName: table.name,
+                    isOptional: isOptional
+                )
             }
         }
         
@@ -409,30 +425,37 @@ public struct SwiftLanguage: Language {
     }
     
     private func modelsFor(query: GeneratedQuery) {
-        if case let .model(model) = query.input, !model.isTable {
+        if case let .model(model, _) = query.input, !model.isTable {
             declaration(for: model, isOutput: false)
         }
         
-        if case let .model(model) = query.output, !model.isTable {
+        if case let .model(model, _) = query.output, !model.isTable {
             declaration(for: model, isOutput: true)
         }
     }
     
     private func dynamicMemberLookup(
         fieldName: String,
-        typeName: String
+        typeName: String,
+        isOptional: Bool
     ) {
         writer.newline()
         writer.write(line: "subscript<Value>(dynamicMember dynamicMember: ")
-        writer.write("KeyPath<", typeName, ", Value>) -> Value ")
+        writer.write("KeyPath<", typeName, ", Value>) -> Value")
+        if isOptional {
+            writer.write("?")
+        }
+        writer.write(" ")
         writer.braces {
-            writer.write(line: "self.", fieldName, "[keyPath: dynamicMember]")
+            writer.write(line: "self.", fieldName)
+            if isOptional {
+                writer.write("?")
+            }
+            writer.write("[keyPath: dynamicMember]")
         }
     }
     
-    private func rowDecodableInit(
-        for model: GeneratedModel
-    ) {
+    private func rowDecodableInit(for model: GeneratedModel) {
         // Initializer signature
         writer.write(line: "init(")
         writer.indent()
@@ -464,9 +487,13 @@ public struct SwiftLanguage: Language {
                 }
                 
                 index += 1
-            case .model(let model):
-                // Model initializer
-                writer.write(field.type.description, "(row: row, startingAt: start + ", index.description, ")")
+            case let .model(model, isOptional):
+                if isOptional {
+                    let type = field.type.description.replacingOccurrences(of: "?", with: "")
+                    writer.write(type, "(row: row, optionallyAt: start + ", index.description, ")")
+                } else {
+                    writer.write(field.type.description, "(row: row, startingAt: start + ", index.description, ")")
+                }
                 index += model.fields.count
             }
         }

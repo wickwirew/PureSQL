@@ -989,15 +989,16 @@ extension StmtTypeChecker {
                             schema: nil
                         ),
                         for: tableName
-                    ) ?? .error
+                    )
                     
                     // Insert any columns that have been defined before the `table.*`
                     breakOffCurrentChunkIfNeeded()
                     
                     // Add table columns as a chunk
                     chunks.append(ResultColumns.Chunk(
-                        columns: table.columns,
-                        table: tableName.value
+                        columns: table?.table.columns ?? [:],
+                        table: tableName.value,
+                        isTableOptional: table?.isOptional ?? false
                     ))
                 } else {
                     // No table specified so import everything in from the environment.
@@ -1005,8 +1006,9 @@ extension StmtTypeChecker {
                     
                     for table in env.allImportedTables {
                         chunks.append(ResultColumns.Chunk(
-                            columns: table.columns,
-                            table: table.name.name
+                            columns: table.table.columns,
+                            table: table.table.name.name,
+                            isTableOptional: table.isOptional
                         ))
                     }
                 }

@@ -19,10 +19,20 @@ struct TestDB {
 
     @Query("INSERT INTO foo (bar) VALUES (?)")
     var insertFoo: InsertFooDatabaseQuery
+    
+    @Query("INSERT INTO baz (qux) VALUES (?)")
+    var insertBaz: InsertBazDatabaseQuery
+    
+    @Query("SELECT foo.*, baz.* FROM foo LEFT OUTER JOIN baz ON foo.bar = baz.qux")
+    var selectFooAndBaz: SelectFooAndBazDatabaseQuery
+    
+    @Query("SELECT foo.*, baz.* FROM foo INNER JOIN baz ON foo.bar = baz.qux")
+    var selectFooAndBazNotOptional: SelectFooAndBazNotOptionalDatabaseQuery
 
     static var migrations: [String] {
         return [
             "CREATE TABLE foo (bar INTEGER PRIMARY KEY);",
+            "CREATE TABLE baz (qux INTEGER PRIMARY KEY);"
         ]
     }
 }

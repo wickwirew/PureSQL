@@ -4,3 +4,9 @@ CREATE TABLE user (
     lastName TEXT NOT NULL,
     fullName TEXT NOT NULL GENERATED ALWAYS AS (firstName || ' ' || lastName)
 );
+
+CREATE TABLE interest (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    value TEXT NOT NULL,
+    userId TEXT REFERENCES user(id)
+);

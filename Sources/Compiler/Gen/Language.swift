@@ -66,7 +66,7 @@ extension Language {
     ) {
         let tables = Dictionary(schema.tables.map { ($0.key.name, model(for: $0.value)) }, uniquingKeysWith: { $1 })
         let queries = queries.map { ($0.map { "\($0)Queries" }, $1.map { query(for: $0, tables: tables) }) }
-        return (Array(tables.values), queries)
+        return (tables.values.sorted{ $0.name < $1.name }, queries)
     }
     
     private func query(
@@ -109,7 +109,7 @@ extension Language {
             outputCardinality: statement.outputCardinality,
             sourceSql: sql,
             isReadOnly: statement.isReadOnly,
-            usedTableNames: statement.usedTableNames
+            usedTableNames: statement.usedTableNames.sorted()
         )
     }
     
@@ -129,7 +129,12 @@ extension Language {
                     isArray: type.isRow
                 )
             },
-            isTable: true
+            isTable: true,
+            nonOptionalIndices: table.columns.enumerated()
+                .compactMap { (index, value) in
+                    guard !value.value.type.isOptional else { return nil }
+                    return index
+                }
         )
     }
     
@@ -169,10 +174,11 @@ extension Language {
                     isArray: parameter.type.isRow
                 )
             },
-            isTable: false
+            isTable: false,
+            nonOptionalIndices: []
         )
         
-        return .model(model)
+        return .model(model, isOptional: false)
     }
     
     private func outputTypeIfNeeded(
@@ -187,7 +193,7 @@ extension Language {
            let tableName = firstResultColumns.table,
            let table = tables[tableName]
         {
-            return .model(table)
+            return .model(table, isOptional: false)
         }
         
         // Make sure there is at least one column else return void
@@ -213,7 +219,7 @@ extension Language {
                     let name = tableName.description
                     fields[name] = GeneratedField(
                         name: name,
-                        type: .model(table),
+                        type: .model(table, isOptional: chunk.isTableOptional),
                         isArray: false
                     )
                 } else {
@@ -232,10 +238,11 @@ extension Language {
                     }
                 }
             },
-            isTable: false
+            isTable: false,
+            nonOptionalIndices: []
         )
         
-        return .model(model)
+        return .model(model, isOptional: false)
     }
 }
 
@@ -257,6 +264,7 @@ public struct GeneratedModel {
     let fields: OrderedDictionary<String, GeneratedField>
     /// Whether or not this was generated for a table
     let isTable: Bool
+    let nonOptionalIndices: [Int]
 }
 
 public struct GeneratedField {
@@ -289,7 +297,7 @@ public struct GeneratedQuery {
     let outputCardinality: Cardinality
     let sourceSql: String
     let isReadOnly: Bool
-    let usedTableNames: Set<Substring>
+    let usedTableNames: [Substring]
 }
 
 public enum BuiltinOrGenerated: CustomStringConvertible {
@@ -299,21 +307,14 @@ public enum BuiltinOrGenerated: CustomStringConvertible {
     /// type rather than just having `UUID` always go to `TEXT`
     /// when some users may want a `BLOB`.
     case builtin(String, isArray: Bool, encodedAs: String?)
-    case model(GeneratedModel)
+    case model(GeneratedModel, isOptional: Bool)
     
     public var description: String {
         switch self {
         case let .builtin(builtin, isArray, _):
             isArray ? "[\(builtin)]" : builtin
-        case let .model(model):
-            model.name
-        }
-    }
-    
-    public func namespaced(to namespace: String) -> String {
-        switch self {
-        case let .model(model) where !model.isTable: "\(namespace).\(self)"
-        default: description
+        case let .model(model, isOptional):
+            isOptional ? "\(model.name)?" : model.name
         }
     }
 }

@@ -1,11 +1,40 @@
 import Foundation
 import Otter
 
+struct Interest: Hashable, Sendable, Identifiable, RowDecodable {
+    let id: Int
+    let value: String
+    let userId: String?
+    
+    static var nonOptionalIndices: [Int32] { [0, 1] }
+    
+    init(
+        row: borrowing Otter.Row,
+        startingAt start: Int32
+    ) throws(Otter.OtterError) {
+        self.id = try row.value(at: start + 0)
+        self.value = try row.value(at: start + 1)
+        self.userId = try row.value(at: start + 2)
+    }
+    
+    init(
+        id: Int,
+        value: String,
+        userId: String?
+    ) {
+        self.id = id
+        self.value = value
+        self.userId = userId
+    }
+}
+
 struct User: Hashable, Sendable, Identifiable, RowDecodable {
     let id: Int
     let firstName: String
     let lastName: String
     let fullName: String
+    
+    static var nonOptionalIndices: [Int32] { [0, 1, 2, 3] }
     
     init(
         row: borrowing Otter.Row,
@@ -40,6 +69,8 @@ struct SelectUserWithManyInputsOutput: Hashable, Sendable, RowDecodable {
     let user: User
     let favoriteNumber: Int
     
+    static var nonOptionalIndices: [Int32] { [] }
+    
     init(
         row: borrowing Otter.Row,
         startingAt start: Int32
@@ -61,6 +92,70 @@ struct SelectUserWithManyInputsOutput: Hashable, Sendable, RowDecodable {
     }
 }
 
+@dynamicMemberLookup
+struct SelectWithInterestOutput: Hashable, Sendable, RowDecodable {
+    let user: User
+    let interest: Interest
+    
+    static var nonOptionalIndices: [Int32] { [] }
+    
+    init(
+        row: borrowing Otter.Row,
+        startingAt start: Int32
+    ) throws(Otter.OtterError) {
+        self.user = try User(row: row, startingAt: start + 0)
+        self.interest = try Interest(row: row, startingAt: start + 4)
+    }
+    
+    init(
+        user: User,
+        interest: Interest
+    ) {
+        self.user = user
+        self.interest = interest
+    }
+    
+    subscript<Value>(dynamicMember dynamicMember: KeyPath<User, Value>) -> Value {
+        self.user[keyPath: dynamicMember]
+    }
+    
+    subscript<Value>(dynamicMember dynamicMember: KeyPath<Interest, Value>) -> Value {
+        self.interest[keyPath: dynamicMember]
+    }
+}
+
+@dynamicMemberLookup
+struct SelectWithOptionalInterestOutput: Hashable, Sendable, RowDecodable {
+    let user: User
+    let interest: Interest?
+    
+    static var nonOptionalIndices: [Int32] { [] }
+    
+    init(
+        row: borrowing Otter.Row,
+        startingAt start: Int32
+    ) throws(Otter.OtterError) {
+        self.user = try User(row: row, startingAt: start + 0)
+        self.interest = try Interest(row: row, optionallyAt: start + 4)
+    }
+    
+    init(
+        user: User,
+        interest: Interest?
+    ) {
+        self.user = user
+        self.interest = interest
+    }
+    
+    subscript<Value>(dynamicMember dynamicMember: KeyPath<User, Value>) -> Value {
+        self.user[keyPath: dynamicMember]
+    }
+    
+    subscript<Value>(dynamicMember dynamicMember: KeyPath<Interest, Value>) -> Value? {
+        self.interest?[keyPath: dynamicMember]
+    }
+}
+
 protocol QueriesQueries {
     associatedtype SelectUsers: SelectUsersQuery
     var selectUsers: SelectUsers { get }
@@ -72,6 +167,10 @@ protocol QueriesQueries {
     var selectUserByName: SelectUserByName { get }
     associatedtype SelectUserWithManyInputs: SelectUserWithManyInputsQuery
     var selectUserWithManyInputs: SelectUserWithManyInputs { get }
+    associatedtype SelectWithInterest: SelectWithInterestQuery
+    var selectWithInterest: SelectWithInterest { get }
+    associatedtype SelectWithOptionalInterest: SelectWithOptionalInterestQuery
+    var selectWithOptionalInterest: SelectWithOptionalInterest { get }
 }
 
 struct QueriesQueriesNoop: QueriesQueries {
@@ -80,19 +179,25 @@ struct QueriesQueriesNoop: QueriesQueries {
     let selectUserByIds: AnyQuery<[Int], [User]>
     let selectUserByName: AnyQuery<String, [User]>
     let selectUserWithManyInputs: AnyQuery<SelectUserWithManyInputsInput, SelectUserWithManyInputsOutput?>
+    let selectWithInterest: AnyQuery<(), [SelectWithInterestOutput]>
+    let selectWithOptionalInterest: AnyQuery<(), [SelectWithOptionalInterestOutput]>
     
     init(
         selectUsers: any SelectUsersQuery = Queries.Just(),
         selectUserById: any SelectUserByIdQuery = Queries.Just(),
         selectUserByIds: any SelectUserByIdsQuery = Queries.Just(),
         selectUserByName: any SelectUserByNameQuery = Queries.Just(),
-        selectUserWithManyInputs: any SelectUserWithManyInputsQuery = Queries.Just()
+        selectUserWithManyInputs: any SelectUserWithManyInputsQuery = Queries.Just(),
+        selectWithInterest: any SelectWithInterestQuery = Queries.Just(),
+        selectWithOptionalInterest: any SelectWithOptionalInterestQuery = Queries.Just()
     ) {
         self.selectUsers = selectUsers.eraseToAnyQuery()
         self.selectUserById = selectUserById.eraseToAnyQuery()
         self.selectUserByIds = selectUserByIds.eraseToAnyQuery()
         self.selectUserByName = selectUserByName.eraseToAnyQuery()
         self.selectUserWithManyInputs = selectUserWithManyInputs.eraseToAnyQuery()
+        self.selectWithInterest = selectWithInterest.eraseToAnyQuery()
+        self.selectWithOptionalInterest = selectWithOptionalInterest.eraseToAnyQuery()
     }
 }
 
@@ -185,6 +290,38 @@ struct QueriesQueriesImpl: QueriesQueries {
             return try statement.fetchOne()
         }
     }
+    
+    var selectWithInterest: AnyDatabaseQuery<(), [SelectWithInterestOutput]> {
+        AnyDatabaseQuery<(), [SelectWithInterestOutput]>(
+            .read,
+            in: connection,
+            watchingTables: ["interest","user"]
+        ) { input, tx in
+            let statement = try Otter.Statement(
+                """
+                SELECT user.*, interest.* FROM user INNER JOIN interest ON user.id = interest.userId
+                """,
+                transaction: tx
+            )
+            return try statement.fetchAll()
+        }
+    }
+    
+    var selectWithOptionalInterest: AnyDatabaseQuery<(), [SelectWithOptionalInterestOutput]> {
+        AnyDatabaseQuery<(), [SelectWithOptionalInterestOutput]>(
+            .read,
+            in: connection,
+            watchingTables: ["interest","user"]
+        ) { input, tx in
+            let statement = try Otter.Statement(
+                """
+                SELECT user.*, interest.* FROM user LEFT OUTER JOIN interest ON user.id = interest.userId
+                """,
+                transaction: tx
+            )
+            return try statement.fetchAll()
+        }
+    }
 }
 
 struct DB: Database{
@@ -198,6 +335,13 @@ struct DB: Database{
                 firstName TEXT NOT NULL,
                 lastName TEXT NOT NULL,
                 fullName TEXT NOT NULL GENERATED ALWAYS AS (firstName || ' ' || lastName)
+            );;
+            """,
+            """
+            CREATE TABLE interest (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                value TEXT NOT NULL,
+                userId TEXT REFERENCES user(id)
             );;
             """
         ]
@@ -216,3 +360,6 @@ extension Query where Input == SelectUserWithManyInputsInput {func execute(id: I
         try await execute(with: SelectUserWithManyInputsInput(id: id, firstName: firstName))
     }
 }
+
+typealias SelectWithInterestQuery = Query<(), [SelectWithInterestOutput]>
+typealias SelectWithOptionalInterestQuery = Query<(), [SelectWithOptionalInterestOutput]>

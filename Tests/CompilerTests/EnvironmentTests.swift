@@ -48,7 +48,7 @@ struct EnvironmentTests {
         var env = Environment()
         env.import(table: table, isOptional: false)
         
-        #expect(table == env.resolve(table: "cte", schema: nil).value)
+        #expect(table == env.resolve(table: "cte", schema: nil).value?.table)
         #expect(.success(.integer) == env.resolve(column: "bar", table: "cte", schema: nil))
         #expect(.tableDoesNotExist("cte") == env.resolve(table: "cte", schema: "main"))
     }
@@ -58,7 +58,7 @@ struct EnvironmentTests {
         var env = Environment()
         env.import(table: table, isOptional: false)
         
-        #expect(table == env.resolve(table: "fts", schema: nil).value)
+        #expect(table == env.resolve(table: "fts", schema: nil).value?.table)
         #expect(.success(.real) == env.resolve(column: "rank", table: "fts", schema: nil))
         #expect(.success(.real) == env.resolve(column: "rank", table: nil, schema: nil))
     }
@@ -108,7 +108,7 @@ struct EnvironmentTests {
         
         env.importNonLocals(in: newEnv)
         
-        #expect(env.resolve(table: "bar", schema: nil).value == table)
+        #expect(env.resolve(table: "bar", schema: nil).value?.table == table)
         #expect(env.resolve(table: "bar", schema: "main").value == nil)
     }
     

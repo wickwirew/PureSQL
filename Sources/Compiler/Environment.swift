@@ -94,6 +94,10 @@ struct Environment {
         /// in `rank`. Those can be stored here so the table
         /// can remain intact.
         let additionalColumns: Columns?
+        /// Whether or not this table exists optionally in the env.
+        /// The `table`s columns have already been adjusted to be
+        /// optional. This is just for extra metadata
+        let isOptional: Bool
     }
     
     struct Diff {
@@ -117,8 +121,8 @@ struct Environment {
     }
     
     /// All table that have been imported into the environment
-    var allImportedTables: [Table] {
-        return importedTables.map(\.value.table)
+    var allImportedTables: [ImportedTable] {
+        return importedTables.map(\.value)
     }
     
     func hasColumn(named: Substring) -> Bool {
@@ -182,7 +186,8 @@ struct Environment {
     ) {
         let importedTable = ImportedTable(
             table: isOptional ? table.mapTypes { $0.coerceToOptional() } : table,
-            additionalColumns: table.kind == .fts5 ? ["rank": Column(type: .real)] : nil
+            additionalColumns: table.kind == .fts5 ? ["rank": Column(type: .real)] : nil,
+            isOptional: isOptional
         )
         
         if let alias {
@@ -223,8 +228,8 @@ struct Environment {
     }
     
     /// Resolves the table for the given name and schema
-    func resolve(table: Substring, schema: Substring?) -> LookupResult<Table> {
-        resolveImported(table: table, schema: schema).map(\.table)
+    func resolve(table: Substring, schema: Substring?) -> LookupResult<ImportedTable> {
+        resolveImported(table: table, schema: schema)
     }
     
     /// Will import all values imported in the `environment` vs `self`

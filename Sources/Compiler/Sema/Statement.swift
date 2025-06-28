@@ -119,14 +119,31 @@ public struct ResultColumns: Sendable {
         /// due to selecting from many columns from many tables
         /// this will be `nil`.
         public let table: Substring?
+        /// If the table is joined in with an OUTER join or something
+        /// similar that does not require a match it is optional
+        public let isTableOptional: Bool
+        
+        public init(
+            columns: Columns,
+            table: Substring?,
+            isTableOptional: Bool = false
+        ) {
+            self.columns = columns
+            self.table = table
+            self.isTableOptional = isTableOptional
+        }
     }
     
     public init(chunks: [Chunk]) {
         self.chunks = chunks
     }
     
-    public init(columns: Columns, table: Substring?) {
-        self.chunks = [Chunk(columns: columns, table: table)]
+    public init(
+        columns: Columns,
+        table: Substring?,
+        isTableOptional: Bool = false
+    ) {
+        self.chunks = [Chunk(columns: columns, table: table, isTableOptional: isTableOptional)]
     }
     
     /// The columns as a row type.
@@ -161,7 +178,11 @@ public struct ResultColumns: Sendable {
     public func mapTypes(_ transform: (Type) -> Type) -> ResultColumns {
         return ResultColumns(
             chunks: chunks.map { chunk in
-                Chunk(columns: chunk.columns.mapValues{ $0.mapType(transform) }, table: chunk.table)
+                Chunk(
+                    columns: chunk.columns.mapValues{ $0.mapType(transform) },
+                    table: chunk.table,
+                    isTableOptional: chunk.isTableOptional
+                )
             }
         )
     }

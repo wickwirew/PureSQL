@@ -58,7 +58,7 @@ extension CardinalityInferrer: StmtSyntaxVisitor {
             return .many
         }
         
-        return cadinalityForFilter(whereExpr, for: table)
+        return cadinalityForFilter(whereExpr, for: table.table)
     }
     
     mutating func visit(_ stmt: SelectStmtSyntax) -> Cardinality {
@@ -99,7 +99,7 @@ extension CardinalityInferrer: StmtSyntaxVisitor {
                 
                 // If they had filtering on all primary keys we can assume a single
                 // result will be returned.
-                return cadinalityForFilter(filter, for: t)
+                return cadinalityForFilter(filter, for: t.table)
             }
         case let .values(values):
             // VALUES (1, 2), (3, 4)
@@ -128,7 +128,7 @@ extension CardinalityInferrer: StmtSyntaxVisitor {
             return .many
         }
         
-        return cadinalityForFilter(filter, for: table)
+        return cadinalityForFilter(filter, for: table.table)
     }
     
     mutating func visit(_ stmt: QueryDefinitionStmtSyntax) -> Cardinality {

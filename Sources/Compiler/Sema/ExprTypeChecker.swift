@@ -145,7 +145,7 @@ extension ExprTypeChecker: ExprSyntaxVisitor {
                     name: tableName.value
                 ) else { return inferenceState.errorType(for: expr) }
                 
-                return table.type
+                return table.table.type
             } else {
                 return .row(.fixed(env.allColumnTypes))
             }
