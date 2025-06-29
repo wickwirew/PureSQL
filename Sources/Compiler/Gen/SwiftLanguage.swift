@@ -15,6 +15,25 @@ public struct SwiftLanguage: Language {
     
     public var boolName: String { "Bool" }
     
+    public var builtinCoders: Set<String> {
+        [
+            "BoolDatabaseValueCoder",
+            "Int8DatabaseValueCoder",
+            "Int16DatabaseValueCoder",
+            "Int32DatabaseValueCoder",
+            "Int64DatabaseValueCoder",
+            "UInt8DatabaseValueCoder",
+            "UInt16DatabaseValueCoder",
+            "UInt32DatabaseValueCoder",
+            "UInt64DatabaseValueCoder",
+            "UIntDatabaseValueCoder",
+            "FloatDatabaseValueCoder",
+            "Float16DatabaseValueCoder",
+            "UUIDDatabaseValueCoder",
+            "DecimalDatabaseValueCoder",
+        ]
+    }
+    
     public func queryTypeName(
         input: String,
         output: String
@@ -51,8 +70,18 @@ public struct SwiftLanguage: Language {
     public func file(
         migrations: [String],
         tables: [GeneratedModel],
-        queries: [(String?, [GeneratedQuery])]
+        queries: [(String?, [GeneratedQuery])],
+        coders: [String]
     ) throws -> String {
+        // Note: For now just going to ignore the `coders`
+        // Kotlin will need that info which is why it exists.
+        // Swift having less finegrained namespaces makes it
+        // so it can just do module level lookups for the type.
+        // where kotlin defining it just in the project isnt enough
+        // cause it will be in a different namespace.
+        //
+        // Swift we may want to improve it. This is a good starting point though.
+        
         let allQueries = queries.flatMap(\.1)
         
         writer.write("import Foundation")

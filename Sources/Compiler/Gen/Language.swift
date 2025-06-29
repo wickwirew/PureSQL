@@ -14,6 +14,8 @@ public protocol Language {
     
     var boolName: String { get }
     
+    var builtinCoders: Set<String> { get }
+    
     func queryTypeName(input: String, output: String) -> String
     
     func typeName(for type: GenerationType) -> String
@@ -24,7 +26,8 @@ public protocol Language {
     func file(
         migrations: [String],
         tables: [GeneratedModel],
-        queries: [(String?, [GeneratedQuery])]
+        queries: [(String?, [GeneratedQuery])],
+        coders: [String]
     ) throws -> String
     
     /// Function to generate a interpolation segment in a string
@@ -46,10 +49,20 @@ extension Language {
     ) throws -> String {
         let values = try assemble(queries: queries, schema: schema)
         
+        // Get a list of all coders used. Right now we only have to look at the
+        // tables since any output would inhereit the encoding of the source table.
+        let coders: Set<String> = values.tables.reduce(into: []) { coders, table in
+            for field in table.fields.values {
+                guard let coder = field.type.coder else { continue }
+                coders.insert(coder)
+            }
+        }
+        
         return try file(
             migrations: migrations,
             tables: values.tables,
-            queries: values.queries
+            queries: values.queries,
+            coders: coders.subtracting(builtinCoders).sorted()
         )
     }
     
@@ -348,9 +361,13 @@ public enum GenerationType: Equatable {
         case .encoded(let encoded, _, _): encoded.model
         }
     }
-}
-
-public struct RequiredCoder: Hashable {
-    public let sourceType: String
-    public let storage: String
+    
+    var coder: String? {
+        switch self {
+        case .void, .builtin, .model: nil
+        case .optional(let optional): optional.coder
+        case .array(let array): array.coder
+        case .encoded(_, _, let coder): coder
+        }
+    }
 }
