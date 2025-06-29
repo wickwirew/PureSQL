@@ -35,9 +35,10 @@ struct User: Hashable, Sendable, Identifiable, RowDecodable {
     let preference: Bool?
     let favoriteNumber: Int?
     let randomValue: SQLAny?
+    let bornOn: Date
     let fullName: String
     
-    static let nonOptionalIndices: [Int32] = [0, 1, 2, 6]
+    static let nonOptionalIndices: [Int32] = [0, 1, 2, 6, 7]
     
     init(
         row: borrowing Otter.Row,
@@ -49,7 +50,8 @@ struct User: Hashable, Sendable, Identifiable, RowDecodable {
         self.preference = try row.optionalValue(at: start + 3, using: BoolDatabaseValueCoder.self)
         self.favoriteNumber = try row.value(at: start + 4)
         self.randomValue = try row.value(at: start + 5)
-        self.fullName = try row.value(at: start + 6)
+        self.bornOn = try row.value(at: start + 6, using: CustomDateDatabaseValueCoder.self)
+        self.fullName = try row.value(at: start + 7)
     }
     
     init(
@@ -59,6 +61,7 @@ struct User: Hashable, Sendable, Identifiable, RowDecodable {
         preference: Bool?,
         favoriteNumber: Int?,
         randomValue: SQLAny?,
+        bornOn: Date,
         fullName: String
     ) {
         self.id = id
@@ -67,6 +70,7 @@ struct User: Hashable, Sendable, Identifiable, RowDecodable {
         self.preference = preference
         self.favoriteNumber = favoriteNumber
         self.randomValue = randomValue
+        self.bornOn = bornOn
         self.fullName = fullName
     }
 }
@@ -349,6 +353,7 @@ struct DB: Database{
                 preference INTEGER ,
                 favoriteNumber INTEGER,
                 randomValue ANY,
+                bornOn STRING USING CustomDate NOT NULL,
                 fullName TEXT NOT NULL GENERATED ALWAYS AS (firstName || ' ' || lastName)
             );
             """,

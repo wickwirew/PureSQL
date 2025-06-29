@@ -31,6 +31,7 @@ public struct SwiftLanguage: Language {
             "Float16DatabaseValueCoder",
             "UUIDDatabaseValueCoder",
             "DecimalDatabaseValueCoder",
+            "DateDatabaseValueCoder",
         ]
     }
     

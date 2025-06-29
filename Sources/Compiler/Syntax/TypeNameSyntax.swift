@@ -10,8 +10,21 @@ struct TypeNameSyntax: Syntax, CustomStringConvertible, Sendable {
     let name: IdentifierSyntax
     let arg1: SignedNumberSyntax?
     let arg2: SignedNumberSyntax?
-    let alias: AliasSyntax?
+    let alias: Alias?
     let location: SourceLocation
+    
+    struct Alias: CustomStringConvertible {
+        let name: AliasSyntax
+        let using: IdentifierSyntax?
+        
+        var description: String {
+            if let using {
+                return "\(name) USING \(using)"
+            } else {
+                return name.description
+            }
+        }
+    }
 
     var description: String {
         let type = if let arg1, let arg2 {

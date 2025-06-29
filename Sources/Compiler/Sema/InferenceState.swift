@@ -123,7 +123,7 @@ struct InferenceState {
         for type: Type,
         at location: SourceLocation
     ) {
-        unify(type, with: .alias(type, .hint(hint)), at: location)
+        unify(type, with: .alias(type, .hint(hint), coder: nil), at: location)
     }
     
     /// Gets the final type from the solution for the type if its a ty var.
@@ -141,8 +141,8 @@ struct InferenceState {
             return tv.defaultType
         case let .optional(ty):
             return .optional(solution(for: ty, defaultIfTyVar: true))
-        case let .alias(ty, alias):
-            return .alias(solution(for: ty, defaultIfTyVar: true), alias)
+        case let .alias(ty, alias, coder):
+            return .alias(solution(for: ty, defaultIfTyVar: true), alias, coder: coder)
         case let .row(row):
             if let type = row.first, row.count == 1, !row.isUnknown {
                 return solution(for: type, defaultIfTyVar: true)
@@ -254,10 +254,10 @@ extension InferenceState {
         case let (.row(rhs), .row(lhs)) where lhs.count == rhs.count:
             return unify(rhs.types, with: lhs.types, at: location)
             
-        case let (.alias(t1, _), t2):
+        case let (.alias(t1, _, _), t2):
             return unify(t1, with: t2, at: location)
             
-        case let (t1, .alias(t2, _)):
+        case let (t1, .alias(t2, _, _)):
             return unify(t2, with: t1, at: location)
             
         default:
@@ -327,7 +327,7 @@ extension InferenceState {
         at location: SourceLocation
     ) {
         switch type {
-        case let .alias(t, _):
+        case let .alias(t, _, _):
             return validateCanUnify(type: t, with: tvKind, at: location)
         case let .optional(t):
             return validateCanUnify(type: t, with: tvKind, at: location)

@@ -24,7 +24,6 @@ struct GenTests {
             schema: compiler.schema
         )
         
-        print(rawOutput)
         let expected = try load(file: "Swift", ext: "output")
             .split(separator: "\n")
             .filter{ !$0.isEmpty }

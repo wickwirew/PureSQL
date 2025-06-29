@@ -174,7 +174,7 @@ extension Language {
         switch type {
         case let .nominal(name):
             return .builtin(builtinType(named: name))
-        case let .alias(root, alias):
+        case let .alias(root, alias, coder):
             let alias = switch alias {
             case .explicit(let e): e.description
             case .hint(let hint):
@@ -183,7 +183,11 @@ extension Language {
                 }
             }
             
-            return .encoded(generationType(for: root), alias: alias, coder: "\(alias)DatabaseValueCoder")
+            return .encoded(
+                generationType(for: root),
+                alias: alias,
+                coder: "\(coder?.description ?? alias)DatabaseValueCoder"
+            )
         case let .optional(type):
             return .optional(generationType(for: type))
         case let .row(.unknown(type)):

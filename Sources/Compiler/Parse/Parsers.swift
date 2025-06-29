@@ -1293,7 +1293,7 @@ enum Parsers {
             if state.take(if: .comma) {
                 let second = signedNumber(state: &state)
                 state.skip(.closeParen)
-                let alias = maybeAlias(state: &state)
+                let alias = typeNameAlias(state: &state)
                 return TypeNameSyntax(
                     id: state.nextId(),
                     name: name,
@@ -1304,7 +1304,7 @@ enum Parsers {
                 )
             } else {
                 state.skip(.closeParen)
-                let alias = maybeAlias(state: &state)
+                let alias = typeNameAlias(state: &state)
                 return TypeNameSyntax(
                     id: state.nextId(),
                     name: name,
@@ -1315,7 +1315,7 @@ enum Parsers {
                 )
             }
         } else {
-            let alias = maybeAlias(state: &state)
+            let alias = typeNameAlias(state: &state)
             return TypeNameSyntax(
                 id: state.nextId(),
                 name: name,
@@ -1325,6 +1325,23 @@ enum Parsers {
                 location: state.location(from: name.location)
             )
         }
+    }
+    
+    static func typeNameAlias(state: inout ParserState) -> TypeNameSyntax.Alias? {
+        guard state.current.kind == .as else { return nil }
+        
+        let start = state.take()
+        let ident = identifier(state: &state)
+        let name = AliasSyntax(
+            id: state.nextId(),
+            identifier: ident,
+            location: state.location(from: start)
+        )
+        
+        return TypeNameSyntax.Alias(
+            name: name,
+            using: state.take(if: .using) ? identifier(state: &state) : nil
+        )
     }
     
     /// https://www.sqlite.org/lang_altertable.html

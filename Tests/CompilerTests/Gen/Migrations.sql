@@ -5,6 +5,7 @@ CREATE TABLE user (
     preference INTEGER AS Bool,
     favoriteNumber INTEGER,
     randomValue ANY,
+    bornOn STRING AS Date USING CustomDate NOT NULL,
     fullName TEXT NOT NULL GENERATED ALWAYS AS (firstName || ' ' || lastName)
 );
 

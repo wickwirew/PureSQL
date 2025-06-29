@@ -24,7 +24,7 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
     /// A type that has been aliased. These are not in SQL by default
     /// but are from the layer on top that we are adding so a user
     /// can replace a `INTEGER` with a `Bool`
-    indirect case alias(Type, Alias)
+    indirect case alias(Type, Alias, coder: Substring?)
     /// There was an error somewhere in the analysis. We can just return
     /// an `error` type and continue the analysis. So if the user makes up
     /// 3 columns, they can get all 3 errors at once.
@@ -43,7 +43,7 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
     static let real: Type = .nominal("REAL")
     static let blob: Type = .nominal("BLOB")
     static let any: Type = .nominal("ANY")
-    static let boolean: Type = .alias(.integer, .hint(.bool))
+    static let boolean: Type = .alias(.integer, .hint(.bool), coder: nil)
     
     static let validTypeNames: Set<Substring> = [
         "TEXT", "INT", "INTEGER", "REAL", "BLOB", "ANY",
@@ -89,7 +89,7 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
             case let .unknown(ty): "(\(ty)...)"
             }
         case let .optional(ty): "\(ty)?"
-        case let .alias(t, a): "(\(t) AS \(a))"
+        case let .alias(t, a, _): "(\(t) AS \(a))"
         case .error: "<<error>>"
         }
     }
@@ -97,7 +97,7 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
     /// The underlying root inner type
     var root: Type {
         return switch self {
-        case let .alias(t, _): t.root
+        case let .alias(t, _, _): t.root
         case let .optional(t): t.root
         default: self
         }
@@ -115,7 +115,7 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
     var isOptional: Bool {
         switch self {
         case .nominal, .error, .row, .fn, .var: false
-        case let .alias(t, _): t.isOptional
+        case let .alias(t, _, _): t.isOptional
         case .optional: true
         }
     }
@@ -129,7 +129,7 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
     /// The alias if there is one
     var alias: Alias? {
         switch self {
-        case .alias(_, let a): a
+        case .alias(_, let a, _): a
         case .optional(let t): t.alias
         default: nil
         }
@@ -165,8 +165,8 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
             return .row(tys.apply(s))
         case let .optional(ty):
             return .optional(ty.apply(s))
-        case let .alias(t, a):
-            return .alias(t.apply(s), a)
+        case let .alias(t, a, c):
+            return .alias(t.apply(s), a, coder: c)
         case .nominal, .error:
             // Literals can't be substituted for.
             return self

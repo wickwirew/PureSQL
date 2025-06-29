@@ -103,4 +103,28 @@ struct DatabasePrimitiveConvertibeTests {
         let decoded = try DecimalDatabaseValueCoder.decode(from: stored)
         #expect(value == decoded)
     }
+    
+    @Test func dateISO8601() throws {
+        let value = Date(timeIntervalSince1970: 1751219898)
+        let stored = try DateDatabaseValueCoder.encodeToString(value: value)
+        let decoded = try DateDatabaseValueCoder.decode(from: stored)
+        #expect(stored == "2025-06-29T17:58:18Z")
+        #expect(value == decoded)
+    }
+    
+    @Test func dateTimestamp_Int() throws {
+        let value = Date(timeIntervalSince1970: 1751219898)
+        let stored = try DateDatabaseValueCoder.encodeToInt(value: value)
+        let decoded = try DateDatabaseValueCoder.decode(from: stored)
+        #expect(stored == 1751219898)
+        #expect(value == decoded)
+    }
+    
+    @Test func dateTimestamp_Double() throws {
+        let value = Date(timeIntervalSince1970: 1751219898)
+        let stored = try DateDatabaseValueCoder.encodeToDouble(value: value)
+        let decoded = try DateDatabaseValueCoder.decode(from: stored)
+        #expect(stored == 1751219898)
+        #expect(value == decoded)
+    }
 }

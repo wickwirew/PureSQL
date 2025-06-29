@@ -234,3 +234,45 @@ public enum DecimalDatabaseValueCoder: DatabaseValueCoder {
         try .double(encodeToDouble(value: value))
     }
 }
+
+public enum DateDatabaseValueCoder: DatabaseValueCoder {
+    @usableFromInline static nonisolated(unsafe) let formatter: ISO8601DateFormatter = {
+        // Note: In the future might want to move off of this and have a custom
+        // date parser cause I don't think it's performance is the best.
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+    
+    @inlinable public static func decode(from primitive: Int) throws(OtterError) -> Date {
+        return Date(timeIntervalSince1970: TimeInterval(primitive))
+    }
+
+    @inlinable public static func decode(from primitive: Double) throws(OtterError) -> Date {
+        return Date(timeIntervalSince1970: primitive)
+    }
+    
+    @inlinable public static func decode(from primitive: String) throws(OtterError) -> Date {
+        guard let date = formatter.date(from: primitive) else {
+            throw .cannotDecode(Date.self, from: String.self, reason: "Invalid date string: '\(primitive)'")
+        }
+        return date
+    }
+    
+    @inlinable public static func encodeToInt(value: Date) throws(OtterError) -> Int {
+        Int(value.timeIntervalSince1970)
+    }
+    
+    @inlinable public static func encodeToDouble(value: Date) throws(OtterError) -> Double {
+        value.timeIntervalSince1970
+    }
+    
+    @inlinable public static func encodeToString(value: Date) throws(OtterError) -> String {
+        return formatter.string(from: value)
+    }
+    
+    @inlinable public static func encodeToAny(value: Date) throws(OtterError) -> SQLAny {
+        // By default just go to double since its going to be the fastest
+        try .double(encodeToDouble(value: value))
+    }
+}
