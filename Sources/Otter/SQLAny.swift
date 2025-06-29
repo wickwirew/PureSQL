@@ -101,4 +101,19 @@ extension SQLAny: DatabasePrimitive {
         case let .data(data): try data.bind(to: statement, at: index)
         }
     }
+    
+    @inlinable public init<Encoder: DatabaseValueCoder>(
+        value: Encoder.Value,
+        into encoder: Encoder.Type
+    ) throws(OtterError) {
+        self = try encoder.encodeToAny(value: value)
+    }
+    
+    @inlinable public func decode<Decoder: DatabaseValueCoder>(
+        from decoder: Decoder.Type
+    ) throws(OtterError) -> Decoder.Value {
+        try decoder.decode(from: self)
+    }
+    
+    public var sqlAny: SQLAny? { self }
 }

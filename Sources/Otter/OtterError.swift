@@ -21,19 +21,28 @@ public enum OtterError: Error, Equatable {
     /// to be started twice.
     case subscriptionAlreadyStarted
     case invalidUuidString
-    case cannotDecode(String, from: String)
-    case cannotEncode(String, to: String)
+    case cannotDecode(String, from: String, reason: String?)
+    case cannotEncode(String, to: String, reason: String?)
     case decodingError(String)
     case encodingError(String)
     case requiredAssociationFailed(parent: String, childKey: String)
     case cannotObserveWriteQuery
     case cannotWriteInAReadTransaction
+    case unexpectedNil
 
-    public static func cannotDecode(_ type: Any.Type, from otherType: Any.Type) -> OtterError {
-        return .cannotDecode("\(type)", from: "\(otherType)")
+    public static func cannotDecode(
+        _ type: Any.Type,
+        from otherType: Any.Type,
+        reason: String? = nil
+    ) -> OtterError {
+        return .cannotDecode("\(type)", from: "\(otherType)", reason: reason)
     }
 
-    public static func cannotEncode(_ type: Any.Type, to otherType: Any.Type) -> OtterError {
-        return .cannotEncode("\(type)", to: "\(otherType)")
+    public static func cannotEncode(
+        _ type: Any.Type,
+        to otherType: Any.Type,
+        reason: String? = nil
+    ) -> OtterError {
+        return .cannotEncode("\(type)", to: "\(otherType)", reason: reason)
     }
 }

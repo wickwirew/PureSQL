@@ -13,6 +13,8 @@ public struct SwiftLanguage: Language {
         self.options = options
     }
     
+    public var boolName: String { "Bool" }
+    
     public func queryTypeName(
         input: String,
         output: String
@@ -20,51 +22,29 @@ public struct SwiftLanguage: Language {
         return "AnyDatabaseQuery<\(input), \(output)>"
     }
     
-    public func inputTypeName(input: BuiltinOrGenerated?) -> String {
-        return input?.description ?? "()"
-    }
-    
-    public func outputTypeName(
-        output: BuiltinOrGenerated?,
-        cardinality: Cardinality
-    ) -> String {
-        if let type = output?.description {
-            return switch cardinality {
-            case .single: "\(type)?"
-            case .many: "[\(type)]"
-            }
-        } else {
-            return "()"
-        }
-    }
-    
     public func interpolatedQuestionMarks(for param: String) -> String {
         return  "\\(\(param).sqlQuestionMarks)"
     }
     
-    public func builtinType(for type: Type) -> String {
-        return switch type {
-        case let .nominal(name):
-            switch name.uppercased() {
-            case "REAL": "Double"
-            case "INT": "Int"
-            case "INTEGER": "Int"
-            case "TEXT": "String"
-            case "BLOB": "Data"
-            default: "SQLAny"
-            }
-        case let .optional(ty): "\(builtinType(for: ty))?"
-        case let .row(.unknown(ty)): "\(builtinType(for: ty))"
-        case .var, .fn, .row, .error: "Any"
-        case let .alias(_, alias):
-            switch alias {
-            case let .explicit(type):
-                type.description
-            case let .hint(hint):
-                switch hint {
-                case .bool: "Bool"
-                }
-            }
+    public func typeName(for type: GenerationType) -> String {
+        switch type {
+        case .void: "()"
+        case .builtin(let builtin): builtin
+        case .model(let model): model.name
+        case .optional(let type): "\(typeName(for: type))?"
+        case .array(let type): "[\(typeName(for: type))]"
+        case .encoded(_, let alias, _): alias
+        }
+    }
+    
+    public func builtinType(named type: Substring) -> String {
+        switch type {
+        case "REAL": "Double"
+        case "INT": "Int"
+        case "INTEGER": "Int"
+        case "TEXT": "String"
+        case "BLOB": "Data"
+        default: "SQLAny"
         }
     }
     
@@ -105,7 +85,7 @@ public struct SwiftLanguage: Language {
         for query in allQueries {
             typeAlias(for: query)
             
-            if let input = query.input, case let .model(model, _) = input {
+            if let model = query.input.model {
                 inputExtension(for: query, input: model)
             }
         }
@@ -303,7 +283,7 @@ public struct SwiftLanguage: Language {
         writer.write(line: ") { input, tx in")
         writer.indent()
         
-        if query.input == nil {
+        if query.input == .void {
             writer.write(line: "let")
         } else {
             writer.write(line: "var")
@@ -317,18 +297,11 @@ public struct SwiftLanguage: Language {
         writer.unindent()
         writer.write(line: ")")
         
-        if let input = query.input {
-            switch input {
-            case let .builtin(_, isArray, encodedAs):
-                bind(field: nil, encodeToType: encodedAs, isArray: isArray)
-            case .model(let model, _):
-                for field in model.fields.values {
-                    bind(field: field.name, encodeToType: field.encodedAsType, isArray: field.isArray)
-                }
-            }
+        for binding in query.bindings {
+            bind(binding: binding)
         }
         
-        if query.output == nil {
+        if query.output == .void {
             writer.write(line: "_ = try statement.step()")
         } else {
             switch query.outputCardinality {
@@ -359,10 +332,25 @@ public struct SwiftLanguage: Language {
         for model: GeneratedModel,
         isOutput: Bool
     ) {
-        let dynamicLookupTables = model.fields.values.compactMap { value -> (String, GeneratedModel, Bool)? in
-            guard case let .model(model, isOptional) = value.type else { return nil }
-            return (value.name, model, isOptional)
-        }
+        // All of the tables we need to add dynamic lookup on.
+        // The last `Bool` is a flag for wether the embedded table
+        // is optional or not.
+        let dynamicLookupTables = model.fields.values
+            .compactMap { value -> (String, GeneratedModel, Bool)? in
+                switch value.type {
+                case .model(let model):
+                    return (value.name, model, false)
+                case .optional(let type):
+                    switch type {
+                    case .model(let model):
+                        return (value.name, model, true)
+                    default:
+                        return nil
+                    }
+                default:
+                    return nil
+                }
+            }
         
         let addDynamicLookup = isOutput && !dynamicLookupTables.isEmpty && model.fields.count > 1
         
@@ -387,13 +375,13 @@ public struct SwiftLanguage: Language {
         
         // Write out fields of struct
         for field in model.fields.values {
-            writer.write(line: "let ", field.name, ": ", field.type.description)
+            writer.write(line: "let ", field.name, ": ", field.typeName)
         }
         
         if isOutput {
             writer.blankLine()
             
-            writer.write(line: "static var nonOptionalIndices: [Int32] { [")
+            writer.write(line: "static let nonOptionalIndices: [Int32] = [")
             for (position, index) in model.nonOptionalIndices.positional() {
                 writer.write(index.description)
                 
@@ -401,7 +389,7 @@ public struct SwiftLanguage: Language {
                     writer.write(", ")
                 }
             }
-            writer.write("] }")
+            writer.write("]")
             
             writer.blankLine()
             rowDecodableInit(for: model)
@@ -425,11 +413,11 @@ public struct SwiftLanguage: Language {
     }
     
     private func modelsFor(query: GeneratedQuery) {
-        if case let .model(model, _) = query.input, !model.isTable {
+        if let model = query.input.model, !model.isTable {
             declaration(for: model, isOutput: false)
         }
         
-        if case let .model(model, _) = query.output, !model.isTable {
+        if let model = query.output.model, !model.isTable {
             declaration(for: model, isOutput: true)
         }
     }
@@ -472,30 +460,21 @@ public struct SwiftLanguage: Language {
             writer.write(" = try ")
             
             switch field.type {
-            case .builtin(_, _, let encodedAs):
-                if let encodedAs {
-                    // Custom type
-                    writer.write(field.type.description)
-                    writer.write("(primitive: row.value(at: start + ")
-                    writer.write(index.description)
-                    writer.write(", as: ")
-                    writer.write(encodedAs)
-                    writer.write(".self))")
-                } else {
-                    // Decode primitive
-                    writer.write("row.value(at: start + ", index.description, ")")
-                }
-                
-                index += 1
-            case let .model(model, isOptional):
-                if isOptional {
-                    let type = field.type.description.replacingOccurrences(of: "?", with: "")
-                    writer.write(type, "(row: row, optionallyAt: start + ", index.description, ")")
-                } else {
-                    writer.write(field.type.description, "(row: row, startingAt: start + ", index.description, ")")
-                }
-                index += model.fields.count
+            case .builtin, .optional(.builtin):
+                writer.write("row.value(at: start + ", index.description, ")")
+            case .model:
+                writer.write("row.embedded(at: start + ", index.description, ")")
+            case .optional(.model):
+                writer.write("row.optionallyEmbedded(at: start + ", index.description, ")")
+            case let .encoded(_, _, coder):
+                writer.write("row.value(at: start + ", index.description, ", using: ", coder, ".self)")
+            case let .optional(.encoded(_, _, coder)):
+                writer.write("row.optionalValue(at: start + ", index.description, ", using: ", coder, ".self)")
+            default:
+                fatalError("Invalid field type \(field.typeName) \(field.type)")
             }
+            
+            index += 1
         }
         writer.unindent()
         
@@ -510,7 +489,7 @@ public struct SwiftLanguage: Language {
         writer.indent()
         
         for (position, (name, field)) in model.fields.elements.positional() {
-            writer.write(line: name, ": ", field.type.description)
+            writer.write(line: name, ": ", field.typeName)
             
             if !position.isLast {
                 writer.write(",")
@@ -547,7 +526,7 @@ public struct SwiftLanguage: Language {
     ) {
         let writeInput: () -> Void = {
             for (position, field) in input.fields.elements.positional() {
-                writer.write(field.value.name, ": ", field.value.type.description)
+                writer.write(field.value.name, ": ", field.value.typeName)
                 
                 if !position.isLast {
                     writer.write(", ")
@@ -628,24 +607,28 @@ public struct SwiftLanguage: Language {
         writer.write(line: "\"\"\"")
     }
     
-    private func bind(
-        field: String?,
-        encodeToType: String?,
-        isArray: Bool
-    ) {
-        let paramName = field.map{ "input.\($0)" } ?? "input"
-        let encode = encodeToType.map{ ".encodeTo\($0)()" } ?? ""
-        
-        if isArray {
-            writer.write(line: "for element in ", paramName, " {")
+    private func bind(binding: GeneratedQuery.Binding) {
+        switch binding {
+        case let .value(index, name, owner, coder):
+            writer.write(line: "try statement.bind(value: ")
             
-            writer.indented {
-                writer.write(line: "try statement.bind(value: element", encode, ")")
+            if let owner {
+                writer.write(owner, ".")
             }
             
+            writer.write(name, ", to: ", index.description)
+            
+            if let coder {
+                writer.write(", using: ", coder, ".self")
+            }
+            
+            writer.write(")")
+        case let .arrayStart(name, elementName):
+            writer.write(line: "for ", elementName, " in ", name, " {")
+            writer.indent()
+        case .arrayEnd:
+            writer.unindent()
             writer.write(line: "}")
-        } else {
-            writer.write(line: "try statement.bind(value: ", paramName, encode, ")")
         }
     }
 }

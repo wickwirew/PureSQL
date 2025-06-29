@@ -126,6 +126,15 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
         return tv
     }
     
+    /// The alias if there is one
+    var alias: Alias? {
+        switch self {
+        case .alias(_, let a): a
+        case .optional(let t): t.alias
+        default: nil
+        }
+    }
+    
     /// Will return the optional version of `self` if it is not already optional
     func coerceToOptional() -> Type {
         isOptional ? self : .optional(self)

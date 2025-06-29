@@ -17,6 +17,9 @@ import SQLite3
 public protocol DatabasePrimitive: RowDecodable {
     init(from cursor: OpaquePointer, at index: Int32) throws(OtterError)
     func bind(to statement: OpaquePointer, at index: Int32) throws(OtterError)
+    init<Encoder: DatabaseValueCoder>(value: Encoder.Value, into encoder: Encoder.Type) throws(OtterError)
+    func decode<Decoder: DatabaseValueCoder>(from decoder: Decoder.Type) throws(OtterError) -> Decoder.Value
+    var sqlAny: SQLAny? { get }
 }
 
 public extension DatabasePrimitive {
@@ -37,6 +40,21 @@ extension String: DatabasePrimitive {
     @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(OtterError) {
         sqlite3_bind_text(statement, index, self, -1, SQLITE_TRANSIENT)
     }
+    
+    @inlinable public init<Encoder: DatabaseValueCoder>(
+        value: Encoder.Value,
+        into encoder: Encoder.Type
+    ) throws(OtterError) {
+        self = try encoder.encodeToString(value: value)
+    }
+    
+    @inlinable public func decode<Decoder: DatabaseValueCoder>(
+        from decoder: Decoder.Type
+    ) throws(OtterError) -> Decoder.Value {
+        try decoder.decode(from: self)
+    }
+    
+    @inlinable public var sqlAny: SQLAny? { .string(self) }
 }
 
 extension Int: DatabasePrimitive {
@@ -47,6 +65,21 @@ extension Int: DatabasePrimitive {
     @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(OtterError) {
         sqlite3_bind_int(statement, index, Int32(self))
     }
+    
+    @inlinable public init<Encoder: DatabaseValueCoder>(
+        value: Encoder.Value,
+        into encoder: Encoder.Type
+    ) throws(OtterError) {
+        self = try encoder.encodeToInt(value: value)
+    }
+    
+    @inlinable public func decode<Decoder: DatabaseValueCoder>(
+        from decoder: Decoder.Type
+    ) throws(OtterError) -> Decoder.Value {
+        try decoder.decode(from: self)
+    }
+    
+    @inlinable public var sqlAny: SQLAny? { .int(self) }
 }
 
 extension Double: DatabasePrimitive {
@@ -57,6 +90,21 @@ extension Double: DatabasePrimitive {
     @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(OtterError) {
         sqlite3_bind_double(statement, index, self)
     }
+    
+    @inlinable public init<Encoder: DatabaseValueCoder>(
+        value: Encoder.Value,
+        into encoder: Encoder.Type
+    ) throws(OtterError) {
+        self = try encoder.encodeToDouble(value: value)
+    }
+    
+    @inlinable public func decode<Decoder: DatabaseValueCoder>(
+        from decoder: Decoder.Type
+    ) throws(OtterError) -> Decoder.Value {
+        try decoder.decode(from: self)
+    }
+    
+    @inlinable public var sqlAny: SQLAny? { .double(self) }
 }
 
 extension Data: DatabasePrimitive {
@@ -70,6 +118,21 @@ extension Data: DatabasePrimitive {
             sqlite3_bind_blob(statement, index, $0.baseAddress, CInt($0.count), SQLITE_TRANSIENT)
         }
     }
+    
+    @inlinable public init<Encoder: DatabaseValueCoder>(
+        value: Encoder.Value,
+        into encoder: Encoder.Type
+    ) throws(OtterError) {
+        self = try encoder.encodeToData(value: value)
+    }
+    
+    @inlinable public func decode<Decoder: DatabaseValueCoder>(
+        from decoder: Decoder.Type
+    ) throws(OtterError) -> Decoder.Value {
+        try decoder.decode(from: self)
+    }
+    
+    @inlinable public var sqlAny: SQLAny? { .data(self) }
 }
 
 extension Optional: DatabasePrimitive where Wrapped: DatabasePrimitive {
@@ -87,5 +150,26 @@ extension Optional: DatabasePrimitive where Wrapped: DatabasePrimitive {
         } else {
             sqlite3_bind_null(statement, index)
         }
+    }
+    
+    @inlinable public init<Encoder: DatabaseValueCoder>(
+        value: Encoder.Value,
+        into encoder: Encoder.Type
+    ) throws(OtterError) {
+        self = try .some(Wrapped(value: value, into: encoder))
+    }
+    
+    @inlinable public func decode<Decoder: DatabaseValueCoder>(
+        from decoder: Decoder.Type
+    ) throws(OtterError) -> Decoder.Value {
+        guard let value = self else {
+            // Kind of weird this is here.
+            throw .unexpectedNil
+        }
+        return try value.decode(from: decoder)
+    }
+    
+    @inlinable public var sqlAny: SQLAny? {
+        self?.sqlAny
     }
 }

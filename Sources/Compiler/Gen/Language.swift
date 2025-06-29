@@ -12,17 +12,13 @@ import SwiftSyntaxBuilder
 public protocol Language {
     init(options: GenerationOptions)
     
+    var boolName: String { get }
+    
     func queryTypeName(input: String, output: String) -> String
     
-    func inputTypeName(input: BuiltinOrGenerated?) -> String
+    func typeName(for type: GenerationType) -> String
     
-    func outputTypeName(
-        output: BuiltinOrGenerated?,
-        cardinality: Cardinality
-    ) -> String
-    
-    /// Returns the Language builtin for the given SQL type
-    func builtinType(for type: Type) -> String
+    func builtinType(named type: Substring) -> String
     
     /// A file source code containing all of the generated tables, queries and migrations.
     func file(
@@ -94,8 +90,9 @@ extension Language {
             }
         }.joined()
         
-        let inputTypeName = inputTypeName(input: input)
-        let outputTypeName = outputTypeName(output: output, cardinality: statement.outputCardinality)
+        let inputTypeName = typeName(for: input)
+        let outputTypeName = typeName(for: output)
+        var startIndex = 1
         
         return GeneratedQuery(
             name: definition.name.description,
@@ -109,8 +106,38 @@ extension Language {
             outputCardinality: statement.outputCardinality,
             sourceSql: sql,
             isReadOnly: statement.isReadOnly,
-            usedTableNames: statement.usedTableNames.sorted()
+            usedTableNames: statement.usedTableNames.sorted(),
+            bindings: bindings(for: input, index: &startIndex)
         )
+    }
+    
+    private func bindings(
+        for input: GenerationType,
+        index: inout Int,
+        owner: String? = nil
+    ) -> [GeneratedQuery.Binding] {
+        var result: [GeneratedQuery.Binding] = []
+        
+        switch input {
+        case .void:
+            break
+        case .builtin, .optional:
+            result.append(.value(index: index, name: "input", owner: owner))
+            index += 1
+        case .model(let model):
+            for field in model.fields.values {
+                result.append(contentsOf: bindings(for: field.type, index: &index, owner: field.name))
+            }
+        case .array(let values):
+            result.append(.arrayStart(name: "input", elementName: "element"))
+            result.append(contentsOf: bindings(for: values, index: &index, owner: "element"))
+            result.append(.arrayEnd)
+        case .encoded(_, _, let coder):
+            result.append(.value(index: index, name: "input", owner: owner, coder: coder))
+            index += 1
+        }
+        
+        return result
     }
     
     private func model(for table: Table) -> GeneratedModel {
@@ -119,15 +146,7 @@ extension Language {
             fields: table.columns.reduce(into: [:]) { fields, column in
                 let name = column.key.description
                 let type = column.value.type
-                fields[name] = GeneratedField(
-                    name: name,
-                    type: .builtin(
-                        builtinType(for: type),
-                        isArray: false,
-                        encodedAs: builtinForAliasedType(for: type)
-                    ),
-                    isArray: type.isRow
-                )
+                fields[name] = field(named: name, with: type)
             },
             isTable: true,
             nonOptionalIndices: table.columns.enumerated()
@@ -138,25 +157,42 @@ extension Language {
         )
     }
     
-    /// If the column type was aliased then this will return the `builtin`
-    /// type for the root type of the alias.
-    private func builtinForAliasedType(for type: Type) -> String? {
-        guard case let .alias(root, _) = type else { return nil }
-        return builtinType(for: root)
+    private func generationType(for type: Type) -> GenerationType {
+        switch type {
+        case let .nominal(name):
+            return .builtin(builtinType(named: name))
+        case let .alias(root, alias):
+            let alias = switch alias {
+            case .explicit(let e): e.description
+            case .hint(let hint):
+                switch hint {
+                case .bool: boolName
+                }
+            }
+            
+            return .encoded(generationType(for: root), alias: alias, coder: "\(alias)DatabaseValueCoder")
+        case let .optional(type):
+            return .optional(generationType(for: type))
+        case let .row(.unknown(type)):
+            return .array(generationType(for: type))
+        case .error, .fn, .row(.fixed), .var:
+            fatalError("Upstream error not caught")
+        }
     }
     
+    private func field(named name: String, with type: Type) -> GeneratedField {
+        let type = generationType(for: type)
+        return GeneratedField(name: name, type: type, typeName: typeName(for: type))
+    }
+
     private func inputTypeIfNeeded(
         statement: Statement,
         definition: Definition
-    ) -> BuiltinOrGenerated? {
-        guard let firstParameter = statement.parameters.first else { return nil }
+    ) -> GenerationType {
+        guard let firstParameter = statement.parameters.first else { return .void }
         
         guard statement.parameters.count > 1 else {
-            return .builtin(
-                builtinType(for: firstParameter.type),
-                isArray: firstParameter.type.isRow,
-                encodedAs: builtinForAliasedType(for: firstParameter.type)
-            )
+            return generationType(for: firstParameter.type)
         }
         
         let inputTypeName = definition.input?.description ?? "\(definition.name.capitalizedFirst)Input"
@@ -164,50 +200,46 @@ extension Language {
         let model = GeneratedModel(
             name: inputTypeName,
             fields: statement.parameters.reduce(into: [:]) { fields, parameter in
-                fields[parameter.name] = GeneratedField(
-                    name: parameter.name,
-                    type: .builtin(
-                        builtinType(for: parameter.type),
-                        isArray: false,
-                        encodedAs: builtinForAliasedType(for: parameter.type)
-                    ),
-                    isArray: parameter.type.isRow
-                )
+                fields[parameter.name] = field(named: parameter.name, with: parameter.type)
             },
             isTable: false,
             nonOptionalIndices: []
         )
         
-        return .model(model, isOptional: false)
+        return .model(model)
     }
     
     private func outputTypeIfNeeded(
         statement: Statement,
         definition: Definition,
         tables: [Substring: GeneratedModel]
-    ) -> BuiltinOrGenerated? {
-        guard let firstResultColumns = statement.resultColumns.chunks.first else { return nil }
+    ) -> GenerationType {
+        guard let firstResultColumns = statement.resultColumns.chunks.first else { return .void }
+        
+        // Will return an array if it returns many or optional if its a single result
+        let singleOrMany: (GenerationType) -> GenerationType = {
+            switch statement.outputCardinality {
+            case .single: .optional($0)
+            case .many: .array($0)
+            }
+        }
         
         // Output can be mapped to a table struct
         if statement.resultColumns.chunks.count == 1,
            let tableName = firstResultColumns.table,
            let table = tables[tableName]
         {
-            return .model(table, isOptional: false)
+            return singleOrMany(.model(table))
         }
         
         // Make sure there is at least one column else return void
         guard let firstColumn = firstResultColumns.columns.values.first?.type else {
-            return nil
+            return .void
         }
         
         // Only one column returned, just use it's type
         guard statement.resultColumns.count > 1 else {
-            return .builtin(
-                builtinType(for: firstColumn),
-                isArray: firstColumn.isRow,
-                encodedAs: builtinForAliasedType(for: firstColumn)
-            )
+            return singleOrMany(generationType(for: firstColumn))
         }
         
         let outputTypeName = definition.output?.description ?? "\(definition.name.capitalizedFirst)Output"
@@ -217,23 +249,20 @@ extension Language {
             fields: statement.resultColumns.chunks.reduce(into: [:]) { fields, chunk in
                 if let tableName = chunk.table, let table = tables[tableName] {
                     let name = tableName.description
+                    let type: GenerationType = chunk.isTableOptional ? .optional(.model(table)) : .model(table)
                     fields[name] = GeneratedField(
                         name: name,
-                        type: .model(table, isOptional: chunk.isTableOptional),
-                        isArray: false
+                        type: type,
+                        typeName: typeName(for: type)
                     )
                 } else {
                     for column in chunk.columns {
                         let name = column.key.description
-                        let type = column.value.type
+                        let type = generationType(for: column.value.type)
                         fields[name] = GeneratedField(
                             name: name,
-                            type: .builtin(
-                                builtinType(for: type),
-                                isArray: false,
-                                encodedAs: builtinForAliasedType(for: type)
-                            ),
-                            isArray: type.isRow
+                            type: type,
+                            typeName: typeName(for: type)
                         )
                     }
                 }
@@ -242,7 +271,7 @@ extension Language {
             nonOptionalIndices: []
         )
         
-        return .model(model, isOptional: false)
+        return singleOrMany(.model(model))
     }
 }
 
@@ -259,7 +288,7 @@ public struct GenerationOptions: Sendable {
     }
 }
 
-public struct GeneratedModel {
+public struct GeneratedModel: Equatable {
     let name: String
     let fields: OrderedDictionary<String, GeneratedField>
     /// Whether or not this was generated for a table
@@ -267,22 +296,17 @@ public struct GeneratedModel {
     let nonOptionalIndices: [Int]
 }
 
-public struct GeneratedField {
+public struct GeneratedField: Equatable {
     /// The column name
     let name: String
     /// The type of the field.
     /// If it is a `model` that means the user selected
     /// all columns from a table `foo.*`
-    let type: BuiltinOrGenerated
-    /// Whether or not it is an array. Some fields can take a list
-    /// as an input for a query like `foo IN :bar`
-    let isArray: Bool
-    
-    /// The underlying storage type if it is aliased
-    var encodedAsType: String? {
-        guard case let .builtin(_, _, encodedAs) = type else { return nil }
-        return encodedAs
-    }
+    let type: GenerationType
+    /// The types name to use in the codegen.
+    /// The name is accessed many times so we can just calculate
+    /// it once and reuse it.
+    let typeName: String
 }
 
 public struct GeneratedQuery {
@@ -290,31 +314,43 @@ public struct GeneratedQuery {
     let variableName: String
     let typeName: String
     let typealiasName: String
-    let input: BuiltinOrGenerated?
+    let input: GenerationType
     let inputName: String
-    let output: BuiltinOrGenerated?
+    let output: GenerationType
     let outputName: String
     let outputCardinality: Cardinality
     let sourceSql: String
     let isReadOnly: Bool
     let usedTableNames: [Substring]
+    let bindings: [Binding]
+    
+    public enum Binding {
+        case value(index: Int, name: String, owner: String? = nil, coder: String? = nil)
+        case arrayStart(name: String, elementName: String)
+        case arrayEnd
+    }
 }
 
-public enum BuiltinOrGenerated: CustomStringConvertible {
-    /// Types can be aliased. So `TEXT AS UUID`. `encodedAs`
-    /// would be the `TEXT`. It will allow us to tell the
-    /// `bind` functions to actually encode to the underlying
-    /// type rather than just having `UUID` always go to `TEXT`
-    /// when some users may want a `BLOB`.
-    case builtin(String, isArray: Bool, encodedAs: String?)
-    case model(GeneratedModel, isOptional: Bool)
+public enum GenerationType: Equatable {
+    case void
+    case builtin(String)
+    case model(GeneratedModel)
+    indirect case optional(Self)
+    indirect case array(Self)
+    indirect case encoded(Self, alias: String, coder: String)
     
-    public var description: String {
+    var model: GeneratedModel? {
         switch self {
-        case let .builtin(builtin, isArray, _):
-            isArray ? "[\(builtin)]" : builtin
-        case let .model(model, isOptional):
-            isOptional ? "\(model.name)?" : model.name
+        case .void, .builtin: nil
+        case .model(let model): model
+        case .optional(let optional): optional.model
+        case .array(let array): array.model
+        case .encoded(let encoded, _, _): encoded.model
         }
     }
+}
+
+public struct RequiredCoder: Hashable {
+    public let sourceType: String
+    public let storage: String
 }

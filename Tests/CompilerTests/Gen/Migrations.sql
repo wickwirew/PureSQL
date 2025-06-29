@@ -2,6 +2,9 @@ CREATE TABLE user (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     firstName TEXT NOT NULL,
     lastName TEXT NOT NULL,
+    preference INTEGER AS Bool,
+    favoriteNumber INTEGER,
+    randomValue ANY,
     fullName TEXT NOT NULL GENERATED ALWAYS AS (firstName || ' ' || lastName)
 );
 
