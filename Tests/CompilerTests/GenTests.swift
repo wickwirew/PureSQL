@@ -24,6 +24,14 @@ struct GenTests {
             schema: compiler.schema
         )
         
+        for diagnostics in migrations.1 {
+            Issue.record(diagnostics)
+        }
+        
+        for diagnostics in queries.1 {
+            Issue.record(diagnostics)
+        }
+        
         let expected = try load(file: "Swift", ext: "output")
             .split(separator: "\n")
             .filter{ !$0.isEmpty }

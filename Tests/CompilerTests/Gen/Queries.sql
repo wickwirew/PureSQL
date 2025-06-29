@@ -1,3 +1,6 @@
+insertUser:
+INSERT INTO user VALUES (?, ?, ?, ?, ?, ?, ?);
+
 selectUsers:
 SELECT * FROM user;
 

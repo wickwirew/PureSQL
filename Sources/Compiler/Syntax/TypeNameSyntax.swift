@@ -17,6 +17,11 @@ struct TypeNameSyntax: Syntax, CustomStringConvertible, Sendable {
         let name: AliasSyntax
         let using: IdentifierSyntax?
         
+        var location: SourceLocation {
+            guard let using else { return name.location }
+            return name.location.spanning(using.location)
+        }
+        
         var description: String {
             if let using {
                 return "\(name) USING \(using)"

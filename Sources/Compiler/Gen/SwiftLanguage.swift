@@ -498,8 +498,8 @@ public struct SwiftLanguage: Language {
                 writer.write("row.optionallyEmbedded(at: start + ", index.description, ")")
             case let .encoded(_, _, adapter):
                 writer.write("row.value(at: start + ", index.description, ", using: ", adapter, ".self)")
-            case let .optional(.encoded(_, _, adapter)):
-                writer.write("row.optionalValue(at: start + ", index.description, ", using: ", adapter, ".self)")
+            case let .optional(.encoded(storage, _, adapter)):
+                writer.write("row.optionalValue(at: start + ", index.description, ", using: ", adapter, ".self, storage: ", typeName(for: storage), ".self)")
             default:
                 fatalError("Invalid field type \(field.typeName) \(field.type)")
             }
@@ -639,7 +639,7 @@ public struct SwiftLanguage: Language {
     
     private func bind(binding: GeneratedQuery.Binding) {
         switch binding {
-        case let .value(index, name, owner, adapter):
+        case let .value(index, name, owner, _, adapter):
             writer.write(line: "try statement.bind(value: ")
             
             if let owner {
@@ -649,7 +649,7 @@ public struct SwiftLanguage: Language {
             writer.write(name, ", to: ", index.description)
             
             if let adapter {
-                writer.write(", using: ", adapter, ".self")
+                writer.write(", using: ", adapter.name, ".self, as: ", adapter.storage, ".self")
             }
             
             writer.write(")")

@@ -127,4 +127,46 @@ struct DatabaseValueAdapterTests {
         #expect(stored == 1751219898)
         #expect(value == decoded)
     }
+    
+//    @Test func customDatabaseValueAdapter() async throws {
+//        let db: TestDB = try .inMemory()
+//        
+//        let date = Date(timeIntervalSince1970: 1751219898)
+//        try await db.insert.execute(with: .init(number: 100, date: date))
+//        
+//        let result = try await db.all.execute().first
+//        
+//        #expect(result == .init(number: 100, date: date))
+//    }
+    
+    @Database
+    struct TestDB {
+        @Query("INSERT INTO hasValues VALUES (?, ?)")
+        var insert: InsertDatabaseQuery
+        
+        @Query("SELECT * FROM hasValues")
+        var all: AllDatabaseQuery
+        
+        static var migrations: [String] {
+            return [
+                "CREATE TABLE hasValues (number TEXT AS Int64 USING NumberPrefix, date INTEGER AS Date)"
+            ]
+        }
+    }
+    
+    struct NumberPrefixDatabaseValueAdapter: DatabaseValueAdapter {
+        typealias Value = Int64
+        
+        static func encodeToString(value: Int64) throws(OtterError) -> String {
+            return "Prefix: \(value)"
+        }
+        
+        static func decode(from primitive: String) throws(OtterError) -> Int64 {
+            Int64(primitive.replacingOccurrences(of: "Prefix: ", with: ""))!
+        }
+        
+        static func encodeToAny(value: Int64) throws(Otter.OtterError) -> Otter.SQLAny {
+            try .string(encodeToString(value: value))
+        }
+    }
 }

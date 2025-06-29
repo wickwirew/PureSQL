@@ -5,12 +5,12 @@ CREATE TABLE user (
     preference INTEGER AS Bool,
     favoriteNumber INTEGER,
     randomValue ANY,
-    bornOn STRING AS Date USING CustomDate NOT NULL,
+    bornOn TEXT AS Date USING CustomDate,
     fullName TEXT NOT NULL GENERATED ALWAYS AS (firstName || ' ' || lastName)
 );
 
 CREATE TABLE interest (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     value TEXT NOT NULL,
-    userId TEXT REFERENCES user(id)
+    userId INTEGER REFERENCES user(id)
 );

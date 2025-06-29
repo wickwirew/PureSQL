@@ -4,7 +4,7 @@ import Otter
 struct Interest: Hashable, Sendable, Identifiable, RowDecodable {
     let id: Int
     let value: String
-    let userId: String?
+    let userId: Int?
     
     static let nonOptionalIndices: [Int32] = [0, 1]
     
@@ -20,7 +20,7 @@ struct Interest: Hashable, Sendable, Identifiable, RowDecodable {
     init(
         id: Int,
         value: String,
-        userId: String?
+        userId: Int?
     ) {
         self.id = id
         self.value = value
@@ -35,10 +35,10 @@ struct User: Hashable, Sendable, Identifiable, RowDecodable {
     let preference: Bool?
     let favoriteNumber: Int?
     let randomValue: SQLAny?
-    let bornOn: Date
+    let bornOn: Date?
     let fullName: String
     
-    static let nonOptionalIndices: [Int32] = [0, 1, 2, 6, 7]
+    static let nonOptionalIndices: [Int32] = [0, 1, 2, 7]
     
     init(
         row: borrowing Otter.Row,
@@ -47,10 +47,10 @@ struct User: Hashable, Sendable, Identifiable, RowDecodable {
         self.id = try row.value(at: start + 0)
         self.firstName = try row.value(at: start + 1)
         self.lastName = try row.value(at: start + 2)
-        self.preference = try row.optionalValue(at: start + 3, using: BoolDatabaseValueAdapter.self)
+        self.preference = try row.optionalValue(at: start + 3, using: BoolDatabaseValueAdapter.self, storage: Int.self)
         self.favoriteNumber = try row.value(at: start + 4)
         self.randomValue = try row.value(at: start + 5)
-        self.bornOn = try row.value(at: start + 6, using: CustomDateDatabaseValueAdapter.self)
+        self.bornOn = try row.optionalValue(at: start + 6, using: CustomDateDatabaseValueAdapter.self, storage: String.self)
         self.fullName = try row.value(at: start + 7)
     }
     
@@ -61,7 +61,7 @@ struct User: Hashable, Sendable, Identifiable, RowDecodable {
         preference: Bool?,
         favoriteNumber: Int?,
         randomValue: SQLAny?,
-        bornOn: Date,
+        bornOn: Date?,
         fullName: String
     ) {
         self.id = id
@@ -73,6 +73,16 @@ struct User: Hashable, Sendable, Identifiable, RowDecodable {
         self.bornOn = bornOn
         self.fullName = fullName
     }
+}
+
+struct InsertUserInput: Hashable, Sendable, Identifiable {
+    let id: Int
+    let firstName: String
+    let lastName: String
+    let preference: Bool?
+    let favoriteNumber: Int?
+    let randomValue: SQLAny?
+    let bornOn: Date?
 }
 
 struct SelectUserWithManyInputsInput: Hashable, Sendable, Identifiable {
@@ -173,6 +183,8 @@ struct SelectWithOptionalInterestOutput: Hashable, Sendable, RowDecodable {
 }
 
 protocol QueriesQueries {
+    associatedtype InsertUser: InsertUserQuery
+    var insertUser: InsertUser { get }
     associatedtype SelectUsers: SelectUsersQuery
     var selectUsers: SelectUsers { get }
     associatedtype SelectUserById: SelectUserByIdQuery
@@ -190,6 +202,7 @@ protocol QueriesQueries {
 }
 
 struct QueriesQueriesNoop: QueriesQueries {
+    let insertUser: AnyQuery<InsertUserInput, ()>
     let selectUsers: AnyQuery<(), [User]>
     let selectUserById: AnyQuery<Int, User?>
     let selectUserByIds: AnyQuery<[Int], [User]>
@@ -199,6 +212,7 @@ struct QueriesQueriesNoop: QueriesQueries {
     let selectWithOptionalInterest: AnyQuery<(), [SelectWithOptionalInterestOutput]>
     
     init(
+        insertUser: any InsertUserQuery = Queries.Just(),
         selectUsers: any SelectUsersQuery = Queries.Just(),
         selectUserById: any SelectUserByIdQuery = Queries.Just(),
         selectUserByIds: any SelectUserByIdsQuery = Queries.Just(),
@@ -207,6 +221,7 @@ struct QueriesQueriesNoop: QueriesQueries {
         selectWithInterest: any SelectWithInterestQuery = Queries.Just(),
         selectWithOptionalInterest: any SelectWithOptionalInterestQuery = Queries.Just()
     ) {
+        self.insertUser = insertUser.eraseToAnyQuery()
         self.selectUsers = selectUsers.eraseToAnyQuery()
         self.selectUserById = selectUserById.eraseToAnyQuery()
         self.selectUserByIds = selectUserByIds.eraseToAnyQuery()
@@ -219,6 +234,29 @@ struct QueriesQueriesNoop: QueriesQueries {
 
 struct QueriesQueriesImpl: QueriesQueries {
     let connection: any Connection
+    
+    var insertUser: AnyDatabaseQuery<InsertUserInput, ()> {
+        AnyDatabaseQuery<InsertUserInput, ()>(
+            .write,
+            in: connection,
+            watchingTables: ["user"]
+        ) { input, tx in
+            var statement = try Otter.Statement(
+                """
+                INSERT INTO user VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                transaction: tx
+            )
+            try statement.bind(value: input.id, to: 1)
+            try statement.bind(value: input.firstName, to: 2)
+            try statement.bind(value: input.lastName, to: 3)
+            try statement.bind(value: input.preference, to: 4, using: BoolDatabaseValueAdapter.self, as: Int.self)
+            try statement.bind(value: input.favoriteNumber, to: 5)
+            try statement.bind(value: input.randomValue, to: 6)
+            try statement.bind(value: input.bornOn, to: 7, using: CustomDateDatabaseValueAdapter.self, as: String.self)
+            _ = try statement.step()
+        }
+    }
     
     var selectUsers: AnyDatabaseQuery<(), [User]> {
         AnyDatabaseQuery<(), [User]>(
@@ -301,8 +339,8 @@ struct QueriesQueriesImpl: QueriesQueries {
                 """,
                 transaction: tx
             )
-            try statement.bind(value: id.input, to: 1)
-            try statement.bind(value: firstName.input, to: 2)
+            try statement.bind(value: input.id, to: 1)
+            try statement.bind(value: input.firstName, to: 2)
             return try statement.fetchOne()
         }
     }
@@ -353,7 +391,7 @@ struct DB: Database{
                 preference INTEGER ,
                 favoriteNumber INTEGER,
                 randomValue ANY,
-                bornOn STRING USING CustomDate NOT NULL,
+                bornOn TEXT ,
                 fullName TEXT NOT NULL GENERATED ALWAYS AS (firstName || ' ' || lastName)
             );
             """,
@@ -361,13 +399,24 @@ struct DB: Database{
             CREATE TABLE interest (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 value TEXT NOT NULL,
-                userId TEXT REFERENCES user(id)
+                userId INTEGER REFERENCES user(id)
             );;
             """
         ]
     }
     var queriesQueries: QueriesQueriesImpl {
         QueriesQueriesImpl(connection: connection)
+    }
+}
+
+typealias InsertUserQuery = Query<InsertUserInput, ()>
+extension Query where Input == InsertUserInput {
+    func execute(id: Int, firstName: String, lastName: String, preference: Bool?, favoriteNumber: Int?, randomValue: SQLAny?, bornOn: Date?) async throws -> Output {
+        try await execute(with: InsertUserInput(id: id, firstName: firstName, lastName: lastName, preference: preference, favoriteNumber: favoriteNumber, randomValue: randomValue, bornOn: bornOn))
+    }
+    
+    func observe(id: Int, firstName: String, lastName: String, preference: Bool?, favoriteNumber: Int?, randomValue: SQLAny?, bornOn: Date?) -> any QueryObservation<Output> {
+        observe(with: InsertUserInput(id: id, firstName: firstName, lastName: lastName, preference: preference, favoriteNumber: favoriteNumber, randomValue: randomValue, bornOn: bornOn))
     }
 }
 

@@ -51,7 +51,7 @@ public struct Row: ~Copyable {
     @inlinable public func optionalValue<Storage: DatabasePrimitive, Coder: DatabaseValueAdapter>(
         at column: Int32,
         using adapter: Coder.Type,
-        storage: Storage
+        storage: Storage.Type
     ) throws(OtterError) -> Coder.Value? {
         guard let storage = try Storage?(from: sqliteStatement, at: column) else { return  nil}
         return try storage.decode(from: adapter)

@@ -69,6 +69,22 @@ public struct Statement: ~Copyable {
         try storage.bind(to: raw, at: index)
     }
     
+    @_disfavoredOverload
+    public func bind<Storage: DatabasePrimitive, Coder: DatabaseValueAdapter>(
+        value: Coder.Value?,
+        to index: Int32,
+        using: Coder.Type,
+        as storage: Storage.Type
+    ) throws(OtterError) {
+        if let value {
+            let storage = try Storage(value: value, into: using)
+            try storage.bind(to: raw, at: index)
+        } else {
+            let storage: Storage? = nil
+            try storage.bind(to: raw, at: index)
+        }
+    }
+    
     public func step() throws(OtterError) -> Step {
         let code = SQLiteCode(sqlite3_step(raw))
         switch code {

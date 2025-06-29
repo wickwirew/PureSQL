@@ -109,7 +109,7 @@ extension Rewriter: StmtSyntaxVisitor {
     func visit(_ stmt: CreateTableStmtSyntax) -> [Range<Substring.Index>] {
         switch stmt.kind {
         case let .columns(columns, _, _):
-            return columns.values.compactMap { $0.type.alias?.name.location.range }
+            return columns.values.compactMap { $0.type.alias?.location.range }
         case .select:
             return []
         }
