@@ -59,7 +59,7 @@ public struct Statement: ~Copyable {
         try value.bind(to: raw, at: index)
     }
     
-    public func bind<Storage: DatabasePrimitive, Coder: DatabaseValueCoder>(
+    public func bind<Storage: DatabasePrimitive, Coder: DatabaseValueAdapter>(
         value: Coder.Value,
         to index: Int32,
         using: Coder.Type,

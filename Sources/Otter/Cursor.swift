@@ -37,24 +37,24 @@ public struct Row: ~Copyable {
     }
     
     /// Decodes the column at the index as the `Storage.Value` type
-    @inlinable public func value<Storage: DatabasePrimitive, Coder: DatabaseValueCoder>(
+    @inlinable public func value<Storage: DatabasePrimitive, Coder: DatabaseValueAdapter>(
         at column: Int32,
-        using coder: Coder.Type,
+        using adapter: Coder.Type,
         storage: Storage
     ) throws(OtterError) -> Coder.Value {
         let storage = try Storage(from: sqliteStatement, at: column)
-        return try storage.decode(from: coder)
+        return try storage.decode(from: adapter)
     }
     
     /// Decodes the column at the index as the `Storage.Value` type
     /// if it has a value.
-    @inlinable public func optionalValue<Storage: DatabasePrimitive, Coder: DatabaseValueCoder>(
+    @inlinable public func optionalValue<Storage: DatabasePrimitive, Coder: DatabaseValueAdapter>(
         at column: Int32,
-        using coder: Coder.Type,
+        using adapter: Coder.Type,
         storage: Storage
     ) throws(OtterError) -> Coder.Value? {
         guard let storage = try Storage?(from: sqliteStatement, at: column) else { return  nil}
-        return try storage.decode(from: coder)
+        return try storage.decode(from: adapter)
     }
     
     /// Decodes the struct embeeded at the start index as the `Value` type.

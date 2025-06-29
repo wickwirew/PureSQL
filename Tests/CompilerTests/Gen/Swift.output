@@ -47,10 +47,10 @@ struct User: Hashable, Sendable, Identifiable, RowDecodable {
         self.id = try row.value(at: start + 0)
         self.firstName = try row.value(at: start + 1)
         self.lastName = try row.value(at: start + 2)
-        self.preference = try row.optionalValue(at: start + 3, using: BoolDatabaseValueCoder.self)
+        self.preference = try row.optionalValue(at: start + 3, using: BoolDatabaseValueAdapter.self)
         self.favoriteNumber = try row.value(at: start + 4)
         self.randomValue = try row.value(at: start + 5)
-        self.bornOn = try row.value(at: start + 6, using: CustomDateDatabaseValueCoder.self)
+        self.bornOn = try row.value(at: start + 6, using: CustomDateDatabaseValueAdapter.self)
         self.fullName = try row.value(at: start + 7)
     }
     

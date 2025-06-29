@@ -14,7 +14,7 @@ public protocol Language {
     
     var boolName: String { get }
     
-    var builtinCoders: Set<String> { get }
+    var builtinAdapters: Set<String> { get }
     
     func queryTypeName(input: String, output: String) -> String
     
@@ -27,7 +27,7 @@ public protocol Language {
         migrations: [String],
         tables: [GeneratedModel],
         queries: [(String?, [GeneratedQuery])],
-        coders: [String]
+        adapters: [String]
     ) throws -> String
     
     /// Function to generate a interpolation segment in a string
@@ -49,12 +49,12 @@ extension Language {
     ) throws -> String {
         let values = try assemble(queries: queries, schema: schema)
         
-        // Get a list of all coders used. Right now we only have to look at the
+        // Get a list of all adapters used. Right now we only have to look at the
         // tables since any output would inhereit the encoding of the source table.
-        let coders: Set<String> = values.tables.reduce(into: []) { coders, table in
+        let adapters: Set<String> = values.tables.reduce(into: []) { adapters, table in
             for field in table.fields.values {
-                guard let coder = field.type.coder else { continue }
-                coders.insert(coder)
+                guard let adapter = field.type.adapter else { continue }
+                adapters.insert(adapter)
             }
         }
         
@@ -62,7 +62,7 @@ extension Language {
             migrations: migrations,
             tables: values.tables,
             queries: values.queries,
-            coders: coders.subtracting(builtinCoders).sorted()
+            adapters: adapters.subtracting(builtinAdapters).sorted()
         )
     }
     
@@ -145,8 +145,8 @@ extension Language {
             result.append(.arrayStart(name: "input", elementName: "element"))
             result.append(contentsOf: bindings(for: values, index: &index, owner: "element"))
             result.append(.arrayEnd)
-        case .encoded(_, _, let coder):
-            result.append(.value(index: index, name: "input", owner: owner, coder: coder))
+        case .encoded(_, _, let adapter):
+            result.append(.value(index: index, name: "input", owner: owner, adapter: adapter))
             index += 1
         }
         
@@ -174,7 +174,7 @@ extension Language {
         switch type {
         case let .nominal(name):
             return .builtin(builtinType(named: name))
-        case let .alias(root, alias, coder):
+        case let .alias(root, alias, adapter):
             let alias = switch alias {
             case .explicit(let e): e.description
             case .hint(let hint):
@@ -186,7 +186,7 @@ extension Language {
             return .encoded(
                 generationType(for: root),
                 alias: alias,
-                coder: "\(coder?.description ?? alias)DatabaseValueCoder"
+                adapter: "\(adapter?.description ?? alias)DatabaseValueAdapter"
             )
         case let .optional(type):
             return .optional(generationType(for: type))
@@ -342,7 +342,7 @@ public struct GeneratedQuery {
     let bindings: [Binding]
     
     public enum Binding {
-        case value(index: Int, name: String, owner: String? = nil, coder: String? = nil)
+        case value(index: Int, name: String, owner: String? = nil, adapter: String? = nil)
         case arrayStart(name: String, elementName: String)
         case arrayEnd
     }
@@ -354,7 +354,7 @@ public enum GenerationType: Equatable {
     case model(GeneratedModel)
     indirect case optional(Self)
     indirect case array(Self)
-    indirect case encoded(Self, alias: String, coder: String)
+    indirect case encoded(Self, alias: String, adapter: String)
     
     var model: GeneratedModel? {
         switch self {
@@ -366,12 +366,12 @@ public enum GenerationType: Equatable {
         }
     }
     
-    var coder: String? {
+    var adapter: String? {
         switch self {
         case .void, .builtin, .model: nil
-        case .optional(let optional): optional.coder
-        case .array(let array): array.coder
-        case .encoded(_, _, let coder): coder
+        case .optional(let optional): optional.adapter
+        case .array(let array): array.adapter
+        case .encoded(_, _, let adapter): adapter
         }
     }
 }

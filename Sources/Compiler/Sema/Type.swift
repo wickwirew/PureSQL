@@ -24,7 +24,7 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
     /// A type that has been aliased. These are not in SQL by default
     /// but are from the layer on top that we are adding so a user
     /// can replace a `INTEGER` with a `Bool`
-    indirect case alias(Type, Alias, coder: Substring?)
+    indirect case alias(Type, Alias, adapter: Substring?)
     /// There was an error somewhere in the analysis. We can just return
     /// an `error` type and continue the analysis. So if the user makes up
     /// 3 columns, they can get all 3 errors at once.
@@ -43,7 +43,7 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
     static let real: Type = .nominal("REAL")
     static let blob: Type = .nominal("BLOB")
     static let any: Type = .nominal("ANY")
-    static let boolean: Type = .alias(.integer, .hint(.bool), coder: nil)
+    static let boolean: Type = .alias(.integer, .hint(.bool), adapter: nil)
     
     static let validTypeNames: Set<Substring> = [
         "TEXT", "INT", "INTEGER", "REAL", "BLOB", "ANY",
@@ -166,7 +166,7 @@ public enum Type: Equatable, CustomStringConvertible, Sendable {
         case let .optional(ty):
             return .optional(ty.apply(s))
         case let .alias(t, a, c):
-            return .alias(t.apply(s), a, coder: c)
+            return .alias(t.apply(s), a, adapter: c)
         case .nominal, .error:
             // Literals can't be substituted for.
             return self

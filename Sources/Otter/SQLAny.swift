@@ -102,17 +102,17 @@ extension SQLAny: DatabasePrimitive {
         }
     }
     
-    @inlinable public init<Encoder: DatabaseValueCoder>(
-        value: Encoder.Value,
-        into encoder: Encoder.Type
+    @inlinable public init<Adapter: DatabaseValueAdapter>(
+        value: Adapter.Value,
+        into adapter: Adapter.Type
     ) throws(OtterError) {
-        self = try encoder.encodeToAny(value: value)
+        self = try adapter.encodeToAny(value: value)
     }
     
-    @inlinable public func decode<Decoder: DatabaseValueCoder>(
-        from decoder: Decoder.Type
-    ) throws(OtterError) -> Decoder.Value {
-        try decoder.decode(from: self)
+    @inlinable public func decode<Adapter: DatabaseValueAdapter>(
+        from adapter: Adapter.Type
+    ) throws(OtterError) -> Adapter.Value {
+        try adapter.decode(from: self)
     }
     
     public var sqlAny: SQLAny? { self }

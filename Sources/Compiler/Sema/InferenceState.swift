@@ -123,7 +123,7 @@ struct InferenceState {
         for type: Type,
         at location: SourceLocation
     ) {
-        unify(type, with: .alias(type, .hint(hint), coder: nil), at: location)
+        unify(type, with: .alias(type, .hint(hint), adapter: nil), at: location)
     }
     
     /// Gets the final type from the solution for the type if its a ty var.
@@ -141,8 +141,8 @@ struct InferenceState {
             return tv.defaultType
         case let .optional(ty):
             return .optional(solution(for: ty, defaultIfTyVar: true))
-        case let .alias(ty, alias, coder):
-            return .alias(solution(for: ty, defaultIfTyVar: true), alias, coder: coder)
+        case let .alias(ty, alias, adapter):
+            return .alias(solution(for: ty, defaultIfTyVar: true), alias, adapter: adapter)
         case let .row(row):
             if let type = row.first, row.count == 1, !row.isUnknown {
                 return solution(for: type, defaultIfTyVar: true)

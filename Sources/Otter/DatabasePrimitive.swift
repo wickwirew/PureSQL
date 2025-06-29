@@ -15,11 +15,25 @@ import SQLite3
 /// You **should not** be conforming any of your types to this directly.
 /// It will have no effect. For custom type conversion see `DatabasePrimitiveConvertible`
 public protocol DatabasePrimitive: RowDecodable {
-    init(from cursor: OpaquePointer, at index: Int32) throws(OtterError)
-    func bind(to statement: OpaquePointer, at index: Int32) throws(OtterError)
-    init<Encoder: DatabaseValueCoder>(value: Encoder.Value, into encoder: Encoder.Type) throws(OtterError)
-    func decode<Decoder: DatabaseValueCoder>(from decoder: Decoder.Type) throws(OtterError) -> Decoder.Value
+    /// This value as an `ANY`
     var sqlAny: SQLAny? { get }
+    
+    /// Initialize from the row at the column `index`
+    init(from cursor: OpaquePointer, at index: Int32) throws(OtterError)
+    
+    /// Initializes self using the `adapter`
+    init<Adapter: DatabaseValueAdapter>(
+        value: Adapter.Value,
+        into adapter: Adapter.Type
+    ) throws(OtterError)
+    
+    /// Bind self to the statement at the given parameter index
+    func bind(to statement: OpaquePointer, at index: Int32) throws(OtterError)
+    
+    /// Decode self using the `adapter`
+    func decode<Adapter: DatabaseValueAdapter>(
+        from adapter: Adapter.Type
+    ) throws(OtterError) -> Adapter.Value
 }
 
 public extension DatabasePrimitive {
@@ -41,17 +55,17 @@ extension String: DatabasePrimitive {
         sqlite3_bind_text(statement, index, self, -1, SQLITE_TRANSIENT)
     }
     
-    @inlinable public init<Encoder: DatabaseValueCoder>(
-        value: Encoder.Value,
-        into encoder: Encoder.Type
+    @inlinable public init<Adapter: DatabaseValueAdapter>(
+        value: Adapter.Value,
+        into adapter: Adapter.Type
     ) throws(OtterError) {
-        self = try encoder.encodeToString(value: value)
+        self = try adapter.encodeToString(value: value)
     }
     
-    @inlinable public func decode<Decoder: DatabaseValueCoder>(
-        from decoder: Decoder.Type
-    ) throws(OtterError) -> Decoder.Value {
-        try decoder.decode(from: self)
+    @inlinable public func decode<Adapter: DatabaseValueAdapter>(
+        from adapter: Adapter.Type
+    ) throws(OtterError) -> Adapter.Value {
+        try adapter.decode(from: self)
     }
     
     @inlinable public var sqlAny: SQLAny? { .string(self) }
@@ -66,17 +80,17 @@ extension Int: DatabasePrimitive {
         sqlite3_bind_int(statement, index, Int32(self))
     }
     
-    @inlinable public init<Encoder: DatabaseValueCoder>(
-        value: Encoder.Value,
-        into encoder: Encoder.Type
+    @inlinable public init<Adapter: DatabaseValueAdapter>(
+        value: Adapter.Value,
+        into adapter: Adapter.Type
     ) throws(OtterError) {
-        self = try encoder.encodeToInt(value: value)
+        self = try adapter.encodeToInt(value: value)
     }
     
-    @inlinable public func decode<Decoder: DatabaseValueCoder>(
-        from decoder: Decoder.Type
-    ) throws(OtterError) -> Decoder.Value {
-        try decoder.decode(from: self)
+    @inlinable public func decode<Adapter: DatabaseValueAdapter>(
+        from adapter: Adapter.Type
+    ) throws(OtterError) -> Adapter.Value {
+        try adapter.decode(from: self)
     }
     
     @inlinable public var sqlAny: SQLAny? { .int(self) }
@@ -91,17 +105,17 @@ extension Double: DatabasePrimitive {
         sqlite3_bind_double(statement, index, self)
     }
     
-    @inlinable public init<Encoder: DatabaseValueCoder>(
-        value: Encoder.Value,
-        into encoder: Encoder.Type
+    @inlinable public init<Adapter: DatabaseValueAdapter>(
+        value: Adapter.Value,
+        into adapter: Adapter.Type
     ) throws(OtterError) {
-        self = try encoder.encodeToDouble(value: value)
+        self = try adapter.encodeToDouble(value: value)
     }
     
-    @inlinable public func decode<Decoder: DatabaseValueCoder>(
-        from decoder: Decoder.Type
-    ) throws(OtterError) -> Decoder.Value {
-        try decoder.decode(from: self)
+    @inlinable public func decode<Adapter: DatabaseValueAdapter>(
+        from adapter: Adapter.Type
+    ) throws(OtterError) -> Adapter.Value {
+        try adapter.decode(from: self)
     }
     
     @inlinable public var sqlAny: SQLAny? { .double(self) }
@@ -119,17 +133,17 @@ extension Data: DatabasePrimitive {
         }
     }
     
-    @inlinable public init<Encoder: DatabaseValueCoder>(
-        value: Encoder.Value,
-        into encoder: Encoder.Type
+    @inlinable public init<Adapter: DatabaseValueAdapter>(
+        value: Adapter.Value,
+        into adapter: Adapter.Type
     ) throws(OtterError) {
-        self = try encoder.encodeToData(value: value)
+        self = try adapter.encodeToData(value: value)
     }
     
-    @inlinable public func decode<Decoder: DatabaseValueCoder>(
-        from decoder: Decoder.Type
-    ) throws(OtterError) -> Decoder.Value {
-        try decoder.decode(from: self)
+    @inlinable public func decode<Adapter: DatabaseValueAdapter>(
+        from adapter: Adapter.Type
+    ) throws(OtterError) -> Adapter.Value {
+        try adapter.decode(from: self)
     }
     
     @inlinable public var sqlAny: SQLAny? { .data(self) }
@@ -152,21 +166,21 @@ extension Optional: DatabasePrimitive where Wrapped: DatabasePrimitive {
         }
     }
     
-    @inlinable public init<Encoder: DatabaseValueCoder>(
-        value: Encoder.Value,
-        into encoder: Encoder.Type
+    @inlinable public init<Adapter: DatabaseValueAdapter>(
+        value: Adapter.Value,
+        into adapter: Adapter.Type
     ) throws(OtterError) {
-        self = try .some(Wrapped(value: value, into: encoder))
+        self = try .some(Wrapped(value: value, into: adapter))
     }
     
-    @inlinable public func decode<Decoder: DatabaseValueCoder>(
-        from decoder: Decoder.Type
-    ) throws(OtterError) -> Decoder.Value {
+    @inlinable public func decode<Adapter: DatabaseValueAdapter>(
+        from adapter: Adapter.Type
+    ) throws(OtterError) -> Adapter.Value {
         guard let value = self else {
-            // Kind of weird this is here.
+            assertionFailure("Upstream did not perform nil check")
             throw .unexpectedNil
         }
-        return try value.decode(from: decoder)
+        return try value.decode(from: adapter)
     }
     
     @inlinable public var sqlAny: SQLAny? {

@@ -15,23 +15,23 @@ public struct SwiftLanguage: Language {
     
     public var boolName: String { "Bool" }
     
-    public var builtinCoders: Set<String> {
+    public var builtinAdapters: Set<String> {
         [
-            "BoolDatabaseValueCoder",
-            "Int8DatabaseValueCoder",
-            "Int16DatabaseValueCoder",
-            "Int32DatabaseValueCoder",
-            "Int64DatabaseValueCoder",
-            "UInt8DatabaseValueCoder",
-            "UInt16DatabaseValueCoder",
-            "UInt32DatabaseValueCoder",
-            "UInt64DatabaseValueCoder",
-            "UIntDatabaseValueCoder",
-            "FloatDatabaseValueCoder",
-            "Float16DatabaseValueCoder",
-            "UUIDDatabaseValueCoder",
-            "DecimalDatabaseValueCoder",
-            "DateDatabaseValueCoder",
+            "BoolDatabaseValueAdapter",
+            "Int8DatabaseValueAdapter",
+            "Int16DatabaseValueAdapter",
+            "Int32DatabaseValueAdapter",
+            "Int64DatabaseValueAdapter",
+            "UInt8DatabaseValueAdapter",
+            "UInt16DatabaseValueAdapter",
+            "UInt32DatabaseValueAdapter",
+            "UInt64DatabaseValueAdapter",
+            "UIntDatabaseValueAdapter",
+            "FloatDatabaseValueAdapter",
+            "Float16DatabaseValueAdapter",
+            "UUIDDatabaseValueAdapter",
+            "DecimalDatabaseValueAdapter",
+            "DateDatabaseValueAdapter",
         ]
     }
     
@@ -72,9 +72,9 @@ public struct SwiftLanguage: Language {
         migrations: [String],
         tables: [GeneratedModel],
         queries: [(String?, [GeneratedQuery])],
-        coders: [String]
+        adapters: [String]
     ) throws -> String {
-        // Note: For now just going to ignore the `coders`
+        // Note: For now just going to ignore the `adapters`
         // Kotlin will need that info which is why it exists.
         // Swift having less finegrained namespaces makes it
         // so it can just do module level lookups for the type.
@@ -496,10 +496,10 @@ public struct SwiftLanguage: Language {
                 writer.write("row.embedded(at: start + ", index.description, ")")
             case .optional(.model):
                 writer.write("row.optionallyEmbedded(at: start + ", index.description, ")")
-            case let .encoded(_, _, coder):
-                writer.write("row.value(at: start + ", index.description, ", using: ", coder, ".self)")
-            case let .optional(.encoded(_, _, coder)):
-                writer.write("row.optionalValue(at: start + ", index.description, ", using: ", coder, ".self)")
+            case let .encoded(_, _, adapter):
+                writer.write("row.value(at: start + ", index.description, ", using: ", adapter, ".self)")
+            case let .optional(.encoded(_, _, adapter)):
+                writer.write("row.optionalValue(at: start + ", index.description, ", using: ", adapter, ".self)")
             default:
                 fatalError("Invalid field type \(field.typeName) \(field.type)")
             }
@@ -639,7 +639,7 @@ public struct SwiftLanguage: Language {
     
     private func bind(binding: GeneratedQuery.Binding) {
         switch binding {
-        case let .value(index, name, owner, coder):
+        case let .value(index, name, owner, adapter):
             writer.write(line: "try statement.bind(value: ")
             
             if let owner {
@@ -648,8 +648,8 @@ public struct SwiftLanguage: Language {
             
             writer.write(name, ", to: ", index.description)
             
-            if let coder {
-                writer.write(", using: ", coder, ".self")
+            if let adapter {
+                writer.write(", using: ", adapter, ".self")
             }
             
             writer.write(")")

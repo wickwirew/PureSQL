@@ -1,5 +1,5 @@
 //
-//  DatabaseValueCoder.swift
+//  DatabaseValueAdapter.swift
 //  Otter
 //
 //  Created by Wes Wickwire on 5/8/25.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-/// A coder that can encode and decode custom types that don't
+/// A adapter that can encode and decode custom types that don't
 /// necessarily have a direct map to a SQLite storage affinity type.
 ///
 /// If the user type `INTEGER AS Bool` for instance the generated
@@ -24,7 +24,7 @@ import Foundation
 ///
 /// Encoding to `ANY` is NOT handled by default. Decoding is. So if
 /// a value needs to support `ANY` `encodeToAny` needs to be implemented.
-public protocol DatabaseValueCoder {
+public protocol DatabaseValueAdapter {
     associatedtype Value
     
     /// Initialize from the `TEXT` affinity
@@ -52,7 +52,7 @@ public protocol DatabaseValueCoder {
 
 // By default just error out so each type can just specify
 // what it can be converted from and not what it can't.
-public extension DatabaseValueCoder {
+public extension DatabaseValueAdapter {
     @inlinable static func decode(from primitive: String) throws(OtterError) -> Value {
         throw .cannotDecode(Self.self, from: String.self)
     }
@@ -97,67 +97,67 @@ public extension DatabaseValueCoder {
 
 // MARK: - Swift Standard Libray
 
-public enum BoolDatabaseValueCoder: DatabaseValueCoder {
+public enum BoolDatabaseValueAdapter: DatabaseValueAdapter {
     @inlinable public static func decode(from primitive: Int) throws(OtterError) -> Bool { primitive > 0 }
     @inlinable public static func encodeToInt(value: Bool) throws(OtterError) -> Int { value ? 1 : 0 }
     @inlinable public static func encodeToAny(value: Bool) throws(OtterError) -> SQLAny { try .int(encodeToInt(value: value)) }
 }
 
-public enum Int8DatabaseValueCoder: DatabaseValueCoder {
+public enum Int8DatabaseValueAdapter: DatabaseValueAdapter {
     @inlinable public static func encodeToInt(value: Int8) throws(OtterError) -> Int { Int(value) }
     @inlinable public static func decode(from primitive: Int) throws(OtterError) -> Value { Value(primitive) }
     @inlinable public static func encodeToAny(value: Int8) throws(OtterError) -> SQLAny { try .int(encodeToInt(value: value)) }
 }
 
-public enum Int16DatabaseValueCoder: DatabaseValueCoder {
+public enum Int16DatabaseValueAdapter: DatabaseValueAdapter {
     @inlinable public static func encodeToInt(value: Int16) throws(OtterError) -> Int { Int(value) }
     @inlinable public static func decode(from primitive: Int) throws(OtterError) -> Value { Value(primitive) }
     @inlinable public static func encodeToAny(value: Int16) throws(OtterError) -> SQLAny { try .int(encodeToInt(value: value)) }
 }
 
-public enum Int32DatabaseValueCoder: DatabaseValueCoder {
+public enum Int32DatabaseValueAdapter: DatabaseValueAdapter {
     @inlinable public static func encodeToInt(value: Int32) throws(OtterError) -> Int { Int(value) }
     @inlinable public static func decode(from primitive: Int) throws(OtterError) -> Value { Value(primitive) }
     @inlinable public static func encodeToAny(value: Int32) throws(OtterError) -> SQLAny { try .int(encodeToInt(value: value)) }
 }
 
-public enum Int64DatabaseValueCoder: DatabaseValueCoder {
+public enum Int64DatabaseValueAdapter: DatabaseValueAdapter {
     @inlinable public static func encodeToInt(value: Int64) throws(OtterError) -> Int { Int(value) }
     @inlinable public static func decode(from primitive: Int) throws(OtterError) -> Value { Value(primitive) }
     @inlinable public static func encodeToAny(value: Int64) throws(OtterError) -> SQLAny { try .int(encodeToInt(value: value)) }
 }
 
-public enum UInt8DatabaseValueCoder: DatabaseValueCoder {
+public enum UInt8DatabaseValueAdapter: DatabaseValueAdapter {
     @inlinable public static func encodeToInt(value: UInt8) throws(OtterError) -> Int { Int(bitPattern: UInt(value)) }
     @inlinable public static func decode(from primitive: Int) throws(OtterError) -> Value { Value(UInt(bitPattern: primitive)) }
     @inlinable public static func encodeToAny(value: UInt8) throws(OtterError) -> SQLAny { try .int(encodeToInt(value: value)) }
 }
 
-public enum UInt16DatabaseValueCoder: DatabaseValueCoder {
+public enum UInt16DatabaseValueAdapter: DatabaseValueAdapter {
     @inlinable public static func encodeToInt(value: UInt16) throws(OtterError) -> Int { Int(bitPattern: UInt(value)) }
     @inlinable public static func decode(from primitive: Int) throws(OtterError) -> Value { Value(UInt(bitPattern: primitive)) }
     @inlinable public static func encodeToAny(value: UInt16) throws(OtterError) -> SQLAny { try .int(encodeToInt(value: value)) }
 }
 
-public enum UInt32DatabaseValueCoder: DatabaseValueCoder {
+public enum UInt32DatabaseValueAdapter: DatabaseValueAdapter {
     @inlinable public static func encodeToInt(value: UInt32) throws(OtterError) -> Int { Int(bitPattern: UInt(value)) }
     @inlinable public static func decode(from primitive: Int) throws(OtterError) -> Value { Value(UInt(bitPattern: primitive)) }
     @inlinable public static func encodeToAny(value: UInt32) throws(OtterError) -> SQLAny { try .int(encodeToInt(value: value)) }
 }
 
-public enum UInt64DatabaseValueCoder: DatabaseValueCoder {
+public enum UInt64DatabaseValueAdapter: DatabaseValueAdapter {
     @inlinable public static func encodeToInt(value: UInt64) throws(OtterError) -> Int { Int(bitPattern: UInt(value)) }
     @inlinable public static func decode(from primitive: Int) throws(OtterError) -> Value { Value(UInt(bitPattern: primitive)) }
     @inlinable public static func encodeToAny(value: UInt64) throws(OtterError) -> SQLAny { try .int(encodeToInt(value: value)) }
 }
 
-public enum UIntDatabaseValueCoder: DatabaseValueCoder {
+public enum UIntDatabaseValueAdapter: DatabaseValueAdapter {
     @inlinable public static func encodeToInt(value: UInt) throws(OtterError) -> Int { Int(bitPattern: UInt(value)) }
     @inlinable public static func decode(from primitive: Int) throws(OtterError) -> Value { UInt(bitPattern: primitive) }
     @inlinable public static func encodeToAny(value: UInt) throws(OtterError) -> SQLAny { try .int(encodeToInt(value: value)) }
 }
 
-public enum FloatDatabaseValueCoder: DatabaseValueCoder {
+public enum FloatDatabaseValueAdapter: DatabaseValueAdapter {
     @inlinable public static func encodeToDouble(value: Float) throws(OtterError) -> Double { Double(value) }
     @inlinable public static func decode(from primitive: Double) throws(OtterError) -> Value { Value(primitive) }
     @inlinable public static func encodeToAny(value: Float) throws(OtterError) -> SQLAny { try .double(encodeToDouble(value: value)) }
@@ -165,7 +165,7 @@ public enum FloatDatabaseValueCoder: DatabaseValueCoder {
 
 @available(macOS 11.0, *)
 @available(iOS 14.0, *)
-public enum Float16DatabaseValueCoder: DatabaseValueCoder {
+public enum Float16DatabaseValueAdapter: DatabaseValueAdapter {
     @inlinable public static func encodeToDouble(value: Float16) throws(OtterError) -> Double { Double(value) }
     @inlinable public static func decode(from primitive: Double) throws(OtterError) -> Value { Value(primitive) }
     @inlinable public static func encodeToAny(value: Float16) throws(OtterError) -> SQLAny { try .double(encodeToDouble(value: value)) }
@@ -173,7 +173,7 @@ public enum Float16DatabaseValueCoder: DatabaseValueCoder {
 
 // MARK: - Foundation
 
-public enum UUIDDatabaseValueCoder: DatabaseValueCoder {
+public enum UUIDDatabaseValueAdapter: DatabaseValueAdapter {
     @inlinable public static func decode(from primitive: String) throws(OtterError) -> UUID {
         guard let uuid = UUID(uuidString: primitive) else {
             throw .invalidUuidString
@@ -203,7 +203,7 @@ public enum UUIDDatabaseValueCoder: DatabaseValueCoder {
     }
 }
 
-public enum DecimalDatabaseValueCoder: DatabaseValueCoder {
+public enum DecimalDatabaseValueAdapter: DatabaseValueAdapter {
     @inlinable public static func encodeToDouble(value: Value) throws(OtterError) -> Double {
         Double(truncating: value as NSNumber)
     }
@@ -235,7 +235,7 @@ public enum DecimalDatabaseValueCoder: DatabaseValueCoder {
     }
 }
 
-public enum DateDatabaseValueCoder: DatabaseValueCoder {
+public enum DateDatabaseValueAdapter: DatabaseValueAdapter {
     @usableFromInline static nonisolated(unsafe) let formatter: ISO8601DateFormatter = {
         // Note: In the future might want to move off of this and have a custom
         // date parser cause I don't think it's performance is the best.
