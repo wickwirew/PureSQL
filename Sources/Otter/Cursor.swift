@@ -40,7 +40,7 @@ public struct Row: ~Copyable {
     @inlinable public func value<Storage: DatabasePrimitive, Coder: DatabaseValueAdapter>(
         at column: Int32,
         using adapter: Coder.Type,
-        storage: Storage
+        storage: Storage.Type
     ) throws(OtterError) -> Coder.Value {
         let storage = try Storage(from: sqliteStatement, at: column)
         return try storage.decode(from: adapter)

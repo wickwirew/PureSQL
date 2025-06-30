@@ -496,8 +496,8 @@ public struct SwiftLanguage: Language {
                 writer.write("row.embedded(at: start + ", index.description, ")")
             case .optional(.model):
                 writer.write("row.optionallyEmbedded(at: start + ", index.description, ")")
-            case let .encoded(_, _, adapter):
-                writer.write("row.value(at: start + ", index.description, ", using: ", adapter, ".self)")
+            case let .encoded(storage, _, adapter):
+                writer.write("row.value(at: start + ", index.description, ", using: ", adapter, ".self, storage: ", typeName(for: storage), ".self)")
             case let .optional(.encoded(storage, _, adapter)):
                 writer.write("row.optionalValue(at: start + ", index.description, ", using: ", adapter, ".self, storage: ", typeName(for: storage), ".self)")
             default:
