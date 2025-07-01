@@ -113,5 +113,3 @@ extension QueryObservation {
         }
     }
 }
-
-public final class QueryObservation2 {}

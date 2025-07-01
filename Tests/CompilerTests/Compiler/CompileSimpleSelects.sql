@@ -257,3 +257,28 @@ LIMIT ?;
 -- CHECK:   TABLES
 -- CHECK:     foo
 SELECT id = 1 AS isOne FROM foo;
+
+-- CHECK: SIGNATURE
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         b INTEGER
+-- CHECK:         c INTEGER
+WITH a AS (
+    SELECT column1 AS b, column2 AS c FROM (VALUES (1, 2))
+)
+SELECT a.b, a.c FROM a;
+
+-- CHECK: SIGNATURE
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         b INTEGER
+-- CHECK:         e INTEGER
+WITH a AS (
+    SELECT column1 AS b, column2 AS c FROM (VALUES (1, 2))
+),
+d AS (
+    SELECT column1 AS e, column2 AS f FROM (VALUES (1, 2))
+)
+SELECT a.b, d.e FROM a INNER JOIN d ON a.b = d.e;

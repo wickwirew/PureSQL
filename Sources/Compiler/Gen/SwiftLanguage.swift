@@ -215,8 +215,8 @@ public struct SwiftLanguage: Language {
         
         for query in queries {
             let associatedType = query.name.capitalizedFirst
-            writer.write(line: "associatedtype ", associatedType, ": ", query.typealiasName)
-            writer.write(line: "var ", query.variableName, ": ", associatedType, " { get }")
+            writer.write(line: "associatedtype _", associatedType, ": ", query.typealiasName)
+            writer.write(line: "var ", query.variableName, ": _", associatedType, " { get }")
         }
         
         writer.unindent()
@@ -312,14 +312,8 @@ public struct SwiftLanguage: Language {
         
         writer.write(line: ") { input, tx in")
         writer.indent()
-        
-        if query.input == .void {
-            writer.write(line: "let")
-        } else {
-            writer.write(line: "var")
-        }
-        
-        writer.write(" statement = try Otter.Statement(")
+
+        writer.write(line: "let statement = try Otter.Statement(")
         writer.indent()
         multilineStringLiteral(of: query.sourceSql)
         writer.write(",")

@@ -1148,7 +1148,7 @@ enum Parsers {
                 kind = .table(table)
             }
         case .openParen:
-            if state.peek.kind == .select {
+            if state.peek.kind == .select || state.peek.kind == .values {
                 let subquery = try parens(state: &state, value: selectStmt)
                 let alias = maybeAlias(state: &state, asRequired: false)
                 kind = .subquery(subquery, alias: alias)
