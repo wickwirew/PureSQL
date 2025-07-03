@@ -140,17 +140,41 @@ extension Language {
             result.append(.value(index: index, name: name ?? "input", owner: owner, isOptional: isOptional))
             index += 1
         case let .optional(type):
-            result.append(contentsOf: bindings(for: type, index: &index, name: name, owner: owner, isOptional: isOptional))
+            result.append(
+                contentsOf: bindings(
+                    for: type,
+                    index: &index,
+                    name: name,
+                    owner: owner,
+                    isOptional: isOptional
+                )
+            )
         case .model(let model):
             for field in model.fields.values {
-                result.append(contentsOf: bindings(for: field.type, index: &index, name: field.name, owner: "input", isOptional: isOptional))
+                result.append(
+                    contentsOf: bindings(
+                        for: field.type,
+                        index: &index,
+                        name: field.name,
+                        owner: "input",
+                        isOptional: isOptional
+                    )
+                )
             }
         case .array(let values):
             result.append(.arrayStart(name: name ?? "input", elementName: "element"))
             result.append(contentsOf: bindings(for: values, index: &index, owner: "element"))
             result.append(.arrayEnd)
         case .encoded(let storage, _, let adapter):
-            result.append(.value(index: index, name: name ?? "input", owner: owner, isOptional: isOptional, adapter: (adapter, typeName(for: storage))))
+            result.append(
+                .value(
+                    index: index,
+                    name: name ?? "input",
+                    owner: owner,
+                    isOptional: isOptional,
+                    adapter: (adapter, typeName(for: storage))
+                )
+            )
             index += 1
         }
         
@@ -346,7 +370,13 @@ public struct GeneratedQuery {
     let bindings: [Binding]
     
     public enum Binding {
-        case value(index: Int, name: String, owner: String? = nil, isOptional: Bool = false, adapter: (name: String, storage: String)? = nil)
+        case value(
+            index: Int,
+            name: String,
+            owner: String? = nil,
+            isOptional: Bool = false,
+            adapter: (name: String, storage: String)? = nil
+        )
         case arrayStart(name: String, elementName: String)
         case arrayEnd
     }

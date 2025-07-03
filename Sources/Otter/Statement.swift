@@ -127,10 +127,6 @@ public struct Statement: ~Copyable {
     }
     
     deinit {
-        do {
-            try throwing(sqlite3_finalize(raw))
-        } catch {
-            fatalError("Failed to finalize statement: \(error)")
-        }
+        sqlite3_finalize(raw)
     }
 }

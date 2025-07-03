@@ -486,19 +486,22 @@ public struct SwiftLanguage: Language {
             switch field.type {
             case .builtin, .optional(.builtin):
                 writer.write("row.value(at: start + ", index.description, ")")
-            case .model:
+                index += 1
+            case let .model(model):
                 writer.write("row.embedded(at: start + ", index.description, ")")
-            case .optional(.model):
+                index += model.fields.count
+            case let .optional(.model(model)):
                 writer.write("row.optionallyEmbedded(at: start + ", index.description, ")")
+                index += model.fields.count
             case let .encoded(storage, _, adapter):
                 writer.write("row.value(at: start + ", index.description, ", using: ", adapter, ".self, storage: ", typeName(for: storage), ".self)")
+                index += 1
             case let .optional(.encoded(storage, _, adapter)):
                 writer.write("row.optionalValue(at: start + ", index.description, ", using: ", adapter, ".self, storage: ", typeName(for: storage), ".self)")
+                index += 1
             default:
                 fatalError("Invalid field type \(field.typeName) \(field.type)")
             }
-            
-            index += 1
         }
         writer.unindent()
         
