@@ -36,13 +36,13 @@ public final class DatabaseQueryObservation<Query>: DatabaseSubscriber, QueryObs
     }
     
     public func cancel() {
+        query.connection.cancel(subscriber: self)
+        queue.cancel()
+        
         lock.withLock {
             onChange = nil
             onComplete = nil
         }
-        
-        query.connection.cancel(subscriber: self)
-        queue.cancel()
     }
     
     public func start(
@@ -59,9 +59,10 @@ public final class DatabaseQueryObservation<Query>: DatabaseSubscriber, QueryObs
     }
     
     private func emitNext() async {
-        guard let onChange else {
-            return assertionFailure("Started without handle set")
-        }
+        // These are scheduled asynchronously. So there is a timing
+        // issue where we could `enqueueNext` then get cancelled
+        // which would bring us to here with no `onChange` set.
+        guard let onChange else { return }
         
         do {
             guard query.transactionKind != .write else {
