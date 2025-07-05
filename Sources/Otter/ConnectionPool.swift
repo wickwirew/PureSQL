@@ -72,11 +72,11 @@ public actor ConnectionPool: Sendable {
     }
     
     /// Gives the connection back to the pool.
-    private func reclaim(tx: borrowing Transaction) async {
-        availableConnections.append(tx.connection)
+    private func reclaim(connection: SQLiteConnection, kind: Transaction.Kind) async {
+        availableConnections.append(connection)
         alertAnyWaitersOfAvailableConnection()
         
-        if tx.kind == .write {
+        if kind == .write {
             await writeLock.unlock()
         }
     }
@@ -111,6 +111,7 @@ public actor ConnectionPool: Sendable {
     /// and we need to alert anybody waiting for one.
     private func alertAnyWaitersOfAvailableConnection() {
         guard !waitingForConnection.isEmpty, !availableConnections.isEmpty else { return }
+        // I think its handing a connection off to a cancelled task?
         let waiter = waitingForConnection.removeFirst()
         let connection = availableConnections.removeFirst()
         waiter.resume(with: .success(connection))
@@ -127,32 +128,51 @@ extension ConnectionPool: Connection {
     }
     
     /// Starts a transaction.
-    public func begin<Output>(
+    public func begin<Output: Sendable>(
         _ kind: Transaction.Kind,
         execute: (borrowing Transaction) throws -> Output
     ) async throws -> Output {
-        let tx = try await begin(kind)
-        
-        // The `Result` wrapper seems weird, but allows us to keep
-        // tx functions consuming. Cause we cannot call `commit` in
-        // the `do` and on failure call `rollback` since it would
-        // have been consumed in the `commit`.
-        //
-        // Keeping them is consuming is nice since it stops callers
-        // from calling `commit` manually since its borrowed
-        let result = Result {
-            try execute(tx)
+        try await beginNoCommit(kind) { tx in
+            // The `Result` wrapper seems weird, but allows us to keep
+            // tx functions consuming. Cause we cannot call `commit` in
+            // the `do` and on failure call `rollback` since it would
+            // have been consumed in the `commit`.
+            //
+            // Keeping them is consuming is nice since it stops callers
+            // from calling `commit` manually since its borrowed
+            let result = Result {
+                try Task.checkCancellation()
+                return try execute(tx)
+            }
+            
+            switch result {
+            case let .success(output):
+                try tx.commit()
+                observer.didCommit()
+                return output
+            case let .failure(error):
+                try tx.commitOrRollback()
+                throw error
+            }
         }
+    }
+    
+    /// Starts a transaction for the lifetime of the closure
+    /// and does not commit or rollback automatically. Just
+    /// makes sure it reclaims the connection.
+    public func beginNoCommit<Output: Sendable>(
+        _ kind: Transaction.Kind,
+        execute: (consuming Transaction) async throws -> Output
+    ) async throws -> Output {
+        let tx = try await begin(kind)
+        let conn = tx.connection
         
-        await reclaim(tx: tx)
-        
-        switch result {
-        case let .success(output):
-            try tx.commit()
-            observer.didCommit()
+        do {
+            let output = try await execute(tx)
+            await reclaim(connection: conn, kind: kind)
             return output
-        case let .failure(error):
-            try tx.commitOrRollback()
+        } catch {
+            await reclaim(connection: conn, kind: kind)
             throw error
         }
     }
