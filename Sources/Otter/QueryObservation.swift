@@ -7,36 +7,42 @@
 
 import Foundation
 
-public final class DatabaseQueryObservation<Query>: DatabaseSubscriber, QueryObservation, @unchecked Sendable
-    where Query: DatabaseQuery
+public final class DatabaseQueryObservation<Q>: DatabaseSubscriber, QueryObservation, @unchecked Sendable
+    where Q: Query
 {
-    private let query: Query
-    private let input: Query.Input
+    private let query: Q
+    private let input: Q.Input
     private let lock = NSLock()
     private let queue = Queue()
+    private let watchedTables: Set<String>
+    private let connection: any Connection
     
-    private var onChange: (@Sendable (Query.Output) -> Void)?
+    private var onChange: (@Sendable (Q.Output) -> Void)?
     private var onComplete: (@Sendable (Error?) -> Void)?
     
     init(
-        query: Query,
-        input: Query.Input
+        query: Q,
+        input: Q.Input,
+        watchedTables: Set<String>,
+        connection: any Connection
     ) {
         self.query = query
         self.input = input
+        self.watchedTables = watchedTables
+        self.connection = connection
     }
     
     public func receive(change: DatabaseChange) {
         // If any table that we are watching changed
         // reexecute the query.
         guard !change.affectedTables
-            .intersection(query.watchedTables)
+            .intersection(watchedTables)
             .isEmpty else { return }
         enqueueNext()
     }
     
     public func cancel() {
-        query.connection.cancel(subscriber: self)
+        connection.cancel(subscriber: self)
         queue.cancel()
         
         lock.withLock {
@@ -46,7 +52,7 @@ public final class DatabaseQueryObservation<Query>: DatabaseSubscriber, QueryObs
     }
     
     public func start(
-        onChange: @escaping @Sendable (Query.Output) -> Void,
+        onChange: @escaping @Sendable (Q.Output) -> Void,
         onComplete: @escaping @Sendable (Error?) -> Void
     ) {
         lock.withLock {
@@ -54,7 +60,7 @@ public final class DatabaseQueryObservation<Query>: DatabaseSubscriber, QueryObs
             self.onComplete = onComplete
         }
         
-        query.connection.observe(subscriber: self)
+        connection.observe(subscriber: self)
         enqueueNext()
     }
     

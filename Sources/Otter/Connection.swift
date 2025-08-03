@@ -21,3 +21,15 @@ public protocol Connection: Actor {
         execute: (borrowing Transaction) throws -> Output
     ) async throws -> Output
 }
+
+actor NoopConnection: Connection {
+    nonisolated func observe(subscriber: any DatabaseSubscriber) {}
+    nonisolated func cancel(subscriber: any DatabaseSubscriber) {}
+    
+    func begin<Output>(
+        _ kind: Transaction.Kind,
+        execute: (borrowing Transaction) throws -> Output
+    ) async throws -> Output {
+        try execute(Transaction(connection: NoopRawConnection(), kind: kind))
+    }
+}

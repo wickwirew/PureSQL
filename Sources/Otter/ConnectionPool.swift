@@ -23,7 +23,7 @@ public actor ConnectionPool: Sendable {
     /// The maximum number of connections we can create
     private let limit: Int
     /// Any connections available for use
-    private var availableConnections: [SQLiteConnection]
+    private var availableConnections: [RawConnection]
     /// Any caller waiting for a connection
     private var waitingForConnection: [WaiterContinuation] = []
     /// A lock to synchronize writes.
@@ -31,7 +31,7 @@ public actor ConnectionPool: Sendable {
     /// Manages alerting any subscribers of any database changes.
     private nonisolated let observer = DatabaseObserver()
     
-    typealias WaiterContinuation = CheckedContinuation<SQLiteConnection, Never>
+    typealias WaiterContinuation = CheckedContinuation<RawConnection, Never>
     
     public init(
         path: String,
@@ -72,7 +72,7 @@ public actor ConnectionPool: Sendable {
     }
     
     /// Gives the connection back to the pool.
-    private func reclaim(connection: SQLiteConnection, kind: Transaction.Kind) async {
+    private func reclaim(connection: RawConnection, kind: Transaction.Kind) async {
         availableConnections.append(connection)
         alertAnyWaitersOfAvailableConnection()
         
@@ -82,7 +82,7 @@ public actor ConnectionPool: Sendable {
     }
     
     /// Will get, wait or create a connection to the database
-    private func getConnection() async throws(OtterError) -> SQLiteConnection {
+    private func getConnection() async throws(OtterError) -> RawConnection {
         guard availableConnections.isEmpty else {
             // Have an available connection, just use it
             return availableConnections.removeLast()

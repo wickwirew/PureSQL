@@ -1,12 +1,15 @@
 //
-//  AnyDatabaseQuery.swift
+//  DatabaseQuery.swift
 //  Otter
 //
 //  Created by Wes Wickwire on 5/5/25.
 //
 
-/// A query that is executed against a database.
-public struct AnyDatabaseQuery<Input, Output>: DatabaseQuery
+/// A default implementation of a `Query`. Expects to be executed
+/// against a real database and not a Noop.
+///
+/// This is the structure that the codegen of the compiler expects to use.
+public struct DatabaseQuery<Input, Output>: Query
     where Input: Sendable, Output: Sendable
 {
     public let connection: any Connection
@@ -14,11 +17,11 @@ public struct AnyDatabaseQuery<Input, Output>: DatabaseQuery
     public let watchedTables: Set<String>
     public let execute: @Sendable (Input, borrowing Transaction) throws -> Output
     
-    /// Initializes a `AnyDatabaseQuery`. This a query that will be handed
+    /// Initializes a `DatabaseQuery`. This a query that will be handed
     /// the input and transaction when execute is called.
     ///
     /// ```swift
-    /// AnyDatabaseQuery<In, Out>(.read, in: connection) { input, tx in
+    /// DatabaseQuery<In, Out>(.read, in: connection) { input, tx in
     ///     ...
     /// }
     /// ```
@@ -48,18 +51,5 @@ public struct AnyDatabaseQuery<Input, Output>: DatabaseQuery
         }
         
         return try execute(input, tx)
-    }
-}
-
-public extension DatabaseQuery {
-    /// Erases the current query to a `AnyDatabaseQuery`. Useful if you are using
-    /// operators like `map` or `mapInput` which can have quite the long signature
-    /// for combined queries.
-    ///
-    /// - Returns: `self` erased to a `AnyDatabaseQuery`
-    func eraseToAnyDatabaseQuery() -> AnyDatabaseQuery<Input, Output> {
-        AnyDatabaseQuery(transactionKind, in: connection, watchingTables: watchedTables) { input, tx in
-            try self.execute(with: input, tx: tx)
-        }
     }
 }

@@ -19,17 +19,7 @@ public struct Statement: ~Copyable {
         _ source: String,
         transaction: borrowing Transaction
     ) throws(OtterError) {
-        var raw: OpaquePointer?
-        try throwing(
-            sqlite3_prepare_v2(transaction.connection.sqliteConnection, source, -1, &raw, nil),
-            connection: transaction.connection.sqliteConnection
-        )
-        
-        guard let raw else {
-            throw .failedToInitializeStatement
-        }
-        
-        self.raw = raw
+        self.raw = try transaction.connection.prepare(sql: source)
     }
     
     public init(

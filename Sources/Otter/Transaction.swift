@@ -7,7 +7,7 @@
 
 /// A SQLite transaction.
 public struct Transaction: ~Copyable {
-    let connection: SQLiteConnection
+    let connection: RawConnection
     let kind: Kind
     let behavior: Behavior
     
@@ -27,7 +27,7 @@ public struct Transaction: ~Copyable {
     }
     
     init(
-        connection: SQLiteConnection,
+        connection: RawConnection,
         kind: Kind,
         behavior: Behavior = .deferred
     ) throws(OtterError) {

@@ -43,7 +43,20 @@ public extension Queries {
             self = Just(nil)
         }
         
+        public var transactionKind: Transaction.Kind { .read }
+        
+        public var watchedTables: Set<String> { [] }
+        
+        public var connection: any Connection { NoopConnection() }
+        
         public func execute(with input: Input) async throws -> Output {
+            return output
+        }
+        
+        public func execute(
+            with input: Input,
+            tx: borrowing Transaction
+        ) throws -> Output {
             return output
         }
         

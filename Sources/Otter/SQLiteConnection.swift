@@ -9,10 +9,15 @@ import Collections
 import Foundation
 import SQLite3
 
+protocol RawConnection: Sendable {
+    func prepare(sql: String) throws(OtterError) -> OpaquePointer
+    func execute(sql: String) throws(OtterError)
+}
+
 /// Holds a raw SQLite database connection.
 /// `@unchecked Sendable` Thread safety is managed by
 /// the `ConnectionPool`
-class SQLiteConnection: @unchecked Sendable {
+class SQLiteConnection: RawConnection, @unchecked Sendable {
     let sqliteConnection: OpaquePointer
 
     init(
@@ -30,6 +35,20 @@ class SQLiteConnection: @unchecked Sendable {
         }
 
         self.sqliteConnection = raw
+    }
+    
+    func prepare(sql: String) throws(OtterError) -> OpaquePointer {
+        var raw: OpaquePointer?
+        try throwing(
+            sqlite3_prepare_v2(sqliteConnection, sql, -1, &raw, nil),
+            connection: sqliteConnection
+        )
+        
+        guard let raw else {
+            throw .failedToInitializeStatement
+        }
+        
+        return raw
     }
 
     func execute(sql: String) throws(OtterError) {
@@ -55,5 +74,12 @@ class SQLiteConnection: @unchecked Sendable {
         } catch {
             assertionFailure("Failed to close connection: \(error)")
         }
+    }
+}
+
+final class NoopRawConnection: RawConnection {
+    func execute(sql: String) throws(OtterError) {}
+    func prepare(sql: String) throws(OtterError) -> OpaquePointer {
+        throw .failedToGetConnection
     }
 }

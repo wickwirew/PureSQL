@@ -6,8 +6,8 @@
 //
 
 public extension Queries {
-    struct Then<First, Second>: DatabaseQuery
-        where First: DatabaseQuery, Second: DatabaseQuery
+    struct Then<First, Second>: Query
+        where First: Query, Second: Query
     {
         public typealias Input = First.Input
         public typealias Output = (First.Output, Second.Output)
@@ -40,7 +40,7 @@ public extension Queries {
     }
 }
 
-public extension DatabaseQuery {
+public extension Query {
     /// After the this query, the `next` query will be executed with the
     /// same input as the first. Each query is executed within the same
     /// transaction.
@@ -48,7 +48,7 @@ public extension DatabaseQuery {
     /// - Parameter next: The query to execute next
     /// - Returns: A query that execute `self` then the `next` query
     func then<Next>(_ next: Next) -> Queries.Then<Self, Next>
-        where Next: DatabaseQuery, Self.Input == Next.Input
+        where Next: Query, Self.Input == Next.Input
     {
         return Queries.Then(first: self, second: next) { input, _ in input }
     }
@@ -59,7 +59,7 @@ public extension DatabaseQuery {
     /// - Parameter next: The query to execute next
     /// - Returns: A query that execute `self` then the `next` query
     func then<Next>(_ next: Next) -> Queries.Then<Self, Next>
-        where Next: DatabaseQuery, Next.Input == ()
+        where Next: Query, Next.Input == ()
     {
         return Queries.Then(first: self, second: next) { _, _ in () }
     }
@@ -75,7 +75,7 @@ public extension DatabaseQuery {
         _ next: Next,
         nextInput: @Sendable @escaping (Input, Output) -> Next.Input
     ) -> Queries.Then<Self, Next>
-        where Next: DatabaseQuery
+        where Next: Query
     {
         return Queries.Then(first: self, second: next) { input, output
             in nextInput(input, output)

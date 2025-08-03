@@ -102,7 +102,7 @@ struct SelectUserWithManyInputsOutput: Hashable, Sendable, RowDecodable {
         startingAt start: Int32
     ) throws(Otter.OtterError) {
         self.user = try row.embedded(at: start + 0)
-        self.favoriteNumber = try row.value(at: start + 1)
+        self.favoriteNumber = try row.value(at: start + 8)
     }
     
     init(
@@ -130,7 +130,7 @@ struct SelectWithInterestOutput: Hashable, Sendable, RowDecodable {
         startingAt start: Int32
     ) throws(Otter.OtterError) {
         self.user = try row.embedded(at: start + 0)
-        self.interest = try row.embedded(at: start + 1)
+        self.interest = try row.embedded(at: start + 8)
     }
     
     init(
@@ -162,7 +162,7 @@ struct SelectWithOptionalInterestOutput: Hashable, Sendable, RowDecodable {
         startingAt start: Int32
     ) throws(Otter.OtterError) {
         self.user = try row.embedded(at: start + 0)
-        self.interest = try row.optionallyEmbedded(at: start + 1)
+        self.interest = try row.optionallyEmbedded(at: start + 8)
     }
     
     init(
@@ -183,22 +183,22 @@ struct SelectWithOptionalInterestOutput: Hashable, Sendable, RowDecodable {
 }
 
 protocol QueriesQueries {
-    associatedtype InsertUser: InsertUserQuery
-    var insertUser: InsertUser { get }
-    associatedtype SelectUsers: SelectUsersQuery
-    var selectUsers: SelectUsers { get }
-    associatedtype SelectUserById: SelectUserByIdQuery
-    var selectUserById: SelectUserById { get }
-    associatedtype SelectUserByIds: SelectUserByIdsQuery
-    var selectUserByIds: SelectUserByIds { get }
-    associatedtype SelectUserByName: SelectUserByNameQuery
-    var selectUserByName: SelectUserByName { get }
-    associatedtype SelectUserWithManyInputs: SelectUserWithManyInputsQuery
-    var selectUserWithManyInputs: SelectUserWithManyInputs { get }
-    associatedtype SelectWithInterest: SelectWithInterestQuery
-    var selectWithInterest: SelectWithInterest { get }
-    associatedtype SelectWithOptionalInterest: SelectWithOptionalInterestQuery
-    var selectWithOptionalInterest: SelectWithOptionalInterest { get }
+    associatedtype _InsertUser: InsertUserQuery
+    var insertUser: _InsertUser { get }
+    associatedtype _SelectUsers: SelectUsersQuery
+    var selectUsers: _SelectUsers { get }
+    associatedtype _SelectUserById: SelectUserByIdQuery
+    var selectUserById: _SelectUserById { get }
+    associatedtype _SelectUserByIds: SelectUserByIdsQuery
+    var selectUserByIds: _SelectUserByIds { get }
+    associatedtype _SelectUserByName: SelectUserByNameQuery
+    var selectUserByName: _SelectUserByName { get }
+    associatedtype _SelectUserWithManyInputs: SelectUserWithManyInputsQuery
+    var selectUserWithManyInputs: _SelectUserWithManyInputs { get }
+    associatedtype _SelectWithInterest: SelectWithInterestQuery
+    var selectWithInterest: _SelectWithInterest { get }
+    associatedtype _SelectWithOptionalInterest: SelectWithOptionalInterestQuery
+    var selectWithOptionalInterest: _SelectWithOptionalInterest { get }
 }
 
 struct QueriesQueriesNoop: QueriesQueries {
@@ -235,13 +235,13 @@ struct QueriesQueriesNoop: QueriesQueries {
 struct QueriesQueriesImpl: QueriesQueries {
     let connection: any Connection
     
-    var insertUser: AnyDatabaseQuery<InsertUserInput, ()> {
-        AnyDatabaseQuery<InsertUserInput, ()>(
+    var insertUser: DatabaseQuery<InsertUserInput, ()> {
+        DatabaseQuery<InsertUserInput, ()>(
             .write,
             in: connection,
             watchingTables: ["user"]
         ) { input, tx in
-            var statement = try Otter.Statement(
+            let statement = try Otter.Statement(
                 """
                 INSERT INTO user VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
@@ -258,8 +258,8 @@ struct QueriesQueriesImpl: QueriesQueries {
         }
     }
     
-    var selectUsers: AnyDatabaseQuery<(), [User]> {
-        AnyDatabaseQuery<(), [User]>(
+    var selectUsers: DatabaseQuery<(), [User]> {
+        DatabaseQuery<(), [User]>(
             .read,
             in: connection,
             watchingTables: ["user"]
@@ -274,13 +274,13 @@ struct QueriesQueriesImpl: QueriesQueries {
         }
     }
     
-    var selectUserById: AnyDatabaseQuery<Int, User?> {
-        AnyDatabaseQuery<Int, User?>(
+    var selectUserById: DatabaseQuery<Int, User?> {
+        DatabaseQuery<Int, User?>(
             .read,
             in: connection,
             watchingTables: ["user"]
         ) { input, tx in
-            var statement = try Otter.Statement(
+            let statement = try Otter.Statement(
                 """
                 SELECT * FROM user WHERE id = ?
                 """,
@@ -291,13 +291,13 @@ struct QueriesQueriesImpl: QueriesQueries {
         }
     }
     
-    var selectUserByIds: AnyDatabaseQuery<[Int], [User]> {
-        AnyDatabaseQuery<[Int], [User]>(
+    var selectUserByIds: DatabaseQuery<[Int], [User]> {
+        DatabaseQuery<[Int], [User]>(
             .read,
             in: connection,
             watchingTables: ["user"]
         ) { input, tx in
-            var statement = try Otter.Statement(
+            let statement = try Otter.Statement(
                 """
                 SELECT * FROM user WHERE id IN (\(input.sqlQuestionMarks))
                 """,
@@ -310,13 +310,13 @@ struct QueriesQueriesImpl: QueriesQueries {
         }
     }
     
-    var selectUserByName: AnyDatabaseQuery<String, [User]> {
-        AnyDatabaseQuery<String, [User]>(
+    var selectUserByName: DatabaseQuery<String, [User]> {
+        DatabaseQuery<String, [User]>(
             .read,
             in: connection,
             watchingTables: ["user"]
         ) { input, tx in
-            var statement = try Otter.Statement(
+            let statement = try Otter.Statement(
                 """
                 SELECT * FROM user WHERE fullName LIKE ?
                 """,
@@ -327,13 +327,13 @@ struct QueriesQueriesImpl: QueriesQueries {
         }
     }
     
-    var selectUserWithManyInputs: AnyDatabaseQuery<SelectUserWithManyInputsInput, SelectUserWithManyInputsOutput?> {
-        AnyDatabaseQuery<SelectUserWithManyInputsInput, SelectUserWithManyInputsOutput?>(
+    var selectUserWithManyInputs: DatabaseQuery<SelectUserWithManyInputsInput, SelectUserWithManyInputsOutput?> {
+        DatabaseQuery<SelectUserWithManyInputsInput, SelectUserWithManyInputsOutput?>(
             .read,
             in: connection,
             watchingTables: ["user"]
         ) { input, tx in
-            var statement = try Otter.Statement(
+            let statement = try Otter.Statement(
                 """
                 SELECT *, 1 AS favoriteNumber FROM user WHERE id = ? AND firstName = ?
                 """,
@@ -345,8 +345,8 @@ struct QueriesQueriesImpl: QueriesQueries {
         }
     }
     
-    var selectWithInterest: AnyDatabaseQuery<(), [SelectWithInterestOutput]> {
-        AnyDatabaseQuery<(), [SelectWithInterestOutput]>(
+    var selectWithInterest: DatabaseQuery<(), [SelectWithInterestOutput]> {
+        DatabaseQuery<(), [SelectWithInterestOutput]>(
             .read,
             in: connection,
             watchingTables: ["interest","user"]
@@ -361,8 +361,8 @@ struct QueriesQueriesImpl: QueriesQueries {
         }
     }
     
-    var selectWithOptionalInterest: AnyDatabaseQuery<(), [SelectWithOptionalInterestOutput]> {
-        AnyDatabaseQuery<(), [SelectWithOptionalInterestOutput]>(
+    var selectWithOptionalInterest: DatabaseQuery<(), [SelectWithOptionalInterestOutput]> {
+        DatabaseQuery<(), [SelectWithOptionalInterestOutput]>(
             .read,
             in: connection,
             watchingTables: ["interest","user"]

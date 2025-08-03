@@ -51,7 +51,11 @@ public extension Queries {
             self.init(execute: { _ in () })
         }
         
-        public func execute(with input: Input) async throws -> Output {
+        public var transactionKind: Transaction.Kind { .read }
+        public var watchedTables: Set<String> { [] }
+        public var connection: any Connection { NoopConnection() }
+        
+        public func execute(with input: Input, tx: borrowing Transaction) throws -> Output {
             lock.withLock { executeCallCount += 1 }
             return try execute(input)
         }

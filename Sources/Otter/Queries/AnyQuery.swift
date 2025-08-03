@@ -10,18 +10,42 @@
 /// on the original base query type. Erasing to this can allow for
 /// use of the operators.
 public struct AnyQuery<Input: Sendable, Output: Sendable>: Query {
-    let query: any Query<Input, Output>
-
-    public init(_ query: any Query<Input, Output>) {
-        self.query = query
+    public let transactionKind: Transaction.Kind
+    public let connection: any Connection
+    public let watchedTables: Set<String>
+    private let _execute: @Sendable (Input, borrowing Transaction) throws -> Output
+    private let _observe: @Sendable (Input) -> any QueryObservation<Output>
+    
+    public init(
+        transactionKind: Transaction.Kind,
+        connection: any Connection,
+        watchedTables: Set<String>,
+        execute: @Sendable @escaping (Input, borrowing Transaction) throws -> Output,
+        observe: @Sendable @escaping (Input) -> any QueryObservation<Output>
+    ) {
+        self.transactionKind = transactionKind
+        self.connection = connection
+        self.watchedTables = watchedTables
+        self._execute = execute
+        self._observe = observe
     }
-
-    public func execute(with input: Input) async throws -> Output {
-        try await query.execute(with: input)
+    
+    public init(_ query: any Query<Input, Output>) {
+        self = AnyQuery(
+            transactionKind: query.transactionKind,
+            connection: query.connection,
+            watchedTables: query.watchedTables,
+            execute: { try query.execute(with: $0, tx: $1) },
+            observe: { query.observe(with: $0) }
+        )
+    }
+    
+    public func execute(with input: Input, tx: borrowing Transaction) throws -> Output {
+        try _execute(input, tx)
     }
 
     public func observe(with input: Input) -> any QueryObservation<Output> {
-        query.observe(with: input)
+        _observe(input)
     }
 }
 

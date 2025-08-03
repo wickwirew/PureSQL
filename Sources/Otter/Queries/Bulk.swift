@@ -6,7 +6,7 @@
 //
 
 extension Queries {
-    public struct Bulk<Base: DatabaseQuery>: DatabaseQuery {
+    public struct Bulk<Base: Query>: Query {
         public typealias Input = [Base.Input]
         public typealias Output = [Base.Output]
         
@@ -39,7 +39,7 @@ extension Queries {
     }
 }
 
-extension DatabaseQuery {
+extension Query {
     /// Returns a query that executes the same query in bulk
     /// for each input.
     ///

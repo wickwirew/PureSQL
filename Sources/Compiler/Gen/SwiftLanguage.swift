@@ -39,7 +39,7 @@ public struct SwiftLanguage: Language {
         input: String,
         output: String
     ) -> String {
-        return "AnyDatabaseQuery<\(input), \(output)>"
+        return "DatabaseQuery<\(input), \(output)>"
     }
     
     public func interpolatedQuestionMarks(for param: String) -> String {
@@ -544,7 +544,7 @@ public struct SwiftLanguage: Language {
     /// to be referenced explicitly in their decl.
     private func dbTypeAlias(for query: GeneratedQuery, queryType: String = "Query") {
         let name = query.typealiasName.replacingOccurrences(of: "Query", with: "DatabaseQuery")
-        writer.write(line: "typealias ", name, " = AnyDatabaseQuery<", query.inputName, ", ", query.outputName, ">")
+        writer.write(line: "typealias ", name, " = DatabaseQuery<", query.inputName, ", ", query.outputName, ">")
     }
     
     private func inputExtension(

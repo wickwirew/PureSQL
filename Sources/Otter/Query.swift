@@ -19,11 +19,25 @@ public protocol Query<Input, Output>: Sendable {
     /// The type the query returns as an output
     associatedtype Output: Sendable
     
+    /// Whether the query requires a read or write transaction.
+    var transactionKind: Transaction.Kind { get }
+    /// The current connection to the database
+    var connection: any Connection { get }
+    /// Any table this query depends on. When tables change
+    /// if this query is observed then we will only requery
+    /// if those tables changed.
+    var watchedTables: Set<String> { get }
+    
     /// Executes the query
     ///
-    /// - Parameter input: The query's input
+    /// - Parameters:
+    ///   - input: The query's input
+    ///   - tx: The transaction to run the query in
     /// - Returns: The query's output
-    func execute(with input: Input) async throws -> Output
+    func execute(
+        with input: Input,
+        tx: borrowing Transaction
+    ) throws -> Output
     
     /// Observes the query's value over time. When the database
     /// changes new values will automatically be refreshed.
@@ -42,7 +56,31 @@ public protocol Query<Input, Output>: Sendable {
     func observe(with input: Input) -> any QueryObservation<Output>
 }
 
+public extension Query {
+    func execute(with input: Input) async throws -> Output {
+        try await connection.begin(transactionKind) { tx in
+            try execute(with: input, tx: tx)
+        }
+    }
+
+    func observe(with input: Input) -> any QueryObservation<Output> {
+        return DatabaseQueryObservation(
+            query: self,
+            input: input,
+            watchedTables: watchedTables,
+            connection: connection
+        )
+    }
+}
+
 public extension Query where Input == () {
+    /// Executes the query in the given transaction
+    /// - Parameter tx: The transaction to execute the query in
+    /// - Returns: The query's output
+    func execute(tx: borrowing Transaction) throws -> Output {
+        return try execute(with: (), tx: tx)
+    }
+    
     /// Executes the query
     func execute() async throws -> Output {
         return try await execute(with: ())

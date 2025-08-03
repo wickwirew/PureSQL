@@ -15,8 +15,20 @@ public extension Queries {
         /// The transform to apply to the output
         let transform: @Sendable (Base.Input, Base.Output) throws -> Output
 
-        public func execute(with input: Base.Input) async throws -> Output {
-            try await transform(input, base.execute(with: input))
+        public var transactionKind: Transaction.Kind {
+            base.transactionKind
+        }
+        
+        public var connection: any Connection {
+            base.connection
+        }
+        
+        public var watchedTables: Set<String> {
+            base.watchedTables
+        }
+        
+        public func execute(with input: Base.Input, tx: borrowing Transaction) throws -> Output {
+            try transform(input, base.execute(with: input, tx: tx))
         }
         
         public func observe(with input: Base.Input) -> any QueryObservation<Output> {
@@ -51,26 +63,6 @@ public extension Queries {
     }
 }
 
-extension Queries.Map: DatabaseQuery where Base: DatabaseQuery {
-    public var connection: any Connection {
-        return base.connection
-    }
-    
-    public var transactionKind: Transaction.Kind {
-        return base.transactionKind
-    }
-    
-    public var watchedTables: Set<String> {
-        return base.watchedTables
-    }
-    
-    public func execute(
-        with input: Base.Input,
-        tx: borrowing Transaction
-    ) throws -> Output {
-        return try transform(input, base.execute(with: input, tx: tx))
-    }
-}
 
 public extension Query {
     /// Transforms the output of the query.
