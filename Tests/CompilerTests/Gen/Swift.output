@@ -203,7 +203,7 @@ protocol QueriesQueries: ConnectionWrapper {
 
 struct QueriesQueriesNoop: QueriesQueries {
     let connection: any Connection = NoopConnection()
-    let insertUser: AnyQuery<InsertUserInput, ()>
+    let insertUser: AnyQuery<InsertUserInput, Int>
     let selectUsers: AnyQuery<(), [User]>
     let selectUserById: AnyQuery<Int, User?>
     let selectUserByIds: AnyQuery<[Int], [User]>
@@ -213,7 +213,7 @@ struct QueriesQueriesNoop: QueriesQueries {
     let selectWithOptionalInterest: AnyQuery<(), [SelectWithOptionalInterestOutput]>
     
     init(
-        insertUser: any InsertUserQuery = Queries.Just(),
+        insertUser: any InsertUserQuery = Queries.Just(0),
         selectUsers: any SelectUsersQuery = Queries.Just(),
         selectUserById: any SelectUserByIdQuery = Queries.Just(),
         selectUserByIds: any SelectUserByIdsQuery = Queries.Just(),
@@ -236,15 +236,15 @@ struct QueriesQueriesNoop: QueriesQueries {
 struct QueriesQueriesImpl: QueriesQueries {
     let connection: any Connection
     
-    var insertUser: DatabaseQuery<InsertUserInput, ()> {
-        DatabaseQuery<InsertUserInput, ()>(
+    var insertUser: DatabaseQuery<InsertUserInput, Int> {
+        DatabaseQuery<InsertUserInput, Int>(
             .write,
             in: connection,
             watchingTables: ["user"]
         ) { input, tx in
             let statement = try Otter.Statement(
                 """
-                INSERT INTO user VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO user VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id
                 """,
                 transaction: tx
             )
@@ -255,7 +255,7 @@ struct QueriesQueriesImpl: QueriesQueries {
             try statement.bind(value: input.favoriteNumber, to: 5)
             try statement.bind(value: input.randomValue, to: 6)
             try statement.bind(value: input.bornOn, to: 7, using: CustomDateDatabaseValueAdapter.self, as: String.self)
-            _ = try statement.step()
+            return try statement.fetchOne()
         }
     }
     
@@ -410,13 +410,13 @@ struct DB: Database{
     }
 }
 
-typealias InsertUserQuery = Query<InsertUserInput, ()>
+typealias InsertUserQuery = Query<InsertUserInput, Int>
 extension Query where Input == InsertUserInput {
     func execute(id: Int, firstName: String, lastName: String, preference: Bool?, favoriteNumber: Int?, randomValue: SQLAny?, bornOn: Date?) async throws -> Output {
         try await execute(with: InsertUserInput(id: id, firstName: firstName, lastName: lastName, preference: preference, favoriteNumber: favoriteNumber, randomValue: randomValue, bornOn: bornOn))
     }
     
-    func execute(id: Int, firstName: String, lastName: String, preference: Bool?, favoriteNumber: Int?, randomValue: SQLAny?, bornOn: Date?, tx: borrowing Transaction) async throws -> Output {
+    func execute(id: Int, firstName: String, lastName: String, preference: Bool?, favoriteNumber: Int?, randomValue: SQLAny?, bornOn: Date?, tx: borrowing Transaction) throws -> Output {
         try execute(with: InsertUserInput(id: id, firstName: firstName, lastName: lastName, preference: preference, favoriteNumber: favoriteNumber, randomValue: randomValue, bornOn: bornOn), tx: tx)
     }
     
@@ -435,7 +435,7 @@ extension Query where Input == SelectUserWithManyInputsInput {
         try await execute(with: SelectUserWithManyInputsInput(id: id, firstName: firstName))
     }
     
-    func execute(id: Int, firstName: String, tx: borrowing Transaction) async throws -> Output {
+    func execute(id: Int, firstName: String, tx: borrowing Transaction) throws -> Output {
         try execute(with: SelectUserWithManyInputsInput(id: id, firstName: firstName), tx: tx)
     }
     

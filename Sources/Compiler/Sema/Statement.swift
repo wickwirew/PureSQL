@@ -37,6 +37,13 @@ public struct Statement {
         return definition?.name
     }
     
+    /// Whether or not the source syntax is an INSERT statement
+    public var isInsert: Bool {
+        if syntax is InsertStmtSyntax { return true }
+        guard let definition = syntax as? QueryDefinitionStmtSyntax else { return false }
+        return definition.statement is InsertStmtSyntax
+    }
+    
     /// Replaces the definition with the given input
     public func with(definition: Definition?) -> Statement {
         return Statement(

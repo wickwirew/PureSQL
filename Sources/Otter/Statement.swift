@@ -103,9 +103,19 @@ public struct Statement: ~Copyable {
         return result
     }
     
-    /// Fetches a single row returned by the statement
+    /// Optionally fetches a single row returned by the statement
     public consuming func fetchOne<T: RowDecodable>() throws(OtterError) -> T? {
         return try fetchOne(of: T.self)
+    }
+    
+    /// Fetches a single row returned by the statement
+    @_disfavoredOverload
+    public consuming func fetchOne<T: RowDecodable>() throws(OtterError) -> T {
+        guard let row = try fetchOne(of: T.self) else {
+            throw OtterError.queryReturnedNoValue
+        }
+        
+        return row
     }
     
     /// Fetches a single row returned by the statement

@@ -13,6 +13,9 @@ public extension Queries {
         /// The error to throw on execution
         let error: any Error
         
+        /// The default error to throw if none is provided
+        struct FailError: Error {}
+        
         /// Initializes a query that always fails with an error.
         /// This is useful for unit tests and previews to test
         /// how a part of an application behaives when an error
@@ -21,6 +24,14 @@ public extension Queries {
         /// - Parameter error: The error to throw
         public init(_ error: any Error) {
             self.error = error
+        }
+        
+        /// Initializes a query that always fails with an error.
+        /// This is useful for unit tests and previews to test
+        /// how a part of an application behaives when an error
+        /// is thrown.
+        public init() {
+            self.error = FailError()
         }
         
         public var transactionKind: Transaction.Kind { .read }

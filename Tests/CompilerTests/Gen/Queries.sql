@@ -1,5 +1,5 @@
 insertUser:
-INSERT INTO user VALUES (?, ?, ?, ?, ?, ?, ?);
+INSERT INTO user VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id;
 
 selectUsers:
 SELECT * FROM user;

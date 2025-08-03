@@ -264,7 +264,8 @@ extension Language {
         // Will return an array if it returns many or optional if its a single result
         let singleOrMany: (GenerationType) -> GenerationType = {
             switch statement.outputCardinality {
-            case .single: .optional($0)
+            // INSERTs will always return a value so no need to do optional
+            case .single: statement.isInsert ? $0 : .optional($0)
             case .many: .array($0)
             }
         }

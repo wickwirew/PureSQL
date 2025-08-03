@@ -244,7 +244,25 @@ public struct SwiftLanguage: Language {
         writer.write(line: "init(")
         writer.indent()
         for (position, query) in queries.positional() {
-            writer.write(line: query.variableName, ": any ", query.typealiasName, " = Queries.Just()")
+            writer.write(line: query.variableName, ": any ", query.typealiasName)
+            
+            switch query.output {
+            case .model:
+                // We might be able to initialize one in the future with all default values
+                // but it seems hacky so just fail
+                writer.write(" = Queries.Fail()")
+            case .builtin(let name):
+                let defaultValue = switch name {
+                case "Double": "0.0"
+                case "Int": "0"
+                case "String": "\"\""
+                case "Data": "Data()"
+                default: "SQLAny.int(0)"
+                }
+                writer.write(" = Queries.Just(", defaultValue, ")")
+            default:
+                writer.write(" = Queries.Just()")
+            }
             
             if !position.isLast {
                 writer.write(",")
