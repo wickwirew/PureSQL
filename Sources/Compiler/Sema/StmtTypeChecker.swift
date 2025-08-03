@@ -543,7 +543,7 @@ extension StmtTypeChecker {
             return .empty
         }
         
-        usedTableNames.insert(table.name.name)
+        importTable(table)
         
         // If there is an error upstream that will cause unification to fail for sure
         // we can just skip it so the real error does not get hidden by all the other errors

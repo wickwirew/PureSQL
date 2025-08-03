@@ -19,7 +19,7 @@ class CompilerTests: XCTestCase {
     }
 
     func testInsert() throws {
-        try checkQueries(compile: "CompileInsert")
+        try checkQueries(compile: "CompileInsert", dump: true)
     }
     
     func testUpdate() throws {

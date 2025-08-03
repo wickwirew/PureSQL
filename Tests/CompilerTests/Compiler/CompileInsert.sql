@@ -158,3 +158,12 @@ INSERT INTO user (id, name) VALUES (?, ?)
 ON CONFLICT (id) DO UPDATE
 SET name = excluded.name
 WHERE excluded.name = 'bob';
+
+-- CHECK: SIGNATURE
+-- CHECK:   OUTPUT_CHUNKS
+-- CHECK:     CHUNK
+-- CHECK:       OUTPUT
+-- CHECK:         id INTEGER
+-- CHECK:   TABLES
+-- CHECK:     user
+INSERT INTO user (name) VALUES ('joe') RETURNING id;
