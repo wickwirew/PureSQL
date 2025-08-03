@@ -19,7 +19,7 @@ let package = Package(
         .executable(name: "OtterCLI", targets: ["OtterCLI"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-syntax", from: "601.0.1"),
+        .package(url: "https://github.com/swiftlang/swift-syntax", from: "600.0.0-latest"),
         .package(url: "https://github.com/apple/swift-collections", from: "1.1.4"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0"),
     ],
