@@ -102,10 +102,7 @@ extension CardinalityInferrer: StmtSyntaxVisitor {
                 return cadinalityForFilter(filter, for: t.table)
             }
         case let .values(values):
-            // VALUES (1, 2), (3, 4)
-            if values.count > 1 {
-                return .many
-            }
+            return values.count > 1 ? .many : .single
         }
 
         return .many

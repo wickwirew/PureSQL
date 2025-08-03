@@ -417,7 +417,7 @@ extension Query where Input == InsertUserInput {
     }
     
     func execute(id: Int, firstName: String, lastName: String, preference: Bool?, favoriteNumber: Int?, randomValue: SQLAny?, bornOn: Date?, tx: borrowing Transaction) async throws -> Output {
-        try await execute(with: InsertUserInput(id: id, firstName: firstName, lastName: lastName, preference: preference, favoriteNumber: favoriteNumber, randomValue: randomValue, bornOn: bornOn), tx: tx)
+        try execute(with: InsertUserInput(id: id, firstName: firstName, lastName: lastName, preference: preference, favoriteNumber: favoriteNumber, randomValue: randomValue, bornOn: bornOn), tx: tx)
     }
     
     func observe(id: Int, firstName: String, lastName: String, preference: Bool?, favoriteNumber: Int?, randomValue: SQLAny?, bornOn: Date?) -> any QueryObservation<Output> {
@@ -436,7 +436,7 @@ extension Query where Input == SelectUserWithManyInputsInput {
     }
     
     func execute(id: Int, firstName: String, tx: borrowing Transaction) async throws -> Output {
-        try await execute(with: SelectUserWithManyInputsInput(id: id, firstName: firstName), tx: tx)
+        try execute(with: SelectUserWithManyInputsInput(id: id, firstName: firstName), tx: tx)
     }
     
     func observe(id: Int, firstName: String) -> any QueryObservation<Output> {

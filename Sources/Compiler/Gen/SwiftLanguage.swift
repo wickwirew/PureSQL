@@ -594,7 +594,7 @@ public struct SwiftLanguage: Language {
             writer.write(", tx: borrowing Transaction) async throws -> Output ")
             
             writer.braces {
-                writer.write(line: "try await execute(with: ", query.inputName, "(")
+                writer.write(line: "try execute(with: ", query.inputName, "(")
                 initInput()
                 writer.write("), tx: tx)")
             }

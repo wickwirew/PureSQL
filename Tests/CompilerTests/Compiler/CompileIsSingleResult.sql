@@ -34,3 +34,9 @@ SELECT * FROM employee WHERE companyId = 1 OR userId = 1;
 
 -- CHECK: MANY
 SELECT * FROM noPk WHERE value = ?;
+
+-- CHECK: SINGLE
+INSERT INTO user VALUES (1, 'bob') RETURNING *;
+
+-- CHECK: MANY
+INSERT INTO user VALUES (1, 'bob'), (2, 'joe') RETURNING *;
