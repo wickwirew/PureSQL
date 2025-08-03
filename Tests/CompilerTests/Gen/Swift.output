@@ -182,7 +182,7 @@ struct SelectWithOptionalInterestOutput: Hashable, Sendable, RowDecodable {
     }
 }
 
-protocol QueriesQueries {
+protocol QueriesQueries: ConnectionWrapper {
     associatedtype _InsertUser: InsertUserQuery
     var insertUser: _InsertUser { get }
     associatedtype _SelectUsers: SelectUsersQuery
@@ -202,6 +202,7 @@ protocol QueriesQueries {
 }
 
 struct QueriesQueriesNoop: QueriesQueries {
+    let connection: any Connection = NoopConnection()
     let insertUser: AnyQuery<InsertUserInput, ()>
     let selectUsers: AnyQuery<(), [User]>
     let selectUserById: AnyQuery<Int, User?>

@@ -209,7 +209,7 @@ public struct SwiftLanguage: Language {
     }
     
     private func queriesProtocol(name: String, queries: [GeneratedQuery]) {
-        writer.write(line: "protocol ", name, " {")
+        writer.write(line: "protocol ", name, ": ConnectionWrapper {")
         
         writer.indent()
         
@@ -227,6 +227,8 @@ public struct SwiftLanguage: Language {
     private func queriesNoop(name: String, queries: [GeneratedQuery]) {
         writer.write(line: "struct ", name, "Noop: ", name, " {")
         writer.indent()
+        
+        writer.write(line: "let connection: any Connection = NoopConnection()")
         
         for query in queries {
             writer.write(line: "let ")

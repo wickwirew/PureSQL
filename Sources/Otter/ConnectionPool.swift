@@ -128,9 +128,9 @@ extension ConnectionPool: Connection {
     }
     
     /// Starts a transaction.
-    public func begin<Output: Sendable>(
+    public nonisolated func begin<Output: Sendable>(
         _ kind: Transaction.Kind,
-        execute: (borrowing Transaction) throws -> Output
+        execute: @Sendable (borrowing Transaction) throws -> Output
     ) async throws -> Output {
         try await beginNoCommit(kind) { tx in
             // The `Result` wrapper seems weird, but allows us to keep
@@ -162,7 +162,7 @@ extension ConnectionPool: Connection {
     /// makes sure it reclaims the connection.
     public func beginNoCommit<Output: Sendable>(
         _ kind: Transaction.Kind,
-        execute: (consuming Transaction) async throws -> Output
+        execute: @Sendable (consuming Transaction) async throws -> Output
     ) async throws -> Output {
         let tx = try await begin(kind)
         let conn = tx.connection
