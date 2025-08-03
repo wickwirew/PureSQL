@@ -23,11 +23,14 @@ public protocol Connection: Sendable {
 }
 
 /// A no operation database connection that does nothing.
-struct NoopConnection: Connection {
-    func observe(subscriber: any DatabaseSubscriber) {}
-    func cancel(subscriber: any DatabaseSubscriber) {}
+public struct NoopConnection: Connection {
+    public init() {}
     
-    func begin<Output>(
+    public func observe(subscriber: any DatabaseSubscriber) {}
+    
+    public func cancel(subscriber: any DatabaseSubscriber) {}
+    
+    public func begin<Output>(
         _ kind: Transaction.Kind,
         execute: @Sendable (borrowing Transaction) throws -> Output
     ) async throws -> Output {
@@ -44,7 +47,7 @@ public protocol ConnectionWrapper: Connection {
     var connection: any Connection { get }
 }
 
-extension ConnectionWrapper {
+public extension ConnectionWrapper {
     func observe(subscriber: DatabaseSubscriber) {
         connection.observe(subscriber: subscriber)
     }
