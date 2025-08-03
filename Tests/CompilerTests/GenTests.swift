@@ -24,8 +24,6 @@ struct GenTests {
             schema: compiler.schema
         )
         
-        print(rawOutput)
-        
         for diagnostics in migrations.1 {
             Issue.record(diagnostics)
         }

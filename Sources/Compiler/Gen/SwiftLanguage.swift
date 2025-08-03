@@ -576,6 +576,7 @@ public struct SwiftLanguage: Language {
         extensionOn("Query") {
             self.writer.write("Input == ", query.inputName)
         } builder: {
+            // Execute no tx
             writer.write("func execute(")
             writeInput()
             writer.write(") async throws -> Output ")
@@ -586,6 +587,19 @@ public struct SwiftLanguage: Language {
                 writer.write("))")
             }
             
+            // Execute with tx
+            writer.blankLine()
+            writer.write(line: "func execute(")
+            writeInput()
+            writer.write(", tx: borrowing Transaction) async throws -> Output ")
+            
+            writer.braces {
+                writer.write(line: "try await execute(with: ", query.inputName, "(")
+                initInput()
+                writer.write("), tx: tx)")
+            }
+            
+            // Observe
             writer.blankLine()
             writer.write(line: "func observe(")
             writeInput()

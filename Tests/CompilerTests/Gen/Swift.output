@@ -416,6 +416,10 @@ extension Query where Input == InsertUserInput {
         try await execute(with: InsertUserInput(id: id, firstName: firstName, lastName: lastName, preference: preference, favoriteNumber: favoriteNumber, randomValue: randomValue, bornOn: bornOn))
     }
     
+    func execute(id: Int, firstName: String, lastName: String, preference: Bool?, favoriteNumber: Int?, randomValue: SQLAny?, bornOn: Date?, tx: borrowing Transaction) async throws -> Output {
+        try await execute(with: InsertUserInput(id: id, firstName: firstName, lastName: lastName, preference: preference, favoriteNumber: favoriteNumber, randomValue: randomValue, bornOn: bornOn), tx: tx)
+    }
+    
     func observe(id: Int, firstName: String, lastName: String, preference: Bool?, favoriteNumber: Int?, randomValue: SQLAny?, bornOn: Date?) -> any QueryObservation<Output> {
         observe(with: InsertUserInput(id: id, firstName: firstName, lastName: lastName, preference: preference, favoriteNumber: favoriteNumber, randomValue: randomValue, bornOn: bornOn))
     }
@@ -429,6 +433,10 @@ typealias SelectUserWithManyInputsQuery = Query<SelectUserWithManyInputsInput, S
 extension Query where Input == SelectUserWithManyInputsInput {
     func execute(id: Int, firstName: String) async throws -> Output {
         try await execute(with: SelectUserWithManyInputsInput(id: id, firstName: firstName))
+    }
+    
+    func execute(id: Int, firstName: String, tx: borrowing Transaction) async throws -> Output {
+        try await execute(with: SelectUserWithManyInputsInput(id: id, firstName: firstName), tx: tx)
     }
     
     func observe(id: Int, firstName: String) -> any QueryObservation<Output> {
