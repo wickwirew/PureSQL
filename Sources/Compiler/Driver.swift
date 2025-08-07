@@ -49,11 +49,8 @@ public actor Driver {
         reporters.append(reporter)
     }
     
-    public func compile(path: Path) async throws {
+    public func compile(migrationsPath: Path, queriesPath: Path) async throws {
         try await measure("Compilation") {
-            let migrationsPath = migrationsPath(at: path)
-            let queriesPath = queriesPath(at: path)
-            
             let migrationFiles = try fileSystem.files(atPath: migrationsPath)
             let queriesFiles = try fileSystem.files(atPath: queriesPath)
             
@@ -161,16 +158,6 @@ public actor Driver {
         for reporter in reporters {
             reporter.report(diagnostics: diagnostics, source: source, fileName: fileName)
         }
-    }
-    
-    /// The migrations path relative to the base path
-    private func migrationsPath(at base: Path) -> Path {
-        "\(base)/Migrations"
-    }
-    
-    /// The queries path relative to the base path
-    private func queriesPath(at base: Path) -> Path {
-        "\(base)/Queries"
     }
     
     /// Sorts the migration files

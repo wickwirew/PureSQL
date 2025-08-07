@@ -9,24 +9,34 @@ import Foundation
 
 /// Small object to make interacting with the overall project structure easier.
 public struct Project {
-    public let url: URL
+    public let generatedOutputFile: URL
     public let migrationsDirectory: URL
     public let queriesDirectory: URL
     private let fileSystem: FileSystem
     
-    public init(url: URL) {
-        self = Project(url: url, fileSystem: FileManager.default)
+    public init(
+        generatedOutputFile: URL,
+        migrationsDirectory: URL,
+        queriesDirectory: URL
+    ) {
+        self = Project(
+            generatedOutputFile: generatedOutputFile,
+            migrationsDirectory: migrationsDirectory,
+            queriesDirectory: queriesDirectory,
+            fileSystem: FileManager.default
+        )
     }
     
-    init(url: URL, fileSystem: FileSystem) {
-        self.url = url
+    init(
+        generatedOutputFile: URL,
+        migrationsDirectory: URL,
+        queriesDirectory: URL,
+        fileSystem: FileSystem
+    ) {
+        self.generatedOutputFile = generatedOutputFile
+        self.migrationsDirectory = migrationsDirectory
+        self.queriesDirectory = queriesDirectory
         self.fileSystem = fileSystem
-        self.migrationsDirectory = url.appendingPathComponent("Migrations")
-        self.queriesDirectory = url.appendingPathComponent("Queries")
-    }
-    
-    public static func inWorkingDir() -> Project {
-        Project(url: URL(fileURLWithPath: FileManager.default.currentDirectoryPath))
     }
     
     public var doesMigrationsExist: Bool {

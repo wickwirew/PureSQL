@@ -13,17 +13,8 @@ import SwiftSyntax
 struct GenerateCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(commandName: "generate")
     
-    @Option(name: .shortAndLong, help: "The root directory of the Otter sources")
+    @Option(name: .shortAndLong, help: "The directory containing the otter.yaml")
     var path: String = FileManager.default.currentDirectoryPath
-    
-    @Option(name: .shortAndLong, help: "The output file path. Default is to stdout")
-    var output: String? = nil
-    
-    @Option(name: .shortAndLong, help: "The database name")
-    var databaseName: String = "DB"
-    
-    @Option(name: .shortAndLong, help: "Comma separated list of additional imports to add")
-    var additionalImports: String?
     
     @Flag(help: "If set, any diagnostic message will not be colorized")
     var dontColorize = false
@@ -32,17 +23,25 @@ struct GenerateCommand: AsyncParsableCommand {
     var time = false
 
     mutating func run() async throws {
+        let config = try Config.load(at: path)
+        let project = config.project(at: path)
+        
         let options = GenerationOptions(
-            databaseName: databaseName,
-            imports: additionalImports?.split(separator: ",").map(\.description) ?? []
+            databaseName: config.databaseName ?? "DB",
+            imports: config.additionalImports ?? []
         )
         
-        try await generate(language: SwiftLanguage.self, options: options)
+        try await generate(
+            language: SwiftLanguage.self,
+            options: options,
+            project: project
+        )
     }
     
     private func generate<Lang: Language>(
         language: Lang.Type,
-        options: GenerationOptions
+        options: GenerationOptions,
+        project: Project
     ) async throws {
         let driver = Driver()
         await driver.logTimes(time)
@@ -51,12 +50,17 @@ struct GenerateCommand: AsyncParsableCommand {
             reporter: StdoutDiagnosticReporter(dontColorize: dontColorize)
         )
         
-        try await driver.compile(path: path)
+        try await driver.compile(
+            migrationsPath: project.migrationsDirectory.path,
+            queriesPath: project.queriesDirectory.path
+        )
         
         try await driver.generate(
             language: Lang.self,
-            to: output,
+            to: project.generatedOutputFile.path,
             options: options
         )
+        
+        print("Generated output to \(project.generatedOutputFile.path)")
     }
 }

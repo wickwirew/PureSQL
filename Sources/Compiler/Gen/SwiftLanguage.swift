@@ -43,7 +43,7 @@ public struct SwiftLanguage: Language {
     }
     
     public func interpolatedQuestionMarks(for param: String) -> String {
-        return  "\\(\(param).sqlQuestionMarks)"
+        return "\\(\(param).sqlQuestionMarks)"
     }
     
     public func typeName(for type: GenerationType) -> String {

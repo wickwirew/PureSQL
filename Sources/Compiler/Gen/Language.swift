@@ -326,10 +326,10 @@ public struct GenerationOptions: Sendable {
     public var imports: [String]
     
     public init(
-        databaseName: String? = nil,
+        databaseName: String,
         imports: [String] = []
     ) {
-        self.databaseName = databaseName ?? "DB"
+        self.databaseName = databaseName
         self.imports = imports
     }
 }

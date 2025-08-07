@@ -17,7 +17,7 @@ struct GenTests {
         let migrations = try compiler.compile(migration: load(file: "Migrations"))
         let queries = try compiler.compile(queries: load(file: "Queries"))
         
-        let language = SwiftLanguage(options: GenerationOptions())
+        let language = SwiftLanguage(options: GenerationOptions(databaseName: ""))
         let rawOutput = try language.generate(
             migrations: migrations.0.map(\.sanitizedSource),
             queries: [("Queries", queries.0)],

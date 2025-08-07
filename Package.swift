@@ -22,6 +22,7 @@ let package = Package(
         .package(url: "https://github.com/swiftlang/swift-syntax", from: "600.0.0-latest"),
         .package(url: "https://github.com/apple/swift-collections", from: "1.1.4"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0"),
+        .package(url: "https://github.com/jpsim/Yams", from: "6.0.2"),
     ],
     targets: [
         .macro(
@@ -55,6 +56,7 @@ let package = Package(
             dependencies: [
                 "Compiler",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
+                "Yams",
             ]
         ),
 

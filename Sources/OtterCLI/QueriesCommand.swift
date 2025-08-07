@@ -16,12 +16,16 @@ struct QueriesCommand: ParsableCommand {
     )
     
     struct Add: ParsableCommand {
-        static let configuration = CommandConfiguration(commandName: "add")
+        @Option(name: .shortAndLong, help: "The directory containing the otter.yaml")
+        var path: String = FileManager.default.currentDirectoryPath
         
         @Argument var name: String
         
+        static let configuration = CommandConfiguration(commandName: "add")
+        
         func run() throws {
-            let project = Project.inWorkingDir()
+            let config = try Config.load(at: path)
+            let project = config.project(at: path)
             
             guard project.doesQueriesExist else {
                 throw OtterError.sourcesNotFound

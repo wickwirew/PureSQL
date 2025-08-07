@@ -63,7 +63,7 @@ extension DatabaseMacro: MemberMacro {
             }
         }
         
-        let swift = SwiftLanguage(options: GenerationOptions())
+        let swift = SwiftLanguage(options: GenerationOptions(databaseName: ""))
         
         let (generatedTables, generatedQueries) = try swift.assemble(
             queries: [(nil, queries)],

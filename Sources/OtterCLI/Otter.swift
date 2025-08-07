@@ -13,7 +13,12 @@ import SwiftSyntax
 @main
 struct Otter: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        subcommands: [GenerateCommand.self, InitCommand.self, MigrateCommand.self, QueriesCommand.self],
+        subcommands: [
+            GenerateCommand.self,
+            InitCommand.self,
+            MigrateCommand.self,
+            QueriesCommand.self
+        ],
         defaultSubcommand: GenerateCommand.self
     )
 }
@@ -21,6 +26,7 @@ struct Otter: AsyncParsableCommand {
 enum OtterError: Error, CustomStringConvertible {
     case sourcesNotFound
     case queryAlreadyExists(fileName: String)
+    case configDoesNotExist
 
     var description: String {
         switch self {
@@ -28,6 +34,8 @@ enum OtterError: Error, CustomStringConvertible {
             "Sources not found, run init to initialize new project"
         case let .queryAlreadyExists(fileName):
             "Query file with name '\(fileName)' already exists"
+        case .configDoesNotExist:
+            "otter.yaml not found"
         }
     }
 }
