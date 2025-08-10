@@ -64,8 +64,9 @@ enum MigrationRunner {
             "SELECT * FROM \(MigrationRunner.migrationTableName) ORDER BY number ASC"
         }
         
+        let migrations: [Int] = try statement.fetchAll()
         try tx.commit()
-        return try statement.fetchAll()
+        return migrations
     }
     
     private static func insertMigration(version: Int, tx: borrowing Transaction) throws {

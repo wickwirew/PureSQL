@@ -17,12 +17,13 @@ struct GenTests {
         let migrations = try compiler.compile(migration: load(file: "Migrations"))
         let queries = try compiler.compile(queries: load(file: "Queries"))
         
-        let language = SwiftLanguage(options: GenerationOptions(databaseName: ""))
+        let language = SwiftLanguage(options: GenerationOptions(databaseName: "DB"))
         let rawOutput = try language.generate(
             migrations: migrations.0.map(\.sanitizedSource),
             queries: [("Queries", queries.0)],
             schema: compiler.schema
         )
+        print(rawOutput)
         
         for diagnostics in migrations.1 {
             Issue.record(diagnostics)
