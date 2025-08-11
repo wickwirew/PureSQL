@@ -22,7 +22,6 @@ flexible manner. No more writing mocks or wrappers. Just pass in the query.
 - [Macros](#or-use-the-swift-macro)
 - [Queries](#queries)
 - [Types](#types)
-- [Operators](#operators)
 - [Dependency Injection](#dependency-injection)
 
 ## Basic Primer
@@ -307,19 +306,6 @@ TEXT AS UUID
 BLOB AS UUID
 -- If the type has `.` in it, put the name in quotes to escape it.
 TEXT AS "Todo.ID"
-```
-
-## Operators
-The library ships with a few core operators. The operators allow you to perform transformations on queries inputs or output. Or even combine queries.
-
-## Then
-Then is used to combine two queries together. It will execute `self` first then the input query. Each query will be run within the same transaction.
-
-```swift
-func then<Next>(
-    _ next: Next,
-    nextInput: @Sendable @escaping (Input, Output) -> Next.Input
-) -> Queries.Then<Self, Next>
 ```
 
 ## Dependency Injection
