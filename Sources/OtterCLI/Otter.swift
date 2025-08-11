@@ -16,7 +16,7 @@ struct Otter: AsyncParsableCommand {
         subcommands: [
             GenerateCommand.self,
             InitCommand.self,
-            MigrateCommand.self,
+            MigrationsCommand.self,
             QueriesCommand.self
         ],
         defaultSubcommand: GenerateCommand.self

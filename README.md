@@ -146,11 +146,7 @@ Once the project has been added it is time to setup the queries and migrations f
 otter init
 ```
 
-This will create all diretories needed and will create your first migration. Your project should have 2 new folders and a swift file. In the migrations folder you will have a file named `1.sql`. You put your first migration code in there.
-```
-/Migrations/1.sql
-/Queries
-```
+This will create an `otter.yaml` configuration file. Here is where you can setup the project and define the directories of the migrations and queries and other project settings.
 
 > [!TIP]
 > Follow the SQL standard and use singular table names. This will stop table structs from being named plural
@@ -166,7 +162,7 @@ This will compile and check all migrations and queries, then generate all Swift 
 ### Adding a New Migration
 When a new migration is needed, you can simply add a new file with a number 1 higher than the previous. To automatically do this the cli tool can do it for you by running
 ```
-otter migrate add
+otter migrations add
 ```
 
 # Opening a Connection

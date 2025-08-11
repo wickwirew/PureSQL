@@ -27,10 +27,6 @@ struct QueriesCommand: ParsableCommand {
             let config = try Config.load(at: path)
             let project = config.project(at: path)
             
-            guard project.doesQueriesExist else {
-                throw OtterError.sourcesNotFound
-            }
-            
             guard !project.doesQueryExist(withName: name) else {
                 throw OtterError.queryAlreadyExists(fileName: name)
             }

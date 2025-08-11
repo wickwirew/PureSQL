@@ -1,5 +1,5 @@
 //
-//  MigrateCommand.swift
+//  MigrationsCommand.swift
 //  Otter
 //
 //  Created by Wes Wickwire on 5/21/25.
@@ -9,9 +9,9 @@ import ArgumentParser
 import Compiler
 import Foundation
 
-struct MigrateCommand: ParsableCommand {
+struct MigrationsCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "migrate",
+        commandName: "migrations",
         subcommands: [Add.self]
     )
     
@@ -24,11 +24,6 @@ struct MigrateCommand: ParsableCommand {
         func run() throws {
             let config = try Config.load(at: path)
             let project = config.project(at: path)
-            
-            guard project.doesMigrationsExist else {
-                throw OtterError.sourcesNotFound
-            }
-            
             try project.addMigration()
         }
     }

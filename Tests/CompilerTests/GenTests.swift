@@ -23,7 +23,6 @@ struct GenTests {
             queries: [("Queries", queries.0)],
             schema: compiler.schema
         )
-        print(rawOutput)
         
         for diagnostics in migrations.1 {
             Issue.record(diagnostics)
