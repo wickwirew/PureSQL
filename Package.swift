@@ -17,6 +17,7 @@ let package = Package(
         .library(name: "Otter", targets: ["Otter"]),
         .library(name: "Compiler", targets: ["Compiler"]),
         .executable(name: "OtterCLI", targets: ["OtterCLI"]),
+        .plugin(name: "OtterPlugin", targets: ["OtterPlugin"])
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-syntax", from: "600.0.0-latest"),
@@ -48,6 +49,7 @@ let package = Package(
                 .product(name: "OrderedCollections", package: "swift-collections"),
                 .product(name: "SwiftSyntax", package: "swift-syntax"),
                 .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
+                "Yams",
             ]
         ),
 
@@ -56,8 +58,21 @@ let package = Package(
             dependencies: [
                 "Compiler",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
-                "Yams",
             ]
+        ),
+        
+        .plugin(
+            name: "OtterPlugin",
+            capability: .buildTool(),
+//            capability: .command(
+//                intent: .custom(
+//                    verb: "otter", description: "Generates the database queries"
+//                ),
+//                permissions: [
+//                    .writeToPackageDirectory(reason: "Writes the queries out to a swift file."),
+//                ]
+//            ),
+            dependencies: ["OtterCLI"]
         ),
 
         .testTarget(

@@ -16,19 +16,30 @@ struct GenerateCommand: AsyncParsableCommand {
     @Option(name: .shortAndLong, help: "The directory containing the otter.yaml")
     var path: String = FileManager.default.currentDirectoryPath
     
+    @Option(name: .long, help: "If set, the output file overriden to it")
+    var overrideOutput: String?
+    
     @Flag(help: "If set, any diagnostic message will not be colorized")
     var dontColorize = false
     
     @Flag(help: "If set, core parts of the compilation will be timed")
     var time = false
+    
+    @Flag(help: "If true, the directory the output exists in will not be created if it doesn't exist")
+    var skipDirectoryCreate = false
 
     mutating func run() async throws {
-        let config = try Config.load(at: path)
-        let project = config.project(at: path)
+        let config = try Config(at: path)
+        var project = config.project(at: path)
+        
+        if let overrideOutput, let url = URL(string: overrideOutput) {
+            project.generatedOutputFile = url
+        }
         
         let options = GenerationOptions(
             databaseName: config.databaseName ?? "DB",
-            imports: config.additionalImports ?? []
+            imports: config.additionalImports ?? [],
+            createDirectoryIfNeeded: !skipDirectoryCreate
         )
         
         try await generate(

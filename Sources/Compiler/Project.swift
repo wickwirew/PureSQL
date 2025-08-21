@@ -9,7 +9,7 @@ import Foundation
 
 /// Small object to make interacting with the overall project structure easier.
 public struct Project {
-    public let generatedOutputFile: URL
+    public var generatedOutputFile: URL
     public let migrationsDirectory: URL
     public let queriesDirectory: URL
     private let fileSystem: FileSystem

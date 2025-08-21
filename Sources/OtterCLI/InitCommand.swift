@@ -17,11 +17,12 @@ struct InitCommand: ParsableCommand {
         # The type name of the generated struct for the database 
         databaseName: DB
         # Path to the directory containing the migrations
-        migrations: ProjectName/Migrations
+        migrations: Sources/Migrations
         # Path to the directory containing the queries
-        queries: ProjectName/Queries
+        queries: Sources/Queries
         # The path of the file to generate the Swift code into
-        output: ProjectName/Queries.swift
+        # ⚠️ This is not needed and ignored if using the plugin
+        output: Sources/Queries.swift
         # Uncomment to add any custom imports that may be needed
         # additionalImports:
         #     - MyModule

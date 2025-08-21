@@ -1,0 +1,3 @@
+databaseName: DB
+migrations: Sources/Migrations
+queries: Sources/Queries

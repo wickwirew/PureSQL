@@ -108,9 +108,12 @@ public actor Driver {
                 // so removing the last component gives us just the directory.
                 var directory = path.split(separator: "/")
                 
-                if directory.count > 1 {
+                if options.createDirectoryIfNeeded, directory.count > 1 {
                     directory.removeLast()
-                    try fileSystem.create(directory: directory.joined(separator: "/"))
+                    
+                    if !fileSystem.exists(at: directory.joined(separator: "/")) {
+                        try fileSystem.create(directory: directory.joined(separator: "/"))
+                    }
                 }
                 
                 try file.write(toFile: path, atomically: true, encoding: .utf8)

@@ -324,13 +324,16 @@ extension Language {
 public struct GenerationOptions: Sendable {
     public var databaseName: String
     public var imports: [String]
+    public var createDirectoryIfNeeded: Bool
     
     public init(
         databaseName: String,
-        imports: [String] = []
+        imports: [String] = [],
+        createDirectoryIfNeeded: Bool
     ) {
         self.databaseName = databaseName
         self.imports = imports
+        self.createDirectoryIfNeeded = createDirectoryIfNeeded
     }
 }
 
