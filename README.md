@@ -142,6 +142,9 @@ let package = Package(
 )
 ```
 
+#### Xcode Project Plugin Setup
+For projects using an `xcodeproj` to setup the plugin it can be enabled by selecting the target and going to `Build Phases > Run Build Tool Plug-ins` and adding it to the list by selecting the plus.
+
 ## Install CLI tool
 You can install the CLI tool via homebrew by executing:
 ```
