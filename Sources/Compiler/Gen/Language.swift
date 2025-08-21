@@ -329,7 +329,7 @@ public struct GenerationOptions: Sendable {
     public init(
         databaseName: String,
         imports: [String] = [],
-        createDirectoryIfNeeded: Bool
+        createDirectoryIfNeeded: Bool = true
     ) {
         self.databaseName = databaseName
         self.imports = imports

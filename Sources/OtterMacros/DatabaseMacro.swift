@@ -65,8 +65,7 @@ extension DatabaseMacro: MemberMacro {
         
         let swift = SwiftLanguage(
             options: GenerationOptions(
-                databaseName: "",
-                createDirectoryIfNeeded: false
+                databaseName: ""
             )
         )
         

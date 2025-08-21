@@ -129,12 +129,21 @@ Otter supports Swift Package Manager. To install add the following to your `Pack
 let package = Package(
     [...]
     dependencies: [
-        .Package(url: "https://github.com/wickwirew/Otter.git", from: "...")
+        .package(url: "https://github.com/wickwirew/Otter.git", from: "...")
+    ],
+    targets: [
+        .target(
+            name: "MyProject",
+            dependencies: ["Otter"],
+            // ⚠️ Plugin is optional, can just use the CLI if desired
+            plugins: [.plugin(name: "OtterPlugin", package: "Otter")]
+        ),
     ]
 )
 ```
 
-Also the cli tool will be needed to be installed.
+## Install CLI tool
+You can install the CLI tool via homebrew by executing:
 ```
 brew tap wickwirew/wickwirew
 brew install otter
@@ -150,19 +159,22 @@ This will create an `otter.yaml` configuration file. Here is where you can setup
 > [!TIP]
 > Follow the SQL standard and use singular table names. This will stop table structs from being named plural
 
-#### Generating the Database
-Once you have your first migration in and the project setup you can now generate the database. In the same directory where `init` was run, you run the `gen` command.
-```
-otter gen --output Queries.swift
-```
-
-This will compile and check all migrations and queries, then generate all Swift required to talk to the database.
-
 ### Adding a New Migration
 When a new migration is needed, you can simply add a new file with a number 1 higher than the previous. To automatically do this the cli tool can do it for you by running
 ```
 otter migrations add
 ```
+
+> [!WARNING]
+> Plugin requires a clean build any time a new `sql` file is added so the input file list can be updated.
+
+#### Generating the Database - Without Plugin
+Once you have your first migration in and the project setup you can now generate the database. In the same directory where `init` was run, you run the `gen` command.
+```
+otter generate
+```
+
+This will compile and check all migrations and queries, then generate all Swift required to talk to the database.
 
 # Opening a Connection
 Once you have your database being generated, you can now open a connection to it. Each database will automatically have a few initializers at hand to choose from. Each are listed below. When the connection is opened, all migrations are run instantly.
@@ -188,7 +200,7 @@ let database = try DB(config: config)
 # Queries
 All queries will be stored in the `/Queries` directory. More than one query can go in each file. To get started, create a new file in the `/Queries` directory. The cli can do this automatically. In the same directory where `init` was run, execute
 ```
-otter queries add --name <some-name>
+otter queries add <some-name>
 ```
 
 Open the file that was created in `/Queries`, it should be blank. Individual queries can be defined using the the following format. At the moment a single query can only have one statement.
