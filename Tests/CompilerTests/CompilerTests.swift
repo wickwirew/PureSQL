@@ -19,7 +19,7 @@ class CompilerTests: XCTestCase {
     }
 
     func testInsert() throws {
-        try checkQueries(compile: "CompileInsert", dump: true)
+        try checkQueries(compile: "CompileInsert")
     }
     
     func testUpdate() throws {
@@ -82,7 +82,7 @@ class CompilerTests: XCTestCase {
     }
     
     func testOutlandishCte() throws {
-        try checkQueries(compile: "CompileOutlandishCTE", dump: true)
+        try checkQueries(compile: "CompileOutlandishCTE")
     }
 }
 
