@@ -12,22 +12,22 @@ import Otter
 @Database
 struct TestDB {
     @Query("SELECT * FROM foo")
-    var selectFoos: SelectFoosDatabaseQuery
+    var selectFoos: any SelectFoosQuery
 
     @Query("SELECT * FROM foo WHERE bar = ?")
-    var selectFoo: SelectFooDatabaseQuery
+    var selectFoo: any SelectFooQuery
 
     @Query("INSERT INTO foo (bar) VALUES (?)")
-    var insertFoo: InsertFooDatabaseQuery
+    var insertFoo: any InsertFooQuery
     
     @Query("INSERT INTO baz (qux) VALUES (?)")
-    var insertBaz: InsertBazDatabaseQuery
+    var insertBaz: any InsertBazQuery
     
     @Query("SELECT foo.*, baz.* FROM foo LEFT OUTER JOIN baz ON foo.bar = baz.qux")
-    var selectFooAndBaz: SelectFooAndBazDatabaseQuery
+    var selectFooAndBaz: any SelectFooAndBazQuery
     
     @Query("SELECT foo.*, baz.* FROM foo INNER JOIN baz ON foo.bar = baz.qux")
-    var selectFooAndBazNotOptional: SelectFooAndBazNotOptionalDatabaseQuery
+    var selectFooAndBazNotOptional: any SelectFooAndBazNotOptionalQuery
 
     static var migrations: [String] {
         return [

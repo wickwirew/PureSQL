@@ -142,10 +142,10 @@ struct DatabaseValueAdapterTests {
     @Database
     struct TestDB {
         @Query("INSERT INTO hasValues VALUES (?, ?)")
-        var insert: InsertDatabaseQuery
+        var insert: any InsertQuery
         
         @Query("SELECT * FROM hasValues")
-        var all: AllDatabaseQuery
+        var all: any AllQuery
         
         static var migrations: [String] {
             return [

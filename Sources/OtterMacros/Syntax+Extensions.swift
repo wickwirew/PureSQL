@@ -12,6 +12,16 @@ import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
 extension VariableDeclSyntax {
+    /// The variables type name.
+    var typeName: String? {
+        for binding in bindings {
+            guard let someOrAny = binding.typeAnnotation?.type.as(SomeOrAnyTypeSyntax.self),
+                  let name = someOrAny.constraint.as(IdentifierTypeSyntax.self)?.name.text else { continue }
+            return name
+        }
+        return nil
+    }
+    
     /// Searchs the variable decl for the `@Query` macro and gets the input
     /// arguments and performs any validation.
     func queryMacroInputsIfIsQuery(in context: some MacroExpansionContext) -> (

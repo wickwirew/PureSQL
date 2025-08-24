@@ -43,10 +43,10 @@ struct SQLAnyTests {
     @Database
     struct AnyDB {
         @Query("INSERT INTO foo (bar) VALUES (?)")
-        var insertFoo: InsertFooDatabaseQuery
+        var insertFoo: any InsertFooQuery
         
         @Query("SELECT * FROM foo")
-        var selectFoos: SelectFoosDatabaseQuery
+        var selectFoos: any SelectFoosQuery
         
         static var migrations: [String] {
             return ["CREATE TABLE foo (bar ANY);"]
