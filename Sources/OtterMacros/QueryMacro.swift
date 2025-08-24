@@ -19,15 +19,13 @@ public struct QueryMacro: AccessorMacro {
         in context: some MacroExpansionContext
     ) throws -> [AccessorDeclSyntax] {
         guard let property = declaration.as(VariableDeclSyntax.self),
-              let binding = property.bindings.first,
-              let identifier = binding.pattern.as(IdentifierPatternSyntax.self)?.identifier,
-              binding.accessorBlock == nil
+              let typeName = property.typeName?.removingQuerySuffix().lowercaseFirst
         else {
             return []
         }
 
         return [
-            "get { return _\(raw: identifier.text.removingQuerySuffix()) }",
+            "get { return _\(raw: typeName) }",
         ]
     }
 }

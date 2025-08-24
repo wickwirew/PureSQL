@@ -46,7 +46,7 @@ extension DatabaseMacro: MemberMacro {
         
         for variable in variables.values {
             guard let queryMacro = variable.queryMacroInputsIfIsQuery(in: context),
-                  let typeName = variable.typeName?.removingQuerySuffix() else { continue }
+                  let typeName = variable.typeName?.removingQuerySuffix().lowercaseFirst else { continue }
             
             let (statement, diagnostics) = compiler.compile(
                 query: queryMacro.source,

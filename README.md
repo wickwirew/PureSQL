@@ -108,6 +108,20 @@ func main() async throws {
 > As of now it is not recommended for larger projects. There are quite a few limitations 
 that won't scale well beyond a fairly simple schema and a handfull of queries.
 
+#### Anatomy of a @Query
+```swift
+@Query(
+    "SELECT * FROM foo WHERE id IN ?", // 1.
+    inputName: "CustomInputName", // 2.
+    outputName: "CustomOutputName" // 3.
+)
+var variableName: any MyQuery // 4.
+```
+1. The raw SQL to execute
+2. Optionally supply a custom type name for the generated input type.
+3. Optionally supply a custom type name for the generated output type.
+4. The `variableName` can be anything and does not affect any of the generated code.
+
 #### Current Limitations
 * Since macros operate purely on the syntax, all queries must be within the `@Database` itself so it has access to the schema.
 * All generated types will be nested under the `@Database` struct.

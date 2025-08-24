@@ -6,14 +6,14 @@
 //
 
 extension StringProtocol {
-    var capitalizedFirst: String {
+    public var capitalizedFirst: String {
         guard !isEmpty else { return self.description }
         let first = self[startIndex]
         let rest = self[index(after: startIndex)..<endIndex]
         return "\(first.uppercased())\(rest)"
     }
 
-    var lowercaseFirst: String {
+    public var lowercaseFirst: String {
         guard !isEmpty else { return self.description }
         let first = self[startIndex]
         let rest = self[index(after: startIndex)..<endIndex]
