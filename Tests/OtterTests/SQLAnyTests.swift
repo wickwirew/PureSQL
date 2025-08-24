@@ -48,8 +48,6 @@ struct SQLAnyTests {
         @Query("SELECT * FROM foo")
         var selectFoos: any SelectFoosQuery
         
-        static var migrations: [String] {
-            return ["CREATE TABLE foo (bar ANY);"]
-        }
+        static let migrations: [String] = ["CREATE TABLE foo (bar ANY);"]
     }
 }

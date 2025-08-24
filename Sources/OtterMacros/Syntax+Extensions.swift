@@ -72,36 +72,38 @@ extension VariableDeclSyntax {
         return nil
     }
     
-    var getter: CodeBlockItemListSyntax? {
+    func asMigrationsArray(in context: some MacroExpansionContext) -> [(String, ExprSyntax)] {
         for binding in bindings {
-            guard let accessorBlock = binding.accessorBlock,
-                  // TODO: Handle explicit `get {}`, seems different than the `.getter`
-                  case let .getter(getter) = accessorBlock.accessors else { return nil }
-            return getter
+            if let accessorBlock = binding.accessorBlock,
+                  case let .getter(getter) = accessorBlock.accessors {
+                // Has a getter block `{ return [] }`
+                guard let stmt = getter.last?.item, getter.count == 1 else {
+                    context.addDiagnostics(from: SyntaxError("Migrations must have one statement returning [String]"), node: self)
+                    return []
+                }
+                
+                if let ret = stmt.as(ReturnStmtSyntax.self), let expr = ret.expression {
+                    return getMigrationsArray(expr: expr, in: context)
+                } else if let expr = stmt.as(ExprSyntax.self) {
+                    return getMigrationsArray(expr: expr, in: context)
+                } else {
+                    context.addDiagnostics(from: SyntaxError("Must be return statement"), node: self)
+                    return []
+                }
+            } else if let initializer = binding.initializer {
+                // Set with a value `ident = value`
+                return getMigrationsArray(expr: initializer.value, in: context)
+            }
         }
         
-        return nil
+        context.addDiagnostics(from: SyntaxError("Must have a getter that returns [String]"), node: self)
+        return []
     }
     
-    func asMigrationsArray(in context: some MacroExpansionContext) -> [(String, ExprSyntax)] {
+    func getMigrationsArray(expr: ExprSyntax, in context: some MacroExpansionContext) -> [(String, ExprSyntax)] {
         var strings: [(String, ExprSyntax)] = []
         
-        guard let getter else {
-            context.addDiagnostics(from: SyntaxError("Must have a getter that returns [String]"), node: self)
-            return strings
-        }
-        
-        guard let stmt = getter.last?.item, getter.count == 1 else {
-            context.addDiagnostics(from: SyntaxError("Migrations must have one statement returning [String]"), node: self)
-            return strings
-        }
-        
-        guard let ret = stmt.as(ReturnStmtSyntax.self) else {
-            context.addDiagnostics(from: SyntaxError("Must be return statement"), node: self)
-            return strings
-        }
-        
-        guard let array = ret.expression?.as(ArrayExprSyntax.self) else {
+        guard let array = expr.as(ArrayExprSyntax.self) else {
             context.addDiagnostics(from: SyntaxError("Migrations must return an array literal"), node: self)
             return strings
         }
