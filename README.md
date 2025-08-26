@@ -13,9 +13,9 @@
 </p>
 
 # Overview
-Otter is a pure Swift SQL compiler that allow developers to simply write plain SQL with compile time safety.
+Otter is a pure Swift SQL compiler that allows developers to simply write plain SQL with compile time safety.
 If your database schema changes, you will get compile time errors for the places that need to be fixed.
-It just doesn't generate the code to talk to SQLite, but rather your entire data layer in a testable
+It doesn't just generate the code to talk to SQLite, but rather your entire data layer in a testable
 flexible manner. No more writing mocks or wrappers. Just pass in the query.
 
 - [Installation](#installation)
@@ -79,7 +79,7 @@ Otter can even run within a Swift macro by adding the `@Database` macro to a `st
 @Database
 struct DB {
     @Query("SELECT * FROM foo")
-    var selectFooQuery: any SelectFooQuery
+    var selectFoo: any SelectFooQuery
     
     static var migrations: [String] {
         return [
@@ -106,7 +106,7 @@ func main() async throws {
 
 > [!IMPORTANT]
 > As of now it is not recommended for larger projects. There are quite a few limitations 
-that won't scale well beyond a fairly simple schema and a handfull of queries.
+that won't scale well beyond a fairly simple schema and a handful of queries.
 
 #### Anatomy of a @Query
 ```swift
@@ -205,7 +205,7 @@ let database = try DB(path: "...")
 let database = try DB.inMemory()
 
 // Or open up using the configuration.
-var config = DatbaseConfig()
+var config = DatabaseConfig()
 config.path = "" // if nil, it will be in memory
 config.maxConnectionCount = 8
 let database = try DB(config: config)
@@ -267,15 +267,15 @@ SELECT id, name FROM user;
 In the example above, since we selected all columns from a single table the query will return the `User` struct that was generated for the table. If additional columns are selected a new structure will be generated to match the selected columns. In the following example we will join in the `post` table to get a users post count.
 ```sql
 fetchUsers:
-SELECT user.*, COUNT(post.*) AS numberOfPosts
-OUTER JOIN post ON post.userId = user.id
+SELECT user.*, COUNT(*) AS numberOfPosts
+LEFT OUTER JOIN post ON post.userId = user.id
 GROUP BY user.id;
 ```
 
 The following `struct` would automatically be generated for the query. Since we used the syntax `user.*` it will embed the `User` struct instead of replicating it's columns. Any embeded table struct will also get a `@dynamicMemberLookup` method generated so it can be accessed directly like the other column values. This allows extensions on the table struct to work across many queries.
 ```swift
 @dynamicMemberLookup
-FetchUsersOutput {
+struct FetchUsersOutput {
     let user: User
     let numberOfPosts: Int
 
@@ -284,7 +284,7 @@ FetchUsersOutput {
 ```
 
 ### Inputs
-When a query has multiple inputs it will have a struct generated for it's inputs similar to the output. Also, so the input struct does not have to be initialized everytime, an extension will be created that takes each parameter individually, rather then the full type.
+When a query has multiple inputs it will have a struct generated for it's inputs similar to the output. Also, so the input struct does not have to be initialized every time, an extension will be created that takes each parameter individually, rather then the full type.
 ```sql
 userPosts:
 SELECT * FROM post WHERE userId = ? AND date BETWEEN ? AND ?;
@@ -294,13 +294,13 @@ Would generate the following Swift code
 
 ```swift
 struct UserPostsInput {
-    let id: Int
+    let userId: Int
     let dateLower: Date
     let dateUpper: Date
 }
 
 // Using the extension
-let posts = try await database.userQueries.userPosts.execute(id: id, dateLower: lower, dateUpper: upper)
+let posts = try await database.userQueries.userPosts.execute(userId: id, dateLower: lower, dateUpper: upper)
 
 // Or using the input type directly
 let posts = try await database.userQueries.userPosts.execute(with: UserPostInput(...))
@@ -314,7 +314,7 @@ queryName(input: InputName, output: OutputName):
 ```
 
 # Types
-SQLite is a unique SQL database engine in that it is fairly lawless when it comes to typing. SQLite will allow you create a column with an `INTEGER` and gladly insert a `TEXT` into it. It will even let you make up your own type names and it will take them. Otter will not allow this and tends to operate more strictly like the table option `STRICT`. Only the core types that SQLite recognizes are usable for the column type.
+SQLite is a unique SQL database engine in that it is fairly lawless when it comes to typing. SQLite will allow you to create a column with an `INTEGER` and gladly insert a `TEXT` into it. It will even let you make up your own type names and it will take them. Otter will not allow this and tends to operate more strictly like the table option `STRICT`. Only the core types that SQLite recognizes are usable for the column type.
 | SQLite  | Swift  |
 |---------|--------|
 | INTEGER | Int    |
@@ -339,7 +339,7 @@ TEXT AS "Todo.ID"
 ## Dependency Injection
 > TL;DR Avoid the repository pattern, inject queries.
 
-Otter was written with application development in mind. One of the common walls when talking to a database is dependecy injection. 
+Otter was written with application development in mind. One of the pain points when talking to a database is dependency injection. 
 Normally this would mean wrapping your database calls in a repository or some other layer to keep the model layer testable without needing a database connection. 
 This is all good but that means writing different protocols and mocks. When writing the protocol you need to decide whether to just make it `async` or maybe a `publisher`. 
 Sometimes you need both... Otter solves these problems and was designed to have injection builtin.
@@ -394,7 +394,7 @@ CREATE VIRTUAL TABLE searchIndex USING fts5 (
 );
 
 SELECT * FROM searchIndex
-WHERE foo MATCH 'search terms'
+WHERE text MATCH 'search terms'
 ORDER BY rank;
 ```
 
@@ -409,7 +409,7 @@ Below are some idea that I would love input on!
   - SQLite supports custom functions which are a great way to share common logic amongst queries
 - Queries with multiple statements
   - Would allow for easier loading of more complex models that have many joins
-  - Want to allow other queries to be called from within the body to help centrize logic.
+  - Want to allow other queries to be called from within the body to help centralize logic.
 - Postgres support for server side swift
 
 ## Contributions

@@ -8,7 +8,7 @@
 import Foundation
 
 /// The base protocol every generated database conforms too.
-public protocol Database {
+public protocol Database: ConnectionWrapper {
     /// The connection to use
     init(connection: any Connection)
     /// An ordered list of migrations to be run.
