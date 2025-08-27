@@ -27,6 +27,9 @@ struct GenerateCommand: AsyncParsableCommand {
     
     @Flag(help: "If true, the directory the output exists in will not be created if it doesn't exist")
     var skipDirectoryCreate = false
+    
+    @Flag(help: "If true, it will emit diagnostics that Xcode can understand")
+    var xcodeDiagnosticReporter = false
 
     mutating func run() async throws {
         let config = try Config(at: path)
@@ -57,9 +60,11 @@ struct GenerateCommand: AsyncParsableCommand {
         let driver = Driver()
         await driver.logTimes(time)
         
-        await driver.add(
-            reporter: StdoutDiagnosticReporter(dontColorize: dontColorize)
-        )
+        if xcodeDiagnosticReporter {
+            await driver.add(reporter: XcodeDiagnosticReporter())
+        } else {
+            await driver.add(reporter: StdoutDiagnosticReporter(dontColorize: dontColorize))
+        }
         
         try await driver.compile(
             migrationsPath: project.migrationsDirectory.path,

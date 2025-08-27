@@ -41,7 +41,8 @@ struct OtterPlugin: BuildToolPlugin {
                 projectRoot.absoluteString,
                 "--override-output",
                 queries.absoluteString,
-                "--skip-directory-create"
+                "--skip-directory-create",
+                "--xcode-diagnostic-reporter"
             ],
             inputFiles: sourceFiles?
                 .filter { $0.url.pathExtension == "sql" }

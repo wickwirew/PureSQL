@@ -91,7 +91,7 @@ public actor Driver {
             let hasDiagnostics = results.contains { $0.value.diagnostics.contains { $0.level == .error } }
             
             guard !hasDiagnostics else {
-                return // Just skip, diagnostics should have already been emitted.
+                exit(1) // Diagnostics should have already been emitted.
             }
             
             let lang = Lang(options: options)
@@ -140,7 +140,7 @@ public actor Driver {
             }
         }
         
-        report(diagnostics: diagnostics, source: fileContents, fileName: file)
+        report(diagnostics: diagnostics, source: fileContents, filePath: path)
         
         results[file] = Output(
             fileName: file,
@@ -157,9 +157,9 @@ public actor Driver {
         }
     }
     
-    private func report(diagnostics: Diagnostics, source: String, fileName: String) {
+    private func report(diagnostics: Diagnostics, source: String, filePath: String) {
         for reporter in reporters {
-            reporter.report(diagnostics: diagnostics, source: source, fileName: fileName)
+            reporter.report(diagnostics: diagnostics, source: source, filePath: filePath)
         }
     }
     
@@ -211,3 +211,4 @@ public actor Driver {
         return result
     }
 }
+struct Foot: Swift.Error {}
