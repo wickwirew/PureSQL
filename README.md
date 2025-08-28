@@ -1,10 +1,10 @@
-<picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/wickwirew/Otter/blob/main/Otter~dark.png?raw=true">
-    <source media="(prefers-color-scheme: light)" srcset="https://github.com/wickwirew/Otter/blob/main/Otter.png?raw=true">
-    <p align="center">
-      <img alt="Otter" src="https://github.com/wickwirew/Otter/blob/main/Otter.png?raw=true" width=40% height=40%>
-    </p>
-</picture>
+<p align="center">
+    <picture align="center">
+        <source media="(prefers-color-scheme: dark)" srcset="./Otter~dark.png">
+        <source media="(prefers-color-scheme: light)" srcset="./Otter.png">
+        <img alt="Otter" src="./Otter.png" width=40% height=40%>
+    </picture>
+</p>
 
 <p align="center">
     <strong>
@@ -35,7 +35,7 @@ CREATE TABLE todo (
   completedOn INTEGER AS Date
 )
 
--- Located in Queries/Todo/Todo.sql
+-- Located in Queries/Todo.sql
 selectTodos:
 SELECT * FROM todo;
 ```
