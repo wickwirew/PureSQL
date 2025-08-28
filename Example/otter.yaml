@@ -1,0 +1,4 @@
+databaseName: DB
+migrations: Todo/Migrations
+queries: Todo/Queries
+
