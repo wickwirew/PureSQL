@@ -52,7 +52,14 @@ public actor Driver {
     public func compile(migrationsPath: Path, queriesPath: Path) async throws {
         try await measure("Compilation") {
             let migrationFiles = try fileSystem.files(atPath: migrationsPath)
-            let queriesFiles = try fileSystem.files(atPath: queriesPath)
+            
+            // Don't error out if it cannot find the queries. Most people will likely
+            // create the migrations and try to build to see if things work before
+            // they create their first query. If it can find the migrations folder
+            // thats probably good enough.
+            let queriesFiles = try fileSystem.exists(at: queriesPath)
+                ? try fileSystem.files(atPath: queriesPath)
+                : []
             
             // Migrations must be run synchronously in order.
             for migration in try sortMigrations(fileNames: migrationFiles) {

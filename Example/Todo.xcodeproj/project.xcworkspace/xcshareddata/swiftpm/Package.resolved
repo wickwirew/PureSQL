@@ -1,15 +1,6 @@
 {
-  "originHash" : "5cf400541f37064ec3662e7e0801181dfb5f48eba6fb525b5a20e3af01f94da3",
+  "originHash" : "0be955a23abb2b282edb7a87ec23be08bb568eafc5b945094e0735c79e986f65",
   "pins" : [
-    {
-      "identity" : "otter",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/wickwirew/Otter",
-      "state" : {
-        "branch" : "main",
-        "revision" : "a86e374a08effa15f74855998681221642e8507c"
-      }
-    },
     {
       "identity" : "swift-argument-parser",
       "kind" : "remoteSourceControl",

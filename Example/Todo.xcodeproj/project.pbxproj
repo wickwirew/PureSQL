@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		DE3F3E572E5FBE8100F4A251 /* Otter in Frameworks */ = {isa = PBXBuildFile; productRef = DE3F3E562E5FBE8100F4A251 /* Otter */; };
+		DE3F47E12E64A90B00F4A251 /* Otter in Frameworks */ = {isa = PBXBuildFile; productRef = DE3F47E02E64A90B00F4A251 /* Otter */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -43,7 +43,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				DE3F3E572E5FBE8100F4A251 /* Otter in Frameworks */,
+				DE3F47E12E64A90B00F4A251 /* Otter in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -89,14 +89,14 @@
 			buildRules = (
 			);
 			dependencies = (
-				DE3F3E592E5FBEA000F4A251 /* PBXTargetDependency */,
+				DE5433DF2E64A9D400736214 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				DE3F3E2D2E5FBE5800F4A251 /* Todo */,
 			);
 			name = Todo;
 			packageProductDependencies = (
-				DE3F3E562E5FBE8100F4A251 /* Otter */,
+				DE3F47E02E64A90B00F4A251 /* Otter */,
 			);
 			productName = Todo;
 			productReference = DE3F3E2B2E5FBE5800F4A251 /* Todo.app */;
@@ -154,7 +154,7 @@
 			mainGroup = DE3F3E222E5FBE5800F4A251;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				DE3F3E552E5FBE8000F4A251 /* XCRemoteSwiftPackageReference "Otter" */,
+				DE3F47DF2E64A90B00F4A251 /* XCLocalSwiftPackageReference "../../Otter" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = DE3F3E2C2E5FBE5800F4A251 /* Products */;
@@ -207,9 +207,9 @@
 			target = DE3F3E2A2E5FBE5800F4A251 /* Todo */;
 			targetProxy = DE3F3E392E5FBE5900F4A251 /* PBXContainerItemProxy */;
 		};
-		DE3F3E592E5FBEA000F4A251 /* PBXTargetDependency */ = {
+		DE5433DF2E64A9D400736214 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			productRef = DE3F3E582E5FBEA000F4A251 /* OtterPlugin */;
+			productRef = DE5433DE2E64A9D400736214 /* OtterPlugin */;
 		};
 /* End PBXTargetDependency section */
 
@@ -461,26 +461,21 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		DE3F3E552E5FBE8000F4A251 /* XCRemoteSwiftPackageReference "Otter" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/wickwirew/Otter";
-			requirement = {
-				branch = main;
-				kind = branch;
-			};
+/* Begin XCLocalSwiftPackageReference section */
+		DE3F47DF2E64A90B00F4A251 /* XCLocalSwiftPackageReference "../../Otter" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Otter;
 		};
-/* End XCRemoteSwiftPackageReference section */
+/* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		DE3F3E562E5FBE8100F4A251 /* Otter */ = {
+		DE3F47E02E64A90B00F4A251 /* Otter */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = DE3F3E552E5FBE8000F4A251 /* XCRemoteSwiftPackageReference "Otter" */;
 			productName = Otter;
 		};
-		DE3F3E582E5FBEA000F4A251 /* OtterPlugin */ = {
+		DE5433DE2E64A9D400736214 /* OtterPlugin */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = DE3F3E552E5FBE8000F4A251 /* XCRemoteSwiftPackageReference "Otter" */;
+			package = DE3F47DF2E64A90B00F4A251 /* XCLocalSwiftPackageReference "../../Otter" */;
 			productName = "plugin:OtterPlugin";
 		};
 /* End XCSwiftPackageProductDependency section */

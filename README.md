@@ -78,8 +78,8 @@ Otter can even run within a Swift macro by adding the `@Database` macro to a `st
 ```swift
 @Database
 struct DB {
-    @Query("SELECT * FROM foo")
-    var selectFoo: any SelectFooQuery
+    @Query("SELECT * FROM todo")
+    var selectTodos: any SelectTodosQuery
     
     static var migrations: [String] {
         return [
@@ -108,7 +108,7 @@ func main() async throws {
 > As of now it is not recommended for larger projects. There are quite a few limitations 
 that won't scale well beyond a fairly simple schema and a handful of queries.
 
-#### Anatomy of a @Query
+#### Anatomy of @Query
 ```swift
 @Query(
     "SELECT * FROM foo WHERE id IN ?", // 1.
@@ -148,7 +148,7 @@ let package = Package(
         .target(
             name: "MyProject",
             dependencies: ["Otter"],
-            // ⚠️ Plugin is optional, can just use the CLI if desired
+            // ⚠️ Plugin is optional but suggested. Can just use the CLI if desired
             plugins: [.plugin(name: "OtterPlugin", package: "Otter")]
         ),
     ]
