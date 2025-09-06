@@ -224,7 +224,7 @@ public struct SwiftLanguage: Language {
             writer.write(line: "struct Adapters: Otter.Adapters ")
             writer.braces {
                 for adapter in adapters {
-                    writer.write(line: "let ", adapter, ": any DatabaseValueAdapter")
+                    writer.write(line: "let ", adapter, ": AnyDatabaseValueAdapter")
                 }
             }
         }

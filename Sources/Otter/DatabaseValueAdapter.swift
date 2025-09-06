@@ -24,7 +24,7 @@ import Foundation
 ///
 /// Encoding to `ANY` is NOT handled by default. Decoding is. So if
 /// a value needs to support `ANY` `encodeToAny` needs to be implemented.
-public protocol DatabaseValueAdapter: Sendable {
+public protocol DatabaseValueAdapter<Value>: Sendable {
     associatedtype Value
     
     /// Initialize from the `TEXT` affinity
@@ -92,6 +92,75 @@ public extension DatabaseValueAdapter {
 
     @inlinable func encodeToData(value: Value) throws(OtterError) -> Data {
         throw .cannotEncode(Self.self, to: Data.self)
+    }
+}
+
+public struct AnyDatabaseValueAdapter<Value>: DatabaseValueAdapter {
+    @usableFromInline let _decodeString: @Sendable (String) throws(OtterError) -> Value
+    @usableFromInline let _decodeInt: @Sendable (Int) throws(OtterError) -> Value
+    @usableFromInline let _decodeDouble: @Sendable (Double) throws(OtterError) -> Value
+    @usableFromInline let _decodeData: @Sendable (Data) throws(OtterError) -> Value
+    @usableFromInline let _decodeSQLAny: @Sendable (SQLAny) throws(OtterError) -> Value
+    @usableFromInline let _encodeToString: @Sendable (Value) throws(OtterError) -> String
+    @usableFromInline let _encodeToInt: @Sendable (Value) throws(OtterError) -> Int
+    @usableFromInline let _encodeToDouble: @Sendable (Value) throws(OtterError) -> Double
+    @usableFromInline let _encodeToData: @Sendable (Value) throws(OtterError) -> Data
+    @usableFromInline let _encodeToAny: @Sendable (Value) throws(OtterError) -> SQLAny
+    
+    public init(_ adapter: any DatabaseValueAdapter<Value>) {
+        // Note: We define the entire closure type `(value) throws(OtterError) -> ...` due to
+        // what seems to be a limitation in typed throws. Without it, it throws an error
+        // for an invalid conversion.
+        self._decodeString = { (value: String) throws(OtterError) -> Value in try adapter.decode(from: value) }
+        self._decodeInt = { (value: Int) throws(OtterError) -> Value in try adapter.decode(from: value) }
+        self._decodeDouble = { (value: Double) throws(OtterError) -> Value in try adapter.decode(from: value) }
+        self._decodeData = { (value: Data) throws(OtterError) -> Value in try adapter.decode(from: value) }
+        self._decodeSQLAny = { (value: SQLAny) throws(OtterError) -> Value in try adapter.decode(from: value) }
+        self._encodeToString = { (value: Value) throws(OtterError) -> String in try adapter.encodeToString(value: value) }
+        self._encodeToInt = { (value: Value) throws(OtterError) -> Int in try adapter.encodeToInt(value: value) }
+        self._encodeToDouble = { (value: Value) throws(OtterError) -> Double in try adapter.encodeToDouble(value: value) }
+        self._encodeToData = { (value: Value) throws(OtterError) -> Data in try adapter.encodeToData(value: value) }
+        self._encodeToAny = { (value: Value) throws(OtterError) -> SQLAny in try adapter.encodeToAny(value: value) }
+    }
+    
+    @inlinable public func decode(from primitive: String) throws(OtterError) -> Value {
+        try _decodeString(primitive)
+    }
+    
+    @inlinable public func decode(from primitive: Int) throws(OtterError) -> Value {
+        try _decodeInt(primitive)
+    }
+    
+    @inlinable public func decode(from primitive: Double) throws(OtterError) -> Value {
+        try _decodeDouble(primitive)
+    }
+    
+    @inlinable public func decode(from primitive: Data) throws(OtterError) -> Value {
+        try _decodeData(primitive)
+    }
+    
+    @inlinable public func decode(from primitive: SQLAny) throws(OtterError) -> Value {
+        try _decodeSQLAny(primitive)
+    }
+    
+    @inlinable public func encodeToString(value: Value) throws(OtterError) -> String {
+        try _encodeToString(value)
+    }
+    
+    @inlinable public func encodeToInt(value: Value) throws(OtterError) -> Int {
+        try _encodeToInt(value)
+    }
+    
+    @inlinable public func encodeToDouble(value: Value) throws(OtterError) -> Double {
+        try _encodeToDouble(value)
+    }
+    
+    @inlinable public func encodeToData(value: Value) throws(OtterError) -> Data {
+        try _encodeToData(value)
+    }
+    
+    @inlinable public func encodeToAny(value: Value) throws(OtterError) -> SQLAny {
+        try _encodeToAny(value)
     }
 }
 
