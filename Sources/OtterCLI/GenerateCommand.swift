@@ -30,6 +30,9 @@ struct GenerateCommand: AsyncParsableCommand {
     
     @Flag(help: "If true, it will emit diagnostics that Xcode can understand")
     var xcodeDiagnosticReporter = false
+    
+    @Flag(help: "If true, the output will be dumped to stdout and not not be written to disk")
+    var dump = false
 
     mutating func run() async throws {
         let config = try Config(at: path)
@@ -73,7 +76,7 @@ struct GenerateCommand: AsyncParsableCommand {
         
         try await driver.generate(
             language: Lang.self,
-            to: project.generatedOutputFile.path,
+            to: dump ? nil : project.generatedOutputFile.path,
             options: options
         )
         

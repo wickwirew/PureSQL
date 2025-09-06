@@ -15,23 +15,24 @@ public struct SwiftLanguage: Language {
     
     public var boolName: String { "Bool" }
     
-    public var builtinAdapters: Set<String> {
+    public var builtinAdapterTypes: Set<String> {
         [
-            "BoolDatabaseValueAdapter",
-            "Int8DatabaseValueAdapter",
-            "Int16DatabaseValueAdapter",
-            "Int32DatabaseValueAdapter",
-            "Int64DatabaseValueAdapter",
-            "UInt8DatabaseValueAdapter",
-            "UInt16DatabaseValueAdapter",
-            "UInt32DatabaseValueAdapter",
-            "UInt64DatabaseValueAdapter",
-            "UIntDatabaseValueAdapter",
-            "FloatDatabaseValueAdapter",
-            "Float16DatabaseValueAdapter",
-            "UUIDDatabaseValueAdapter",
-            "DecimalDatabaseValueAdapter",
-            "DateDatabaseValueAdapter",
+            "Bool",
+            "Int8",
+            "Int16",
+            "Int32",
+            "Int64",
+            "UInt8",
+            "UInt16",
+            "UInt32",
+            "UInt64",
+            "UInt",
+            "Float",
+            "Float16",
+            "UUID",
+            "Decimal",
+            "Date",
+            "URL",
         ]
     }
     
@@ -87,11 +88,12 @@ public struct SwiftLanguage: Language {
         
         writer.write("import Foundation")
         writer.write(line: "import Otter")
-        writer.blankLine()
         
         for `import` in options.imports {
             writer.write(line: "import \(`import`)")
         }
+        
+        writer.blankLine()
         
         for table in tables {
             declaration(for: table, isOutput: true)
@@ -109,7 +111,7 @@ public struct SwiftLanguage: Language {
             }
         }
         
-        dbStruct(queries: queries, migrations: migrations)
+        dbStruct(queries: queries, migrations: migrations, adapters: adapters)
         writer.blankLine()
         
         for query in allQueries {
@@ -166,12 +168,28 @@ public struct SwiftLanguage: Language {
     
     private func dbStruct(
         queries: [(String?, [GeneratedQuery])],
-        migrations: [String]
+        migrations: [String],
+        adapters: [String]
     ) {
         writer.write(line: "struct ", options.databaseName, ": Database")
         
         writer.braces {
             writer.write(line: "let connection: any Otter.Connection")
+            
+            writer.write(line: "let adapters: Adapters")
+            // Don't require initialization if there are no custom adapters
+            if adapters.isEmpty {
+                writer.write(" = Adapters()")
+            }
+            writer.newline()
+            
+            writer.write(line: "struct Adapters ")
+            writer.braces {
+                for adapter in adapters {
+                    writer.write(line: "let ", adapter, ": DatabaseValueAdapter")
+                }
+            }
+            
             writer.newline()
             
             writer.write(line: "static var migrations: [String] ")
@@ -289,6 +307,7 @@ public struct SwiftLanguage: Language {
         writer.indent()
         
         writer.write(line: "let connection: any Connection")
+        writer.write(line: "let adapters: ", options.databaseName,"Adapters")
         writer.blankLine()
         
         for (position, query) in queries.positional() {
@@ -514,10 +533,10 @@ public struct SwiftLanguage: Language {
                 writer.write("row.optionallyEmbedded(at: start + ", index.description, ")")
                 index += model.fields.count
             case let .encoded(storage, _, adapter):
-                writer.write("row.value(at: start + ", index.description, ", using: ", adapter, ".self, storage: ", typeName(for: storage), ".self)")
+                writer.write("row.value(at: start + ", index.description, ", using: adapters.", adapter, ", storage: ", typeName(for: storage), ".self)")
                 index += 1
             case let .optional(.encoded(storage, _, adapter)):
-                writer.write("row.optionalValue(at: start + ", index.description, ", using: ", adapter, ".self, storage: ", typeName(for: storage), ".self)")
+                writer.write("row.optionalValue(at: start + ", index.description, ", using: adapters.", adapter, ", storage: ", typeName(for: storage), ".self)")
                 index += 1
             default:
                 fatalError("Invalid field type \(field.typeName) \(field.type)")
@@ -680,7 +699,7 @@ public struct SwiftLanguage: Language {
             writer.write(name, ", to: ", index.description)
             
             if let adapter {
-                writer.write(", using: ", adapter.name, ".self, as: ", adapter.storage, ".self")
+                writer.write(", using: adapters.", adapter.name, ", as: ", adapter.storage, ".self")
             }
             
             writer.write(")")

@@ -276,3 +276,21 @@ public enum DateDatabaseValueAdapter: DatabaseValueAdapter {
         try .double(encodeToDouble(value: value))
     }
 }
+
+public struct URLDatabaseValueAdapter: DatabaseValueAdapter {
+    @inlinable public static func encodeToString(value: URL) throws(OtterError) -> String {
+        value.absoluteString
+    }
+    
+    @inlinable public static func encodeToAny(value: URL) throws(OtterError) -> SQLAny {
+        .string(value.absoluteString)
+    }
+    
+    @inlinable public static func decode(from primitive: String) throws(OtterError) -> URL {
+        guard let url = URL(string: primitive) else {
+            throw OtterError.cannotEncode(String.self, to: URL.self)
+        }
+        
+        return url
+    }
+}

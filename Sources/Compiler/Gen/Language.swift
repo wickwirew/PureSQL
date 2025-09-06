@@ -8,13 +8,16 @@
 import OrderedCollections
 import SwiftSyntax
 import SwiftSyntaxBuilder
+import Foundation
 
 public protocol Language {
     init(options: GenerationOptions)
     
     var boolName: String { get }
     
-    var builtinAdapters: Set<String> { get }
+    /// A list of types that have builtin adapters supplied by the library.
+    /// Note: These are the type names, not the name of the adapter used.
+    var builtinAdapterTypes: Set<String> { get }
     
     func queryTypeName(input: String, output: String) -> String
     
@@ -48,6 +51,9 @@ extension Language {
         schema: Schema
     ) throws -> String {
         let values = try assemble(queries: queries, schema: schema)
+        
+        let builtinAdapters = builtinAdapterTypes
+            .map(adapterName(from:))
         
         // Get a list of all adapters used. Right now we only have to look at the
         // tables since any output would inhereit the encoding of the source table.
@@ -214,7 +220,7 @@ extension Language {
             return .encoded(
                 generationType(for: root),
                 alias: alias,
-                adapter: "\(adapter?.description ?? alias)DatabaseValueAdapter"
+                adapter: adapter.map(adapterName(from:)) ?? adapterName(from: alias)
             )
         case let .optional(type):
             return .optional(generationType(for: type))
@@ -319,7 +325,43 @@ extension Language {
         
         return singleOrMany(.model(model))
     }
+    
+    /// Converts a type name to the usable adapter name. Basically lower camelcases it.
+    ///
+    /// Int -> int
+    /// UUID -> uuid
+    /// Foo.ID -> fooID
+    private func adapterName<S: StringProtocol>(from typeName: S) -> String {
+        var result = ""
+        result.reserveCapacity(typeName.count)
+        
+        // Right now we only support Swift so we are expecting the input
+        // to be upper camel case so we really only have to worry about
+        // lower casing the initial characters until we hit the first lower
+        // cased character
+        var hasHitLowerCase = false
+        
+        for c in typeName {
+            guard identifierCharacters.contains(c) else { continue }
+            
+            if !hasHitLowerCase {
+                result.append(c.lowercased())
+            } else {
+                result.append(c)
+            }
+            
+            hasHitLowerCase = hasHitLowerCase || c.isLowercase
+        }
+        
+        return result
+    }
 }
+
+let identifierCharacters: Set<Character> = {
+    var characters: Set<Character> = Set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890_")
+    characters.insert("_")
+    return characters
+}()
 
 public struct GenerationOptions: Sendable {
     public var databaseName: String
