@@ -30,7 +30,7 @@ public protocol Language {
         migrations: [String],
         tables: [GeneratedModel],
         queries: [(String?, [GeneratedQuery])],
-        adapters: [String]
+        adapters: [AdapterReference]
     ) throws -> String
     
     /// Function to generate a interpolation segment in a string
@@ -65,24 +65,28 @@ extension Language {
     ) throws -> (
         tables: [GeneratedModel],
         queries: [(String?, [GeneratedQuery])],
-        adapters: [String]
+        adapters: [AdapterReference]
     ) {
         let tables = Dictionary(schema.tables.map { ($0.key.name, model(for: $0.value)) }, uniquingKeysWith: { $1 })
         let queries = queries.map { ($0.map { "\($0)Queries" }, $1.map { query(for: $0, tables: tables) }) }
         
         let builtinAdapters = builtinAdapterTypes
-            .map(adapterName(from:))
+            .map { adapterReference(name: $0, typeName: $0) }
         
         // Get a list of all adapters used. Right now we only have to look at the
         // tables since any output would inhereit the encoding of the source table.
-        let adapters: Set<String> = tables.reduce(into: []) { adapters, table in
+        let adapters: Set<AdapterReference> = tables.reduce(into: []) { adapters, table in
             for field in table.value.fields.values {
                 guard let adapter = field.type.adapter else { continue }
                 adapters.insert(adapter)
             }
         }
         
-        return (tables.values.sorted{ $0.name < $1.name }, queries, adapters.subtracting(builtinAdapters).sorted())
+        return (
+            tables.values.sorted{ $0.name < $1.name },
+            queries,
+            adapters.subtracting(builtinAdapters).sorted{ $0.name < $1.name }
+        )
     }
     
     private func query(
@@ -221,7 +225,7 @@ extension Language {
             return .encoded(
                 generationType(for: root),
                 alias: alias,
-                adapter: adapter.map(adapterName(from:)) ?? adapterName(from: alias)
+                adapter: adapterReference(name: adapter?.description ?? alias, typeName: alias)
             )
         case let .optional(type):
             return .optional(generationType(for: type))
@@ -332,9 +336,9 @@ extension Language {
     /// Int -> int
     /// UUID -> uuid
     /// Foo.ID -> fooID
-    private func adapterName<S: StringProtocol>(from typeName: S) -> String {
+    private func adapterReference(name: String, typeName: String) -> AdapterReference {
         var result = ""
-        result.reserveCapacity(typeName.count)
+        result.reserveCapacity(name.count)
         
         // Right now we only support Swift so we are expecting the input
         // to be upper camel case so we really only have to worry about
@@ -342,7 +346,7 @@ extension Language {
         // cased character
         var hasHitLowerCase = false
         
-        for c in typeName {
+        for c in name {
             guard identifierCharacters.contains(c) else { continue }
             
             if !hasHitLowerCase {
@@ -354,7 +358,7 @@ extension Language {
             hasHitLowerCase = hasHitLowerCase || c.isLowercase
         }
         
-        return result
+        return AdapterReference(name: result, type: typeName)
     }
 }
 
@@ -442,7 +446,7 @@ public struct GeneratedQuery {
             name: String,
             owner: String? = nil,
             isOptional: Bool = false,
-            adapter: (name: String, storage: String)? = nil
+            adapter: (adapter: AdapterReference, storage: String)? = nil
         )
         case arrayStart(name: String, elementName: String)
         case arrayEnd
@@ -455,7 +459,7 @@ public enum GenerationType: Equatable {
     case model(GeneratedModel)
     indirect case optional(Self)
     indirect case array(Self)
-    indirect case encoded(Self, alias: String, adapter: String)
+    indirect case encoded(Self, alias: String, adapter: AdapterReference)
     
     var model: GeneratedModel? {
         switch self {
@@ -467,7 +471,7 @@ public enum GenerationType: Equatable {
         }
     }
     
-    var adapter: String? {
+    var adapter: AdapterReference? {
         switch self {
         case .void, .builtin, .model: nil
         case .optional(let optional): optional.adapter
@@ -485,4 +489,9 @@ public enum GenerationType: Equatable {
         case .model(let model): model.requiresAdapters
         }
     }
+}
+
+public struct AdapterReference: Hashable {
+    let name: String
+    let type: String
 }

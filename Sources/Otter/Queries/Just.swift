@@ -35,6 +35,18 @@ public extension Queries {
             self = Just(())
         }
         
+        public init() where Output: ExpressibleByStringLiteral {
+            self = Just("")
+        }
+        
+        public init() where Output: ExpressibleByIntegerLiteral {
+            self = Just(0)
+        }
+        
+        public init() where Output: ExpressibleByBooleanLiteral {
+            self = Just(false)
+        }
+        
         public init() where Output: ExpressibleByArrayLiteral {
             self = Just([])
         }

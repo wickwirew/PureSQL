@@ -73,7 +73,7 @@ public struct SwiftLanguage: Language {
         migrations: [String],
         tables: [GeneratedModel],
         queries: [(String?, [GeneratedQuery])],
-        adapters: [String]
+        adapters: [AdapterReference]
     ) throws -> String {
         // Note: For now just going to ignore the `adapters`
         // Kotlin will need that info which is why it exists.
@@ -130,7 +130,7 @@ public struct SwiftLanguage: Language {
         tables: [GeneratedModel],
         queries: [GeneratedQuery],
         addConnection: Bool,
-        adapters: [String]
+        adapters: [AdapterReference]
     ) -> [String] {
         var decls: [String] = []
         
@@ -170,7 +170,7 @@ public struct SwiftLanguage: Language {
     private func dbStruct(
         queries: [(String?, [GeneratedQuery])],
         migrations: [String],
-        adapters: [String]
+        adapters: [AdapterReference]
     ) {
         writer.write(line: "struct ", options.databaseName, ": Database")
         
@@ -214,7 +214,7 @@ public struct SwiftLanguage: Language {
         }
     }
     
-    private func adapters(adapters: [String]) {
+    private func adapters(adapters: [AdapterReference]) {
         writer.write(line: "let adapters: Adapters")
         writer.newline()
         
@@ -224,7 +224,26 @@ public struct SwiftLanguage: Language {
             writer.write(line: "struct Adapters: Otter.Adapters ")
             writer.braces {
                 for adapter in adapters {
-                    writer.write(line: "let ", adapter, ": AnyDatabaseValueAdapter")
+                    writer.write(line: "let ", adapter.name, ": AnyDatabaseValueAdapter<", adapter.type, ">")
+                }
+                
+                writer.blankLine()
+                writer.write(line: "init(")
+                writer.indented {
+                    for (position, adapter) in adapters.positional() {
+                        writer.write(line: adapter.name, ": any DatabaseValueAdapter<", adapter.type, ">")
+                        
+                        if !position.isLast {
+                            writer.write(",")
+                        }
+                    }
+                }
+                writer.write(line: ")")
+                
+                writer.braces {
+                    for adapter in adapters {
+                        writer.write(line: "self.", adapter.name, " = AnyDatabaseValueAdapter<", adapter.type, ">(", adapter.name, ")")
+                    }
                 }
             }
         }
@@ -274,36 +293,43 @@ public struct SwiftLanguage: Language {
     }
     
     private func queriesNoop(name: String, queries: [GeneratedQuery]) {
-        writer.write(line: "static var noop: ", name, " {")
+        writer.write(line: "static func noop(")
+        writer.indented {
+            for (position, query) in queries.positional() {
+                writer.write(line: query.variableName, ": any ", query.typealiasName, " = ")
+                
+                switch query.output {
+                case .model:
+                    // We might be able to initialize one in the future with all default values
+                    // but it seems hacky so just fail
+                    writer.write("Queries.Fail()")
+                case .builtin(let name):
+                    let defaultValue = switch name {
+                    case "Double": "0.0"
+                    case "Int": "0"
+                    case "String": "\"\""
+                    case "Data": "Data()"
+                    default: "SQLAny.int(0)"
+                    }
+                    writer.write("Queries.Just(", defaultValue, ")")
+                default:
+                    writer.write("Queries.Just()")
+                }
+                
+                if !position.isLast {
+                    writer.write(",")
+                }
+            }
+        }
+        writer.write(line: ")")
+        
         writer.indent()
         
         writer.write(line: name, "(")
         writer.indent()
         
-        for (position, query) in queries.positional() {
-            writer.write(line: query.variableName, ": ")
-            
-            switch query.output {
-            case .model:
-                // We might be able to initialize one in the future with all default values
-                // but it seems hacky so just fail
-                writer.write("Queries.Fail()")
-            case .builtin(let name):
-                let defaultValue = switch name {
-                case "Double": "0.0"
-                case "Int": "0"
-                case "String": "\"\""
-                case "Data": "Data()"
-                default: "SQLAny.int(0)"
-                }
-                writer.write("Queries.Just(", defaultValue, ")")
-            default:
-                writer.write("Queries.Just()")
-            }
-            
-            if !position.isLast {
-                writer.write(",")
-            }
+        for query in queries {
+            writer.write(line: "self.", query.variableName, " = ", query.variableName)
         }
         
         writer.unindent()
@@ -542,10 +568,10 @@ public struct SwiftLanguage: Language {
                 writer.write(")")
                 index += model.fields.count
             case let .encoded(storage, _, adapter):
-                writer.write("row.value(at: start + ", index.description, ", using: adapters.", adapter, ", storage: ", typeName(for: storage), ".self)")
+                writer.write("row.value(at: start + ", index.description, ", using: adapters.", adapter.name, ", storage: ", typeName(for: storage), ".self)")
                 index += 1
             case let .optional(.encoded(storage, _, adapter)):
-                writer.write("row.optionalValue(at: start + ", index.description, ", using: adapters.", adapter, ", storage: ", typeName(for: storage), ".self)")
+                writer.write("row.optionalValue(at: start + ", index.description, ", using: adapters.", adapter.name, ", storage: ", typeName(for: storage), ".self)")
                 index += 1
             default:
                 fatalError("Invalid field type \(field.typeName) \(field.type)")
@@ -708,7 +734,7 @@ public struct SwiftLanguage: Language {
             writer.write(name, ", to: ", index.description)
             
             if let adapter {
-                writer.write(", using: adapters.", adapter.name, ", as: ", adapter.storage, ".self")
+                writer.write(", using: adapters.", adapter.adapter.name, ", as: ", adapter.storage, ".self")
             }
             
             writer.write(")")
