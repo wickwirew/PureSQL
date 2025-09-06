@@ -128,20 +128,24 @@ struct DatabaseValueAdapterTests {
         #expect(value == decoded)
     }
     
-//    @Test func customDatabaseValueAdapter() async throws {
-//        let db: TestDB = try .inMemory()
-//        
-//        let date = Date(timeIntervalSince1970: 1751219898)
-//        try await db.insert.execute(with: .init(number: 100, date: date))
-//        
-//        let result = try await db.all.execute().first
-//        
-//        #expect(result == .init(number: 100, date: date))
-//    }
+    @Test func customDatabaseValueAdapter() async throws {
+        let db: TestDB = try .inMemory(
+            adapters: TestDB.Adapters(
+                numberPrefix: NumberPrefixAdapter()
+            )
+        )
+        
+        let date = Date(timeIntervalSince1970: 1751219898)
+        try await db.insert.execute(with: .init(optionalNumber: 200, number: 100, date: date))
+        
+        let result = try await db.all.execute().first
+        
+        #expect(result == .init(optionalNumber: 200, number: 100, date: date))
+    }
     
     @Database
     struct TestDB {
-        @Query("INSERT INTO hasValues VALUES (?, ?)")
+        @Query("INSERT INTO hasValues VALUES (?, ?, ?)")
         var insert: any InsertQuery
         
         @Query("SELECT * FROM hasValues")
@@ -149,12 +153,18 @@ struct DatabaseValueAdapterTests {
         
         static var migrations: [String] {
             return [
-                "CREATE TABLE hasValues (number TEXT AS Int64 USING NumberPrefix, date INTEGER AS Date)"
+                """
+                CREATE TABLE hasValues (
+                    optionalNumber TEXT AS Int64 USING NumberPrefix,
+                    number TEXT AS Int64 USING NumberPrefix NOT NULL,
+                    date INTEGER AS Date
+                )
+                """
             ]
         }
     }
     
-    struct NumberPrefixDatabaseValueAdapter: DatabaseValueAdapter {
+    struct NumberPrefixAdapter: DatabaseValueAdapter {
         typealias Value = Int64
         
         func encodeToString(value: Int64) throws(OtterError) -> String {

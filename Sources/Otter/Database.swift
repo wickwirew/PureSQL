@@ -15,9 +15,16 @@ public protocol Database: ConnectionWrapper {
     init(connection: any Connection, adapters: Adapters)
     /// An ordered list of migrations to be run.
     static var migrations: [String] { get }
+    /// The `migrations` sanitized with all non-valid SQL removed.
+    ///
+    /// Note: This only exists for the @Database macro. The macro will
+    /// generate this. Not needed for the build tool plugin
+    static var sanitizedMigrations: [String] { get }
 }
 
 public extension Database {
+    static var sanitizedMigrations: [String] { migrations }
+    
     /// Opens a connection pool to the database at the given URL.
     ///
     /// - Parameter url: The url of the database file
@@ -41,13 +48,13 @@ public extension Database {
             try ConnectionPool(
                 path: path,
                 limit: config.maxConnectionCount,
-                migrations: Self.migrations
+                migrations: Self.sanitizedMigrations
             )
         } else {
             try ConnectionPool(
                 path: ":memory:",
                 limit: 1,
-                migrations: Self.migrations
+                migrations: Self.sanitizedMigrations
             )
         }
 

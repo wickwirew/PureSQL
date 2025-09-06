@@ -35,10 +35,17 @@ extension DatabaseMacro: MemberMacro {
         }
         
         var compiler = Compiler()
+        var sanitizedMigrations: [String] = []
         var queries: [Statement] = []
         
         for (migration, expr) in migrations {
-            let (_, diagnostics) = compiler.compile(migration: migration)
+            let (statements, diagnostics) = compiler.compile(migration: migration)
+            
+            sanitizedMigrations.append(
+                statements
+                    .map(\.sanitizedSource)
+                    .joined(separator: "\n")
+            )
             
             for diag in diagnostics {
                 context.addDiagnostics(from: diag, node: expr)
@@ -78,6 +85,7 @@ extension DatabaseMacro: MemberMacro {
         
         let raw = swift.macro(
             databaseName: structDecl.name.text,
+            migrations: sanitizedMigrations,
             tables: values.tables,
             queries: values.queries.flatMap(\.1),
             addConnection: variables["connection"] == nil,

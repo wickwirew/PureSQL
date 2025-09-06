@@ -57,7 +57,7 @@ public actor Driver {
             // create the migrations and try to build to see if things work before
             // they create their first query. If it can find the migrations folder
             // thats probably good enough.
-            let queriesFiles = try fileSystem.exists(at: queriesPath)
+            let queriesFiles = fileSystem.exists(at: queriesPath)
                 ? try fileSystem.files(atPath: queriesPath)
                 : []
             
@@ -86,9 +86,9 @@ public actor Driver {
             // An array of all migrations source code
             let migrations = results.values
                 .filter { $0.usage == .migration }
-                .sorted(by: { $0.fileName < $1.fileName })
-                .flatMap(\.statements)
-                .map(\.sanitizedSource)
+                .reduce(into: [:]) { $0[$1.fileName, default: []].append(contentsOf: $1.statements) }
+                .map { ($0.key, $0.value.map(\.sanitizedSource).joined(separator: "\n")) }
+                .map(\.1)
             
             // An array of all queries grouped by their file name
             let queries = results.values

@@ -127,6 +127,7 @@ public struct SwiftLanguage: Language {
     /// file and requires a little extra treatment
     public func macro(
         databaseName: String,
+        migrations: [String],
         tables: [GeneratedModel],
         queries: [GeneratedQuery],
         addConnection: Bool,
@@ -145,6 +146,20 @@ public struct SwiftLanguage: Language {
         take()
         self.adapters(adapters: adapters)
         take()
+        
+        writer.write("static var sanitizedMigrations: [String] ")
+        writer.braces {
+            writer.write(line: "return ")
+            writer.brackets {
+                for (position, migration) in migrations.positional() {
+                    multilineStringLiteral(of: migration)
+                    
+                    if !position.isLast {
+                        writer.write(",")
+                    }
+                }
+            }
+        }
         
         for table in tables {
             declaration(for: table, isOutput: true)
@@ -238,7 +253,7 @@ public struct SwiftLanguage: Language {
                         }
                     }
                 }
-                writer.write(line: ")")
+                writer.write(line: ") ")
                 
                 writer.braces {
                     for adapter in adapters {
