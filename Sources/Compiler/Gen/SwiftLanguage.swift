@@ -105,9 +105,7 @@ public struct SwiftLanguage: Language {
         
         for (namespace, queries) in queries {
             if let namespace {
-                queriesProtocol(name: namespace, queries: queries)
-                queriesNoop(name: namespace, queries: queries)
-                queriesImpl(name: namespace, queries: queries)
+                self.queries(name: namespace, queries: queries)
             }
         }
         
@@ -208,11 +206,11 @@ public struct SwiftLanguage: Language {
             
             for (namespace, queries) in queries {
                 if let namespace {
-                    writer.write(line: "var ", namespace.lowercaseFirst, ": ", namespace, "Impl ")
+                    writer.write(line: "var ", namespace.lowercaseFirst, ": ", namespace, " ")
                     
                     // Initialize queries object
                     writer.braces {
-                        writer.write(line: namespace, "Impl", "(connection: connection)")
+                        writer.write(line: namespace, ".live(connection: connection, adapters: adapters)")
                     }
                 } else {
                     // Generate queries with `nil` namespace which would make it global.
@@ -226,16 +224,43 @@ public struct SwiftLanguage: Language {
         }
     }
     
-    private func queriesProtocol(name: String, queries: [GeneratedQuery]) {
-        writer.write(line: "protocol ", name, ": ConnectionWrapper {")
-        
+    private func queries(name: String, queries: [GeneratedQuery]) {
+        writer.write(line: "struct ", name, " {")
         writer.indent()
         
         for query in queries {
-            let associatedType = query.name.capitalizedFirst
-            writer.write(line: "associatedtype _", associatedType, ": ", query.typealiasName)
-            writer.write(line: "var ", query.variableName, ": _", associatedType, " { get }")
+            writer.write(line: "var ", query.variableName, ": any ", query.typealiasName)
         }
+        
+        writer.blankLine()
+        
+        queriesNoop(name: name, queries: queries)
+        queriesLive(name: name, queries: queries)
+        
+        writer.unindent()
+        writer.write(line: "}")
+        writer.blankLine()
+    }
+    
+    private func queriesLive(name: String, queries: [GeneratedQuery]) {
+        writer.write(line: "static func live(connection: Connection, adapters: DB.Adapters) -> {")
+        writer.indent()
+        
+        writer.write(line: "return ", name, "(")
+        writer.indent()
+        
+        for (position, query) in queries.positional() {
+            writer.write(line: query.variableName, ": ")
+            
+            expression(for: query)
+            
+            if !position.isLast {
+                writer.write(",")
+            }
+        }
+        
+        writer.unindent()
+        writer.write(line: ")")
         
         writer.unindent()
         writer.write(line: "}")
@@ -243,32 +268,20 @@ public struct SwiftLanguage: Language {
     }
     
     private func queriesNoop(name: String, queries: [GeneratedQuery]) {
-        writer.write(line: "struct ", name, "Noop: ", name, " {")
+        writer.write(line: "static var noop: ", name, " {")
         writer.indent()
         
-        writer.write(line: "let connection: any Connection = NoopConnection()")
-        
-        for query in queries {
-            writer.write(line: "let ")
-            writer.write(query.variableName)
-            writer.write(": AnyQuery<")
-            writer.write(query.inputName)
-            writer.write(", ")
-            writer.write(query.outputName)
-            writer.write(">")
-        }
-        
-        writer.blankLine()
-        writer.write(line: "init(")
+        writer.write(line: name, "(")
         writer.indent()
+        
         for (position, query) in queries.positional() {
-            writer.write(line: query.variableName, ": any ", query.typealiasName)
+            writer.write(line: query.variableName, ": ")
             
             switch query.output {
             case .model:
                 // We might be able to initialize one in the future with all default values
                 // but it seems hacky so just fail
-                writer.write(" = Queries.Fail()")
+                writer.write("Queries.Fail()")
             case .builtin(let name):
                 let defaultValue = switch name {
                 case "Double": "0.0"
@@ -277,52 +290,18 @@ public struct SwiftLanguage: Language {
                 case "Data": "Data()"
                 default: "SQLAny.int(0)"
                 }
-                writer.write(" = Queries.Just(", defaultValue, ")")
+                writer.write("Queries.Just(", defaultValue, ")")
             default:
-                writer.write(" = Queries.Just()")
+                writer.write("Queries.Just()")
             }
             
             if !position.isLast {
                 writer.write(",")
             }
         }
-        writer.unindent()
-        writer.write(line: ") {")
-        writer.indent()
-        
-        for query in queries {
-            writer.write(line: "self.", query.variableName, " = ", query.variableName, ".eraseToAnyQuery()")
-        }
         
         writer.unindent()
-        writer.write(line: "}")
-        
-        writer.unindent()
-        writer.write(line: "}")
-        writer.blankLine()
-    }
-    
-    private func queriesImpl(name: String, queries: [GeneratedQuery]) {
-        writer.write(line: "struct ", name, "Impl: ", name, " {")
-        writer.indent()
-        
-        writer.write(line: "let connection: any Connection")
-        writer.write(line: "let adapters: ", options.databaseName,"Adapters")
-        writer.blankLine()
-        
-        for (position, query) in queries.positional() {
-            writer.write(line: "var ", query.variableName, ": ", query.typeName, " {")
-            
-            writer.indented {
-                expression(for: query)
-            }
-            
-            writer.write(line: "}")
-            
-            if !position.isLast {
-                writer.newline()
-            }
-        }
+        writer.write(line: ")")
         
         writer.unindent()
         writer.write(line: "}")
@@ -330,7 +309,7 @@ public struct SwiftLanguage: Language {
     }
     
     private func expression(for query: GeneratedQuery) {
-        writer.write(line: query.typeName)
+        writer.write(query.typeName)
         writer.write("(")
         
         writer.indented {
