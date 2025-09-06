@@ -98,6 +98,7 @@ extension Adapters {
     public var uint: UIntDatabaseValueAdapter { UIntDatabaseValueAdapter() }
     public var float: FloatDatabaseValueAdapter { FloatDatabaseValueAdapter() }
     @available(macOS 11.0, *)
+    @available(iOS 14.0, *)
     public var float16: Float16DatabaseValueAdapter { Float16DatabaseValueAdapter() }
     public var uuid: UUIDDatabaseValueAdapter { UUIDDatabaseValueAdapter() }
     public var decimal: DecimalDatabaseValueAdapter { DecimalDatabaseValueAdapter() }

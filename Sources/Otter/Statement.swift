@@ -188,3 +188,53 @@ extension Statement {
         return try cursor.next(adapters: adapters)
     }
 }
+
+// MARK: - Fetch with specific adapter
+
+extension Statement {
+    /// Fetches all rows returned by the statement
+    public consuming func fetchAll<Adapter: DatabaseValueAdapter, Storage: DatabasePrimitive>(
+        adapter: Adapter,
+        storage: Storage.Type
+    ) throws(OtterError) -> [Adapter.Value] {
+        return try fetchAll(of: Adapter.Value.self, adapter: adapter, storage: storage)
+    }
+    
+    /// Fetches all rows returned by the statement
+    public consuming func fetchAll<Adapter: DatabaseValueAdapter, Storage: DatabasePrimitive>(
+        of _: Adapter.Value.Type,
+        adapter: Adapter,
+        storage: Storage.Type
+    ) throws(OtterError) -> [Adapter.Value] {
+        var cursor = Cursor<Adapter.Value>(of: self)
+        var result: [Adapter.Value] = []
+        
+        while let element = try cursor.next(adapter: adapter, storage: storage) {
+            result.append(element)
+        }
+        
+        return result
+    }
+  
+    /// Fetches a single row returned by the statement
+    @_disfavoredOverload
+    public consuming func fetchOne<Adapter: DatabaseValueAdapter, Storage: DatabasePrimitive>(
+        adapter: Adapter,
+        storage: Storage.Type
+    ) throws(OtterError) -> Adapter.Value {
+        guard let row = try fetchOne(adapter: adapter, storage: storage) else {
+            throw OtterError.queryReturnedNoValue
+        }
+        
+        return row
+    }
+    
+    /// Fetches a single row returned by the statement
+    public consuming func fetchOne<Adapter: DatabaseValueAdapter, Storage: DatabasePrimitive>(
+        adapter: Adapter,
+        storage: Storage.Type
+    ) throws(OtterError) -> Adapter.Value? {
+        var cursor = Cursor<Adapter.Value>(of: self)
+        return try cursor.next(adapter: adapter, storage: storage)
+    }
+}

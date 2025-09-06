@@ -13,6 +13,19 @@ public struct Cursor<Element>: ~Copyable {
     public init(of statement: consuming Statement) {
         self.statement = statement
     }
+    
+    public mutating func next<Adapter: DatabaseValueAdapter, Storage: DatabasePrimitive>(
+        adapter: Adapter,
+        storage: Storage.Type
+    ) throws(OtterError) -> Element? where Adapter.Value == Element {
+        switch try statement.step() {
+        case .row:
+            let row = Row(sqliteStatement: statement.raw)
+            return try row.value(at: 0, using: adapter, storage: storage)
+        case .done:
+            return nil
+        }
+    }
 }
 
 extension Cursor where Element: RowDecodable {
@@ -86,6 +99,25 @@ public struct Row: ~Copyable {
         as _: Value.Type = Value.self
     ) throws(OtterError) -> Value? {
         return try Value(row: self, optionallyAt: column)
+    }
+    
+    /// Decodes the struct embeeded at the start index as the `Value` type.
+    @inlinable public func embedded<Value: RowDecodableWithAdapters>(
+        at column: Int32,
+        as _: Value.Type = Value.self,
+        adapters: Value.Adapters
+    ) throws(OtterError) -> Value {
+        return try Value(row: self, startingAt: column, adapters: adapters)
+    }
+    
+    /// Decodes the struct embeeded at the start index as the `Value` type
+    /// if it exists
+    @inlinable public func optionallyEmbedded<Value: RowDecodableWithAdapters>(
+        at column: Int32,
+        as _: Value.Type = Value.self,
+        adapters: Value.Adapters
+    ) throws(OtterError) -> Value? {
+        return try Value(row: self, optionallyAt: column, adapters: adapters)
     }
     
     /// Whether or not the column has a non null table at the column index

@@ -283,7 +283,7 @@ public struct SwiftLanguage: Language {
     }
     
     private func queriesLive(name: String, queries: [GeneratedQuery]) {
-        writer.write(line: "static func live(connection: Connection, adapters: DB.Adapters) -> {")
+        writer.write(line: "static func live(connection: Connection, adapters: DB.Adapters) -> ", name," {")
         writer.indent()
         
         writer.write(line: "return ", name, "(")
@@ -336,15 +336,19 @@ public struct SwiftLanguage: Language {
                 }
             }
         }
-        writer.write(line: ")")
+        writer.write(line: ") -> ", name," {")
         
         writer.indent()
         
         writer.write(line: name, "(")
         writer.indent()
         
-        for query in queries {
-            writer.write(line: "self.", query.variableName, " = ", query.variableName)
+        for (position, query) in queries.positional() {
+            writer.write(line: query.variableName, ": ", query.variableName)
+            
+            if !position.isLast {
+                writer.write(",")
+            }
         }
         
         writer.unindent()
@@ -400,8 +404,20 @@ public struct SwiftLanguage: Language {
                 writer.write(line: "return try statement.fetchAll(")
             }
             
-            if query.output.requiresAdapters {
-                writer.write("adapters: adapters")
+            switch query.output {
+            case .encoded(let storage, _, let adapter),
+                .optional(.encoded(let storage, _, let adapter)),
+                .array(.encoded(let storage, _, let adapter)):
+                writer.write("adapter: adapters.", adapter.name, ", storage: ", typeName(for: storage), ".self")
+                break
+            case .model(let model),
+                .optional(.model(let model)),
+                .array(.model(let model)):
+                if model.requiresAdapters {
+                    writer.write("adapters: adapters")
+                }
+            default:
+                break
             }
             
             writer.write(")")

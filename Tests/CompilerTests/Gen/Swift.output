@@ -205,20 +205,20 @@ struct QueriesQueries {
         selectUserWithManyInputs: any SelectUserWithManyInputsQuery = Queries.Just(),
         selectWithInterest: any SelectWithInterestQuery = Queries.Just(),
         selectWithOptionalInterest: any SelectWithOptionalInterestQuery = Queries.Just()
-    )
+    ) -> QueriesQueries {
         QueriesQueries(
-            self.insertUser = insertUser
-            self.selectUsers = selectUsers
-            self.selectUserById = selectUserById
-            self.selectUserByIds = selectUserByIds
-            self.selectUserByName = selectUserByName
-            self.selectUserWithManyInputs = selectUserWithManyInputs
-            self.selectWithInterest = selectWithInterest
-            self.selectWithOptionalInterest = selectWithOptionalInterest
+            insertUser: insertUser,
+            selectUsers: selectUsers,
+            selectUserById: selectUserById,
+            selectUserByIds: selectUserByIds,
+            selectUserByName: selectUserByName,
+            selectUserWithManyInputs: selectUserWithManyInputs,
+            selectWithInterest: selectWithInterest,
+            selectWithOptionalInterest: selectWithOptionalInterest
         )
     }
     
-    static func live(connection: Connection, adapters: DB.Adapters) -> {
+    static func live(connection: Connection, adapters: DB.Adapters) -> QueriesQueries {
         return QueriesQueries(
             insertUser: DatabaseQuery<InsertUserInput, Int>(
                 .write,
