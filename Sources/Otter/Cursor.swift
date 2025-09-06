@@ -7,18 +7,32 @@
 
 import SQLite3
 
-public struct Cursor<Element: RowDecodable>: ~Copyable {
+public struct Cursor<Element>: ~Copyable {
     private let statement: Statement
 
     public init(of statement: consuming Statement) {
         self.statement = statement
     }
+}
 
+extension Cursor where Element: RowDecodable {
     public mutating func next() throws(OtterError) -> Element? {
         switch try statement.step() {
         case .row:
             let row = Row(sqliteStatement: statement.raw)
             return try Element(row: row, startingAt: 0)
+        case .done:
+            return nil
+        }
+    }
+}
+
+extension Cursor where Element: RowDecodableWithAdapters {
+    public mutating func next(adapters: Element.Adapters) throws(OtterError) -> Element? {
+        switch try statement.step() {
+        case .row:
+            let row = Row(sqliteStatement: statement.raw)
+            return try Element(row: row, startingAt: 0, adapters: adapters)
         case .done:
             return nil
         }
@@ -39,7 +53,7 @@ public struct Row: ~Copyable {
     /// Decodes the column at the index as the `Storage.Value` type
     @inlinable public func value<Storage: DatabasePrimitive, Coder: DatabaseValueAdapter>(
         at column: Int32,
-        using adapter: Coder.Type,
+        using adapter: Coder,
         storage: Storage.Type
     ) throws(OtterError) -> Coder.Value {
         let storage = try Storage(from: sqliteStatement, at: column)
@@ -50,7 +64,7 @@ public struct Row: ~Copyable {
     /// if it has a value.
     @inlinable public func optionalValue<Storage: DatabasePrimitive, Coder: DatabaseValueAdapter>(
         at column: Int32,
-        using adapter: Coder.Type,
+        using adapter: Coder,
         storage: Storage.Type
     ) throws(OtterError) -> Coder.Value? {
         guard let storage = try Storage?(from: sqliteStatement, at: column) else { return  nil}

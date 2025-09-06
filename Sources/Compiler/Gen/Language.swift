@@ -51,24 +51,11 @@ extension Language {
         schema: Schema
     ) throws -> String {
         let values = try assemble(queries: queries, schema: schema)
-        
-        let builtinAdapters = builtinAdapterTypes
-            .map(adapterName(from:))
-        
-        // Get a list of all adapters used. Right now we only have to look at the
-        // tables since any output would inhereit the encoding of the source table.
-        let adapters: Set<String> = values.tables.reduce(into: []) { adapters, table in
-            for field in table.fields.values {
-                guard let adapter = field.type.adapter else { continue }
-                adapters.insert(adapter)
-            }
-        }
-        
         return try file(
             migrations: migrations,
             tables: values.tables,
             queries: values.queries,
-            adapters: adapters.subtracting(builtinAdapters).sorted()
+            adapters: values.adapters
         )
     }
     
@@ -77,11 +64,25 @@ extension Language {
         schema: Schema
     ) throws -> (
         tables: [GeneratedModel],
-        queries: [(String?, [GeneratedQuery])]
+        queries: [(String?, [GeneratedQuery])],
+        adapters: [String]
     ) {
         let tables = Dictionary(schema.tables.map { ($0.key.name, model(for: $0.value)) }, uniquingKeysWith: { $1 })
         let queries = queries.map { ($0.map { "\($0)Queries" }, $1.map { query(for: $0, tables: tables) }) }
-        return (tables.values.sorted{ $0.name < $1.name }, queries)
+        
+        let builtinAdapters = builtinAdapterTypes
+            .map(adapterName(from:))
+        
+        // Get a list of all adapters used. Right now we only have to look at the
+        // tables since any output would inhereit the encoding of the source table.
+        let adapters: Set<String> = tables.reduce(into: []) { adapters, table in
+            for field in table.value.fields.values {
+                guard let adapter = field.type.adapter else { continue }
+                adapters.insert(adapter)
+            }
+        }
+        
+        return (tables.values.sorted{ $0.name < $1.name }, queries, adapters.subtracting(builtinAdapters).sorted())
     }
     
     private func query(
@@ -385,6 +386,21 @@ public struct GeneratedModel: Equatable {
     /// Whether or not this was generated for a table
     let isTable: Bool
     let nonOptionalIndices: [Int]
+    /// Whether this model can be decoded with the adapters or not
+    let requiresAdapters: Bool
+    
+    init(
+        name: String,
+        fields: OrderedDictionary<String, GeneratedField>,
+        isTable: Bool,
+        nonOptionalIndices: [Int]
+    ) {
+        self.name = name
+        self.fields = fields
+        self.isTable = isTable
+        self.nonOptionalIndices = nonOptionalIndices
+        self.requiresAdapters = fields.contains{ $0.value.type.requiresAdapters }
+    }
 }
 
 public struct GeneratedField: Equatable {
@@ -398,6 +414,11 @@ public struct GeneratedField: Equatable {
     /// The name is accessed many times so we can just calculate
     /// it once and reuse it.
     let typeName: String
+    
+    /// Whether this type can be decoded with an adapter or not
+    var requiresAdapter: Bool {
+        return type.adapter != nil
+    }
 }
 
 public struct GeneratedQuery {
@@ -452,6 +473,16 @@ public enum GenerationType: Equatable {
         case .optional(let optional): optional.adapter
         case .array(let array): array.adapter
         case .encoded(_, _, let adapter): adapter
+        }
+    }
+    
+    var requiresAdapters: Bool {
+        switch self {
+        case .void, .builtin: false
+        case .optional(let optional): optional.requiresAdapters
+        case .array(let array): array.requiresAdapters
+        case .encoded: true
+        case .model(let model): model.requiresAdapters
         }
     }
 }

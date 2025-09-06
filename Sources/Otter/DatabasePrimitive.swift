@@ -24,7 +24,7 @@ public protocol DatabasePrimitive: RowDecodable {
     /// Initializes self using the `adapter`
     init<Adapter: DatabaseValueAdapter>(
         value: Adapter.Value,
-        into adapter: Adapter.Type
+        into adapter: Adapter
     ) throws(OtterError)
     
     /// Bind self to the statement at the given parameter index
@@ -32,7 +32,7 @@ public protocol DatabasePrimitive: RowDecodable {
     
     /// Decode self using the `adapter`
     func decode<Adapter: DatabaseValueAdapter>(
-        from adapter: Adapter.Type
+        from adapter: Adapter
     ) throws(OtterError) -> Adapter.Value
 }
 
@@ -57,13 +57,13 @@ extension String: DatabasePrimitive {
     
     @inlinable public init<Adapter: DatabaseValueAdapter>(
         value: Adapter.Value,
-        into adapter: Adapter.Type
+        into adapter: Adapter
     ) throws(OtterError) {
         self = try adapter.encodeToString(value: value)
     }
     
     @inlinable public func decode<Adapter: DatabaseValueAdapter>(
-        from adapter: Adapter.Type
+        from adapter: Adapter
     ) throws(OtterError) -> Adapter.Value {
         try adapter.decode(from: self)
     }
@@ -82,13 +82,13 @@ extension Int: DatabasePrimitive {
     
     @inlinable public init<Adapter: DatabaseValueAdapter>(
         value: Adapter.Value,
-        into adapter: Adapter.Type
+        into adapter: Adapter
     ) throws(OtterError) {
         self = try adapter.encodeToInt(value: value)
     }
     
     @inlinable public func decode<Adapter: DatabaseValueAdapter>(
-        from adapter: Adapter.Type
+        from adapter: Adapter
     ) throws(OtterError) -> Adapter.Value {
         try adapter.decode(from: self)
     }
@@ -107,13 +107,13 @@ extension Double: DatabasePrimitive {
     
     @inlinable public init<Adapter: DatabaseValueAdapter>(
         value: Adapter.Value,
-        into adapter: Adapter.Type
+        into adapter: Adapter
     ) throws(OtterError) {
         self = try adapter.encodeToDouble(value: value)
     }
     
     @inlinable public func decode<Adapter: DatabaseValueAdapter>(
-        from adapter: Adapter.Type
+        from adapter: Adapter
     ) throws(OtterError) -> Adapter.Value {
         try adapter.decode(from: self)
     }
@@ -135,13 +135,13 @@ extension Data: DatabasePrimitive {
     
     @inlinable public init<Adapter: DatabaseValueAdapter>(
         value: Adapter.Value,
-        into adapter: Adapter.Type
+        into adapter: Adapter
     ) throws(OtterError) {
         self = try adapter.encodeToData(value: value)
     }
     
     @inlinable public func decode<Adapter: DatabaseValueAdapter>(
-        from adapter: Adapter.Type
+        from adapter: Adapter
     ) throws(OtterError) -> Adapter.Value {
         try adapter.decode(from: self)
     }
@@ -168,13 +168,13 @@ extension Optional: DatabasePrimitive where Wrapped: DatabasePrimitive {
     
     @inlinable public init<Adapter: DatabaseValueAdapter>(
         value: Adapter.Value,
-        into adapter: Adapter.Type
+        into adapter: Adapter
     ) throws(OtterError) {
         self = try .some(Wrapped(value: value, into: adapter))
     }
     
     @inlinable public func decode<Adapter: DatabaseValueAdapter>(
-        from adapter: Adapter.Type
+        from adapter: Adapter
     ) throws(OtterError) -> Adapter.Value {
         guard let value = self else {
             assertionFailure("Upstream did not perform nil check")

@@ -52,6 +52,6 @@ extension TestDB {
         }
 
         let config = DatabaseConfig(path: temp.path, maxConnectionCount: maxConnectionCount)
-        return try TestDB(config: config)
+        return try TestDB(config: config, adapters: TestDB.Adapters())
     }
 }

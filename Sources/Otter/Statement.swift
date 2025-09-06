@@ -52,7 +52,7 @@ public struct Statement: ~Copyable {
     public func bind<Storage: DatabasePrimitive, Coder: DatabaseValueAdapter>(
         value: Coder.Value,
         to index: Int32,
-        using: Coder.Type,
+        using: Coder,
         as storage: Storage.Type
     ) throws(OtterError) {
         let storage = try Storage(value: value, into: using)
@@ -63,7 +63,7 @@ public struct Statement: ~Copyable {
     public func bind<Storage: DatabasePrimitive, Coder: DatabaseValueAdapter>(
         value: Coder.Value?,
         to index: Int32,
-        using: Coder.Type,
+        using: Coder,
         as storage: Storage.Type
     ) throws(OtterError) {
         if let value {
@@ -84,6 +84,14 @@ public struct Statement: ~Copyable {
         }
     }
     
+    deinit {
+        sqlite3_finalize(raw)
+    }
+}
+
+// MARK: - Fetch with RowDecodable
+
+extension Statement {
     /// Fetches all rows returned by the statement
     public consuming func fetchAll<Element: RowDecodable>() throws(OtterError) -> [Element] {
         return try fetchAll(of: Element.self)
@@ -104,14 +112,14 @@ public struct Statement: ~Copyable {
     }
     
     /// Optionally fetches a single row returned by the statement
-    public consuming func fetchOne<T: RowDecodable>() throws(OtterError) -> T? {
-        return try fetchOne(of: T.self)
+    public consuming func fetchOne<Element: RowDecodable>() throws(OtterError) -> Element? {
+        return try fetchOne(of: Element.self)
     }
     
     /// Fetches a single row returned by the statement
     @_disfavoredOverload
-    public consuming func fetchOne<T: RowDecodable>() throws(OtterError) -> T {
-        guard let row = try fetchOne(of: T.self) else {
+    public consuming func fetchOne<Element: RowDecodable>() throws(OtterError) -> Element {
+        guard let row = try fetchOne(of: Element.self) else {
             throw OtterError.queryReturnedNoValue
         }
         
@@ -119,14 +127,64 @@ public struct Statement: ~Copyable {
     }
     
     /// Fetches a single row returned by the statement
-    public consuming func fetchOne<T: RowDecodable>(
-        of _: T.Type
-    ) throws(OtterError) -> T? {
-        var cursor = Cursor<T>(of: self)
+    public consuming func fetchOne<Element: RowDecodable>(
+        of _: Element.Type
+    ) throws(OtterError) -> Element? {
+        var cursor = Cursor<Element>(of: self)
         return try cursor.next()
     }
+}
+
+// MARK: - Fetch with RowDecodableWithAdapters
+
+extension Statement {
+    /// Fetches all rows returned by the statement
+    public consuming func fetchAll<Element: RowDecodableWithAdapters>(
+        adapters: Element.Adapters
+    ) throws(OtterError) -> [Element] {
+        return try fetchAll(of: Element.self, adapters: adapters)
+    }
     
-    deinit {
-        sqlite3_finalize(raw)
+    /// Fetches all rows returned by the statement
+    public consuming func fetchAll<Element: RowDecodableWithAdapters>(
+        of _: Element.Type,
+        adapters: Element.Adapters
+    ) throws(OtterError) -> [Element] {
+        var cursor = Cursor<Element>(of: self)
+        var result: [Element] = []
+        
+        while let element = try cursor.next(adapters: adapters) {
+            result.append(element)
+        }
+        
+        return result
+    }
+    
+    /// Optionally fetches a single row returned by the statement
+    public consuming func fetchOne<Element: RowDecodableWithAdapters>(
+        adapters: Element.Adapters
+    ) throws(OtterError) -> Element? {
+        return try fetchOne(of: Element.self, adapters: adapters)
+    }
+    
+    /// Fetches a single row returned by the statement
+    @_disfavoredOverload
+    public consuming func fetchOne<Element: RowDecodableWithAdapters>(
+        adapters: Element.Adapters
+    ) throws(OtterError) -> Element {
+        guard let row = try fetchOne(of: Element.self, adapters: adapters) else {
+            throw OtterError.queryReturnedNoValue
+        }
+        
+        return row
+    }
+    
+    /// Fetches a single row returned by the statement
+    public consuming func fetchOne<Element: RowDecodableWithAdapters>(
+        of _: Element.Type,
+        adapters: Element.Adapters
+    ) throws(OtterError) -> Element? {
+        var cursor = Cursor<Element>(of: self)
+        return try cursor.next(adapters: adapters)
     }
 }

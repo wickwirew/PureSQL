@@ -129,7 +129,8 @@ public struct SwiftLanguage: Language {
         databaseName: String,
         tables: [GeneratedModel],
         queries: [GeneratedQuery],
-        addConnection: Bool
+        addConnection: Bool,
+        adapters: [String]
     ) -> [String] {
         var decls: [String] = []
         
@@ -141,6 +142,8 @@ public struct SwiftLanguage: Language {
         }
         
         writer.write("let connection: any Otter.Connection")
+        take()
+        self.adapters(adapters: adapters)
         take()
         
         for table in tables {
@@ -173,20 +176,7 @@ public struct SwiftLanguage: Language {
         
         writer.braces {
             writer.write(line: "let connection: any Otter.Connection")
-            
-            writer.write(line: "let adapters: Adapters")
-            // Don't require initialization if there are no custom adapters
-            if adapters.isEmpty {
-                writer.write(" = Adapters()")
-            }
-            writer.newline()
-            
-            writer.write(line: "struct Adapters ")
-            writer.braces {
-                for adapter in adapters {
-                    writer.write(line: "let ", adapter, ": DatabaseValueAdapter")
-                }
-            }
+            self.adapters(adapters: adapters)
             
             writer.newline()
             
@@ -219,6 +209,22 @@ public struct SwiftLanguage: Language {
                     for query in queries {
                         declaration(for: query, databaseName: options.databaseName)
                     }
+                }
+            }
+        }
+    }
+    
+    private func adapters(adapters: [String]) {
+        writer.write(line: "let adapters: Adapters")
+        writer.newline()
+        
+        if adapters.isEmpty {
+            writer.write(line: "typealias Adapters = DefaultAdapters")
+        } else {
+            writer.write(line: "struct Adapters: Otter.Adapters ")
+            writer.braces {
+                for adapter in adapters {
+                    writer.write(line: "let ", adapter, ": any DatabaseValueAdapter")
                 }
             }
         }
@@ -348,10 +354,16 @@ public struct SwiftLanguage: Language {
         } else {
             switch query.outputCardinality {
             case .single:
-                writer.write(line: "return try statement.fetchOne()")
+                writer.write(line: "return try statement.fetchOne(")
             case .many:
-                writer.write(line: "return try statement.fetchAll()")
+                writer.write(line: "return try statement.fetchAll(")
             }
+            
+            if query.output.requiresAdapters {
+                writer.write("adapters: adapters")
+            }
+            
+            writer.write(")")
         }
         
         writer.unindent()
@@ -407,7 +419,11 @@ public struct SwiftLanguage: Language {
         }
         
         if isOutput {
-            writer.write(", RowDecodable")
+            if model.requiresAdapters {
+                writer.write(", RowDecodableWithAdapters")
+            } else {
+                writer.write(", RowDecodable")
+            }
         }
         
         writer.write(" {")
@@ -491,6 +507,12 @@ public struct SwiftLanguage: Language {
         writer.indent()
         writer.write(line: "row: borrowing Otter.Row,")
         writer.write(line: "startingAt start: Int32")
+        
+        if model.requiresAdapters {
+            writer.write(",")
+            writer.write(line: "adapters: ", options.databaseName, ".Adapters")
+        }
+        
         writer.unindent()
         writer.write(line: ") throws(Otter.OtterError) {")
         
@@ -506,10 +528,18 @@ public struct SwiftLanguage: Language {
                 writer.write("row.value(at: start + ", index.description, ")")
                 index += 1
             case let .model(model):
-                writer.write("row.embedded(at: start + ", index.description, ")")
+                writer.write("row.embedded(at: start + ", index.description)
+                if model.requiresAdapters {
+                    writer.write(", adapters: adapters")
+                }
+                writer.write(")")
                 index += model.fields.count
             case let .optional(.model(model)):
-                writer.write("row.optionallyEmbedded(at: start + ", index.description, ")")
+                writer.write("row.optionallyEmbedded(at: start + ", index.description)
+                if model.requiresAdapters {
+                    writer.write(", adapters: adapters")
+                }
+                writer.write(")")
                 index += model.fields.count
             case let .encoded(storage, _, adapter):
                 writer.write("row.value(at: start + ", index.description, ", using: adapters.", adapter, ", storage: ", typeName(for: storage), ".self)")

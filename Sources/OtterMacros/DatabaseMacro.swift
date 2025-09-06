@@ -26,6 +26,7 @@ extension DatabaseMacro: MemberMacro {
             return []
         }
         
+        let structName = structDecl.name.text
         let variables = declaration.memberBlock.variableDecls()
         
         guard let migrations = variables["migrations"]?.asMigrationsArray(in: context) else {
@@ -66,20 +67,21 @@ extension DatabaseMacro: MemberMacro {
         
         let swift = SwiftLanguage(
             options: GenerationOptions(
-                databaseName: ""
+                databaseName: structName
             )
         )
         
-        let (generatedTables, generatedQueries) = try swift.assemble(
+        let values = try swift.assemble(
             queries: [(nil, queries)],
             schema: compiler.schema
         )
         
         let raw = swift.macro(
             databaseName: structDecl.name.text,
-            tables: generatedTables,
-            queries: generatedQueries.flatMap(\.1),
-            addConnection: variables["connection"] == nil
+            tables: values.tables,
+            queries: values.queries.flatMap(\.1),
+            addConnection: variables["connection"] == nil,
+            adapters: values.adapters
         )
         
         return raw.map { decl in

@@ -104,13 +104,13 @@ extension SQLAny: DatabasePrimitive {
     
     @inlinable public init<Adapter: DatabaseValueAdapter>(
         value: Adapter.Value,
-        into adapter: Adapter.Type
+        into adapter: Adapter
     ) throws(OtterError) {
         self = try adapter.encodeToAny(value: value)
     }
     
     @inlinable public func decode<Adapter: DatabaseValueAdapter>(
-        from adapter: Adapter.Type
+        from adapter: Adapter
     ) throws(OtterError) -> Adapter.Value {
         try adapter.decode(from: self)
     }

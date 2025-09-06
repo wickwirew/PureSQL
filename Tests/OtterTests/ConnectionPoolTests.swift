@@ -44,7 +44,7 @@ struct ConnectionPoolTests {
     }
     
     @Test func modificationsAreRolledBackOnError() async throws {
-        let db = try TestDB.inMemory()
+        let db = try TestDB.inMemory(adapters: TestDB.Adapters())
         struct Err: Error {}
         
         try? await db.connection.begin(.write) { tx in
