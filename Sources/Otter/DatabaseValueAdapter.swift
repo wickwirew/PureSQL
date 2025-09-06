@@ -383,3 +383,108 @@ public struct URLDatabaseValueAdapter: DatabaseValueAdapter {
         return url
     }
 }
+
+
+/// A convenience adapter for a type that can only be encoded to a `String`
+public struct AsStringAdapter<Value>: DatabaseValueAdapter {
+    @usableFromInline let encode: @Sendable (Value) throws(OtterError) -> String
+    @usableFromInline let decode: @Sendable (String) throws(OtterError) -> Value
+    
+    public init(
+        encode: @Sendable @escaping (Value) throws(OtterError) -> String,
+        decode: @Sendable @escaping (String) throws(OtterError) -> Value
+    ) {
+        self.encode = encode
+        self.decode = decode
+    }
+    
+    @inlinable public func encodeToString(value: Value) throws(OtterError) -> String {
+        try encode(value)
+    }
+    
+    @inlinable public func encodeToAny(value: Value) throws(OtterError) -> SQLAny {
+        try .string(encode(value))
+    }
+    
+    @inlinable public func decode(from primitive: String) throws(OtterError) -> Value {
+        try decode(primitive)
+    }
+}
+
+/// A convenience adapter for a type that can only be encoded to a `Int`
+public struct AsIntAdapter<Value>: DatabaseValueAdapter {
+    @usableFromInline let encode: @Sendable (Value) throws(OtterError) -> Int
+    @usableFromInline let decode: @Sendable (Int) throws(OtterError) -> Value
+    
+    public init(
+        encode: @Sendable @escaping (Value) throws(OtterError) -> Int,
+        decode: @Sendable @escaping (Int) throws(OtterError) -> Value
+    ) {
+        self.encode = encode
+        self.decode = decode
+    }
+    
+    @inlinable public func encodeToInt(value: Value) throws(OtterError) -> Int {
+        try encode(value)
+    }
+    
+    @inlinable public func encodeToAny(value: Value) throws(OtterError) -> SQLAny {
+        try .int(encode(value))
+    }
+    
+    @inlinable public func decode(from primitive: Int) throws(OtterError) -> Value {
+        try decode(primitive)
+    }
+}
+
+/// A convenience adapter for a type that can only be encoded to a `Double`
+public struct AsDoubleAdapter<Value>: DatabaseValueAdapter {
+    @usableFromInline let encode: @Sendable (Value) throws(OtterError) -> Double
+    @usableFromInline let decode: @Sendable (Double) throws(OtterError) -> Value
+    
+    public init(
+        encode: @Sendable @escaping (Value) throws(OtterError) -> Double,
+        decode: @Sendable @escaping (Double) throws(OtterError) -> Value
+    ) {
+        self.encode = encode
+        self.decode = decode
+    }
+    
+    @inlinable public func encodeToDouble(value: Value) throws(OtterError) -> Double {
+        try encode(value)
+    }
+    
+    @inlinable public func encodeToAny(value: Value) throws(OtterError) -> SQLAny {
+        try .double(encode(value))
+    }
+    
+    @inlinable public func decode(from primitive: Double) throws(OtterError) -> Value {
+        try decode(primitive)
+    }
+}
+
+/// A convenience adapter for a type that can only be encoded to a `Data`
+public struct AsDataAdapter<Value>: DatabaseValueAdapter {
+    @usableFromInline let encode: @Sendable (Value) throws(OtterError) -> Data
+    @usableFromInline let decode: @Sendable (Data) throws(OtterError) -> Value
+    
+    public init(
+        encode: @Sendable @escaping (Value) throws(OtterError) -> Data,
+        decode: @Sendable @escaping (Data) throws(OtterError) -> Value
+    ) {
+        self.encode = encode
+        self.decode = decode
+    }
+    
+    @inlinable public func encodeToData(value: Value) throws(OtterError) -> Data {
+        try encode(value)
+    }
+    
+    @inlinable public func encodeToAny(value: Value) throws(OtterError) -> SQLAny {
+        try .data(encode(value))
+    }
+    
+    @inlinable public func decode(from primitive: Data) throws(OtterError) -> Value {
+        try decode(primitive)
+    }
+}

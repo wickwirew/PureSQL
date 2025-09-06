@@ -128,6 +128,50 @@ struct DatabaseValueAdapterTests {
         #expect(value == decoded)
     }
     
+    @Test func asStringAdapter() throws {
+        let adapter: any DatabaseValueAdapter<Int> = AsStringAdapter<Int> { value in
+            value.description
+        } decode: { primitive in
+            Int(primitive) ?? 0
+        }
+        
+        #expect(try adapter.encodeToString(value: 123) == "123")
+        #expect(try adapter.decode(from: "123") == 123)
+    }
+    
+    @Test func asIntAdapter() throws {
+        let adapter: any DatabaseValueAdapter<String> = AsIntAdapter<String> { value in
+            Int(value.description) ?? 0
+        } decode: { primitive in
+            primitive.description
+        }
+        
+        #expect(try adapter.encodeToInt(value: "123") == 123)
+        #expect(try adapter.decode(from: 123) == "123")
+    }
+    
+    @Test func asDoubleAdapter() throws {
+        let adapter: any DatabaseValueAdapter<String> = AsDoubleAdapter<String> { value in
+            Double(value.description) ?? 0
+        } decode: { primitive in
+            primitive.description
+        }
+        
+        #expect(try adapter.encodeToDouble(value: "123") == 123.0)
+        #expect(try adapter.decode(from: 123.0) == "123.0")
+    }
+    
+    @Test func asDataAdapter() throws {
+        let adapter: any DatabaseValueAdapter<Int> = AsDataAdapter<Int> { value in
+            Data([UInt8(value)])
+        } decode: { primitive in
+            Int(primitive[0])
+        }
+        
+        #expect(try adapter.encodeToData(value: 123) == Data([123]))
+        #expect(try adapter.decode(from: Data([123])) == 123)
+    }
+    
     @Test func customDatabaseValueAdapter() async throws {
         let db: TestDB = try .inMemory(
             adapters: TestDB.Adapters(
