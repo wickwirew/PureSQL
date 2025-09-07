@@ -237,18 +237,15 @@ Each queries file will get it's own `Queries` types generated. To allow the quer
 passed around and injected together. For example, if we have a `Library.sql` the following types will be generated:
 ```swift
 // Protocol that defines all queries in the file
-let queries: any LibraryQueriesType = database.libraryQueries
+let queries: LibraryQueries = database.libraryQueries
 
-// Concrete implementaion
-let concreteType: LibraryQueriesImpl
-
-// NO-OP version, can be injected into unit tests/previews
-let noopType: LibraryQueriesNoop
+// Queries that do not talk to a database and just return `nil` or `[]` via `Queries.Just`
+let noopQueries: LibraryQueries = .noop()
 ```
 
-For the `Noop` queries, we can override any query optionally. Each query be default will return `nil` or an empty `[]`. To override a query you can set it in the initializer.
+For the `noop` queries, we can override any query optionally. Each query be default will return `nil` or an empty `[]`. To override a query you can set it in the initializer.
 ```swift
-LibraryQueriesNoop(getLibrary: Queries.Just([...]))
+LibraryQueries.noop(getLibrary: Queries.Just([...]))
 ```
 
 ### Input and Output Types
@@ -303,7 +300,7 @@ struct UserPostsInput {
 let posts = try await database.userQueries.userPosts.execute(userId: id, dateLower: lower, dateUpper: upper)
 
 // Or using the input type directly
-let posts = try await database.userQueries.userPosts.execute(with: UserPostInput(...))
+let posts = try await database.userQueries.userPosts.execute(UserPostInput(...))
 ```
 
 ### Naming
