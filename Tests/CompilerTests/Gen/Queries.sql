@@ -1,23 +1,27 @@
-insertUser:
-INSERT INTO user VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id;
+insertFooReturningFoo:
+INSERT INTO foo
+(textNotNull, textNullable, dateWithAdapterNotNull, dateWithAdapterNullable, dateWithCustomAdapter)
+VALUES (?, ?, ?, ?, ?)
+RETURNING *;
 
-selectUsers:
-SELECT * FROM user;
+insertBarReturningIntPk:
+INSERT INTO bar (intPk, barNotNullText) VALUES (:customNameIntPk, ?) RETURNING intPk;
 
-selectUserById:
-SELECT * FROM user WHERE id = ?;
+insertBarReturningExtraColumn:
+INSERT INTO bar VALUES (?, ?) RETURNING *, 123 AS columnAfter;
 
-selectUserByIds:
-SELECT * FROM user WHERE id IN ?;
+selectSingleFoo:
+SELECT * FROM foo WHERE intPk = ?;
 
-selectUserByName:
-SELECT * FROM user WHERE fullName LIKE ?;
+hasEmbeddedFoo:
+SELECT foo.*, bar.barNotNullText AS shouldBeNullable
+FROM foo
+LEFT OUTER JOIN bar ON foo.intPk = bar.intPk
+WHERE foo.intPk = ?;
 
-selectUserWithManyInputs:
-SELECT *, 1 AS favoriteNumber FROM user WHERE id = ? AND firstName = ?;
+bothColumnsShouldNotBeNullable:
+SELECT foo.intPk AS f, bar.intPk AS b FROM foo
+INNER JOIN bar ON foo.intPk = bar.intPk;
 
-selectWithInterest:
-SELECT user.*, interest.* FROM user INNER JOIN interest ON user.id = interest.userId;
-
-selectWithOptionalInterest:
-SELECT user.*, interest.* FROM user LEFT OUTER JOIN interest ON user.id = interest.userId;
+selectWithManyInputs:
+SELECT * FROM foo WHERE intPk = ? AND textNotNull = ?;

@@ -1,16 +1,14 @@
-CREATE TABLE user (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    firstName TEXT NOT NULL,
-    lastName TEXT NOT NULL,
-    preference INTEGER AS Bool,
-    favoriteNumber INTEGER,
-    randomValue ANY,
-    bornOn TEXT AS Date USING CustomDate,
-    fullName TEXT NOT NULL GENERATED ALWAYS AS (firstName || ' ' || lastName)
+CREATE TABLE foo (
+    intPk INTEGER PRIMARY KEY AUTOINCREMENT,
+    textNotNull TEXT NOT NULL,
+    textNullable TEXT,
+    dateWithAdapterNotNull INTEGER AS Date NOT NULL,
+    dateWithAdapterNullable INTEGER AS Date,
+    dateWithCustomAdapter TEXT AS Date USING CustomDate,
+    generatedColumn TEXT NOT NULL GENERATED ALWAYS AS ('a-good-prefix ' || textNotNull)
 );
 
-CREATE TABLE interest (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    value TEXT NOT NULL,
-    userId INTEGER REFERENCES user(id)
+CREATE TABLE bar (
+    intPk INTEGER PRIMARY KEY,
+    barNotNullText TEXT NOT NULL
 );

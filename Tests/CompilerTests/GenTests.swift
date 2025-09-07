@@ -17,13 +17,6 @@ struct GenTests {
         let migrations = try compiler.compile(migration: load(file: "Migrations"))
         let queries = try compiler.compile(queries: load(file: "Queries"))
         
-        let language = SwiftLanguage(options: GenerationOptions(databaseName: "DB"))
-        let rawOutput = try language.generate(
-            migrations: migrations.0.map(\.sanitizedSource),
-            queries: [("Queries", queries.0)],
-            schema: compiler.schema
-        )
-        
         for diagnostics in migrations.1 {
             Issue.record(diagnostics)
         }
@@ -31,6 +24,15 @@ struct GenTests {
         for diagnostics in queries.1 {
             Issue.record(diagnostics)
         }
+        
+        guard migrations.1.isEmpty && queries.1.isEmpty else { return }
+        
+        let language = SwiftLanguage(options: GenerationOptions(databaseName: "DB"))
+        let rawOutput = try language.generate(
+            migrations: [migrations.0.map(\.sanitizedSource).joined(separator: "\n\n")],
+            queries: [("Queries", queries.0)],
+            schema: compiler.schema
+        )
         
         let expected = try load(file: "Swift", ext: "output")
             .split(separator: "\n")

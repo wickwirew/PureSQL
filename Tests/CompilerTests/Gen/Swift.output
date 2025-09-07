@@ -1,10 +1,9 @@
 import Foundation
 import Otter
 
-struct Interest: Hashable, Sendable, Identifiable, RowDecodable {
-    let id: Int
-    let value: String
-    let userId: Int?
+struct Bar: Hashable, Sendable, RowDecodable {
+    let intPk: Int
+    let barNotNullText: String
     
     static let nonOptionalIndices: [Int32] = [0, 1]
     
@@ -12,89 +11,79 @@ struct Interest: Hashable, Sendable, Identifiable, RowDecodable {
         row: borrowing Otter.Row,
         startingAt start: Int32
     ) throws(Otter.OtterError) {
-        self.id = try row.value(at: start + 0)
-        self.value = try row.value(at: start + 1)
-        self.userId = try row.value(at: start + 2)
+        self.intPk = try row.value(at: start + 0)
+        self.barNotNullText = try row.value(at: start + 1)
     }
     
     init(
-        id: Int,
-        value: String,
-        userId: Int?
+        intPk: Int,
+        barNotNullText: String
     ) {
-        self.id = id
-        self.value = value
-        self.userId = userId
+        self.intPk = intPk
+        self.barNotNullText = barNotNullText
     }
 }
 
-struct User: Hashable, Sendable, Identifiable, RowDecodableWithAdapters {
-    let id: Int
-    let firstName: String
-    let lastName: String
-    let preference: Bool?
-    let favoriteNumber: Int?
-    let randomValue: SQLAny?
-    let bornOn: Date?
-    let fullName: String
+struct Foo: Hashable, Sendable, RowDecodableWithAdapters {
+    let intPk: Int
+    let textNotNull: String
+    let textNullable: String?
+    let dateWithAdapterNotNull: Date
+    let dateWithAdapterNullable: Date?
+    let dateWithCustomAdapter: Date?
+    let generatedColumn: String
     
-    static let nonOptionalIndices: [Int32] = [0, 1, 2, 7]
+    static let nonOptionalIndices: [Int32] = [0, 1, 3, 6]
     
     init(
         row: borrowing Otter.Row,
         startingAt start: Int32,
         adapters: DB.Adapters
     ) throws(Otter.OtterError) {
-        self.id = try row.value(at: start + 0)
-        self.firstName = try row.value(at: start + 1)
-        self.lastName = try row.value(at: start + 2)
-        self.preference = try row.optionalValue(at: start + 3, using: adapters.bool, storage: Int.self)
-        self.favoriteNumber = try row.value(at: start + 4)
-        self.randomValue = try row.value(at: start + 5)
-        self.bornOn = try row.optionalValue(at: start + 6, using: adapters.customDate, storage: String.self)
-        self.fullName = try row.value(at: start + 7)
+        self.intPk = try row.value(at: start + 0)
+        self.textNotNull = try row.value(at: start + 1)
+        self.textNullable = try row.value(at: start + 2)
+        self.dateWithAdapterNotNull = try row.value(at: start + 3, using: adapters.date, storage: Int.self)
+        self.dateWithAdapterNullable = try row.optionalValue(at: start + 4, using: adapters.date, storage: Int.self)
+        self.dateWithCustomAdapter = try row.optionalValue(at: start + 5, using: adapters.customDate, storage: String.self)
+        self.generatedColumn = try row.value(at: start + 6)
     }
     
     init(
-        id: Int,
-        firstName: String,
-        lastName: String,
-        preference: Bool?,
-        favoriteNumber: Int?,
-        randomValue: SQLAny?,
-        bornOn: Date?,
-        fullName: String
+        intPk: Int,
+        textNotNull: String,
+        textNullable: String?,
+        dateWithAdapterNotNull: Date,
+        dateWithAdapterNullable: Date?,
+        dateWithCustomAdapter: Date?,
+        generatedColumn: String
     ) {
-        self.id = id
-        self.firstName = firstName
-        self.lastName = lastName
-        self.preference = preference
-        self.favoriteNumber = favoriteNumber
-        self.randomValue = randomValue
-        self.bornOn = bornOn
-        self.fullName = fullName
+        self.intPk = intPk
+        self.textNotNull = textNotNull
+        self.textNullable = textNullable
+        self.dateWithAdapterNotNull = dateWithAdapterNotNull
+        self.dateWithAdapterNullable = dateWithAdapterNullable
+        self.dateWithCustomAdapter = dateWithCustomAdapter
+        self.generatedColumn = generatedColumn
     }
 }
 
-struct InsertUserInput: Hashable, Sendable, Identifiable {
-    let id: Int
-    let firstName: String
-    let lastName: String
-    let preference: Bool?
-    let favoriteNumber: Int?
-    let randomValue: SQLAny?
-    let bornOn: Date?
+struct InsertFooReturningFooInput: Hashable, Sendable {
+    let textNotNull: String
+    let textNullable: String?
+    let dateWithAdapterNotNull: Date
+    let dateWithAdapterNullable: Date?
+    let dateWithCustomAdapter: Date?
 }
 
-struct SelectUserWithManyInputsInput: Hashable, Sendable, Identifiable {
-    let id: Int
-    let firstName: String
-}
-
-@dynamicMemberLookup
-struct SelectUserWithManyInputsOutput: Hashable, Sendable, RowDecodableWithAdapters {
-    let user: User
-    let favoriteNumber: Int
+struct InsertFooReturningFooOutput: Hashable, Sendable, RowDecodableWithAdapters {
+    let intPk: Int
+    let textNotNull: String
+    let textNullable: String?
+    let dateWithAdapterNotNull: Date
+    let dateWithAdapterNullable: Date?
+    let dateWithCustomAdapter: Date?
+    let generatedColumn: String
     
     static let nonOptionalIndices: [Int32] = []
     
@@ -103,27 +92,75 @@ struct SelectUserWithManyInputsOutput: Hashable, Sendable, RowDecodableWithAdapt
         startingAt start: Int32,
         adapters: DB.Adapters
     ) throws(Otter.OtterError) {
-        self.user = try row.embedded(at: start + 0, adapters: adapters)
-        self.favoriteNumber = try row.value(at: start + 8)
+        self.intPk = try row.value(at: start + 0)
+        self.textNotNull = try row.value(at: start + 1)
+        self.textNullable = try row.value(at: start + 2)
+        self.dateWithAdapterNotNull = try row.value(at: start + 3, using: adapters.date, storage: Int.self)
+        self.dateWithAdapterNullable = try row.optionalValue(at: start + 4, using: adapters.date, storage: Int.self)
+        self.dateWithCustomAdapter = try row.optionalValue(at: start + 5, using: adapters.customDate, storage: String.self)
+        self.generatedColumn = try row.value(at: start + 6)
     }
     
     init(
-        user: User,
-        favoriteNumber: Int
+        intPk: Int,
+        textNotNull: String,
+        textNullable: String?,
+        dateWithAdapterNotNull: Date,
+        dateWithAdapterNullable: Date?,
+        dateWithCustomAdapter: Date?,
+        generatedColumn: String
     ) {
-        self.user = user
-        self.favoriteNumber = favoriteNumber
+        self.intPk = intPk
+        self.textNotNull = textNotNull
+        self.textNullable = textNullable
+        self.dateWithAdapterNotNull = dateWithAdapterNotNull
+        self.dateWithAdapterNullable = dateWithAdapterNullable
+        self.dateWithCustomAdapter = dateWithCustomAdapter
+        self.generatedColumn = generatedColumn
+    }
+}
+
+struct InsertBarReturningIntPkInput: Hashable, Sendable {
+    let customNameIntPk: Int
+    let barNotNullText: String
+}
+
+struct InsertBarReturningExtraColumnInput: Hashable, Sendable {
+    let intPk: Int
+    let barNotNullText: String
+}
+
+struct InsertBarReturningExtraColumnOutput: Hashable, Sendable, RowDecodable {
+    let intPk: Int
+    let barNotNullText: String
+    let columnAfter: Int
+    
+    static let nonOptionalIndices: [Int32] = []
+    
+    init(
+        row: borrowing Otter.Row,
+        startingAt start: Int32
+    ) throws(Otter.OtterError) {
+        self.intPk = try row.value(at: start + 0)
+        self.barNotNullText = try row.value(at: start + 1)
+        self.columnAfter = try row.value(at: start + 2)
     }
     
-    subscript<Value>(dynamicMember dynamicMember: KeyPath<User, Value>) -> Value {
-        self.user[keyPath: dynamicMember]
+    init(
+        intPk: Int,
+        barNotNullText: String,
+        columnAfter: Int
+    ) {
+        self.intPk = intPk
+        self.barNotNullText = barNotNullText
+        self.columnAfter = columnAfter
     }
 }
 
 @dynamicMemberLookup
-struct SelectWithInterestOutput: Hashable, Sendable, RowDecodableWithAdapters {
-    let user: User
-    let interest: Interest
+struct HasEmbeddedFooOutput: Hashable, Sendable, RowDecodableWithAdapters {
+    let foo: Foo
+    let shouldBeNullable: String?
     
     static let nonOptionalIndices: [Int32] = []
     
@@ -132,211 +169,192 @@ struct SelectWithInterestOutput: Hashable, Sendable, RowDecodableWithAdapters {
         startingAt start: Int32,
         adapters: DB.Adapters
     ) throws(Otter.OtterError) {
-        self.user = try row.embedded(at: start + 0, adapters: adapters)
-        self.interest = try row.embedded(at: start + 8)
+        self.foo = try row.embedded(at: start + 0, adapters: adapters)
+        self.shouldBeNullable = try row.value(at: start + 7)
     }
     
     init(
-        user: User,
-        interest: Interest
+        foo: Foo,
+        shouldBeNullable: String?
     ) {
-        self.user = user
-        self.interest = interest
+        self.foo = foo
+        self.shouldBeNullable = shouldBeNullable
     }
     
-    subscript<Value>(dynamicMember dynamicMember: KeyPath<User, Value>) -> Value {
-        self.user[keyPath: dynamicMember]
-    }
-    
-    subscript<Value>(dynamicMember dynamicMember: KeyPath<Interest, Value>) -> Value {
-        self.interest[keyPath: dynamicMember]
+    subscript<Value>(dynamicMember dynamicMember: KeyPath<Foo, Value>) -> Value {
+        self.foo[keyPath: dynamicMember]
     }
 }
 
-@dynamicMemberLookup
-struct SelectWithOptionalInterestOutput: Hashable, Sendable, RowDecodableWithAdapters {
-    let user: User
-    let interest: Interest?
+struct BothColumnsShouldNotBeNullableOutput: Hashable, Sendable, RowDecodable {
+    let f: Int
+    let b: Int
     
     static let nonOptionalIndices: [Int32] = []
     
     init(
         row: borrowing Otter.Row,
-        startingAt start: Int32,
-        adapters: DB.Adapters
+        startingAt start: Int32
     ) throws(Otter.OtterError) {
-        self.user = try row.embedded(at: start + 0, adapters: adapters)
-        self.interest = try row.optionallyEmbedded(at: start + 8)
+        self.f = try row.value(at: start + 0)
+        self.b = try row.value(at: start + 1)
     }
     
     init(
-        user: User,
-        interest: Interest?
+        f: Int,
+        b: Int
     ) {
-        self.user = user
-        self.interest = interest
+        self.f = f
+        self.b = b
     }
-    
-    subscript<Value>(dynamicMember dynamicMember: KeyPath<User, Value>) -> Value {
-        self.user[keyPath: dynamicMember]
-    }
-    
-    subscript<Value>(dynamicMember dynamicMember: KeyPath<Interest, Value>) -> Value? {
-        self.interest?[keyPath: dynamicMember]
-    }
+}
+
+struct SelectWithManyInputsInput: Hashable, Sendable {
+    let intPk: Int
+    let textNotNull: String
 }
 
 struct QueriesQueries {
-    var insertUser: any InsertUserQuery
-    var selectUsers: any SelectUsersQuery
-    var selectUserById: any SelectUserByIdQuery
-    var selectUserByIds: any SelectUserByIdsQuery
-    var selectUserByName: any SelectUserByNameQuery
-    var selectUserWithManyInputs: any SelectUserWithManyInputsQuery
-    var selectWithInterest: any SelectWithInterestQuery
-    var selectWithOptionalInterest: any SelectWithOptionalInterestQuery
+    var insertFooReturningFoo: any InsertFooReturningFooQuery
+    var insertBarReturningIntPk: any InsertBarReturningIntPkQuery
+    var insertBarReturningExtraColumn: any InsertBarReturningExtraColumnQuery
+    var selectSingleFoo: any SelectSingleFooQuery
+    var hasEmbeddedFoo: any HasEmbeddedFooQuery
+    var bothColumnsShouldNotBeNullable: any BothColumnsShouldNotBeNullableQuery
+    var selectWithManyInputs: any SelectWithManyInputsQuery
     
     static func noop(
-        insertUser: any InsertUserQuery = Queries.Just(0),
-        selectUsers: any SelectUsersQuery = Queries.Just(),
-        selectUserById: any SelectUserByIdQuery = Queries.Just(),
-        selectUserByIds: any SelectUserByIdsQuery = Queries.Just(),
-        selectUserByName: any SelectUserByNameQuery = Queries.Just(),
-        selectUserWithManyInputs: any SelectUserWithManyInputsQuery = Queries.Just(),
-        selectWithInterest: any SelectWithInterestQuery = Queries.Just(),
-        selectWithOptionalInterest: any SelectWithOptionalInterestQuery = Queries.Just()
+        insertFooReturningFoo: any InsertFooReturningFooQuery = Queries.Fail(),
+        insertBarReturningIntPk: any InsertBarReturningIntPkQuery = Queries.Just(0),
+        insertBarReturningExtraColumn: any InsertBarReturningExtraColumnQuery = Queries.Fail(),
+        selectSingleFoo: any SelectSingleFooQuery = Queries.Just(),
+        hasEmbeddedFoo: any HasEmbeddedFooQuery = Queries.Just(),
+        bothColumnsShouldNotBeNullable: any BothColumnsShouldNotBeNullableQuery = Queries.Just(),
+        selectWithManyInputs: any SelectWithManyInputsQuery = Queries.Just()
     ) -> QueriesQueries {
         QueriesQueries(
-            insertUser: insertUser,
-            selectUsers: selectUsers,
-            selectUserById: selectUserById,
-            selectUserByIds: selectUserByIds,
-            selectUserByName: selectUserByName,
-            selectUserWithManyInputs: selectUserWithManyInputs,
-            selectWithInterest: selectWithInterest,
-            selectWithOptionalInterest: selectWithOptionalInterest
+            insertFooReturningFoo: insertFooReturningFoo,
+            insertBarReturningIntPk: insertBarReturningIntPk,
+            insertBarReturningExtraColumn: insertBarReturningExtraColumn,
+            selectSingleFoo: selectSingleFoo,
+            hasEmbeddedFoo: hasEmbeddedFoo,
+            bothColumnsShouldNotBeNullable: bothColumnsShouldNotBeNullable,
+            selectWithManyInputs: selectWithManyInputs
         )
     }
     
     static func live(connection: Connection, adapters: DB.Adapters) -> QueriesQueries {
         return QueriesQueries(
-            insertUser: DatabaseQuery<InsertUserInput, Int>(
+            insertFooReturningFoo: DatabaseQuery<InsertFooReturningFooInput, InsertFooReturningFooOutput>(
                 .write,
                 in: connection,
-                watchingTables: ["user"]
+                watchingTables: ["foo"]
             ) { input, tx in
                 let statement = try Otter.Statement(
                     """
-                    INSERT INTO user VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id
+                    INSERT INTO foo
+                    (textNotNull, textNullable, dateWithAdapterNotNull, dateWithAdapterNullable, dateWithCustomAdapter)
+                    VALUES (?, ?, ?, ?, ?)
+                    RETURNING *
                     """,
                     transaction: tx
                 )
-                try statement.bind(value: input.id, to: 1)
-                try statement.bind(value: input.firstName, to: 2)
-                try statement.bind(value: input.lastName, to: 3)
-                try statement.bind(value: input.preference, to: 4, using: adapters.bool, as: Int.self)
-                try statement.bind(value: input.favoriteNumber, to: 5)
-                try statement.bind(value: input.randomValue, to: 6)
-                try statement.bind(value: input.bornOn, to: 7, using: adapters.customDate, as: String.self)
+                try statement.bind(value: input.textNotNull, to: 1)
+                try statement.bind(value: input.textNullable, to: 2)
+                try statement.bind(value: input.dateWithAdapterNotNull, to: 3, using: adapters.date, as: Int.self)
+                try statement.bind(value: input.dateWithAdapterNullable, to: 4, using: adapters.date, as: Int.self)
+                try statement.bind(value: input.dateWithCustomAdapter, to: 5, using: adapters.customDate, as: String.self)
+                return try statement.fetchOne(adapters: adapters)
+            },
+            insertBarReturningIntPk: DatabaseQuery<InsertBarReturningIntPkInput, Int>(
+                .write,
+                in: connection,
+                watchingTables: ["bar"]
+            ) { input, tx in
+                let statement = try Otter.Statement(
+                    """
+                    INSERT INTO bar (intPk, barNotNullText) VALUES (:customNameIntPk, ?) RETURNING intPk
+                    """,
+                    transaction: tx
+                )
+                try statement.bind(value: input.customNameIntPk, to: 1)
+                try statement.bind(value: input.barNotNullText, to: 2)
                 return try statement.fetchOne()
             },
-            selectUsers: DatabaseQuery<(), [User]>(
-                .read,
+            insertBarReturningExtraColumn: DatabaseQuery<InsertBarReturningExtraColumnInput, InsertBarReturningExtraColumnOutput>(
+                .write,
                 in: connection,
-                watchingTables: ["user"]
+                watchingTables: ["bar"]
             ) { input, tx in
                 let statement = try Otter.Statement(
                     """
-                    SELECT * FROM user
+                    INSERT INTO bar VALUES (?, ?) RETURNING *, 123 AS columnAfter
                     """,
                     transaction: tx
                 )
-                return try statement.fetchAll(adapters: adapters)
+                try statement.bind(value: input.intPk, to: 1)
+                try statement.bind(value: input.barNotNullText, to: 2)
+                return try statement.fetchOne()
             },
-            selectUserById: DatabaseQuery<Int, User?>(
+            selectSingleFoo: DatabaseQuery<Int, Foo?>(
                 .read,
                 in: connection,
-                watchingTables: ["user"]
+                watchingTables: ["foo"]
             ) { input, tx in
                 let statement = try Otter.Statement(
                     """
-                    SELECT * FROM user WHERE id = ?
+                    SELECT * FROM foo WHERE intPk = ?
                     """,
                     transaction: tx
                 )
                 try statement.bind(value: input, to: 1)
                 return try statement.fetchOne(adapters: adapters)
             },
-            selectUserByIds: DatabaseQuery<[Int], [User]>(
+            hasEmbeddedFoo: DatabaseQuery<Int, [HasEmbeddedFooOutput]>(
                 .read,
                 in: connection,
-                watchingTables: ["user"]
+                watchingTables: ["bar","foo"]
             ) { input, tx in
                 let statement = try Otter.Statement(
                     """
-                    SELECT * FROM user WHERE id IN (\(input.sqlQuestionMarks))
-                    """,
-                    transaction: tx
-                )
-                for element in input {
-                    try statement.bind(value: element.input, to: 1)
-                }
-                return try statement.fetchAll(adapters: adapters)
-            },
-            selectUserByName: DatabaseQuery<String, [User]>(
-                .read,
-                in: connection,
-                watchingTables: ["user"]
-            ) { input, tx in
-                let statement = try Otter.Statement(
-                    """
-                    SELECT * FROM user WHERE fullName LIKE ?
+                    SELECT foo.*, bar.barNotNullText AS shouldBeNullable
+                    FROM foo
+                    LEFT OUTER JOIN bar ON foo.intPk = bar.intPk
+                    WHERE foo.intPk = ?
                     """,
                     transaction: tx
                 )
                 try statement.bind(value: input, to: 1)
                 return try statement.fetchAll(adapters: adapters)
             },
-            selectUserWithManyInputs: DatabaseQuery<SelectUserWithManyInputsInput, SelectUserWithManyInputsOutput?>(
+            bothColumnsShouldNotBeNullable: DatabaseQuery<(), [BothColumnsShouldNotBeNullableOutput]>(
                 .read,
                 in: connection,
-                watchingTables: ["user"]
+                watchingTables: ["bar","foo"]
             ) { input, tx in
                 let statement = try Otter.Statement(
                     """
-                    SELECT *, 1 AS favoriteNumber FROM user WHERE id = ? AND firstName = ?
+                    SELECT foo.intPk AS f, bar.intPk AS b FROM foo
+                    INNER JOIN bar ON foo.intPk = bar.intPk
                     """,
                     transaction: tx
                 )
-                try statement.bind(value: input.id, to: 1)
-                try statement.bind(value: input.firstName, to: 2)
+                return try statement.fetchAll()
+            },
+            selectWithManyInputs: DatabaseQuery<SelectWithManyInputsInput, Foo?>(
+                .read,
+                in: connection,
+                watchingTables: ["foo"]
+            ) { input, tx in
+                let statement = try Otter.Statement(
+                    """
+                    SELECT * FROM foo WHERE intPk = ? AND textNotNull = ?
+                    """,
+                    transaction: tx
+                )
+                try statement.bind(value: input.intPk, to: 1)
+                try statement.bind(value: input.textNotNull, to: 2)
                 return try statement.fetchOne(adapters: adapters)
-            },
-            selectWithInterest: DatabaseQuery<(), [SelectWithInterestOutput]>(
-                .read,
-                in: connection,
-                watchingTables: ["interest","user"]
-            ) { input, tx in
-                let statement = try Otter.Statement(
-                    """
-                    SELECT user.*, interest.* FROM user INNER JOIN interest ON user.id = interest.userId
-                    """,
-                    transaction: tx
-                )
-                return try statement.fetchAll(adapters: adapters)
-            },
-            selectWithOptionalInterest: DatabaseQuery<(), [SelectWithOptionalInterestOutput]>(
-                .read,
-                in: connection,
-                watchingTables: ["interest","user"]
-            ) { input, tx in
-                let statement = try Otter.Statement(
-                    """
-                    SELECT user.*, interest.* FROM user LEFT OUTER JOIN interest ON user.id = interest.userId
-                    """,
-                    transaction: tx
-                )
-                return try statement.fetchAll(adapters: adapters)
             }
         )
     }
@@ -360,22 +378,18 @@ struct DB: Database{
     static var migrations: [String] {
         return [
             """
-            CREATE TABLE user (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                firstName TEXT NOT NULL,
-                lastName TEXT NOT NULL,
-                preference INTEGER ,
-                favoriteNumber INTEGER,
-                randomValue ANY,
-                bornOn TEXT ,
-                fullName TEXT NOT NULL GENERATED ALWAYS AS (firstName || ' ' || lastName)
+            CREATE TABLE foo (
+                intPk INTEGER PRIMARY KEY AUTOINCREMENT,
+                textNotNull TEXT NOT NULL,
+                textNullable TEXT,
+                dateWithAdapterNotNull INTEGER NOT NULL,
+                dateWithAdapterNullable INTEGER ,
+                dateWithCustomAdapter TEXT ,
+                generatedColumn TEXT NOT NULL GENERATED ALWAYS AS ('a-good-prefix ' || textNotNull)
             );
-            """,
-            """
-            CREATE TABLE interest (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                value TEXT NOT NULL,
-                userId INTEGER REFERENCES user(id)
+            CREATE TABLE bar (
+                intPk INTEGER PRIMARY KEY,
+                barNotNullText TEXT NOT NULL
             );;
             """
         ]
@@ -385,39 +399,65 @@ struct DB: Database{
     }
 }
 
-typealias InsertUserQuery = Query<InsertUserInput, Int>
-extension Query where Input == InsertUserInput {
-    func execute(id: Int, firstName: String, lastName: String, preference: Bool?, favoriteNumber: Int?, randomValue: SQLAny?, bornOn: Date?) async throws -> Output {
-        try await execute(with: InsertUserInput(id: id, firstName: firstName, lastName: lastName, preference: preference, favoriteNumber: favoriteNumber, randomValue: randomValue, bornOn: bornOn))
+typealias InsertFooReturningFooQuery = Query<InsertFooReturningFooInput, InsertFooReturningFooOutput>
+extension Query where Input == InsertFooReturningFooInput {
+    func execute(textNotNull: String, textNullable: String?, dateWithAdapterNotNull: Date, dateWithAdapterNullable: Date?, dateWithCustomAdapter: Date?) async throws -> Output {
+        try await execute(InsertFooReturningFooInput(textNotNull: textNotNull, textNullable: textNullable, dateWithAdapterNotNull: dateWithAdapterNotNull, dateWithAdapterNullable: dateWithAdapterNullable, dateWithCustomAdapter: dateWithCustomAdapter))
     }
     
-    func execute(id: Int, firstName: String, lastName: String, preference: Bool?, favoriteNumber: Int?, randomValue: SQLAny?, bornOn: Date?, tx: borrowing Transaction) throws -> Output {
-        try execute(with: InsertUserInput(id: id, firstName: firstName, lastName: lastName, preference: preference, favoriteNumber: favoriteNumber, randomValue: randomValue, bornOn: bornOn), tx: tx)
+    func execute(textNotNull: String, textNullable: String?, dateWithAdapterNotNull: Date, dateWithAdapterNullable: Date?, dateWithCustomAdapter: Date?, tx: borrowing Transaction) throws -> Output {
+        try execute(InsertFooReturningFooInput(textNotNull: textNotNull, textNullable: textNullable, dateWithAdapterNotNull: dateWithAdapterNotNull, dateWithAdapterNullable: dateWithAdapterNullable, dateWithCustomAdapter: dateWithCustomAdapter), tx: tx)
     }
     
-    func observe(id: Int, firstName: String, lastName: String, preference: Bool?, favoriteNumber: Int?, randomValue: SQLAny?, bornOn: Date?) -> any QueryObservation<Output> {
-        observe(with: InsertUserInput(id: id, firstName: firstName, lastName: lastName, preference: preference, favoriteNumber: favoriteNumber, randomValue: randomValue, bornOn: bornOn))
+    func observe(textNotNull: String, textNullable: String?, dateWithAdapterNotNull: Date, dateWithAdapterNullable: Date?, dateWithCustomAdapter: Date?) -> QueryStream<Output> {
+        observe(InsertFooReturningFooInput(textNotNull: textNotNull, textNullable: textNullable, dateWithAdapterNotNull: dateWithAdapterNotNull, dateWithAdapterNullable: dateWithAdapterNullable, dateWithCustomAdapter: dateWithCustomAdapter))
     }
 }
 
-typealias SelectUsersQuery = Query<(), [User]>
-typealias SelectUserByIdQuery = Query<Int, User?>
-typealias SelectUserByIdsQuery = Query<[Int], [User]>
-typealias SelectUserByNameQuery = Query<String, [User]>
-typealias SelectUserWithManyInputsQuery = Query<SelectUserWithManyInputsInput, SelectUserWithManyInputsOutput?>
-extension Query where Input == SelectUserWithManyInputsInput {
-    func execute(id: Int, firstName: String) async throws -> Output {
-        try await execute(with: SelectUserWithManyInputsInput(id: id, firstName: firstName))
+typealias InsertBarReturningIntPkQuery = Query<InsertBarReturningIntPkInput, Int>
+extension Query where Input == InsertBarReturningIntPkInput {
+    func execute(customNameIntPk: Int, barNotNullText: String) async throws -> Output {
+        try await execute(InsertBarReturningIntPkInput(customNameIntPk: customNameIntPk, barNotNullText: barNotNullText))
     }
     
-    func execute(id: Int, firstName: String, tx: borrowing Transaction) throws -> Output {
-        try execute(with: SelectUserWithManyInputsInput(id: id, firstName: firstName), tx: tx)
+    func execute(customNameIntPk: Int, barNotNullText: String, tx: borrowing Transaction) throws -> Output {
+        try execute(InsertBarReturningIntPkInput(customNameIntPk: customNameIntPk, barNotNullText: barNotNullText), tx: tx)
     }
     
-    func observe(id: Int, firstName: String) -> any QueryObservation<Output> {
-        observe(with: SelectUserWithManyInputsInput(id: id, firstName: firstName))
+    func observe(customNameIntPk: Int, barNotNullText: String) -> QueryStream<Output> {
+        observe(InsertBarReturningIntPkInput(customNameIntPk: customNameIntPk, barNotNullText: barNotNullText))
     }
 }
 
-typealias SelectWithInterestQuery = Query<(), [SelectWithInterestOutput]>
-typealias SelectWithOptionalInterestQuery = Query<(), [SelectWithOptionalInterestOutput]>
+typealias InsertBarReturningExtraColumnQuery = Query<InsertBarReturningExtraColumnInput, InsertBarReturningExtraColumnOutput>
+extension Query where Input == InsertBarReturningExtraColumnInput {
+    func execute(intPk: Int, barNotNullText: String) async throws -> Output {
+        try await execute(InsertBarReturningExtraColumnInput(intPk: intPk, barNotNullText: barNotNullText))
+    }
+    
+    func execute(intPk: Int, barNotNullText: String, tx: borrowing Transaction) throws -> Output {
+        try execute(InsertBarReturningExtraColumnInput(intPk: intPk, barNotNullText: barNotNullText), tx: tx)
+    }
+    
+    func observe(intPk: Int, barNotNullText: String) -> QueryStream<Output> {
+        observe(InsertBarReturningExtraColumnInput(intPk: intPk, barNotNullText: barNotNullText))
+    }
+}
+
+typealias SelectSingleFooQuery = Query<Int, Foo?>
+typealias HasEmbeddedFooQuery = Query<Int, [HasEmbeddedFooOutput]>
+typealias BothColumnsShouldNotBeNullableQuery = Query<(), [BothColumnsShouldNotBeNullableOutput]>
+typealias SelectWithManyInputsQuery = Query<SelectWithManyInputsInput, Foo?>
+extension Query where Input == SelectWithManyInputsInput {
+    func execute(intPk: Int, textNotNull: String) async throws -> Output {
+        try await execute(SelectWithManyInputsInput(intPk: intPk, textNotNull: textNotNull))
+    }
+    
+    func execute(intPk: Int, textNotNull: String, tx: borrowing Transaction) throws -> Output {
+        try execute(SelectWithManyInputsInput(intPk: intPk, textNotNull: textNotNull), tx: tx)
+    }
+    
+    func observe(intPk: Int, textNotNull: String) -> QueryStream<Output> {
+        observe(SelectWithManyInputsInput(intPk: intPk, textNotNull: textNotNull))
+    }
+}
