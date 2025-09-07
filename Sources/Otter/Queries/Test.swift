@@ -60,7 +60,7 @@ public extension Queries {
             return try execute(input)
         }
         
-        public nonisolated func observe(with input: Input) -> any QueryObservation<Output> {
+        public nonisolated func observation(with input: Input) -> any QueryObservation<Output> {
             lock.withLock { observeCallCount += 1 }
             return Observation(input: input, query: self)
         }

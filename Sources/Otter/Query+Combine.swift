@@ -46,7 +46,7 @@ public struct QueryPublisher<Output>: Publisher {
                 switch state {
                 case .pending:
                     // Received first demand, start observation
-                    let observation = query.observe()
+                    let observation = query.observation(with: ())
                     
                     observation.start { [weak self] output in
                         self?.receive(output: output)

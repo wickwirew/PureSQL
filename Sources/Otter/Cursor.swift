@@ -7,6 +7,10 @@
 
 import SQLite3
 
+/// A low-level iterator over the results of a prepared database statement.
+///
+/// `Cursor` wraps a `Statement` and allows stepping through query results one
+/// row at a time. Use `next()` functions to get the next row in the iteration.
 public struct Cursor<Element>: ~Copyable {
     private let statement: Statement
 

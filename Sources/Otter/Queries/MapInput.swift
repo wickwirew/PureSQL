@@ -30,8 +30,8 @@ public extension Queries {
             try base.execute(with: transform(input), tx: tx)
         }
 
-        public func observe(with input: Input) -> any QueryObservation<Output> {
-            return base.observe(with: transform(input))
+        public func observation(with input: Input) -> any QueryObservation<Output> {
+            return base.observation(with: transform(input))
         }
     }
 }

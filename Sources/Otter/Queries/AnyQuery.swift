@@ -36,7 +36,7 @@ public struct AnyQuery<Input: Sendable, Output: Sendable>: Query {
             connection: query.connection,
             watchedTables: query.watchedTables,
             execute: { try query.execute(with: $0, tx: $1) },
-            observe: { query.observe(with: $0) }
+            observe: { query.observation(with: $0) }
         )
     }
     
@@ -44,7 +44,7 @@ public struct AnyQuery<Input: Sendable, Output: Sendable>: Query {
         try _execute(input, tx)
     }
 
-    public func observe(with input: Input) -> any QueryObservation<Output> {
+    public func observation(with input: Input) -> any QueryObservation<Output> {
         _observe(input)
     }
 }

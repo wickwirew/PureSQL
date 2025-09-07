@@ -7,7 +7,39 @@
 
 import Foundation
 
-public final class DatabaseQueryObservation<Q>: DatabaseSubscriber, QueryObservation, @unchecked Sendable
+/// A protocol that defines the core interface for observing query results.
+///
+/// Conforming types provide the ability to listen for changes in query output
+/// and notify subscribers when new results are available. This protocol is not
+/// intended for direct use, it serves as the core type for higher
+/// level abstractions such as an `AsyncSequence` or Combine publishers.
+public protocol QueryObservation<Output>: Sendable {
+    associatedtype Output: Sendable
+    
+    /// Starts the observation and delivers results to the given callbacks.
+    ///
+    /// - Parameters:
+    ///   - onChange: Called with new results whenever they are available.
+    ///   Also called once when the observation is started
+    ///   - onComplete: Called when the observation ends, optionally with an error.
+    func start(
+        onChange: @escaping @Sendable (Output) -> Void,
+        onComplete: @escaping @Sendable (Error?) -> Void
+    )
+    
+    /// Cancels the observation and stops delivering updates.
+    func cancel()
+}
+
+/// The default implementation of `QueryObservation` that watches a database.
+///
+/// `DatabaseQueryObservation` monitors a query against a database and emits new
+/// results whenever the underlying data changes. It powers higher-level types
+/// like `QueryStream` and Combine publishers.
+///
+/// Most code should not use this type directly. Instead, prefer the `observe`
+/// methods which return an `AsyncSequence`
+public final class DatabaseQueryObservation<Q>: @unchecked Sendable
     where Q: Query
 {
     private let query: Q
@@ -30,38 +62,6 @@ public final class DatabaseQueryObservation<Q>: DatabaseSubscriber, QueryObserva
         self.input = input
         self.watchedTables = watchedTables
         self.connection = connection
-    }
-    
-    public func receive(change: DatabaseChange) {
-        // If any table that we are watching changed
-        // reexecute the query.
-        guard !change.affectedTables
-            .intersection(watchedTables)
-            .isEmpty else { return }
-        enqueueNext()
-    }
-    
-    public func cancel() {
-        connection.cancel(subscriber: self)
-        queue.cancel()
-        
-        lock.withLock {
-            onChange = nil
-            onComplete = nil
-        }
-    }
-    
-    public func start(
-        onChange: @escaping @Sendable (Q.Output) -> Void,
-        onComplete: @escaping @Sendable (Error?) -> Void
-    ) {
-        lock.withLock {
-            self.onChange = onChange
-            self.onComplete = onComplete
-        }
-        
-        connection.observe(subscriber: self)
-        enqueueNext()
     }
     
     private func emitNext() async {
@@ -90,32 +90,74 @@ public final class DatabaseQueryObservation<Q>: DatabaseSubscriber, QueryObserva
     }
 }
 
-public protocol QueryObservation<Output>: Sendable, AsyncSequence {
-    associatedtype Output: Sendable
-    
-    func start(
-        onChange: @escaping @Sendable (Output) -> Void,
+extension DatabaseQueryObservation: QueryObservation {
+    public func start(
+        onChange: @escaping @Sendable (Q.Output) -> Void,
         onComplete: @escaping @Sendable (Error?) -> Void
-    )
+    ) {
+        lock.withLock {
+            self.onChange = onChange
+            self.onComplete = onComplete
+        }
+        
+        connection.observe(subscriber: self)
+        enqueueNext()
+    }
     
-    func cancel()
+    public func cancel() {
+        onComplete?(nil)
+        
+        connection.cancel(subscriber: self)
+        queue.cancel()
+        
+        lock.withLock {
+            onChange = nil
+            onComplete = nil
+        }
+    }
 }
 
-extension QueryObservation {
+extension DatabaseQueryObservation: DatabaseSubscriber {
+    public func receive(change: DatabaseChange) {
+        // If any table that we are watching changed
+        // reexecute the query.
+        guard !change.affectedTables
+            .intersection(watchedTables)
+            .isEmpty else { return }
+        enqueueNext()
+    }
+}
+
+/// An `AsyncSequence` that streams query results as they change.
+///
+/// `QueryStream` wraps a `QueryObservation` and provides an async sequence that
+/// first yields the initial results of the query, then continues to yield new
+/// values whenever the underlying data changes. The sequence ends when the
+/// observation is cancelled or fails with an error.
+///
+/// There is no need to call the initializer directly but should instead by
+/// accessed through the `observe` methods on a `Query`
+public struct QueryStream<Output: Sendable>: AsyncSequence, Sendable {
+    private let observation: any QueryObservation<Output>
+    
+    public init(_ observation: any QueryObservation<Output>) {
+        self.observation = observation
+    }
+    
     public func makeAsyncIterator() -> AsyncThrowingStream<Output, Error>.AsyncIterator {
         return asStream().makeAsyncIterator()
     }
     
     func asStream() -> AsyncThrowingStream<Output, Error> {
         AsyncThrowingStream<Output, Error> { continuation in
-            start { output in
+            observation.start { output in
                 continuation.yield(output)
             } onComplete: { error in
                 continuation.finish(throwing: error)
             }
             
             continuation.onTermination = { _ in
-                cancel()
+                observation.cancel()
             }
         }
     }

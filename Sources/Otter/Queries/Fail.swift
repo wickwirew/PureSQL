@@ -49,7 +49,7 @@ public extension Queries {
             throw error
         }
         
-        public func observe(with input: Input) -> any QueryObservation<Output> {
+        public func observation(with input: Input) -> any QueryObservation<Output> {
             return Observation(error: error)
         }
         

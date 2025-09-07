@@ -7,6 +7,12 @@
 
 import SQLite3
 
+/// A prepared SQL statement for executing queries against the database.
+///
+/// `Statement` wraps a SQLite prepared statement and provides
+/// methods to bind parameters, step through results, and fetch rows using
+/// `RowDecodable` types or adapters. It supports single row and multi row
+/// fetch operations.
 public struct Statement: ~Copyable {
     let raw: OpaquePointer
     
@@ -42,6 +48,7 @@ public struct Statement: ~Copyable {
         }
     }
     
+    /// Binds a value to the specified index in the statement.
     public func bind<Value: DatabasePrimitive>(
         value: Value,
         to index: Int32
@@ -49,6 +56,7 @@ public struct Statement: ~Copyable {
         try value.bind(to: raw, at: index)
     }
     
+    /// Binds a value using an adapter and storage type.
     public func bind<Storage: DatabasePrimitive, Coder: DatabaseValueAdapter>(
         value: Coder.Value,
         to index: Int32,
@@ -59,6 +67,7 @@ public struct Statement: ~Copyable {
         try storage.bind(to: raw, at: index)
     }
     
+    /// Binds a value using an adapter and storage type.
     @_disfavoredOverload
     public func bind<Storage: DatabasePrimitive, Coder: DatabaseValueAdapter>(
         value: Coder.Value?,
@@ -75,6 +84,7 @@ public struct Statement: ~Copyable {
         }
     }
     
+    /// Steps the statement forward by one row.
     public func step() throws(OtterError) -> Step {
         let code = SQLiteCode(sqlite3_step(raw))
         switch code {

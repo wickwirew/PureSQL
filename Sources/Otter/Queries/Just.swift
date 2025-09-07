@@ -72,7 +72,7 @@ public extension Queries {
             return output
         }
         
-        public func observe(with input: Input) -> any QueryObservation<Output> {
+        public func observation(with input: Input) -> any QueryObservation<Output> {
             return Observation(output: output)
         }
         

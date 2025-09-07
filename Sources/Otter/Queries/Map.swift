@@ -31,8 +31,8 @@ public extension Queries {
             try transform(input, base.execute(with: input, tx: tx))
         }
         
-        public func observe(with input: Base.Input) -> any QueryObservation<Output> {
-            return Observation(base: base.observe(with: input), input: input, transform: transform)
+        public func observation(with input: Base.Input) -> any QueryObservation<Output> {
+            return Observation(base: base.observation(with: input), input: input, transform: transform)
         }
         
         struct Observation: QueryObservation {

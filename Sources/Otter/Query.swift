@@ -28,78 +28,137 @@ public protocol Query<Input, Output>: Sendable {
     /// if those tables changed.
     var watchedTables: Set<String> { get }
     
-    /// Executes the query
+    /// Executes the query once within the given transaction.
     ///
-    /// - Parameters:
-    ///   - input: The query's input
-    ///   - tx: The transaction to run the query in
-    /// - Returns: The query's output
-    func execute(
-        with input: Input,
-        tx: borrowing Transaction
-    ) throws -> Output
-    
-    /// Observes the query's value over time. When the database
-    /// changes new values will automatically be refreshed.
-    ///
-    /// The `QueryObservation` is an `AsyncSequence` and can
-    /// be observed with a for loop.
-    ///
+    /// Example:
     /// ```swift
-    /// for try await value in query.observe() {
-    ///     print(value)
+    /// try await queries.begin(.read) { tx in
+    ///     let user = try userQuery.execute(with: 42, tx: tx)
+    ///     print("Fetched user:", user)
     /// }
     /// ```
     ///
-    /// - Parameter input: The query's input
-    /// - Returns: The observation.
-    func observe(with input: Input) -> any QueryObservation<Output>
+    /// - Parameters:
+    ///   - input: The query input or parameters to use for execution.
+    ///   - tx: The active transaction in which the query will be executed.
+    /// - Returns: The decoded `Output` of the query.
+    /// - Throws: An error if the query fails to execute or if the results
+    ///   cannot be decoded into the expected type.
+    func execute(with input: Input, tx: borrowing Transaction) throws -> Output
+    
+    /// Initializes a QueryObservation that watches the database for
+    /// changes on anything that affects the query and emits changes
+    /// overtime.
+    ///
+    /// This likely will not be used directly yet using `observe` instead.
+    func observation(with input: Input) -> any QueryObservation<Output>
 }
 
 public extension Query {
+    /// Executes the query once and returns the result.
+    ///
+    /// Example:
+    /// ```swift
+    /// let user = try await userQuery.execute(with: 42, tx: tx)
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - input: The query input or parameters to use for execution.
+    ///   - tx: The active transaction in which the query will be executed.
+    /// - Returns: The decoded `Output` of the query.
+    /// - Throws: An error if the query fails to execute or if the results
+    ///   cannot be decoded into the expected type.
     func execute(with input: Input) async throws -> Output {
         try await connection.begin(transactionKind) { tx in
             try execute(with: input, tx: tx)
         }
     }
 
-    func observe(with input: Input) -> any QueryObservation<Output> {
-        return DatabaseQueryObservation(
+    func observation(with input: Input) -> any QueryObservation<Output> {
+        // By default just return a DatabaseQueryObservation
+        DatabaseQueryObservation(
             query: self,
             input: input,
             watchedTables: watchedTables,
             connection: connection
         )
     }
+    
+    /// Observes the results of a database query and streams updates as the
+    /// underlying data changes.
+    ///
+    /// This method returns an `AsyncSequence` that first yields the current
+    /// results of the query, then continues to emit new values whenever the
+    /// relevant database tables are modified. Use this when you need to react
+    /// to live changes in the database.
+    ///
+    /// Example:
+    /// ```swift
+    /// for await row in query.observe(with: input) {
+    ///     print("Row updated:", row)
+    /// }
+    /// ```
+    ///
+    /// - Parameter input: The query or input definition used to fetch results.
+    /// - Returns: A `QueryStream` sequence of `Output` values that reflect
+    ///   both the initial results and subsequent changes.
+    func observe(with input: Input) -> QueryStream<Output> {
+        QueryStream(observation(with: input))
+    }
 }
 
 public extension Query where Input == () {
-    /// Executes the query in the given transaction
-    /// - Parameter tx: The transaction to execute the query in
-    /// - Returns: The query's output
+    /// Executes the query once within the given transaction.
+    ///
+    /// Example:
+    /// ```swift
+    /// try await queries.begin(.read) { tx in
+    ///     let user = try userQuery.execute(tx: tx)
+    ///     print("Fetched user:", user)
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - tx: The active transaction in which the query will be executed.
+    /// - Returns: The decoded `Output` of the query.
+    /// - Throws: An error if the query fails to execute or if the results
+    ///   cannot be decoded into the expected type.
     func execute(tx: borrowing Transaction) throws -> Output {
         return try execute(with: (), tx: tx)
     }
     
-    /// Executes the query
+    /// Executes the query once and returns the result.
+    ///
+    /// Example:
+    /// ```swift
+    /// let user = try await userQuery.execute()
+    /// ```
+    ///
+    /// - Returns: The decoded `Output` of the query.
+    /// - Throws: An error if the query fails to execute or if the results
+    ///   cannot be decoded into the expected type.
     func execute() async throws -> Output {
         return try await execute(with: ())
     }
     
-    /// Observes the query's value over time. When the database
-    /// changes new values will automatically be refreshed.
+    /// Observes the results of a database query and streams updates as the
+    /// underlying data changes.
     ///
-    /// The `QueryObservation` is an `AsyncSequence` and can
-    /// be observed with a for loop.
+    /// This method returns an `AsyncSequence` that first yields the current
+    /// results of the query, then continues to emit new values whenever the
+    /// relevant database tables are modified. Use this when you need to react
+    /// to live changes in the database.
     ///
+    /// Example:
     /// ```swift
-    /// for try await value in query.observe() {
-    ///     print(value)
+    /// for await row in query.observe() {
+    ///     print("Row updated:", row)
     /// }
     /// ```
     ///
-    /// - Returns: The observation.
-    func observe() -> any QueryObservation<Output> {
+    /// - Returns: A `QueryStream` sequence of `Output` values that reflect
+    ///   both the initial results and subsequent changes.
+    func observe() -> QueryStream<Output> {
         return observe(with: ())
     }
 }

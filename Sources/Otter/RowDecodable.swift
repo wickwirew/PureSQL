@@ -7,7 +7,15 @@
 
 /// A type that can be decoded from a SQLite row
 public protocol RowDecodable {
+    /// The indices of columns that are expected to never be nil.
     static var nonOptionalIndices: [Int32] { get }
+    
+    /// Initializes an instance from the given row, starting at a column index.
+    ///
+    /// - Parameters:
+    ///   - row: The SQLite row to decode values from.
+    ///   - start: The starting column index in the row.
+    /// - Throws: `OtterError` if decoding fails
     init(row: borrowing Row, startingAt start: Int32) throws(OtterError)
 }
 
@@ -15,8 +23,16 @@ public protocol RowDecodable {
 public protocol RowDecodableWithAdapters {
     associatedtype Adapters: Otter.Adapters
     
+    /// The indices of columns that are expected to never be nil.
     static var nonOptionalIndices: [Int32] { get }
     
+    /// Initializes an instance from the given row, starting at a column index.
+    ///
+    /// - Parameters:
+    ///   - row: The SQLite row to decode values from.
+    ///   - start: The starting column index in the row.
+    ///   - adapters: The adapters needed to decode some of the columns.
+    /// - Throws: `OtterError` if decoding fails
     init(
         row: borrowing Row,
         startingAt start: Int32,

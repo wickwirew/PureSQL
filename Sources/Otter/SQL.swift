@@ -5,6 +5,28 @@
 //  Created by Wes Wickwire on 2/19/25.
 //
 
+/// A type representing a SQL query with safe string interpolation.
+///
+/// `SQL` allows you to build SQL queries using string literals and string
+/// interpolation while ensuring that any interpolated parameters are safely
+/// sanitized. Interpolated values are replaced with `?` placeholders, and the
+/// actual values are stored in `parameters` for binding to the database.
+///
+/// Example:
+/// ```swift
+/// let userId: Int = 42
+/// let sql: SQL = "SELECT * FROM users WHERE id = \(userId)"
+/// print(sql.source)       // "SELECT * FROM users WHERE id = ?"
+/// print(sql.parameters)   // [42]
+///
+/// let ids: [Int] = [1, 2, 3]
+/// let sqlIn: SQL = "SELECT * FROM users WHERE id IN \(ids)"
+/// print(sqlIn.source)      // "SELECT * FROM users WHERE id IN (?,?,?)"
+/// print(sqlIn.parameters)  // [1, 2, 3]
+/// ```
+///
+/// - Note: Use `raw:` interpolation to insert values directly without a
+///   parameter placeholder, which should only be done with trusted input.
 public struct SQL: ExpressibleByStringLiteral, ExpressibleByStringInterpolation, CustomStringConvertible {
     let source: String
     let parameters: [DatabasePrimitive]
