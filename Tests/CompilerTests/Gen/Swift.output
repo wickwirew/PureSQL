@@ -214,7 +214,8 @@ struct SelectWithManyInputsInput: Hashable, Sendable {
     let textNotNull: String
 }
 
-struct QueriesQueries {
+struct QueriesQueries: ConnectionWrapper, Sendable {
+    let connection: any Connection
     var insertFooReturningFoo: any InsertFooReturningFooQuery
     var insertBarReturningIntPk: any InsertBarReturningIntPkQuery
     var insertBarReturningExtraColumn: any InsertBarReturningExtraColumnQuery
@@ -233,6 +234,7 @@ struct QueriesQueries {
         selectWithManyInputs: any SelectWithManyInputsQuery = Queries.Just()
     ) -> QueriesQueries {
         QueriesQueries(
+            connection: NoopConnection(),
             insertFooReturningFoo: insertFooReturningFoo,
             insertBarReturningIntPk: insertBarReturningIntPk,
             insertBarReturningExtraColumn: insertBarReturningExtraColumn,
@@ -245,6 +247,7 @@ struct QueriesQueries {
     
     static func live(connection: Connection, adapters: DB.Adapters) -> QueriesQueries {
         return QueriesQueries(
+            connection: connection,
             insertFooReturningFoo: DatabaseQuery<InsertFooReturningFooInput, InsertFooReturningFooOutput>(
                 .write,
                 in: connection,

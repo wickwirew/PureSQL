@@ -265,8 +265,10 @@ public struct SwiftLanguage: Language {
     }
     
     private func queries(name: String, queries: [GeneratedQuery]) {
-        writer.write(line: "struct ", name, " {")
+        writer.write(line: "struct ", name, ": ConnectionWrapper, Sendable {")
         writer.indent()
+        
+        writer.write(line: "let connection: any Connection")
         
         for query in queries {
             writer.write(line: "var ", query.variableName, ": any ", query.typealiasName)
@@ -288,6 +290,8 @@ public struct SwiftLanguage: Language {
         
         writer.write(line: "return ", name, "(")
         writer.indent()
+        
+        writer.write(line: "connection: connection,")
         
         for (position, query) in queries.positional() {
             writer.write(line: query.variableName, ": ")
@@ -342,6 +346,8 @@ public struct SwiftLanguage: Language {
         
         writer.write(line: name, "(")
         writer.indent()
+        
+        writer.write(line: "connection: NoopConnection(),")
         
         for (position, query) in queries.positional() {
             writer.write(line: query.variableName, ": ", query.variableName)
