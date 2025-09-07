@@ -35,16 +35,16 @@ public struct AnyQuery<Input: Sendable, Output: Sendable>: Query {
             transactionKind: query.transactionKind,
             connection: query.connection,
             watchedTables: query.watchedTables,
-            execute: { try query.execute(with: $0, tx: $1) },
-            observe: { query.observation(with: $0) }
+            execute: { try query.execute($0, tx: $1) },
+            observe: { query.observation($0) }
         )
     }
     
-    public func execute(with input: Input, tx: borrowing Transaction) throws -> Output {
+    public func execute(_ input: Input, tx: borrowing Transaction) throws -> Output {
         try _execute(input, tx)
     }
 
-    public func observation(with input: Input) -> any QueryObservation<Output> {
+    public func observation(_ input: Input) -> any QueryObservation<Output> {
         _observe(input)
     }
 }

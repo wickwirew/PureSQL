@@ -10,13 +10,13 @@ import Foundation
 @Observable
 @MainActor
 final class TodoListModel {
-    let todoQueries: any TodoQueries
+    let todoQueries: TodoQueries
     
     var todos: [Todo] = []
     var error: Error?
     var formModel: TodoFormModel?
     
-    init(todoQueries: any TodoQueries) {
+    init(todoQueries: TodoQueries) {
         self.todoQueries = todoQueries
     }
     
@@ -32,8 +32,7 @@ final class TodoListModel {
     
     func toggle(todo: Todo) async {
         do {
-            try await todoQueries.toggleTodo
-                .execute(with: todo.id)
+            try await todoQueries.toggleTodo.execute(todo.id)
         } catch {
             self.error = error
         }

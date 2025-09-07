@@ -62,7 +62,7 @@ struct TodoList: View {
     NavigationStack {
         TodoList(
             model: TodoListModel(
-                todoQueries: TodoQueriesNoop(
+                todoQueries: .noop(
                     selectTodos: Queries.Just([
                         .mock(name: "Walk Dog"),
                         .mock(name: "Clean Kitchen", completed: .now),

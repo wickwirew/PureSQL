@@ -685,7 +685,7 @@ public struct SwiftLanguage: Language {
             writer.write(") async throws -> Output ")
             
             writer.braces {
-                writer.write(line: "try await execute(with: ", query.inputName, "(")
+                writer.write(line: "try await execute(", query.inputName, "(")
                 initInput()
                 writer.write("))")
             }
@@ -697,7 +697,7 @@ public struct SwiftLanguage: Language {
             writer.write(", tx: borrowing Transaction) throws -> Output ")
             
             writer.braces {
-                writer.write(line: "try execute(with: ", query.inputName, "(")
+                writer.write(line: "try execute(", query.inputName, "(")
                 initInput()
                 writer.write("), tx: tx)")
             }
@@ -706,10 +706,10 @@ public struct SwiftLanguage: Language {
             writer.blankLine()
             writer.write(line: "func observe(")
             writeInput()
-            writer.write(") -> any QueryObservation<Output> ")
+            writer.write(") -> QueryStream<Output> ")
             
             writer.braces {
-                writer.write(line: "observe(with: ", query.inputName, "(")
+                writer.write(line: "observe(", query.inputName, "(")
                 initInput()
                 writer.write("))")
             }

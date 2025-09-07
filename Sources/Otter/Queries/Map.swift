@@ -27,12 +27,12 @@ public extension Queries {
             base.watchedTables
         }
         
-        public func execute(with input: Base.Input, tx: borrowing Transaction) throws -> Output {
-            try transform(input, base.execute(with: input, tx: tx))
+        public func execute(_ input: Base.Input, tx: borrowing Transaction) throws -> Output {
+            try transform(input, base.execute(input, tx: tx))
         }
         
-        public func observation(with input: Base.Input) -> any QueryObservation<Output> {
-            return Observation(base: base.observation(with: input), input: input, transform: transform)
+        public func observation(_ input: Base.Input) -> any QueryObservation<Output> {
+            return Observation(base: base.observation(input), input: input, transform: transform)
         }
         
         struct Observation: QueryObservation {

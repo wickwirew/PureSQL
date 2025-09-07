@@ -75,7 +75,7 @@ public final class DatabaseQueryObservation<Q>: @unchecked Sendable
                 throw OtterError.cannotObserveWriteQuery
             }
             
-            let output = try await query.execute(with: input)
+            let output = try await query.execute(input)
             onChange(output)
         } catch {
             onComplete?(error)

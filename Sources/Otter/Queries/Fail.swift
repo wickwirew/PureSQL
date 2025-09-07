@@ -43,7 +43,7 @@ public extension Queries {
         }
         
         public func execute(
-            with input: Input,
+            _ input: Input,
             tx: borrowing Transaction
         ) throws -> Output {
             throw error

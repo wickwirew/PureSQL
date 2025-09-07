@@ -46,7 +46,7 @@ public struct QueryPublisher<Output>: Publisher {
                 switch state {
                 case .pending:
                     // Received first demand, start observation
-                    let observation = query.observation(with: ())
+                    let observation = query.observation(())
                     
                     observation.start { [weak self] output in
                         self?.receive(output: output)
@@ -103,8 +103,8 @@ public extension Query {
     ///
     /// - Parameter input: The input for the query
     /// - Returns: A combine publisher
-    func publisher(with input: Input) -> QueryPublisher<Output> {
-        QueryPublisher(query: self.with(input: input))
+    func publisher(_ input: Input) -> QueryPublisher<Output> {
+        QueryPublisher(query: self.with(input))
     }
 }
 

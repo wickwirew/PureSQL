@@ -43,7 +43,7 @@ public struct DatabaseQuery<Input, Output>: Query
     }
     
     public func execute(
-        with input: Input,
+        _ input: Input,
         tx: borrowing Transaction
     ) throws -> Output {
         guard tx.kind >= transactionKind else {

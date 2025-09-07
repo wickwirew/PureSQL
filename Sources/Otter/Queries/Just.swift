@@ -66,13 +66,13 @@ public extension Queries {
         }
         
         public func execute(
-            with input: Input,
+            _ input: Input,
             tx: borrowing Transaction
         ) throws -> Output {
             return output
         }
         
-        public func observation(with input: Input) -> any QueryObservation<Output> {
+        public func observation(_ input: Input) -> any QueryObservation<Output> {
             return Observation(output: output)
         }
         

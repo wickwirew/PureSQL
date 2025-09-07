@@ -44,14 +44,14 @@ public protocol Query<Input, Output>: Sendable {
     /// - Returns: The decoded `Output` of the query.
     /// - Throws: An error if the query fails to execute or if the results
     ///   cannot be decoded into the expected type.
-    func execute(with input: Input, tx: borrowing Transaction) throws -> Output
+    func execute(_ input: Input, tx: borrowing Transaction) throws -> Output
     
     /// Initializes a QueryObservation that watches the database for
     /// changes on anything that affects the query and emits changes
     /// overtime.
     ///
     /// This likely will not be used directly yet using `observe` instead.
-    func observation(with input: Input) -> any QueryObservation<Output>
+    func observation(_ input: Input) -> any QueryObservation<Output>
 }
 
 public extension Query {
@@ -68,13 +68,13 @@ public extension Query {
     /// - Returns: The decoded `Output` of the query.
     /// - Throws: An error if the query fails to execute or if the results
     ///   cannot be decoded into the expected type.
-    func execute(with input: Input) async throws -> Output {
+    func execute(_ input: Input) async throws -> Output {
         try await connection.begin(transactionKind) { tx in
-            try execute(with: input, tx: tx)
+            try execute(input, tx: tx)
         }
     }
 
-    func observation(with input: Input) -> any QueryObservation<Output> {
+    func observation(_ input: Input) -> any QueryObservation<Output> {
         // By default just return a DatabaseQueryObservation
         DatabaseQueryObservation(
             query: self,
@@ -102,8 +102,8 @@ public extension Query {
     /// - Parameter input: The query or input definition used to fetch results.
     /// - Returns: A `QueryStream` sequence of `Output` values that reflect
     ///   both the initial results and subsequent changes.
-    func observe(with input: Input) -> QueryStream<Output> {
-        QueryStream(observation(with: input))
+    func observe(_ input: Input) -> QueryStream<Output> {
+        QueryStream(observation(input))
     }
 }
 
@@ -124,7 +124,7 @@ public extension Query where Input == () {
     /// - Throws: An error if the query fails to execute or if the results
     ///   cannot be decoded into the expected type.
     func execute(tx: borrowing Transaction) throws -> Output {
-        return try execute(with: (), tx: tx)
+        return try execute((), tx: tx)
     }
     
     /// Executes the query once and returns the result.
@@ -138,7 +138,7 @@ public extension Query where Input == () {
     /// - Throws: An error if the query fails to execute or if the results
     ///   cannot be decoded into the expected type.
     func execute() async throws -> Output {
-        return try await execute(with: ())
+        return try await execute(())
     }
     
     /// Observes the results of a database query and streams updates as the
@@ -159,6 +159,6 @@ public extension Query where Input == () {
     /// - Returns: A `QueryStream` sequence of `Output` values that reflect
     ///   both the initial results and subsequent changes.
     func observe() -> QueryStream<Output> {
-        return observe(with: ())
+        return observe(())
     }
 }

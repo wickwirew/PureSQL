@@ -12,7 +12,7 @@ import Foundation
 final class TodoFormModel: Identifiable {
     let mode: Mode
     let complete: () -> Void
-    let todoQueries: any TodoQueries
+    let todoQueries: TodoQueries
     
     var name = ""
     var error: Error?
@@ -24,7 +24,7 @@ final class TodoFormModel: Identifiable {
     
     init(
         mode: Mode,
-        todoQueries: any TodoQueries,
+        todoQueries: TodoQueries,
         complete: @escaping () -> Void
     ) {
         self.mode = mode
@@ -43,11 +43,9 @@ final class TodoFormModel: Identifiable {
         do {
             switch mode {
             case .create:
-                _ = try await todoQueries.insertTodo
-                    .execute(with: name)
+                _ = try await todoQueries.insertTodo.execute(name)
             case .update(let todo):
-                try await todoQueries.updateTodo
-                    .execute(name: name, id: todo.id)
+                try await todoQueries.updateTodo.execute(name: name, id: todo.id)
             }
             
             complete()

@@ -18,7 +18,7 @@ struct TodoFormTests {
         
         let model = TodoFormModel(
             mode: .create,
-            todoQueries: TodoQueriesNoop(insertTodo: insertTodo),
+            todoQueries: TodoQueries.noop(insertTodo: insertTodo),
             complete: {}
         )
         
@@ -32,7 +32,7 @@ struct TodoFormTests {
 
         let model = TodoFormModel(
             mode: .update(.mock()),
-            todoQueries: TodoQueriesNoop(updateTodo: updateTodo),
+            todoQueries: TodoQueries.noop(updateTodo: updateTodo),
             complete: {}
         )
         

@@ -16,7 +16,7 @@ struct QueryPublisherTests {
     @Test func demandOfMaxOnlyReturnsASingleValue() async throws {
         let db = try TestDB.inMemory()
 
-        try await db.insertFoo.execute(with: 1)
+        try await db.insertFoo.execute(1)
         
         let subscriber = TestSubscriber<[TestDB.Foo]>()
         db.selectFoos.publisher().subscribe(subscriber)
@@ -25,11 +25,11 @@ struct QueryPublisherTests {
         let values1 = await first(from: subscriber.received)
         #expect(values1 == [TestDB.Foo(bar: 1)])
         
-        try await db.insertFoo.execute(with: 2)
+        try await db.insertFoo.execute(2)
         let values2 = await first(from: subscriber.received)
         #expect(values2 == [TestDB.Foo(bar: 1), TestDB.Foo(bar: 2)])
         
-        try await db.insertFoo.execute(with: 3)
+        try await db.insertFoo.execute(3)
         let values3 = await first(from: subscriber.received)
         #expect(values3 == [TestDB.Foo(bar: 1), TestDB.Foo(bar: 2), TestDB.Foo(bar: 3)])
         
@@ -39,7 +39,7 @@ struct QueryPublisherTests {
     @Test func demandOfOneOnlyReturnsASingleValue() async throws {
         let db = try TestDB.inMemory()
 
-        try await db.insertFoo.execute(with: 1)
+        try await db.insertFoo.execute(1)
         
         let subscriber = TestSubscriber<[TestDB.Foo]>()
         db.selectFoos.publisher().subscribe(subscriber)
@@ -48,7 +48,7 @@ struct QueryPublisherTests {
         let value = await first(from: subscriber.received)
         #expect(value == [TestDB.Foo(bar: 1)])
         
-        try await db.insertFoo.execute(with: 2)
+        try await db.insertFoo.execute(2)
         let nextValue = await first(from: subscriber.received, timeout: .milliseconds(100))
         #expect(nextValue == nil)
         
@@ -58,7 +58,7 @@ struct QueryPublisherTests {
     @Test func demandOfNoneOnlyReturnsASingleValue() async throws {
         let db = try TestDB.inMemory()
 
-        try await db.insertFoo.execute(with: 1)
+        try await db.insertFoo.execute(1)
         
         let subscriber = TestSubscriber<[TestDB.Foo]>()
         db.selectFoos.publisher().subscribe(subscriber)

@@ -44,7 +44,7 @@ struct TodoForm: View {
         TodoForm(
             model: TodoFormModel(
                 mode: .update(.mock()),
-                todoQueries: TodoQueriesNoop(),
+                todoQueries: .noop(),
                 complete: {}
             )
         )

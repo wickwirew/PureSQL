@@ -180,7 +180,7 @@ struct DatabaseValueAdapterTests {
         )
         
         let date = Date(timeIntervalSince1970: 1751219898)
-        try await db.insert.execute(with: .init(optionalNumber: 200, number: 100, date: date))
+        try await db.insert.execute(.init(optionalNumber: 200, number: 100, date: date))
         
         let result = try await db.all.execute().first
         

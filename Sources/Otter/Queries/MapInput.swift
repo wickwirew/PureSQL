@@ -26,12 +26,12 @@ public extension Queries {
             base.watchedTables
         }
 
-        public func execute(with input: Input, tx: borrowing Transaction) throws -> Base.Output {
-            try base.execute(with: transform(input), tx: tx)
+        public func execute(_ input: Input, tx: borrowing Transaction) throws -> Base.Output {
+            try base.execute(transform(input), tx: tx)
         }
 
-        public func observation(with input: Input) -> any QueryObservation<Output> {
-            return base.observation(with: transform(input))
+        public func observation(_ input: Input) -> any QueryObservation<Output> {
+            return base.observation(transform(input))
         }
     }
 }
@@ -50,7 +50,7 @@ public extension Query {
         return Queries.MapInput(base: self, transform: transform)
     }
 
-    func with(input: Input) -> Queries.MapInput<Self, Void> {
+    func with(_ input: Input) -> Queries.MapInput<Self, Void> {
         Queries.MapInput(base: self) { input }
     }
 }

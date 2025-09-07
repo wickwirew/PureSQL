@@ -48,7 +48,7 @@ struct ConnectionPoolTests {
         struct Err: Error {}
         
         try? await db.connection.begin(.write) { tx in
-            try db.insertFoo.execute(with: 1, tx: tx)
+            try db.insertFoo.execute(1, tx: tx)
             throw Err()
         }
         

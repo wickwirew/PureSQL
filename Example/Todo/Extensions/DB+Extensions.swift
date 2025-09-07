@@ -24,7 +24,7 @@ extension DB {
                 at: directoryURL,
                 withIntermediateDirectories: true
             )
-            self = try DB(url: dbURL)
+            self = try DB(url: dbURL, adapters: DB.Adapters())
         }
     }
 }

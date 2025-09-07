@@ -13,12 +13,12 @@ import Testing
 struct QueryTests {
     @Test func testInsertAndGetQuery() async throws {
         let db = try TestDB.inTempDir()
-        try await db.insertFoo.execute(with: 1)
+        try await db.insertFoo.execute(1)
         
         let foos = try await db.selectFoos.execute()
         #expect(foos == [TestDB.Foo(bar: 1)])
         
-        let foo = try await db.selectFoo.execute(with: 1)
+        let foo = try await db.selectFoo.execute(1)
         #expect(foo == TestDB.Foo(bar: 1))
     }
     
@@ -30,15 +30,15 @@ struct QueryTests {
     
     @Test func selectManyCanReturnManyItems() async throws {
         let db = try TestDB.inTempDir()
-        try await db.insertFoo.execute(with: 1)
-        try await db.insertFoo.execute(with: 2)
+        try await db.insertFoo.execute(1)
+        try await db.insertFoo.execute(2)
         let foos = try await db.selectFoos.execute()
         #expect(foos == [TestDB.Foo(bar: 1), TestDB.Foo(bar: 2)])
     }
     
     @Test func selectSingleWithEmptyDbReturnsNil() async throws {
         let db = try TestDB.inTempDir()
-        let foo = try await db.selectFoo.execute(with: 1)
+        let foo = try await db.selectFoo.execute(1)
         #expect(foo == nil)
     }
     
@@ -47,7 +47,7 @@ struct QueryTests {
         
         await #expect(throws: OtterError.cannotWriteInAReadTransaction) {
             _ = try await db.connection.begin(.read) { tx in
-                try db.insertFoo.execute(with: 1, tx: tx)
+                try db.insertFoo.execute(1, tx: tx)
             }
         }
     }
@@ -55,8 +55,8 @@ struct QueryTests {
     @Test func optionallyIncludedEmbeddedJoin_Exists() async throws {
         let db = try TestDB.inMemory()
         
-        try await db.insertFoo.execute(with: 1)
-        try await db.insertBaz.execute(with: 1)
+        try await db.insertFoo.execute(1)
+        try await db.insertBaz.execute(1)
         
         let result = try await db.selectFooAndBaz.execute()
         
@@ -66,7 +66,7 @@ struct QueryTests {
     @Test func optionallyIncludedEmbeddedJoin_DoesNotExists() async throws {
         let db = try TestDB.inMemory()
         
-        try await db.insertFoo.execute(with: 1)
+        try await db.insertFoo.execute(1)
         
         let result = try await db.selectFooAndBaz.execute()
         

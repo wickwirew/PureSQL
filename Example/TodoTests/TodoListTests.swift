@@ -16,7 +16,7 @@ struct TodoListTests {
     @Test func todosAreSetOnLoad() async {
         let todos: [Todo] = [.mock(), .mock()]
         let selectTodos = Queries.Test<(), [Todo]>(todos)
-        let model = TodoListModel(todoQueries: TodoQueriesNoop(selectTodos: selectTodos))
+        let model = TodoListModel(todoQueries: .noop(selectTodos: selectTodos))
         
         await model.load()
         
@@ -26,7 +26,7 @@ struct TodoListTests {
     
     @Test func loadFailureSetsError() async {
         let model = TodoListModel(
-            todoQueries: TodoQueriesNoop(
+            todoQueries: .noop(
                 // Queries.Fail always throws an error
                 selectTodos: Queries.Fail()
             )
@@ -39,7 +39,7 @@ struct TodoListTests {
     
     @Test func toggleTodoUpdatesDB() async {
         let toggleTodo = Queries.Test<Todo.ID, ()>()
-        let model = TodoListModel(todoQueries: TodoQueriesNoop(toggleTodo: toggleTodo))
+        let model = TodoListModel(todoQueries: .noop(toggleTodo: toggleTodo))
         
         await model.toggle(todo: .mock())
         

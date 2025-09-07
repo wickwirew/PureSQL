@@ -19,7 +19,7 @@ struct JustTests {
         let query = Queries.Just<Int, String>("foo")
         var count = 0
         
-        for try await value in query.observe(with: 1) {
+        for try await value in query.observe(1) {
             count += 1
             #expect(value == "foo")
         }

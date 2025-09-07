@@ -69,8 +69,30 @@ public extension Database {
 
 
 extension Database where Adapters == DefaultAdapters {
+    /// Opens a connection pool to the database at the given URL.
+    ///
+    /// - Parameter url: The url of the database file
+    init(url: URL) throws {
+        self = try Self(url: url, adapters: DefaultAdapters())
+    }
+
+    /// Opens a connection pool to the database at the given path.
+    ///
+    /// - Parameter path: The path of the database file
+    init(path: String) throws {
+        self = try Self(path: path, adapters: DefaultAdapters())
+    }
+
+    /// Opens a connection pool to the database
+    ///
+    /// - Parameter config: The configuration specifying any info
+    /// needed to open the database.
+    init(config: DatabaseConfig) throws {
+        self = try Self(config: config, adapters: DefaultAdapters())
+    }
+    
     /// Creates an in memory database.
-    static func inMemory() throws -> Self {
+    public static func inMemory() throws -> Self {
         return try Self(config: DatabaseConfig(path: nil), adapters: DefaultAdapters())
     }
 }

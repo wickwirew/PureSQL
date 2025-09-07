@@ -25,13 +25,13 @@ extension Queries {
         }
         
         public func execute(
-            with input: [Base.Input],
+            _ input: [Base.Input],
             tx: borrowing Transaction
         ) throws -> [Base.Output] {
             var results: [Base.Output] = []
             
             for input in input {
-                try results.append(base.execute(with: input, tx: tx))
+                try results.append(base.execute(input, tx: tx))
             }
             
             return results

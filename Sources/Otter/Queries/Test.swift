@@ -55,12 +55,12 @@ public extension Queries {
         public var watchedTables: Set<String> { [] }
         public var connection: any Connection { NoopConnection() }
         
-        public func execute(with input: Input, tx: borrowing Transaction) throws -> Output {
+        public func execute(_ input: Input, tx: borrowing Transaction) throws -> Output {
             lock.withLock { executeCallCount += 1 }
             return try execute(input)
         }
         
-        public nonisolated func observation(with input: Input) -> any QueryObservation<Output> {
+        public nonisolated func observation(_ input: Input) -> any QueryObservation<Output> {
             lock.withLock { observeCallCount += 1 }
             return Observation(input: input, query: self)
         }
