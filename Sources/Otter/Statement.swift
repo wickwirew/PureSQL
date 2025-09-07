@@ -93,13 +93,8 @@ public struct Statement: ~Copyable {
 
 extension Statement {
     /// Fetches all rows returned by the statement
-    public consuming func fetchAll<Element: RowDecodable>() throws(OtterError) -> [Element] {
-        return try fetchAll(of: Element.self)
-    }
-    
-    /// Fetches all rows returned by the statement
     public consuming func fetchAll<Element: RowDecodable>(
-        of _: Element.Type
+        of _: Element.Type = Element.self
     ) throws(OtterError) -> [Element] {
         var cursor = Cursor<Element>(of: self)
         var result: [Element] = []
@@ -110,28 +105,25 @@ extension Statement {
         
         return result
     }
-    
-    /// Optionally fetches a single row returned by the statement
-    public consuming func fetchOne<Element: RowDecodable>() throws(OtterError) -> Element? {
-        return try fetchOne(of: Element.self)
+
+    /// Fetches a single row returned by the statement
+    public consuming func fetchOne<Element: RowDecodable>(
+        of _: Element.Type = Element.self
+    ) throws(OtterError) -> Element? {
+        var cursor = Cursor<Element>(of: self)
+        return try cursor.next()
     }
     
     /// Fetches a single row returned by the statement
     @_disfavoredOverload
-    public consuming func fetchOne<Element: RowDecodable>() throws(OtterError) -> Element {
-        guard let row = try fetchOne(of: Element.self) else {
+    public consuming func fetchOne<Element: RowDecodable>(
+        of value: Element.Type = Element.self
+    ) throws(OtterError) -> Element {
+        guard let row = try fetchOne(of: value) else {
             throw OtterError.queryReturnedNoValue
         }
         
         return row
-    }
-    
-    /// Fetches a single row returned by the statement
-    public consuming func fetchOne<Element: RowDecodable>(
-        of _: Element.Type
-    ) throws(OtterError) -> Element? {
-        var cursor = Cursor<Element>(of: self)
-        return try cursor.next()
     }
 }
 
@@ -140,14 +132,7 @@ extension Statement {
 extension Statement {
     /// Fetches all rows returned by the statement
     public consuming func fetchAll<Element: RowDecodableWithAdapters>(
-        adapters: Element.Adapters
-    ) throws(OtterError) -> [Element] {
-        return try fetchAll(of: Element.self, adapters: adapters)
-    }
-    
-    /// Fetches all rows returned by the statement
-    public consuming func fetchAll<Element: RowDecodableWithAdapters>(
-        of _: Element.Type,
+        of _: Element.Type = Element.self,
         adapters: Element.Adapters
     ) throws(OtterError) -> [Element] {
         var cursor = Cursor<Element>(of: self)
@@ -159,33 +144,27 @@ extension Statement {
         
         return result
     }
-    
-    /// Optionally fetches a single row returned by the statement
+
+    /// Fetches a single row returned by the statement
     public consuming func fetchOne<Element: RowDecodableWithAdapters>(
+        of _: Element.Type = Element.self,
         adapters: Element.Adapters
     ) throws(OtterError) -> Element? {
-        return try fetchOne(of: Element.self, adapters: adapters)
+        var cursor = Cursor<Element>(of: self)
+        return try cursor.next(adapters: adapters)
     }
     
     /// Fetches a single row returned by the statement
     @_disfavoredOverload
     public consuming func fetchOne<Element: RowDecodableWithAdapters>(
+        of value: Element.Type = Element.self,
         adapters: Element.Adapters
     ) throws(OtterError) -> Element {
-        guard let row = try fetchOne(of: Element.self, adapters: adapters) else {
+        guard let row = try fetchOne(of: value, adapters: adapters) else {
             throw OtterError.queryReturnedNoValue
         }
         
         return row
-    }
-    
-    /// Fetches a single row returned by the statement
-    public consuming func fetchOne<Element: RowDecodableWithAdapters>(
-        of _: Element.Type,
-        adapters: Element.Adapters
-    ) throws(OtterError) -> Element? {
-        var cursor = Cursor<Element>(of: self)
-        return try cursor.next(adapters: adapters)
     }
 }
 
@@ -194,15 +173,7 @@ extension Statement {
 extension Statement {
     /// Fetches all rows returned by the statement
     public consuming func fetchAll<Adapter: DatabaseValueAdapter, Storage: DatabasePrimitive>(
-        adapter: Adapter,
-        storage: Storage.Type
-    ) throws(OtterError) -> [Adapter.Value] {
-        return try fetchAll(of: Adapter.Value.self, adapter: adapter, storage: storage)
-    }
-    
-    /// Fetches all rows returned by the statement
-    public consuming func fetchAll<Adapter: DatabaseValueAdapter, Storage: DatabasePrimitive>(
-        of _: Adapter.Value.Type,
+        of _: Adapter.Value.Type = Adapter.Value.self,
         adapter: Adapter,
         storage: Storage.Type
     ) throws(OtterError) -> [Adapter.Value] {
@@ -215,26 +186,28 @@ extension Statement {
         
         return result
     }
-  
-    /// Fetches a single row returned by the statement
-    @_disfavoredOverload
-    public consuming func fetchOne<Adapter: DatabaseValueAdapter, Storage: DatabasePrimitive>(
-        adapter: Adapter,
-        storage: Storage.Type
-    ) throws(OtterError) -> Adapter.Value {
-        guard let row = try fetchOne(adapter: adapter, storage: storage) else {
-            throw OtterError.queryReturnedNoValue
-        }
-        
-        return row
-    }
     
     /// Fetches a single row returned by the statement
     public consuming func fetchOne<Adapter: DatabaseValueAdapter, Storage: DatabasePrimitive>(
+        of _: Adapter.Value.Type = Adapter.Value.self,
         adapter: Adapter,
         storage: Storage.Type
     ) throws(OtterError) -> Adapter.Value? {
         var cursor = Cursor<Adapter.Value>(of: self)
         return try cursor.next(adapter: adapter, storage: storage)
+    }
+    
+    /// Fetches a single row returned by the statement
+    @_disfavoredOverload
+    public consuming func fetchOne<Adapter: DatabaseValueAdapter, Storage: DatabasePrimitive>(
+        of value: Adapter.Value.Type = Adapter.Value.self,
+        adapter: Adapter,
+        storage: Storage.Type
+    ) throws(OtterError) -> Adapter.Value {
+        guard let row = try fetchOne(of: value, adapter: adapter, storage: storage) else {
+            throw OtterError.queryReturnedNoValue
+        }
+        
+        return row
     }
 }

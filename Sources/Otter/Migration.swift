@@ -7,7 +7,7 @@
 
 /// Executes the migrations and ensures it is up to date.
 enum MigrationRunner {
-    static let migrationTableName = "__otterMigrations"
+    static let migrationTableName = "__otterMigration"
 
     static func execute(migrations: [String], connection: SQLiteConnection) throws {
         let previouslyRunMigrations = try runMigrations(connection: connection)
