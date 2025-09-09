@@ -775,8 +775,12 @@ public struct SwiftLanguage: Language {
             }
             
             writer.write(")")
-        case let .arrayStart(name, elementName):
-            writer.write(line: "for ", elementName, " in ", name, " {")
+        case let .arrayStart(name, owner, elementName):
+            writer.write(line: "for ", elementName, " in ")
+            if let owner {
+                writer.write(owner, ".")
+            }
+            writer.write(name, " {")
             writer.indent()
         case .arrayEnd:
             writer.unindent()

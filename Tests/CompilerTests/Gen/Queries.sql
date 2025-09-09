@@ -25,3 +25,9 @@ INNER JOIN bar ON foo.intPk = bar.intPk;
 
 selectWithManyInputs:
 SELECT * FROM foo WHERE intPk = ? AND textNotNull = ?;
+
+inputIsArray:
+DELETE FROM bar WHERE intPk IN ?;
+
+inputContainsArray:
+DELETE FROM bar WHERE intPk IN ? AND barNotNullText = ?;

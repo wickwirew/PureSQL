@@ -167,3 +167,24 @@ WHERE excluded.name = 'bob';
 -- CHECK:   TABLES
 -- CHECK:     user
 INSERT INTO user (name) VALUES ('joe') RETURNING id;
+
+CREATE TABLE foo (
+    bar INTEGER,
+    baz INTEGER,
+    PRIMARY KEY (bar, baz)
+);
+
+-- CHECK: SIGNATURE
+-- CHECK:   PARAMETERS
+-- CHECK:     PARAMETER
+-- CHECK:       TYPE INTEGER?
+-- CHECK:       INDEX 1
+-- CHECK:       NAME bar
+-- CHECK:     PARAMETER
+-- CHECK:       TYPE INTEGER?
+-- CHECK:       INDEX 2
+-- CHECK:       NAME baz
+-- CHECK:   TABLES
+-- CHECK:     foo
+INSERT INTO foo VALUES (?, ?)
+ON CONFLICT (bar, baz) DO NOTHING;

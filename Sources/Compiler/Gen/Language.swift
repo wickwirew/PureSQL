@@ -108,7 +108,7 @@ extension Language {
                 return text.description
             case let .rowParam(param):
                 let qs = interpolatedQuestionMarks(
-                    for: statement.parameters.count > 1 ? param.name : "input"
+                    for: statement.parameters.count > 1 ? "input.\(param.name)" : "input"
                 )
                 return "(\(qs))"
             }
@@ -173,8 +173,8 @@ extension Language {
                 )
             }
         case .array(let values):
-            result.append(.arrayStart(name: name ?? "input", elementName: "element"))
-            result.append(contentsOf: bindings(for: values, index: &index, owner: "element"))
+            result.append(.arrayStart(name: name ?? "input", owner: owner, elementName: "element"))
+            result.append(contentsOf: bindings(for: values, index: &index, name: "element"))
             result.append(.arrayEnd)
         case .encoded(let storage, _, let adapter):
             result.append(
@@ -448,7 +448,7 @@ public struct GeneratedQuery {
             isOptional: Bool = false,
             adapter: (adapter: AdapterReference, storage: String)? = nil
         )
-        case arrayStart(name: String, elementName: String)
+        case arrayStart(name: String, owner: String?, elementName: String)
         case arrayEnd
     }
 }

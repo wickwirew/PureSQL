@@ -214,6 +214,11 @@ struct SelectWithManyInputsInput: Hashable, Sendable {
     let textNotNull: String
 }
 
+struct InputContainsArrayInput: Hashable, Sendable {
+    let intPks: [Int]
+    let barNotNullText: String
+}
+
 struct QueriesQueries: ConnectionWrapper, Sendable {
     let connection: any Connection
     var insertFooReturningFoo: any InsertFooReturningFooQuery
@@ -223,6 +228,8 @@ struct QueriesQueries: ConnectionWrapper, Sendable {
     var hasEmbeddedFoo: any HasEmbeddedFooQuery
     var bothColumnsShouldNotBeNullable: any BothColumnsShouldNotBeNullableQuery
     var selectWithManyInputs: any SelectWithManyInputsQuery
+    var inputIsArray: any InputIsArrayQuery
+    var inputContainsArray: any InputContainsArrayQuery
     
     static func noop(
         insertFooReturningFoo: any InsertFooReturningFooQuery = Queries.Fail(),
@@ -231,7 +238,9 @@ struct QueriesQueries: ConnectionWrapper, Sendable {
         selectSingleFoo: any SelectSingleFooQuery = Queries.Just(),
         hasEmbeddedFoo: any HasEmbeddedFooQuery = Queries.Just(),
         bothColumnsShouldNotBeNullable: any BothColumnsShouldNotBeNullableQuery = Queries.Just(),
-        selectWithManyInputs: any SelectWithManyInputsQuery = Queries.Just()
+        selectWithManyInputs: any SelectWithManyInputsQuery = Queries.Just(),
+        inputIsArray: any InputIsArrayQuery = Queries.Just(),
+        inputContainsArray: any InputContainsArrayQuery = Queries.Just()
     ) -> QueriesQueries {
         QueriesQueries(
             connection: NoopConnection(),
@@ -241,7 +250,9 @@ struct QueriesQueries: ConnectionWrapper, Sendable {
             selectSingleFoo: selectSingleFoo,
             hasEmbeddedFoo: hasEmbeddedFoo,
             bothColumnsShouldNotBeNullable: bothColumnsShouldNotBeNullable,
-            selectWithManyInputs: selectWithManyInputs
+            selectWithManyInputs: selectWithManyInputs,
+            inputIsArray: inputIsArray,
+            inputContainsArray: inputContainsArray
         )
     }
     
@@ -358,6 +369,39 @@ struct QueriesQueries: ConnectionWrapper, Sendable {
                 try statement.bind(value: input.intPk, to: 1)
                 try statement.bind(value: input.textNotNull, to: 2)
                 return try statement.fetchOne(adapters: adapters)
+            },
+            inputIsArray: DatabaseQuery<[Int], ()>(
+                .write,
+                in: connection,
+                watchingTables: ["bar"]
+            ) { input, tx in
+                let statement = try Otter.Statement(
+                    """
+                    DELETE FROM bar WHERE intPk IN (\(input.sqlQuestionMarks))
+                    """,
+                    transaction: tx
+                )
+                for element in input {
+                    try statement.bind(value: element, to: 1)
+                }
+                _ = try statement.step()
+            },
+            inputContainsArray: DatabaseQuery<InputContainsArrayInput, ()>(
+                .write,
+                in: connection,
+                watchingTables: ["bar"]
+            ) { input, tx in
+                let statement = try Otter.Statement(
+                    """
+                    DELETE FROM bar WHERE intPk IN (\(input.intPks.sqlQuestionMarks))AND barNotNullText = ?
+                    """,
+                    transaction: tx
+                )
+                for element in input.intPks {
+                    try statement.bind(value: element, to: 1)
+                }
+                try statement.bind(value: input.barNotNullText, to: 2)
+                _ = try statement.step()
             }
         )
     }
@@ -462,5 +506,21 @@ extension Query where Input == SelectWithManyInputsInput {
     
     func observe(intPk: Int, textNotNull: String) -> QueryStream<Output> {
         observe(SelectWithManyInputsInput(intPk: intPk, textNotNull: textNotNull))
+    }
+}
+
+typealias InputIsArrayQuery = Query<[Int], ()>
+typealias InputContainsArrayQuery = Query<InputContainsArrayInput, ()>
+extension Query where Input == InputContainsArrayInput {
+    func execute(intPks: [Int], barNotNullText: String) async throws -> Output {
+        try await execute(InputContainsArrayInput(intPks: intPks, barNotNullText: barNotNullText))
+    }
+    
+    func execute(intPks: [Int], barNotNullText: String, tx: borrowing Transaction) throws -> Output {
+        try execute(InputContainsArrayInput(intPks: intPks, barNotNullText: barNotNullText), tx: tx)
+    }
+    
+    func observe(intPks: [Int], barNotNullText: String) -> QueryStream<Output> {
+        observe(InputContainsArrayInput(intPks: intPks, barNotNullText: barNotNullText))
     }
 }
