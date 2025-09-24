@@ -24,7 +24,7 @@ public struct Statement: ~Copyable {
     public init(
         _ source: String,
         transaction: borrowing Transaction
-    ) throws(PureSQLError) {
+    ) throws(SQLError) {
         self.raw = try transaction.connection.prepare(sql: source)
     }
     
@@ -52,7 +52,7 @@ public struct Statement: ~Copyable {
     public func bind<Value: DatabasePrimitive>(
         value: Value,
         to index: Int32
-    ) throws(PureSQLError) {
+    ) throws(SQLError) {
         try value.bind(to: raw, at: index)
     }
     
@@ -62,7 +62,7 @@ public struct Statement: ~Copyable {
         to index: Int32,
         using: Coder,
         as storage: Storage.Type
-    ) throws(PureSQLError) {
+    ) throws(SQLError) {
         let storage = try Storage(value: value, into: using)
         try storage.bind(to: raw, at: index)
     }
@@ -74,7 +74,7 @@ public struct Statement: ~Copyable {
         to index: Int32,
         using: Coder,
         as storage: Storage.Type
-    ) throws(PureSQLError) {
+    ) throws(SQLError) {
         if let value {
             let storage = try Storage(value: value, into: using)
             try storage.bind(to: raw, at: index)
@@ -85,7 +85,7 @@ public struct Statement: ~Copyable {
     }
     
     /// Steps the statement forward by one row.
-    public func step() throws(PureSQLError) -> Step {
+    public func step() throws(SQLError) -> Step {
         let code = SQLiteCode(sqlite3_step(raw))
         switch code {
         case .sqliteDone: return .done
@@ -105,7 +105,7 @@ extension Statement {
     /// Fetches all rows returned by the statement
     public consuming func fetchAll<Element: RowDecodable>(
         of _: Element.Type = Element.self
-    ) throws(PureSQLError) -> [Element] {
+    ) throws(SQLError) -> [Element] {
         var cursor = Cursor<Element>(of: self)
         var result: [Element] = []
         
@@ -119,7 +119,7 @@ extension Statement {
     /// Fetches a single row returned by the statement
     public consuming func fetchOne<Element: RowDecodable>(
         of _: Element.Type = Element.self
-    ) throws(PureSQLError) -> Element? {
+    ) throws(SQLError) -> Element? {
         var cursor = Cursor<Element>(of: self)
         return try cursor.next()
     }
@@ -128,9 +128,9 @@ extension Statement {
     @_disfavoredOverload
     public consuming func fetchOne<Element: RowDecodable>(
         of value: Element.Type = Element.self
-    ) throws(PureSQLError) -> Element {
+    ) throws(SQLError) -> Element {
         guard let row = try fetchOne(of: value) else {
-            throw PureSQLError.queryReturnedNoValue
+            throw SQLError.queryReturnedNoValue
         }
         
         return row
@@ -144,7 +144,7 @@ extension Statement {
     public consuming func fetchAll<Element: RowDecodableWithAdapters>(
         of _: Element.Type = Element.self,
         adapters: Element.Adapters
-    ) throws(PureSQLError) -> [Element] {
+    ) throws(SQLError) -> [Element] {
         var cursor = Cursor<Element>(of: self)
         var result: [Element] = []
         
@@ -159,7 +159,7 @@ extension Statement {
     public consuming func fetchOne<Element: RowDecodableWithAdapters>(
         of _: Element.Type = Element.self,
         adapters: Element.Adapters
-    ) throws(PureSQLError) -> Element? {
+    ) throws(SQLError) -> Element? {
         var cursor = Cursor<Element>(of: self)
         return try cursor.next(adapters: adapters)
     }
@@ -169,9 +169,9 @@ extension Statement {
     public consuming func fetchOne<Element: RowDecodableWithAdapters>(
         of value: Element.Type = Element.self,
         adapters: Element.Adapters
-    ) throws(PureSQLError) -> Element {
+    ) throws(SQLError) -> Element {
         guard let row = try fetchOne(of: value, adapters: adapters) else {
-            throw PureSQLError.queryReturnedNoValue
+            throw SQLError.queryReturnedNoValue
         }
         
         return row
@@ -186,7 +186,7 @@ extension Statement {
         of _: Adapter.Value.Type = Adapter.Value.self,
         adapter: Adapter,
         storage: Storage.Type
-    ) throws(PureSQLError) -> [Adapter.Value] {
+    ) throws(SQLError) -> [Adapter.Value] {
         var cursor = Cursor<Adapter.Value>(of: self)
         var result: [Adapter.Value] = []
         
@@ -202,7 +202,7 @@ extension Statement {
         of _: Adapter.Value.Type = Adapter.Value.self,
         adapter: Adapter,
         storage: Storage.Type
-    ) throws(PureSQLError) -> Adapter.Value? {
+    ) throws(SQLError) -> Adapter.Value? {
         var cursor = Cursor<Adapter.Value>(of: self)
         return try cursor.next(adapter: adapter, storage: storage)
     }
@@ -213,9 +213,9 @@ extension Statement {
         of value: Adapter.Value.Type = Adapter.Value.self,
         adapter: Adapter,
         storage: Storage.Type
-    ) throws(PureSQLError) -> Adapter.Value {
+    ) throws(SQLError) -> Adapter.Value {
         guard let row = try fetchOne(of: value, adapter: adapter, storage: storage) else {
-            throw PureSQLError.queryReturnedNoValue
+            throw SQLError.queryReturnedNoValue
         }
         
         return row

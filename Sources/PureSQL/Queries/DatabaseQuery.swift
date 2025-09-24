@@ -47,7 +47,7 @@ public struct DatabaseQuery<Input, Output>: Query
         tx: borrowing Transaction
     ) throws -> Output {
         guard tx.kind >= transactionKind else {
-            throw PureSQLError.cannotWriteInAReadTransaction
+            throw SQLError.cannotWriteInAReadTransaction
         }
         
         return try execute(input, tx)

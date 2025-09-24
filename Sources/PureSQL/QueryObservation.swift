@@ -72,7 +72,7 @@ public final class DatabaseQueryObservation<Q>: @unchecked Sendable
         
         do {
             guard query.transactionKind != .write else {
-                throw PureSQLError.cannotObserveWriteQuery
+                throw SQLError.cannotObserveWriteQuery
             }
             
             let output = try await query.execute(input)

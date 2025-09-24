@@ -103,7 +103,7 @@ struct RowTests {
             let bar: Int
             let baz: String
             
-            init(row: borrowing Row, startingAt start: Int32) throws(PureSQLError) {
+            init(row: borrowing Row, startingAt start: Int32) throws(SQLError) {
                 self.bar = try row.value(at: 0)
                 self.baz = try row.value(at: 1)
             }
@@ -129,7 +129,7 @@ struct RowTests {
             let bar: Int
             let baz: String
             
-            init(row: borrowing Row, startingAt start: Int32) throws(PureSQLError) {
+            init(row: borrowing Row, startingAt start: Int32) throws(SQLError) {
                 self.bar = try row.value(at: 0)
                 self.baz = try row.value(at: 1)
             }
@@ -157,7 +157,7 @@ struct RowTests {
             
             static var nonOptionalIndices: [Int32] { [0, 1] }
             
-            init(row: borrowing Row, startingAt start: Int32) throws(PureSQLError) {
+            init(row: borrowing Row, startingAt start: Int32) throws(SQLError) {
                 self.bar = try row.value(at: 0)
                 self.baz = try row.value(at: 1)
             }

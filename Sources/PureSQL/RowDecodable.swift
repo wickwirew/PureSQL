@@ -15,8 +15,8 @@ public protocol RowDecodable {
     /// - Parameters:
     ///   - row: The SQLite row to decode values from.
     ///   - start: The starting column index in the row.
-    /// - Throws: `PureSQLError` if decoding fails
-    init(row: borrowing Row, startingAt start: Int32) throws(PureSQLError)
+    /// - Throws: `SQLError` if decoding fails
+    init(row: borrowing Row, startingAt start: Int32) throws(SQLError)
 }
 
 /// A type that can be decoded from a SQLite row using adapters.
@@ -32,12 +32,12 @@ public protocol RowDecodableWithAdapters {
     ///   - row: The SQLite row to decode values from.
     ///   - start: The starting column index in the row.
     ///   - adapters: The adapters needed to decode some of the columns.
-    /// - Throws: `PureSQLError` if decoding fails
+    /// - Throws: `SQLError` if decoding fails
     init(
         row: borrowing Row,
         startingAt start: Int32,
         adapters: Adapters
-    ) throws(PureSQLError)
+    ) throws(SQLError)
 }
 
 extension RowDecodable {
@@ -86,7 +86,7 @@ extension RowDecodable {
     /// - Parameters:
     ///   - row: The row the table is embedded in.
     ///   - start: The index of the first column
-    public init?(row: borrowing Row, optionallyAt start: Int32) throws(PureSQLError) {
+    public init?(row: borrowing Row, optionallyAt start: Int32) throws(SQLError) {
         guard PureSQL.hasRequiredColumns(
             row: row,
             startingAt: start,
@@ -147,7 +147,7 @@ extension RowDecodableWithAdapters {
         row: borrowing Row,
         optionallyAt start: Int32,
         adapters: Adapters
-    ) throws(PureSQLError) {
+    ) throws(SQLError) {
         guard PureSQL.hasRequiredColumns(
             row: row,
             startingAt: start,
@@ -177,7 +177,7 @@ extension RowDecodableWithAdapters {
 extension Optional: RowDecodable where Wrapped: DatabasePrimitive {
     public static var nonOptionalIndices: [Int32] { Wrapped.nonOptionalIndices }
     
-    public init(row: borrowing Row, startingAt start: Int32) throws(PureSQLError) {
+    public init(row: borrowing Row, startingAt start: Int32) throws(SQLError) {
         self = try row.value(at: start)
     }
 }

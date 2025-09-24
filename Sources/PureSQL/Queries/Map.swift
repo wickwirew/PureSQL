@@ -94,7 +94,7 @@ public extension Query {
         _ error: (@Sendable (Input) -> Error)? = nil
     ) -> Queries.Map<Self, Wrapped> where Output == Wrapped? {
         return Queries.Map(base: self) { input, entity in
-            guard let entity else { throw error?(input) ?? PureSQLError.entityWasNotFound }
+            guard let entity else { throw error?(input) ?? SQLError.entityWasNotFound }
             return entity
         }
     }

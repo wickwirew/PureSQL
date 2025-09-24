@@ -45,7 +45,7 @@ struct QueryTests {
     @Test func errorIsThrownWhenAttemptingToWriteToReadTx() async throws {
         let db = try TestDB.inTempDir()
         
-        await #expect(throws: PureSQLError.cannotWriteInAReadTransaction) {
+        await #expect(throws: SQLError.cannotWriteInAReadTransaction) {
             _ = try await db.connection.begin(.read) { tx in
                 try db.insertFoo.execute(1, tx: tx)
             }

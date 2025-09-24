@@ -10,7 +10,7 @@ struct Bar: Hashable, Sendable, RowDecodable {
     init(
         row: borrowing PureSQL.Row,
         startingAt start: Int32
-    ) throws(PureSQL.PureSQLError) {
+    ) throws(PureSQL.SQLError) {
         self.intPk = try row.value(at: start + 0)
         self.barNotNullText = try row.value(at: start + 1)
     }
@@ -39,7 +39,7 @@ struct Foo: Hashable, Sendable, RowDecodableWithAdapters {
         row: borrowing PureSQL.Row,
         startingAt start: Int32,
         adapters: DB.Adapters
-    ) throws(PureSQL.PureSQLError) {
+    ) throws(PureSQL.SQLError) {
         self.intPk = try row.value(at: start + 0)
         self.textNotNull = try row.value(at: start + 1)
         self.textNullable = try row.value(at: start + 2)
@@ -91,7 +91,7 @@ struct InsertFooReturningFooOutput: Hashable, Sendable, RowDecodableWithAdapters
         row: borrowing PureSQL.Row,
         startingAt start: Int32,
         adapters: DB.Adapters
-    ) throws(PureSQL.PureSQLError) {
+    ) throws(PureSQL.SQLError) {
         self.intPk = try row.value(at: start + 0)
         self.textNotNull = try row.value(at: start + 1)
         self.textNullable = try row.value(at: start + 2)
@@ -140,7 +140,7 @@ struct InsertBarReturningExtraColumnOutput: Hashable, Sendable, RowDecodable {
     init(
         row: borrowing PureSQL.Row,
         startingAt start: Int32
-    ) throws(PureSQL.PureSQLError) {
+    ) throws(PureSQL.SQLError) {
         self.intPk = try row.value(at: start + 0)
         self.barNotNullText = try row.value(at: start + 1)
         self.columnAfter = try row.value(at: start + 2)
@@ -168,7 +168,7 @@ struct HasEmbeddedFooOutput: Hashable, Sendable, RowDecodableWithAdapters {
         row: borrowing PureSQL.Row,
         startingAt start: Int32,
         adapters: DB.Adapters
-    ) throws(PureSQL.PureSQLError) {
+    ) throws(PureSQL.SQLError) {
         self.foo = try row.embedded(at: start + 0, adapters: adapters)
         self.shouldBeNullable = try row.value(at: start + 7)
     }
@@ -195,7 +195,7 @@ struct BothColumnsShouldNotBeNullableOutput: Hashable, Sendable, RowDecodable {
     init(
         row: borrowing PureSQL.Row,
         startingAt start: Int32
-    ) throws(PureSQL.PureSQLError) {
+    ) throws(PureSQL.SQLError) {
         self.f = try row.value(at: start + 0)
         self.b = try row.value(at: start + 1)
     }

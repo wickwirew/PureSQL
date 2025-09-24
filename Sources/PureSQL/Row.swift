@@ -15,7 +15,7 @@ public struct Row: ~Copyable {
     @inlinable public func value<Value: DatabasePrimitive>(
         at column: Int32,
         as _: Value.Type = Value.self
-    ) throws(PureSQLError) -> Value {
+    ) throws(SQLError) -> Value {
         return try Value(from: sqliteStatement, at: column)
     }
     
@@ -24,7 +24,7 @@ public struct Row: ~Copyable {
         at column: Int32,
         using adapter: Coder,
         storage: Storage.Type
-    ) throws(PureSQLError) -> Coder.Value {
+    ) throws(SQLError) -> Coder.Value {
         let storage = try Storage(from: sqliteStatement, at: column)
         return try storage.decode(from: adapter)
     }
@@ -35,7 +35,7 @@ public struct Row: ~Copyable {
         at column: Int32,
         using adapter: Coder,
         storage: Storage.Type
-    ) throws(PureSQLError) -> Coder.Value? {
+    ) throws(SQLError) -> Coder.Value? {
         guard let storage = try Storage?(from: sqliteStatement, at: column) else { return  nil}
         return try storage.decode(from: adapter)
     }
@@ -44,7 +44,7 @@ public struct Row: ~Copyable {
     @inlinable public func embedded<Value: RowDecodable>(
         at column: Int32,
         as _: Value.Type = Value.self
-    ) throws(PureSQLError) -> Value {
+    ) throws(SQLError) -> Value {
         return try Value(row: self, startingAt: column)
     }
     
@@ -53,7 +53,7 @@ public struct Row: ~Copyable {
     @inlinable public func optionallyEmbedded<Value: RowDecodable>(
         at column: Int32,
         as _: Value.Type = Value.self
-    ) throws(PureSQLError) -> Value? {
+    ) throws(SQLError) -> Value? {
         return try Value(row: self, optionallyAt: column)
     }
     
@@ -62,7 +62,7 @@ public struct Row: ~Copyable {
         at column: Int32,
         as _: Value.Type = Value.self,
         adapters: Value.Adapters
-    ) throws(PureSQLError) -> Value {
+    ) throws(SQLError) -> Value {
         return try Value(row: self, startingAt: column, adapters: adapters)
     }
     
@@ -72,7 +72,7 @@ public struct Row: ~Copyable {
         at column: Int32,
         as _: Value.Type = Value.self,
         adapters: Value.Adapters
-    ) throws(PureSQLError) -> Value? {
+    ) throws(SQLError) -> Value? {
         return try Value(row: self, optionallyAt: column, adapters: adapters)
     }
     

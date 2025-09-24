@@ -28,7 +28,7 @@ struct QueriesCommand: ParsableCommand {
             let project = config.project(at: path)
             
             guard !project.doesQueryExist(withName: name) else {
-                throw PureSQLError.queryAlreadyExists(fileName: name)
+                throw SQLError.queryAlreadyExists(fileName: name)
             }
             
             try project.addQuery(named: name)

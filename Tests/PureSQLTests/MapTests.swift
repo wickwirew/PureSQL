@@ -40,7 +40,7 @@ struct MapTests {
     @Test func throwIfNotFoundReturnsDefaultError() async throws {
         let query = Queries.Just<Void, Int?>(nil)
         
-        await #expect(throws: PureSQLError.self) {
+        await #expect(throws: SQLError.self) {
             try await query.throwIfNotFound().execute()
         }
     }

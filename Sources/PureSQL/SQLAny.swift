@@ -81,7 +81,7 @@ extension SQLAny: ExpressibleByFloatLiteral {
 }
 
 extension SQLAny: DatabasePrimitive {
-    @inlinable public init(from cursor: OpaquePointer, at index: Int32) throws(PureSQLError) {
+    @inlinable public init(from cursor: OpaquePointer, at index: Int32) throws(SQLError) {
         let type = sqlite3_column_type(cursor, index)
         switch type {
         case SQLITE_TEXT: self = try .string(String(from: cursor, at: index))
@@ -93,7 +93,7 @@ extension SQLAny: DatabasePrimitive {
         }
     }
 
-    @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(PureSQLError) {
+    @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(SQLError) {
         switch self {
         case let .string(string): try string.bind(to: statement, at: index)
         case let .int(int): try int.bind(to: statement, at: index)
@@ -105,13 +105,13 @@ extension SQLAny: DatabasePrimitive {
     @inlinable public init<Adapter: DatabaseValueAdapter>(
         value: Adapter.Value,
         into adapter: Adapter
-    ) throws(PureSQLError) {
+    ) throws(SQLError) {
         self = try adapter.encodeToAny(value: value)
     }
     
     @inlinable public func decode<Adapter: DatabaseValueAdapter>(
         from adapter: Adapter
-    ) throws(PureSQLError) -> Adapter.Value {
+    ) throws(SQLError) -> Adapter.Value {
         try adapter.decode(from: self)
     }
     

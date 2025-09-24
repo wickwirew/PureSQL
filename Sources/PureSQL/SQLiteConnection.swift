@@ -10,8 +10,8 @@ import Foundation
 import SQLite3
 
 protocol RawConnection: Sendable {
-    func prepare(sql: String) throws(PureSQLError) -> OpaquePointer
-    func execute(sql: String) throws(PureSQLError)
+    func prepare(sql: String) throws(SQLError) -> OpaquePointer
+    func execute(sql: String) throws(SQLError)
 }
 
 /// Holds a raw SQLite database connection.
@@ -26,7 +26,7 @@ class SQLiteConnection: RawConnection, @unchecked Sendable {
             | SQLITE_OPEN_READWRITE
             | SQLITE_OPEN_NOMUTEX
             | SQLITE_OPEN_URI
-    ) throws(PureSQLError) {
+    ) throws(SQLError) {
         var raw: OpaquePointer?
         try throwing(sqlite3_open_v2(path, &raw, flags, nil))
 
@@ -37,7 +37,7 @@ class SQLiteConnection: RawConnection, @unchecked Sendable {
         self.sqliteConnection = raw
     }
     
-    func prepare(sql: String) throws(PureSQLError) -> OpaquePointer {
+    func prepare(sql: String) throws(SQLError) -> OpaquePointer {
         var raw: OpaquePointer?
         try throwing(
             sqlite3_prepare_v2(sqliteConnection, sql, -1, &raw, nil),
@@ -51,7 +51,7 @@ class SQLiteConnection: RawConnection, @unchecked Sendable {
         return raw
     }
 
-    func execute(sql: String) throws(PureSQLError) {
+    func execute(sql: String) throws(SQLError) {
         var error: UnsafeMutablePointer<CChar>?
         let rc = sqlite3_exec(sqliteConnection, sql, nil, nil, &error)
         
@@ -78,8 +78,8 @@ class SQLiteConnection: RawConnection, @unchecked Sendable {
 }
 
 final class NoopRawConnection: RawConnection {
-    func execute(sql: String) throws(PureSQLError) {}
-    func prepare(sql: String) throws(PureSQLError) -> OpaquePointer {
+    func execute(sql: String) throws(SQLError) {}
+    func prepare(sql: String) throws(SQLError) -> OpaquePointer {
         throw .failedToGetConnection
     }
 }

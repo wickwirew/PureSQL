@@ -18,7 +18,7 @@ public struct Cursor<Element>: ~Copyable {
         self.statement = statement
     }
     
-    public mutating func nextRow() throws(PureSQLError) -> Row? {
+    public mutating func nextRow() throws(SQLError) -> Row? {
         switch try statement.step() {
         case .row: Row(sqliteStatement: statement.raw)
         case .done: nil
@@ -28,7 +28,7 @@ public struct Cursor<Element>: ~Copyable {
     public mutating func next<Adapter: DatabaseValueAdapter, Storage: DatabasePrimitive>(
         adapter: Adapter,
         storage: Storage.Type
-    ) throws(PureSQLError) -> Element? where Adapter.Value == Element {
+    ) throws(SQLError) -> Element? where Adapter.Value == Element {
         switch try statement.step() {
         case .row:
             let row = Row(sqliteStatement: statement.raw)
@@ -40,7 +40,7 @@ public struct Cursor<Element>: ~Copyable {
 }
 
 extension Cursor where Element: RowDecodable {
-    public mutating func next() throws(PureSQLError) -> Element? {
+    public mutating func next() throws(SQLError) -> Element? {
         switch try statement.step() {
         case .row:
             let row = Row(sqliteStatement: statement.raw)
@@ -52,7 +52,7 @@ extension Cursor where Element: RowDecodable {
 }
 
 extension Cursor where Element: RowDecodableWithAdapters {
-    public mutating func next(adapters: Element.Adapters) throws(PureSQLError) -> Element? {
+    public mutating func next(adapters: Element.Adapters) throws(SQLError) -> Element? {
         switch try statement.step() {
         case .row:
             let row = Row(sqliteStatement: statement.raw)

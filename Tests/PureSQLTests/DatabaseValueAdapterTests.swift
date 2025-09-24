@@ -211,15 +211,15 @@ struct DatabaseValueAdapterTests {
     struct NumberPrefixAdapter: DatabaseValueAdapter {
         typealias Value = Int64
         
-        func encodeToString(value: Int64) throws(PureSQLError) -> String {
+        func encodeToString(value: Int64) throws(SQLError) -> String {
             return "Prefix: \(value)"
         }
         
-        func decode(from primitive: String) throws(PureSQLError) -> Int64 {
+        func decode(from primitive: String) throws(SQLError) -> Int64 {
             Int64(primitive.replacingOccurrences(of: "Prefix: ", with: ""))!
         }
         
-        func encodeToAny(value: Int64) throws(PureSQL.PureSQLError) -> PureSQL.SQLAny {
+        func encodeToAny(value: Int64) throws(PureSQL.SQLError) -> PureSQL.SQLAny {
             try .string(encodeToString(value: value))
         }
     }

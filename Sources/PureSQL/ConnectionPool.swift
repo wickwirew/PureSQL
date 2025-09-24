@@ -39,7 +39,7 @@ public actor ConnectionPool: Sendable {
         migrations: [String]
     ) throws {
         guard limit > 0 else {
-            throw PureSQLError.poolCannotHaveZeroConnections
+            throw SQLError.poolCannotHaveZeroConnections
         }
         
         self.path = path
@@ -62,7 +62,7 @@ public actor ConnectionPool: Sendable {
     /// Starts a transaction.
     private func begin(
         _ kind: Transaction.Kind
-    ) async throws(PureSQLError) -> sending Transaction {
+    ) async throws(SQLError) -> sending Transaction {
         // Writes must be exclusive, make sure to wait on any pending writes.
         if kind == .write {
             await writeLock.lock()
@@ -82,7 +82,7 @@ public actor ConnectionPool: Sendable {
     }
     
     /// Will get, wait or create a connection to the database
-    private func getConnection() async throws(PureSQLError) -> RawConnection {
+    private func getConnection() async throws(SQLError) -> RawConnection {
         guard availableConnections.isEmpty else {
             // Have an available connection, just use it
             return availableConnections.removeLast()
@@ -99,7 +99,7 @@ public actor ConnectionPool: Sendable {
     }
     
     /// Initializes a new SQL connection
-    private func newConnection() throws(PureSQLError) -> SQLiteConnection {
+    private func newConnection() throws(SQLError) -> SQLiteConnection {
         assert(count < limit)
         count += 1
         let connection = try SQLiteConnection(path: path)

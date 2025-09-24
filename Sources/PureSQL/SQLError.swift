@@ -1,5 +1,5 @@
 //
-//  PureSQLError.swift
+//  SQLError.swift
 //  PureSQL
 //
 //  Created by Wes Wickwire on 2/16/25.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-public enum PureSQLError: Error, Equatable {
+public enum SQLError: Error, Equatable {
     case failedToOpenConnection(path: String)
     case failedToInitializeStatement
     case columnIsNil(Int32)
@@ -36,7 +36,7 @@ public enum PureSQLError: Error, Equatable {
         _ type: Any.Type,
         from otherType: Any.Type,
         reason: String? = nil
-    ) -> PureSQLError {
+    ) -> SQLError {
         return .cannotDecode("\(type)", from: "\(otherType)", reason: reason)
     }
 
@@ -44,12 +44,12 @@ public enum PureSQLError: Error, Equatable {
         _ type: Any.Type,
         to otherType: Any.Type,
         reason: String? = nil
-    ) -> PureSQLError {
+    ) -> SQLError {
         return .cannotEncode("\(type)", to: "\(otherType)", reason: reason)
     }
 }
 
-extension PureSQLError: CustomStringConvertible {
+extension SQLError: CustomStringConvertible {
     public var description: String {
         switch self {
         case .failedToOpenConnection(let path):
@@ -110,6 +110,6 @@ extension PureSQLError: CustomStringConvertible {
     }
 }
 
-extension PureSQLError: LocalizedError {
+extension SQLError: LocalizedError {
     public var errorDescription: String? { description }
 }

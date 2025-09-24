@@ -37,7 +37,7 @@ struct StatementTests {
             self.baz = baz
         }
         
-        init(row: borrowing Row, startingAt start: Int32) throws(PureSQLError) {
+        init(row: borrowing Row, startingAt start: Int32) throws(SQLError) {
             self.bar = try row.value(at: 0)
             self.baz = try row.value(at: 1)
         }
@@ -56,7 +56,7 @@ struct StatementTests {
             row: borrowing Row,
             startingAt start: Int32,
             adapters: Adapters
-        ) throws(PureSQLError) {
+        ) throws(SQLError) {
             self.bar = try row.value(at: 0, using: adapters.id, storage: Int.self)
             self.baz = try row.value(at: 1)
         }

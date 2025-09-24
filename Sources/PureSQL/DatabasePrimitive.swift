@@ -19,52 +19,52 @@ public protocol DatabasePrimitive: RowDecodable {
     var sqlAny: SQLAny? { get }
     
     /// Initialize from the row at the column `index`
-    init(from cursor: OpaquePointer, at index: Int32) throws(PureSQLError)
+    init(from cursor: OpaquePointer, at index: Int32) throws(SQLError)
     
     /// Initializes self using the `adapter`
     init<Adapter: DatabaseValueAdapter>(
         value: Adapter.Value,
         into adapter: Adapter
-    ) throws(PureSQLError)
+    ) throws(SQLError)
     
     /// Bind self to the statement at the given parameter index
-    func bind(to statement: OpaquePointer, at index: Int32) throws(PureSQLError)
+    func bind(to statement: OpaquePointer, at index: Int32) throws(SQLError)
     
     /// Decode self using the `adapter`
     func decode<Adapter: DatabaseValueAdapter>(
         from adapter: Adapter
-    ) throws(PureSQLError) -> Adapter.Value
+    ) throws(SQLError) -> Adapter.Value
 }
 
 public extension DatabasePrimitive {
-    init(row: borrowing Row, startingAt start: Int32) throws(PureSQLError) {
+    init(row: borrowing Row, startingAt start: Int32) throws(SQLError) {
         self = try row.value(at: start)
     }
 }
 
 extension String: DatabasePrimitive {
-    @inlinable public init(from cursor: OpaquePointer, at index: Int32) throws(PureSQLError) {
+    @inlinable public init(from cursor: OpaquePointer, at index: Int32) throws(SQLError) {
         guard let ptr = sqlite3_column_text(cursor, index) else {
-            throw PureSQLError.columnIsNil(index)
+            throw SQLError.columnIsNil(index)
         }
 
         self = String(cString: ptr)
     }
 
-    @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(PureSQLError) {
+    @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(SQLError) {
         sqlite3_bind_text(statement, index, self, -1, SQLITE_TRANSIENT)
     }
     
     @inlinable public init<Adapter: DatabaseValueAdapter>(
         value: Adapter.Value,
         into adapter: Adapter
-    ) throws(PureSQLError) {
+    ) throws(SQLError) {
         self = try adapter.encodeToString(value: value)
     }
     
     @inlinable public func decode<Adapter: DatabaseValueAdapter>(
         from adapter: Adapter
-    ) throws(PureSQLError) -> Adapter.Value {
+    ) throws(SQLError) -> Adapter.Value {
         try adapter.decode(from: self)
     }
     
@@ -72,24 +72,24 @@ extension String: DatabasePrimitive {
 }
 
 extension Int: DatabasePrimitive {
-    @inlinable public init(from cursor: OpaquePointer, at index: Int32) throws(PureSQLError) {
+    @inlinable public init(from cursor: OpaquePointer, at index: Int32) throws(SQLError) {
         self = Int(sqlite3_column_int64(cursor, index))
     }
 
-    @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(PureSQLError) {
+    @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(SQLError) {
         sqlite3_bind_int(statement, index, Int32(self))
     }
     
     @inlinable public init<Adapter: DatabaseValueAdapter>(
         value: Adapter.Value,
         into adapter: Adapter
-    ) throws(PureSQLError) {
+    ) throws(SQLError) {
         self = try adapter.encodeToInt(value: value)
     }
     
     @inlinable public func decode<Adapter: DatabaseValueAdapter>(
         from adapter: Adapter
-    ) throws(PureSQLError) -> Adapter.Value {
+    ) throws(SQLError) -> Adapter.Value {
         try adapter.decode(from: self)
     }
     
@@ -97,24 +97,24 @@ extension Int: DatabasePrimitive {
 }
 
 extension Double: DatabasePrimitive {
-    @inlinable public init(from cursor: OpaquePointer, at index: Int32) throws(PureSQLError) {
+    @inlinable public init(from cursor: OpaquePointer, at index: Int32) throws(SQLError) {
         self = sqlite3_column_double(cursor, index)
     }
 
-    @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(PureSQLError) {
+    @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(SQLError) {
         sqlite3_bind_double(statement, index, self)
     }
     
     @inlinable public init<Adapter: DatabaseValueAdapter>(
         value: Adapter.Value,
         into adapter: Adapter
-    ) throws(PureSQLError) {
+    ) throws(SQLError) {
         self = try adapter.encodeToDouble(value: value)
     }
     
     @inlinable public func decode<Adapter: DatabaseValueAdapter>(
         from adapter: Adapter
-    ) throws(PureSQLError) -> Adapter.Value {
+    ) throws(SQLError) -> Adapter.Value {
         try adapter.decode(from: self)
     }
     
@@ -122,12 +122,12 @@ extension Double: DatabasePrimitive {
 }
 
 extension Data: DatabasePrimitive {
-    @inlinable public init(from cursor: OpaquePointer, at index: Int32) throws(PureSQLError) {
+    @inlinable public init(from cursor: OpaquePointer, at index: Int32) throws(SQLError) {
         let count = Int(sqlite3_column_bytes(cursor, index))
         self = Data(bytes: sqlite3_column_blob(cursor, index), count: count)
     }
 
-    @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(PureSQLError) {
+    @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(SQLError) {
         _ = withUnsafeBytes {
             sqlite3_bind_blob(statement, index, $0.baseAddress, CInt($0.count), SQLITE_TRANSIENT)
         }
@@ -136,13 +136,13 @@ extension Data: DatabasePrimitive {
     @inlinable public init<Adapter: DatabaseValueAdapter>(
         value: Adapter.Value,
         into adapter: Adapter
-    ) throws(PureSQLError) {
+    ) throws(SQLError) {
         self = try adapter.encodeToData(value: value)
     }
     
     @inlinable public func decode<Adapter: DatabaseValueAdapter>(
         from adapter: Adapter
-    ) throws(PureSQLError) -> Adapter.Value {
+    ) throws(SQLError) -> Adapter.Value {
         try adapter.decode(from: self)
     }
     
@@ -150,7 +150,7 @@ extension Data: DatabasePrimitive {
 }
 
 extension Optional: DatabasePrimitive where Wrapped: DatabasePrimitive {
-    @inlinable public init(from cursor: OpaquePointer, at index: Int32) throws(PureSQLError) {
+    @inlinable public init(from cursor: OpaquePointer, at index: Int32) throws(SQLError) {
         if sqlite3_column_type(cursor, index) == SQLITE_NULL {
             self = nil
         } else {
@@ -158,7 +158,7 @@ extension Optional: DatabasePrimitive where Wrapped: DatabasePrimitive {
         }
     }
 
-    @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(PureSQLError) {
+    @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(SQLError) {
         if let value = self {
             try value.bind(to: statement, at: index)
         } else {
@@ -169,13 +169,13 @@ extension Optional: DatabasePrimitive where Wrapped: DatabasePrimitive {
     @inlinable public init<Adapter: DatabaseValueAdapter>(
         value: Adapter.Value,
         into adapter: Adapter
-    ) throws(PureSQLError) {
+    ) throws(SQLError) {
         self = try .some(Wrapped(value: value, into: adapter))
     }
     
     @inlinable public func decode<Adapter: DatabaseValueAdapter>(
         from adapter: Adapter
-    ) throws(PureSQLError) -> Adapter.Value {
+    ) throws(SQLError) -> Adapter.Value {
         guard let value = self else {
             assertionFailure("Upstream did not perform nil check")
             throw .unexpectedNil

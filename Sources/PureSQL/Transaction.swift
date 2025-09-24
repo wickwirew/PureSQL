@@ -30,7 +30,7 @@ public struct Transaction: ~Copyable {
         connection: RawConnection,
         kind: Kind,
         behavior: Behavior = .deferred
-    ) throws(PureSQLError) {
+    ) throws(SQLError) {
         self.connection = connection
         self.kind = kind
         self.behavior = behavior
@@ -38,18 +38,18 @@ public struct Transaction: ~Copyable {
     }
     
     /// Executes the raw SQL
-    public func execute(sql: String) throws(PureSQLError) {
+    public func execute(sql: String) throws(SQLError) {
         try connection.execute(sql: sql)
     }
     
     /// Commits any changes to the db
-    public consuming func commit() throws(PureSQLError) {
+    public consuming func commit() throws(SQLError) {
         try connection.execute(sql: "COMMIT")
     }
     
     /// Should be called on error. If it is a read then it will just commit
     /// but writes will be rolled back.
-    public consuming func commitOrRollback() throws(PureSQLError) {
+    public consuming func commitOrRollback() throws(SQLError) {
         switch kind {
         case .read:
             try connection.execute(sql: "COMMIT")

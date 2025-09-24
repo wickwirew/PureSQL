@@ -28,7 +28,7 @@ struct MigrationRunnerTests: ~Copyable {
     }
     
     @Test func migrationFailsWithErrorIfMigrationHasAnError() async throws {
-        #expect(throws: PureSQLError.self) {
+        #expect(throws: SQLError.self) {
             try MigrationRunner.execute(migrations: [
                 "CREATE TABLE foo (bar INTEGER)",
                 "CREATE TABLE foo (bar INTEGER)"
@@ -77,7 +77,7 @@ struct MigrationRunnerTests: ~Copyable {
     }
     
     @Test func failedMigrationRollsbackChanges() async throws {
-        #expect(throws: PureSQLError.self) {
+        #expect(throws: SQLError.self) {
             try MigrationRunner.execute(
                 migrations: [
                     """
@@ -94,7 +94,7 @@ struct MigrationRunnerTests: ~Copyable {
     }
     
     @Test func migrationsBeforeAFailureAreCommited() async throws {
-        #expect(throws: PureSQLError.self) {
+        #expect(throws: SQLError.self) {
             try MigrationRunner.execute(
                 migrations: [
                     "CREATE TABLE foo (bar INTEGER);",

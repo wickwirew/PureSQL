@@ -577,7 +577,7 @@ public struct SwiftLanguage: Language {
         }
         
         writer.unindent()
-        writer.write(line: ") throws(PureSQL.PureSQLError) {")
+        writer.write(line: ") throws(PureSQL.SQLError) {")
         
         writer.indent()
         var index = 0

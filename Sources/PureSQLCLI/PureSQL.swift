@@ -24,7 +24,7 @@ struct PureSQL: AsyncParsableCommand {
     )
 }
 
-enum PureSQLError: Error, CustomStringConvertible {
+enum SQLError: Error, CustomStringConvertible {
     case sourcesNotFound
     case queryAlreadyExists(fileName: String)
     case configDoesNotExist
