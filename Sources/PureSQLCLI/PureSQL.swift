@@ -13,6 +13,7 @@ import SwiftSyntax
 @main
 struct PureSQL: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
+        commandName: "puresql",
         subcommands: [
             GenerateCommand.self,
             InitCommand.self,
