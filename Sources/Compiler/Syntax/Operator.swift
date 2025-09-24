@@ -1,6 +1,6 @@
 //
 //  Operator.swift
-//  Otter
+//  PureSQL
 //
 //  Created by Wes Wickwire on 5/4/25.
 //

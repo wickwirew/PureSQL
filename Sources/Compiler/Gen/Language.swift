@@ -1,6 +1,6 @@
 //
 //  Language.swift
-//  Otter
+//  PureSQL
 //
 //  Created by Wes Wickwire on 4/28/25.
 //

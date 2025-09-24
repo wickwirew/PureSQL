@@ -1,8 +1,8 @@
 <p align="center">
     <picture align="center">
-        <source media="(prefers-color-scheme: dark)" srcset="./Otter~dark.png">
-        <source media="(prefers-color-scheme: light)" srcset="./Otter.png">
-        <img alt="Otter" src="./Otter.png" width=40% height=40%>
+        <source media="(prefers-color-scheme: dark)" srcset="./PureSQL~dark.png">
+        <source media="(prefers-color-scheme: light)" srcset="./PureSQL.png">
+        <img alt="PureSQL" src="./PureSQL.png" width=40% height=40%>
     </picture>
 </p>
 
@@ -13,7 +13,7 @@
 </p>
 
 # Overview
-Otter is a pure Swift SQL compiler that allows developers to simply write plain SQL with compile time safety.
+PureSQL is a pure Swift SQL compiler that allows developers to simply write plain SQL with compile time safety.
 If your database schema changes, you will get compile time errors for the places that need to be fixed.
 It doesn't just generate the code to talk to SQLite, but rather your entire data layer in a testable
 flexible manner. No more writing mocks or wrappers. Just pass in the query.
@@ -40,7 +40,7 @@ selectTodos:
 SELECT * FROM todo;
 ```
 
-Otter will automatically generate all structs for the tables and queries providing the APIs below
+PureSQL will automatically generate all structs for the tables and queries providing the APIs below
 
 ```swift
 // Open a connection to the database
@@ -59,7 +59,7 @@ for try await todos in database.todoQueries.selectTodos.observe() {
 }
 ```
 
-Otter is built with testing in mind. Dependency injection is possible right out of the box.
+PureSQL is built with testing in mind. Dependency injection is possible right out of the box.
 No need to wrap your database in repositories. Just pass in the `any <Name>Query` and
 you can pass in `Queries.Just`, `Queries.Fail` or even `Queries.Test` for call counts.
 ```swift
@@ -73,7 +73,7 @@ let test = ViewModel(selectTodos: Queries.Just([Todo(...)]))
 ```
 
 ### Or Use the Swift Macro
-Otter can even run within a Swift macro by adding the `@Database` macro to a `struct`.
+PureSQL can even run within a Swift macro by adding the `@Database` macro to a `struct`.
 
 ```swift
 @Database
@@ -128,7 +128,7 @@ var variableName: any MyQuery // 4.
 * Any diagnostics will be on the entire string rather than the part that actually failed.
 
 # Installation
-Otter supports Swift Package Manager. To install add the following to your `Package.swift` file.
+PureSQL supports Swift Package Manager. To install add the following to your `Package.swift` file.
 
 > [!TIP]
 > If don't want to read any of the README, here are some quick tips:
@@ -142,14 +142,14 @@ Otter supports Swift Package Manager. To install add the following to your `Pack
 let package = Package(
     [...]
     dependencies: [
-        .package(url: "https://github.com/wickwirew/Otter.git", from: "...")
+        .package(url: "https://github.com/wickwirew/PureSQL.git", from: "...")
     ],
     targets: [
         .target(
             name: "MyProject",
-            dependencies: ["Otter"],
+            dependencies: ["PureSQL"],
             // ⚠️ Plugin is optional but suggested. Can just use the CLI if desired
-            plugins: [.plugin(name: "OtterPlugin", package: "Otter")]
+            plugins: [.plugin(name: "PureSQLPlugin", package: "PureSQL")]
         ),
     ]
 )
@@ -162,15 +162,15 @@ For projects using an `xcodeproj` to setup the plugin it can be enabled by selec
 You can install the CLI tool via homebrew by executing:
 ```
 brew tap wickwirew/wickwirew
-brew install otter
+brew install puresql
 ```
 
 Once the project has been added it is time to setup the queries and migrations folders. In the root of the project where you want everything to live, in terminal run the following command
 ```
-otter init
+puresql init
 ```
 
-This will create an `otter.yaml` configuration file. Here is where you can setup the project and define the directories of the migrations and queries and other project settings.
+This will create an `puresql.yaml` configuration file. Here is where you can setup the project and define the directories of the migrations and queries and other project settings.
 
 > [!TIP]
 > Follow the SQL standard and use singular table names. This will stop table structs from being named plural
@@ -178,7 +178,7 @@ This will create an `otter.yaml` configuration file. Here is where you can setup
 ### Adding a New Migration
 When a new migration is needed, you can simply add a new file with a number 1 higher than the previous. To automatically do this the cli tool can do it for you by running
 ```
-otter migrations add
+puresql migrations add
 ```
 
 > [!WARNING]
@@ -187,7 +187,7 @@ otter migrations add
 #### Generating the Database - Without Plugin
 Once you have your first migration in and the project setup you can now generate the database. In the same directory where `init` was run, you run the `gen` command.
 ```
-otter generate
+puresql generate
 ```
 
 This will compile and check all migrations and queries, then generate all Swift required to talk to the database.
@@ -216,7 +216,7 @@ let database = try DB(config: config)
 # Queries
 All queries will be stored in the `/Queries` directory. More than one query can go in each file. To get started, create a new file in the `/Queries` directory. The cli can do this automatically. In the same directory where `init` was run, execute
 ```
-otter queries add <some-name>
+puresql queries add <some-name>
 ```
 
 Open the file that was created in `/Queries`, it should be blank. Individual queries can be defined using the the following format. At the moment a single query can only have one statement.
@@ -249,7 +249,7 @@ LibraryQueries.noop(getLibrary: Queries.Just([...]))
 ```
 
 ### Input and Output Types
-Otter will, if needed, generate types for the inputs and outputs. If a type is a single primitive it will be mapped to the Swift equivalent.
+PureSQL will, if needed, generate types for the inputs and outputs. If a type is a single primitive it will be mapped to the Swift equivalent.
 ```sql
 -- Will return the User struct
 fetchUsers:
@@ -311,7 +311,7 @@ queryName(input: InputName, output: OutputName):
 ```
 
 # Types
-SQLite is a unique SQL database engine in that it is fairly lawless when it comes to typing. SQLite will allow you to create a column with an `INTEGER` and gladly insert a `TEXT` into it. It will even let you make up your own type names and it will take them. Otter will not allow this and tends to operate more strictly like the table option `STRICT`. Only the core types that SQLite recognizes are usable for the column type.
+SQLite is a unique SQL database engine in that it is fairly lawless when it comes to typing. SQLite will allow you to create a column with an `INTEGER` and gladly insert a `TEXT` into it. It will even let you make up your own type names and it will take them. PureSQL will not allow this and tends to operate more strictly like the table option `STRICT`. Only the core types that SQLite recognizes are usable for the column type.
 | SQLite  | Swift  |
 |---------|--------|
 | INTEGER | Int    |
@@ -336,12 +336,12 @@ TEXT AS "Todo.ID"
 ## Dependency Injection
 > TL;DR Avoid the repository pattern, inject queries.
 
-Otter was written with application development in mind. One of the pain points when talking to a database is dependency injection. 
+PureSQL was written with application development in mind. One of the pain points when talking to a database is dependency injection. 
 Normally this would mean wrapping your database calls in a repository or some other layer to keep the model layer testable without needing a database connection. 
 This is all good but that means writing different protocols and mocks. When writing the protocol you need to decide whether to just make it `async` or maybe a `publisher`. 
-Sometimes you need both... Otter solves these problems and was designed to have injection builtin.
+Sometimes you need both... PureSQL solves these problems and was designed to have injection builtin.
 
-At the core, Otter exposes one core type for injections which is `any Query<Input, Output>`. This acts as a wrapper, which knows nothing about the database that can passed into a model or view model. For example, if we have a query that takes in an `Int` and returns a `String` we can setup our view model like:
+At the core, PureSQL exposes one core type for injections which is `any Query<Input, Output>`. This acts as a wrapper, which knows nothing about the database that can passed into a model or view model. For example, if we have a query that takes in an `Int` and returns a `String` we can setup our view model like:
 ```swift
 class ViewModel {
   let fetchString: any Query<Int, String>
@@ -381,7 +381,7 @@ class ViewModel {
 
 ## FTS5
 FTS5 is supported but has some additional requirements.
-To generate usable structs Otter needs type information even though they not valid FTS arguments.
+To generate usable structs PureSQL needs type information even though they not valid FTS arguments.
 Specifying the type is **required** and an optional `NOT NULL` is allowed. These are not FTS5
 arguments so they will be removed from the final migration.
 ```sql
@@ -396,7 +396,7 @@ ORDER BY rank;
 ```
 
 ## Upcoming Features
-Otter is a young project and there are a lot of new features and functionality I want to add.
+PureSQL is a young project and there are a lot of new features and functionality I want to add.
 Below are some idea that I would love input on!
 - LSP and vscode plugin
 - Support for multiple statements in a single query

@@ -1,6 +1,6 @@
 //
 //  InferenceState.swift
-//  Otter
+//  PureSQL
 //
 //  Created by Wes Wickwire on 2/24/25.
 //

@@ -1,6 +1,6 @@
 //
 //  CommitStmtSyntax.swift
-//  Otter
+//  PureSQL
 //
 //  Created by Wes Wickwire on 6/14/25.
 //

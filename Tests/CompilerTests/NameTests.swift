@@ -1,6 +1,6 @@
 //
 //  NameTests.swift
-//  Otter
+//  PureSQL
 //
 //  Created by Wes Wickwire on 3/5/25.
 //

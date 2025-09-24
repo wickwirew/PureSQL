@@ -1,4 +1,4 @@
-import Otter
+import PureSQL
 
 let db = try DB.inMemory()
 

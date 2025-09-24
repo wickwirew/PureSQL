@@ -1,6 +1,6 @@
 //
-//  OtterPlugin.swift
-//  Otter
+//  PureSQLPlugin.swift
+//  PureSQL
 //
 //  Created by Wes Wickwire on 8/11/25.
 //
@@ -9,7 +9,7 @@ import PackagePlugin
 import Foundation
 
 @main
-struct OtterPlugin: BuildToolPlugin {
+struct PureSQLPlugin: BuildToolPlugin {
     func createBuildCommands(
         context: PluginContext,
         target: Target
@@ -17,7 +17,7 @@ struct OtterPlugin: BuildToolPlugin {
         return [
             createBuildCommand(
                 projectRoot: context.package.directoryURL,
-                cliToolURL: try context.tool(named: "OtterCLI").url,
+                cliToolURL: try context.tool(named: "PureSQLCLI").url,
                 sourceFiles: target.sourceModule?.sourceFiles,
                 workDirectory: context.pluginWorkDirectoryURL
             )
@@ -33,7 +33,7 @@ struct OtterPlugin: BuildToolPlugin {
         let queries = workDirectory.appending(component: "Queries.swift")
         
         return .buildCommand(
-            displayName: "Running otter generate",
+            displayName: "Running puresql generate",
             executable: cliToolURL,
             arguments: [
                 "generate",
@@ -55,7 +55,7 @@ struct OtterPlugin: BuildToolPlugin {
 #if canImport(XcodeProjectPlugin)
 import XcodeProjectPlugin
 
-extension OtterPlugin: XcodeBuildToolPlugin {
+extension PureSQLPlugin: XcodeBuildToolPlugin {
     func createBuildCommands(
         context: XcodePluginContext,
         target: XcodeTarget
@@ -63,7 +63,7 @@ extension OtterPlugin: XcodeBuildToolPlugin {
         return [
             createBuildCommand(
                 projectRoot: context.xcodeProject.directoryURL,
-                cliToolURL: try context.tool(named: "OtterCLI").url,
+                cliToolURL: try context.tool(named: "PureSQLCLI").url,
                 sourceFiles: target.inputFiles,
                 workDirectory: context.pluginWorkDirectoryURL
             )

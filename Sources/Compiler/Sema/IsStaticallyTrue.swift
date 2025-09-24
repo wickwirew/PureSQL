@@ -1,6 +1,6 @@
 //
 //  IsStaticallyTrue.swift
-//  Otter
+//  PureSQL
 //
 //  Created by Wes Wickwire on 2/21/25.
 //

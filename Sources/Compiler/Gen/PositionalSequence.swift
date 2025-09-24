@@ -1,6 +1,6 @@
 //
 //  PositionalSequence.swift
-//  Otter
+//  PureSQL
 //
 //  Created by Wes Wickwire on 4/29/25.
 //

@@ -1,6 +1,6 @@
 //
 //  Compiler.swift
-//  Otter
+//  PureSQL
 //
 //  Created by Wes Wickwire on 2/21/25.
 //
@@ -108,7 +108,7 @@ private struct CompilerWithSource {
     ) -> (Statement, Diagnostics) {
         // Calculating the statement signature will type check it.
         // We can just ignore the output
-        var typeChecker = StmtTypeChecker(schema: schema, pragmas: pragmas.otterPragmas)
+        var typeChecker = StmtTypeChecker(schema: schema, pragmas: pragmas.puresqlPragmas)
         let (parameters, type) = typeChecker.signature(for: stmt)
         
         // Note: Make sure to pass env from type checker to make sure all is imported

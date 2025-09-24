@@ -1,6 +1,6 @@
 //
 //  SwiftLanguage.swift
-//  Otter
+//  PureSQL
 //
 //  Created by Wes Wickwire on 6/8/25.
 //
@@ -87,7 +87,7 @@ public struct SwiftLanguage: Language {
         let allQueries = queries.flatMap(\.1)
         
         writer.write("import Foundation")
-        writer.write(line: "import Otter")
+        writer.write(line: "import PureSQL")
         
         for `import` in options.imports {
             writer.write(line: "import \(`import`)")
@@ -142,7 +142,7 @@ public struct SwiftLanguage: Language {
             writer.reset()
         }
         
-        writer.write("let connection: any Otter.Connection")
+        writer.write("let connection: any PureSQL.Connection")
         take()
         self.adapters(adapters: adapters)
         take()
@@ -190,7 +190,7 @@ public struct SwiftLanguage: Language {
         writer.write(line: "struct ", options.databaseName, ": Database")
         
         writer.braces {
-            writer.write(line: "let connection: any Otter.Connection")
+            writer.write(line: "let connection: any PureSQL.Connection")
             self.adapters(adapters: adapters)
             
             writer.newline()
@@ -236,7 +236,7 @@ public struct SwiftLanguage: Language {
         if adapters.isEmpty {
             writer.write(line: "typealias Adapters = DefaultAdapters")
         } else {
-            writer.write(line: "struct Adapters: Otter.Adapters ")
+            writer.write(line: "struct Adapters: PureSQL.Adapters ")
             writer.braces {
                 for adapter in adapters {
                     writer.write(line: "let ", adapter.name, ": AnyDatabaseValueAdapter<", adapter.type, ">")
@@ -388,7 +388,7 @@ public struct SwiftLanguage: Language {
         writer.write(line: ") { input, tx in")
         writer.indent()
 
-        writer.write(line: "let statement = try Otter.Statement(")
+        writer.write(line: "let statement = try PureSQL.Statement(")
         writer.indent()
         multilineStringLiteral(of: query.sourceSql)
         writer.write(",")
@@ -568,7 +568,7 @@ public struct SwiftLanguage: Language {
         // Initializer signature
         writer.write(line: "init(")
         writer.indent()
-        writer.write(line: "row: borrowing Otter.Row,")
+        writer.write(line: "row: borrowing PureSQL.Row,")
         writer.write(line: "startingAt start: Int32")
         
         if model.requiresAdapters {
@@ -577,7 +577,7 @@ public struct SwiftLanguage: Language {
         }
         
         writer.unindent()
-        writer.write(line: ") throws(Otter.OtterError) {")
+        writer.write(line: ") throws(PureSQL.PureSQLError) {")
         
         writer.indent()
         var index = 0

@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		DE3F47E12E64A90B00F4A251 /* Otter in Frameworks */ = {isa = PBXBuildFile; productRef = DE3F47E02E64A90B00F4A251 /* Otter */; };
+		DE3F47E12E64A90B00F4A251 /* PureSQL in Frameworks */ = {isa = PBXBuildFile; productRef = DE3F47E02E64A90B00F4A251 /* PureSQL */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -43,7 +43,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				DE3F47E12E64A90B00F4A251 /* Otter in Frameworks */,
+				DE3F47E12E64A90B00F4A251 /* PureSQL in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -96,7 +96,7 @@
 			);
 			name = Todo;
 			packageProductDependencies = (
-				DE3F47E02E64A90B00F4A251 /* Otter */,
+				DE3F47E02E64A90B00F4A251 /* PureSQL */,
 			);
 			productName = Todo;
 			productReference = DE3F3E2B2E5FBE5800F4A251 /* Todo.app */;
@@ -154,7 +154,7 @@
 			mainGroup = DE3F3E222E5FBE5800F4A251;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				DE3F47DF2E64A90B00F4A251 /* XCLocalSwiftPackageReference "../../Otter" */,
+				DE3F47DF2E64A90B00F4A251 /* XCLocalSwiftPackageReference "../../PureSQL" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = DE3F3E2C2E5FBE5800F4A251 /* Products */;
@@ -209,7 +209,7 @@
 		};
 		DE5433DF2E64A9D400736214 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			productRef = DE5433DE2E64A9D400736214 /* OtterPlugin */;
+			productRef = DE5433DE2E64A9D400736214 /* PureSQLPlugin */;
 		};
 /* End PBXTargetDependency section */
 
@@ -462,21 +462,21 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		DE3F47DF2E64A90B00F4A251 /* XCLocalSwiftPackageReference "../../Otter" */ = {
+		DE3F47DF2E64A90B00F4A251 /* XCLocalSwiftPackageReference "../../PureSQL" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../Otter;
+			relativePath = ../../PureSQL;
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		DE3F47E02E64A90B00F4A251 /* Otter */ = {
+		DE3F47E02E64A90B00F4A251 /* PureSQL */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = Otter;
+			productName = PureSQL;
 		};
-		DE5433DE2E64A9D400736214 /* OtterPlugin */ = {
+		DE5433DE2E64A9D400736214 /* PureSQLPlugin */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = DE3F47DF2E64A90B00F4A251 /* XCLocalSwiftPackageReference "../../Otter" */;
-			productName = "plugin:OtterPlugin";
+			package = DE3F47DF2E64A90B00F4A251 /* XCLocalSwiftPackageReference "../../PureSQL" */;
+			productName = "plugin:PureSQLPlugin";
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

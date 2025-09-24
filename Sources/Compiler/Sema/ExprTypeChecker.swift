@@ -23,14 +23,14 @@ struct ExprTypeChecker {
     /// Any table that is used
     private(set) var usedTableNames: Set<Substring> = []
     
-    private let pragmas: OtterPragmas
+    private let pragmas: PureSQLPragmas
     
     init(
         inferenceState: InferenceState,
         env: Environment,
         schema: Schema,
         ctes: [Substring: Table],
-        pragmas: OtterPragmas
+        pragmas: PureSQLPragmas
     ) {
         self.inferenceState = inferenceState
         self.env = env

@@ -1,6 +1,6 @@
 //
 //  EmptyStmtSyntax.swift
-//  Otter
+//  PureSQL
 //
 //  Created by Wes Wickwire on 5/7/25.
 //

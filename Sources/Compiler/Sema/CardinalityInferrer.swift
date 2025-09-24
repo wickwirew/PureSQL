@@ -1,6 +1,6 @@
 //
 //  CardinalityInferrer.swift
-//  Otter
+//  PureSQL
 //
 //  Created by Wes Wickwire on 2/16/25.
 //

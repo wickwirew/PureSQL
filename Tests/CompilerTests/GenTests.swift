@@ -1,6 +1,6 @@
 //
 //  GenTests.swift
-//  Otter
+//  PureSQL
 //
 //  Created by Wes Wickwire on 6/23/25.
 //

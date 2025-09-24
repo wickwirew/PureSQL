@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import Otter
+import PureSQL
 
 struct TodoList: View {
     @State var model: TodoListModel

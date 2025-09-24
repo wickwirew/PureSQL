@@ -5,19 +5,19 @@ import CompilerPluginSupport
 import PackageDescription
 
 let package = Package(
-    name: "Otter",
+    name: "PureSQL",
     platforms: [
         .macOS(.v10_15),
         .iOS(.v13),
         .tvOS(.v13),
         .watchOS(.v6),
-        .macCatalyst(.v13)
+        .macCatalyst(.v13),
     ],
     products: [
-        .library(name: "Otter", targets: ["Otter"]),
+        .library(name: "PureSQL", targets: ["PureSQL"]),
         .library(name: "Compiler", targets: ["Compiler"]),
-        .executable(name: "OtterCLI", targets: ["OtterCLI"]),
-        .plugin(name: "OtterPlugin", targets: ["OtterPlugin"])
+        .executable(name: "PureSQLCLI", targets: ["PureSQLCLI"]),
+        .plugin(name: "PureSQLPlugin", targets: ["PureSQLPlugin"]),
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-syntax", from: "600.0.0-latest"),
@@ -27,7 +27,7 @@ let package = Package(
     ],
     targets: [
         .macro(
-            name: "OtterMacros",
+            name: "PureSQLMacros",
             dependencies: [
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
@@ -36,9 +36,9 @@ let package = Package(
         ),
 
         .target(
-            name: "Otter",
+            name: "PureSQL",
             dependencies: [
-                "OtterMacros",
+                "PureSQLMacros",
                 .product(name: "Collections", package: "swift-collections"),
             ]
         ),
@@ -54,22 +54,22 @@ let package = Package(
         ),
 
         .executableTarget(
-            name: "OtterCLI",
+            name: "PureSQLCLI",
             dependencies: [
                 "Compiler",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
         ),
-        
+
         .plugin(
-            name: "OtterPlugin",
+            name: "PureSQLPlugin",
             capability: .buildTool(),
-            dependencies: ["OtterCLI"]
+            dependencies: ["PureSQLCLI"]
         ),
 
         .testTarget(
-            name: "OtterTests",
-            dependencies: ["Otter", "Compiler"]
+            name: "PureSQLTests",
+            dependencies: ["PureSQL", "Compiler"]
         ),
 
         .testTarget(

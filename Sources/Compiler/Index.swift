@@ -1,6 +1,6 @@
 //
 //  Index.swift
-//  Otter
+//  PureSQL
 //
 //  Created by Wes Wickwire on 6/2/25.
 //

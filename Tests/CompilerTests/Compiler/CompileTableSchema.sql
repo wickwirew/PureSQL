@@ -34,7 +34,7 @@ CREATE TABLE bar (
     PRIMARY KEY (foo, baz)
 );
 
-PRAGMA otter_require_strict_tables = TRUE;
+PRAGMA puresql_require_strict_tables = TRUE;
 
 -- CHECK: TABLE
 -- CHECK:   NAME main.baz

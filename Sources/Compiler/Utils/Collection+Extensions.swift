@@ -1,6 +1,6 @@
 //
 //  Collection+Extensions.swift
-//  Otter
+//  PureSQL
 //
 //  Created by Wes Wickwire on 6/8/25.
 //

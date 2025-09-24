@@ -1,6 +1,6 @@
 //
 //  Config.swift
-//  Otter
+//  PureSQL
 //
 //  Created by Wes Wickwire on 8/5/25.
 //
@@ -22,8 +22,8 @@ public struct Config: Codable {
     public init(at path: String) throws {
         var url = URL(fileURLWithPath: path)
         
-        if url.lastPathComponent != "otter.yaml" {
-            url.appendPathComponent("otter.yaml")
+        if url.lastPathComponent != "puresql.yaml" {
+            url.appendPathComponent("puresql.yaml")
         }
         
         guard FileManager.default.fileExists(atPath: url.path) else {

@@ -1,6 +1,6 @@
 //
 //  CreateTriggerStmtSyntax.swift
-//  Otter
+//  PureSQL
 //
 //  Created by Wes Wickwire on 5/17/25.
 //

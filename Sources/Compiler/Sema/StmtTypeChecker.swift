@@ -36,14 +36,14 @@ struct StmtTypeChecker {
     /// Its a `Set` to not bring in duplicates
     private(set) var usedTableNames: Set<Substring> = []
     
-    private let pragmas: OtterPragmas
+    private let pragmas: PureSQLPragmas
     
     init(
         env: Environment = Environment(),
         schema: Schema,
         ctes: [Substring: Table] = [:],
         inferenceState: InferenceState = InferenceState(),
-        pragmas: OtterPragmas
+        pragmas: PureSQLPragmas
     ) {
         self.env = env
         self.schema = schema

@@ -11,8 +11,8 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "PluginTests",
-            dependencies: ["Otter"],
-            plugins: [.plugin(name: "OtterPlugin", package: "Otter")]
+            dependencies: ["PureSQL"],
+            plugins: [.plugin(name: "PureSQLPlugin", package: "PureSQL")]
         ),
     ]
 )

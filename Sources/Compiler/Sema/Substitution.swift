@@ -1,6 +1,6 @@
 //
 //  Substitution.swift
-//  Otter
+//  PureSQL
 //
 //  Created by Wes Wickwire on 12/17/24.
 //

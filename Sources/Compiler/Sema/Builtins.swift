@@ -1,6 +1,6 @@
 //
 //  Builtins.swift
-//  Otter
+//  PureSQL
 //
 //  Created by Wes Wickwire on 3/3/25.
 //
