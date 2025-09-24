@@ -64,14 +64,6 @@ let package = Package(
         .plugin(
             name: "OtterPlugin",
             capability: .buildTool(),
-//            capability: .command(
-//                intent: .custom(
-//                    verb: "otter", description: "Generates the database queries"
-//                ),
-//                permissions: [
-//                    .writeToPackageDirectory(reason: "Writes the queries out to a swift file."),
-//                ]
-//            ),
             dependencies: ["OtterCLI"]
         ),
 

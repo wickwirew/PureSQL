@@ -51,6 +51,31 @@ struct MigrationRunnerTests: ~Copyable {
         #expect(value == "first, second, third")
     }
     
+    @Test func migrationsAreRunIncrementally() async throws {
+        var migrations = ["CREATE TABLE foo (value TEXT)"]
+        
+        try MigrationRunner.execute(
+            migrations: migrations,
+            connection: connection
+        )
+        
+        migrations.append("CREATE TABLE bar (value TEXT)")
+        
+        try MigrationRunner.execute(
+            migrations: migrations,
+            connection: connection
+        )
+        
+        // Run again with no new migrations
+        try MigrationRunner.execute(
+            migrations: migrations,
+            connection: connection
+        )
+
+        let _: String? = try query("SELECT * FROM foo") { try $0.fetchOne() }
+        let _: String? = try query("SELECT * FROM bar") { try $0.fetchOne() }
+    }
+    
     @Test func failedMigrationRollsbackChanges() async throws {
         #expect(throws: OtterError.self) {
             try MigrationRunner.execute(
