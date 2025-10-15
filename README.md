@@ -168,7 +168,7 @@ brew install puresql
 ```
 
 ## Create a puresql.yaml Configuration
-In the root of the project where you want everything to live, create an `puresql.yaml` file.
+In the root of the project where you want everything to live, create an `puresql.yaml` file. For xcode projects it should live in the same directory as the `.xcodeproj`. For SPM packages it should live in the same directory as the `Package.swift`.
 ```yaml
 # puresql.yaml
 
