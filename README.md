@@ -52,12 +52,12 @@ let database = try DB(path: "...")
 let todos = try await database.todoQueries.selectTodos.execute()
 
 for todo in todos {
-  print(todo.id, todo.name, todo.completedOn)
+    print(todo.id, todo.name, todo.completedOn)
 }
 
 // Easily observe any query as the database changes.
 for try await todos in database.todoQueries.selectTodos.observe() {
-  print("Got todos", todos)
+    print("Got todos", todos)
 }
 ```
 
@@ -66,7 +66,7 @@ No need to wrap your database in repositories. Just pass in the `any <Name>Query
 you can pass in `Queries.Just`, `Queries.Fail` or even `Queries.Test` for call counts.
 ```swift
 class ViewModel {
-  let selectTodos: any SelectTodosQuery
+    let selectTodos: any SelectTodosQuery
 }
 
 let live = ViewModel(selectTodos: db.todoQueries.selectTodos)
@@ -101,7 +101,7 @@ func main() async throws {
     let todos = try await database.selectTodos.execute()
 
     for todo in todos {
-      print(todo.id, todo.name, todo.completedOn)
+        print(todo.id, todo.name, todo.completedOn)
     }
 }
 ```
@@ -193,6 +193,13 @@ puresql init
 
 ### Adding Your First Migration
 The build tool will error if it is unable to find the `/Migrations` folder defined in the `puresql.yaml` file. Make sure the folder exists and add your first migration `0.sql`.
+
+For clarity your migrations at this point should have the structure:
+```
+Migrations/
+    0.sql
+```
+
 When a new migration is needed, you can simply add a new file with a number 1 higher than the previous. To automatically do this the cli tool can do it for you by running
 ```
 puresql migrations add
@@ -231,7 +238,17 @@ let database = try DB(config: config)
 ```
 
 # Queries
-All queries will be stored in the `/Queries` directory. More than one query can go in each file. To get started, create a new file in the `/Queries` directory. The cli can do this automatically. In the same directory where `init` was run, execute
+All queries will be stored in the `/Queries` directory. More than one query can go in each file. To get started, create a new file in the `/Queries` directory.
+
+For example:
+```
+Migrations/
+    0.sql
+Queries/
+    Todo.sql
+```
+
+The cli can do this automatically. In the same directory where `init` was run, execute
 ```
 puresql queries add <some-name>
 ```
