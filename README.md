@@ -7,9 +7,11 @@
 </p>
 
 <p align="center">
-    <strong>
-        A SQLite compiler, static analyzer and code generator for Swift ❤️
-    </strong>
+    <strong>A SQLite compiler, static analyzer and code generator for Swift ❤️</strong>
+</p>
+
+<p align="center">
+    <em>Just write SQL</em>
 </p>
 
 # Overview
@@ -158,24 +160,39 @@ let package = Package(
 #### Xcode Project Plugin Setup
 For projects using an `xcodeproj` to setup the plugin it can be enabled by selecting the target and going to `Build Phases > Run Build Tool Plug-ins` and adding it to the list by selecting the plus.
 
-## Install CLI tool
+## (Optional) Install CLI tool
 You can install the CLI tool via homebrew by executing:
 ```
 brew tap wickwirew/wickwirew
 brew install puresql
 ```
 
-Once the project has been added it is time to setup the queries and migrations folders. In the root of the project where you want everything to live, in terminal run the following command
+## Create a puresql.yaml Configuration
+In the root of the project where you want everything to live, create an `puresql.yaml` file.
+```yaml
+# puresql.yaml
+
+# The type name of the generated struct for the database 
+databaseName: DB
+# Path to the directory containing the migrations
+migrations: Sources/Migrations
+# Path to the directory containing the queries
+queries: Sources/Queries
+# The path of the file to generate the Swift code into
+# ⚠️ This is not needed and ignored if using the plugin
+output: Sources/Queries.swift
+```
+
+Optionally, this can be generated automatically via the cli by running the run the following command:
 ```
 puresql init
 ```
 
-This will create an `puresql.yaml` configuration file. Here is where you can setup the project and define the directories of the migrations and queries and other project settings.
-
 > [!TIP]
 > Follow the SQL standard and use singular table names. This will stop table structs from being named plural
 
-### Adding a New Migration
+### Adding Your First Migration
+The build tool will error if it is unable to find the `/Migrations` folder defined in the `puresql.yaml` file. Make sure the folder exists and add your first migration `0.sql`.
 When a new migration is needed, you can simply add a new file with a number 1 higher than the previous. To automatically do this the cli tool can do it for you by running
 ```
 puresql migrations add
