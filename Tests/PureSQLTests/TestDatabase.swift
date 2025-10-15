@@ -28,6 +28,9 @@ struct TestDB {
     
     @Query("SELECT foo.*, baz.* FROM foo INNER JOIN baz ON foo.bar = baz.qux")
     var selectFooAndBazNotOptional: any SelectFooAndBazNotOptionalQuery
+    
+    @Query("SELECT * FROM foo WHERE bar IN ?")
+    var selectFooWithIds: any SelectFooWithIdsQuery
 
     static var migrations: [String] {
         return [

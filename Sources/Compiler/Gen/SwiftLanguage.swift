@@ -761,14 +761,14 @@ public struct SwiftLanguage: Language {
     
     private func bind(binding: GeneratedQuery.Binding) {
         switch binding {
-        case let .value(index, name, owner, _, adapter):
+        case let .value(name, owner, _, adapter):
             writer.write(line: "try statement.bind(value: ")
             
             if let owner {
                 writer.write(owner, ".")
             }
             
-            writer.write(name, ", to: ", index.description)
+            writer.write(name)
             
             if let adapter {
                 writer.write(", using: adapters.", adapter.adapter.name, ", as: ", adapter.storage, ".self")

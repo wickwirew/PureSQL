@@ -13,8 +13,11 @@ import SQLite3
 /// methods to bind parameters, step through results, and fetch rows using
 /// `RowDecodable` types or adapters. It supports single row and multi row
 /// fetch operations.
-public struct Statement: ~Copyable {
+public final class Statement {
     let raw: OpaquePointer
+    /// When calling `bind` without an index it will bind here.
+    /// This is automatically incremented
+    private var currentBindIndex: Int32 = 1
     
     public enum Step {
         case row
@@ -28,18 +31,17 @@ public struct Statement: ~Copyable {
         self.raw = try transaction.connection.prepare(sql: source)
     }
     
-    public init(
+    public convenience init(
         in transaction: borrowing Transaction,
         source: () -> String,
-        bind: (inout Statement) throws -> Void = { _ in }
+        bind: (Statement) throws -> Void = { _ in }
     ) throws {
-        var statement = try Statement(source(), transaction: transaction)
-        try bind(&statement)
-        self = statement
+        try self.init(source(), transaction: transaction)
+        try bind(self)
     }
     
-    public init(in transaction: borrowing Transaction, sql: SQL) throws {
-        self = try Statement(in: transaction) {
+    public convenience init(in transaction: borrowing Transaction, sql: SQL) throws {
+        try self.init(in: transaction) {
             sql.source
         } bind: { statement in
             for (i, parameter) in sql.parameters.enumerated() {
@@ -51,36 +53,37 @@ public struct Statement: ~Copyable {
     /// Binds a value to the specified index in the statement.
     public func bind<Value: DatabasePrimitive>(
         value: Value,
-        to index: Int32
+        to index: Int32? = nil
     ) throws(SQLError) {
-        try value.bind(to: raw, at: index)
+        try value.bind(to: raw, at: get(index: index))
     }
     
     /// Binds a value using an adapter and storage type.
     public func bind<Storage: DatabasePrimitive, Coder: DatabaseValueAdapter>(
         value: Coder.Value,
-        to index: Int32,
+        to index: Int32? = nil,
         using: Coder,
         as storage: Storage.Type
     ) throws(SQLError) {
         let storage = try Storage(value: value, into: using)
-        try storage.bind(to: raw, at: index)
+        try storage.bind(to: raw, at: get(index: index))
     }
     
     /// Binds a value using an adapter and storage type.
     @_disfavoredOverload
     public func bind<Storage: DatabasePrimitive, Coder: DatabaseValueAdapter>(
         value: Coder.Value?,
-        to index: Int32,
+        to index: Int32? = nil,
         using: Coder,
         as storage: Storage.Type
     ) throws(SQLError) {
+        
         if let value {
             let storage = try Storage(value: value, into: using)
-            try storage.bind(to: raw, at: index)
+            try storage.bind(to: raw, at: get(index: index))
         } else {
             let storage: Storage? = nil
-            try storage.bind(to: raw, at: index)
+            try storage.bind(to: raw, at: get(index: index))
         }
     }
     
@@ -92,6 +95,13 @@ public struct Statement: ~Copyable {
         case .sqliteRow: return .row
         default: throw .sqlite(code, String(cString: sqlite3_errmsg(raw)))
         }
+    }
+    
+    private func get(index: Int32?) -> Int32 {
+        if let index { return index }
+        let index = currentBindIndex
+        currentBindIndex += 1
+        return index
     }
     
     deinit {

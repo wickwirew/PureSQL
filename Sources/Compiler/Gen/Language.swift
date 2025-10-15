@@ -116,7 +116,6 @@ extension Language {
         
         let inputTypeName = typeName(for: input)
         let outputTypeName = typeName(for: output)
-        var startIndex = 1
         
         return GeneratedQuery(
             name: definition.name.description,
@@ -131,13 +130,12 @@ extension Language {
             sourceSql: sql,
             isReadOnly: statement.isReadOnly,
             usedTableNames: statement.usedTableNames.sorted(),
-            bindings: bindings(for: input, index: &startIndex)
+            bindings: bindings(for: input)
         )
     }
     
     private func bindings(
         for input: GenerationType,
-        index: inout Int,
         name: String? = nil,
         owner: String? = nil,
         isOptional: Bool = false
@@ -148,13 +146,11 @@ extension Language {
         case .void:
             break
         case .builtin:
-            result.append(.value(index: index, name: name ?? "input", owner: owner, isOptional: isOptional))
-            index += 1
+            result.append(.value(name: name ?? "input", owner: owner, isOptional: isOptional))
         case let .optional(type):
             result.append(
                 contentsOf: bindings(
                     for: type,
-                    index: &index,
                     name: name,
                     owner: owner,
                     isOptional: isOptional
@@ -165,7 +161,6 @@ extension Language {
                 result.append(
                     contentsOf: bindings(
                         for: field.type,
-                        index: &index,
                         name: field.name,
                         owner: "input",
                         isOptional: isOptional
@@ -174,19 +169,17 @@ extension Language {
             }
         case .array(let values):
             result.append(.arrayStart(name: name ?? "input", owner: owner, elementName: "element"))
-            result.append(contentsOf: bindings(for: values, index: &index, name: "element"))
+            result.append(contentsOf: bindings(for: values, name: "element"))
             result.append(.arrayEnd)
         case .encoded(let storage, _, let adapter):
             result.append(
                 .value(
-                    index: index,
                     name: name ?? "input",
                     owner: owner,
                     isOptional: isOptional,
                     adapter: (adapter, typeName(for: storage))
                 )
             )
-            index += 1
         }
         
         return result
@@ -442,7 +435,6 @@ public struct GeneratedQuery {
     
     public enum Binding {
         case value(
-            index: Int,
             name: String,
             owner: String? = nil,
             isOptional: Bool = false,

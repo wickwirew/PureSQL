@@ -273,11 +273,11 @@ struct QueriesQueries: ConnectionWrapper, Sendable {
                     """,
                     transaction: tx
                 )
-                try statement.bind(value: input.textNotNull, to: 1)
-                try statement.bind(value: input.textNullable, to: 2)
-                try statement.bind(value: input.dateWithAdapterNotNull, to: 3, using: adapters.date, as: Int.self)
-                try statement.bind(value: input.dateWithAdapterNullable, to: 4, using: adapters.date, as: Int.self)
-                try statement.bind(value: input.dateWithCustomAdapter, to: 5, using: adapters.customDate, as: String.self)
+                try statement.bind(value: input.textNotNull)
+                try statement.bind(value: input.textNullable)
+                try statement.bind(value: input.dateWithAdapterNotNull, using: adapters.date, as: Int.self)
+                try statement.bind(value: input.dateWithAdapterNullable, using: adapters.date, as: Int.self)
+                try statement.bind(value: input.dateWithCustomAdapter, using: adapters.customDate, as: String.self)
                 return try statement.fetchOne(adapters: adapters)
             },
             insertBarReturningIntPk: DatabaseQuery<InsertBarReturningIntPkInput, Int>(
@@ -291,8 +291,8 @@ struct QueriesQueries: ConnectionWrapper, Sendable {
                     """,
                     transaction: tx
                 )
-                try statement.bind(value: input.customNameIntPk, to: 1)
-                try statement.bind(value: input.barNotNullText, to: 2)
+                try statement.bind(value: input.customNameIntPk)
+                try statement.bind(value: input.barNotNullText)
                 return try statement.fetchOne()
             },
             insertBarReturningExtraColumn: DatabaseQuery<InsertBarReturningExtraColumnInput, InsertBarReturningExtraColumnOutput>(
@@ -306,8 +306,8 @@ struct QueriesQueries: ConnectionWrapper, Sendable {
                     """,
                     transaction: tx
                 )
-                try statement.bind(value: input.intPk, to: 1)
-                try statement.bind(value: input.barNotNullText, to: 2)
+                try statement.bind(value: input.intPk)
+                try statement.bind(value: input.barNotNullText)
                 return try statement.fetchOne()
             },
             selectSingleFoo: DatabaseQuery<Int, Foo?>(
@@ -321,7 +321,7 @@ struct QueriesQueries: ConnectionWrapper, Sendable {
                     """,
                     transaction: tx
                 )
-                try statement.bind(value: input, to: 1)
+                try statement.bind(value: input)
                 return try statement.fetchOne(adapters: adapters)
             },
             hasEmbeddedFoo: DatabaseQuery<Int, [HasEmbeddedFooOutput]>(
@@ -338,7 +338,7 @@ struct QueriesQueries: ConnectionWrapper, Sendable {
                     """,
                     transaction: tx
                 )
-                try statement.bind(value: input, to: 1)
+                try statement.bind(value: input)
                 return try statement.fetchAll(adapters: adapters)
             },
             bothColumnsShouldNotBeNullable: DatabaseQuery<(), [BothColumnsShouldNotBeNullableOutput]>(
@@ -366,8 +366,8 @@ struct QueriesQueries: ConnectionWrapper, Sendable {
                     """,
                     transaction: tx
                 )
-                try statement.bind(value: input.intPk, to: 1)
-                try statement.bind(value: input.textNotNull, to: 2)
+                try statement.bind(value: input.intPk)
+                try statement.bind(value: input.textNotNull)
                 return try statement.fetchOne(adapters: adapters)
             },
             inputIsArray: DatabaseQuery<[Int], ()>(
@@ -382,7 +382,7 @@ struct QueriesQueries: ConnectionWrapper, Sendable {
                     transaction: tx
                 )
                 for element in input {
-                    try statement.bind(value: element, to: 1)
+                    try statement.bind(value: element)
                 }
                 _ = try statement.step()
             },
@@ -398,9 +398,9 @@ struct QueriesQueries: ConnectionWrapper, Sendable {
                     transaction: tx
                 )
                 for element in input.intPks {
-                    try statement.bind(value: element, to: 1)
+                    try statement.bind(value: element)
                 }
-                try statement.bind(value: input.barNotNullText, to: 2)
+                try statement.bind(value: input.barNotNullText)
                 _ = try statement.step()
             }
         )

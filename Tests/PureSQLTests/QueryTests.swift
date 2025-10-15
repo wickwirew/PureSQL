@@ -72,4 +72,24 @@ struct QueryTests {
         
         #expect(result == [.init(foo: .init(bar: 1), baz: nil)])
     }
+    
+    @Test func arrayInput() async throws {
+        let db = try TestDB.inMemory()
+        
+        try await db.insertFoo.execute(1)
+        try await db.insertFoo.execute(2)
+        try await db.insertFoo.execute(3)
+        
+        let oneAndThree = try await db.selectFooWithIds.execute([1, 3])
+        #expect(oneAndThree == [.init(bar: 1), .init(bar: 3)])
+        
+        let one = try await db.selectFooWithIds.execute([1])
+        #expect(one == [.init(bar: 1)])
+        
+        let all = try await db.selectFooWithIds.execute([1, 2, 3])
+        #expect(all == [.init(bar: 1), .init(bar: 2), .init(bar: 3)])
+        
+        let none = try await db.selectFooWithIds.execute([])
+        #expect(none == [])
+    }
 }
