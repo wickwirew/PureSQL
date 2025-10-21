@@ -2,8 +2,9 @@ name: Release
 
 on:
   workflow_dispatch:
-  release:
-    types: [published]
+  push:
+    tags:        
+      - '**'
 
 jobs:
   build:
@@ -12,8 +13,9 @@ jobs:
     strategy:
       matrix:
         destination:
-          - { name: "ubuntu-aarch64", os: ubuntu-22.04-arm }
-          - { name: "ubuntu-x86_64", os: ubuntu-22.04 }
+          # - Swiftly is failing to install these so commenting out for now
+          # - { name: "ubuntu-aarch64", os: ubuntu-22.04-arm }
+          # - { name: "ubuntu-x86_64", os: ubuntu-22.04 }
           - { name: "macos-universal", os: macos-15 }
     steps:
     - if: startsWith(matrix.destination.name, 'ubuntu')
@@ -30,31 +32,9 @@ jobs:
       with:
         name: puresql.${{ matrix.destination.name }}.tar.gz
         path: puresql.${{ matrix.destination.name }}.tar.gz
-  
-  make-artifact-bundle:
-    needs: [build]
-    runs-on: ubuntu-latest
-    outputs:
-      checksum: ${{ steps.checksum.outputs.checksum }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          merge-multiple: true
-      - run: bundle/make_artifactbundle.sh ${{ github.event.release.tag_name || github.ref_name }}
-      - name: Upload artifact bundle
-        uses: actions/upload-artifact@v4
-        with:
-          name: puresql.artifactbundle.zip
-          path: puresql.artifactbundle.zip
-      - name: Compute checksum
-        id: checksum
-        run: echo "checksum=$(swift package compute-checksum puresql.artifactbundle.zip)" >> "$GITHUB_OUTPUT"
 
   deploy-binary:
-    if: ${{ github.event_name == 'release' }}
-    needs: [make-artifact-bundle]
+    needs: [build]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/download-artifact@v4
@@ -63,8 +43,6 @@ jobs:
     - name: Deploy the binary
       uses: softprops/action-gh-release@v2
       with:
-        files: |
-          puresql.ubuntu-x86_64.tar.gz
-          puresql.ubuntu-aarch64.tar.gz
-          puresql.macos-universal.tar.gz
-          puresql.artifactbundle.zip
+        files: puresql.macos-universal.tar.gz
+          # puresql.ubuntu-x86_64.tar.gz
+          # puresql.ubuntu-aarch64.tar.gz
