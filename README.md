@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-    <em>Just write SQL</em>
+    <em>Generate Swift code from plain SQL</em>
 </p>
 
 # Overview
