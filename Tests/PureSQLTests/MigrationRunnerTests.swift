@@ -108,6 +108,33 @@ struct MigrationRunnerTests: ~Copyable {
         #expect(tables.contains("foo"))
     }
     
+    @Test func canRunMigrationsUpToCertainNumber() async throws {
+        let migrations = [
+            "CREATE TABLE foo (bar INTEGER);",
+            "CREATE TABLE bar (baz TEXT);",
+        ]
+        
+        try MigrationRunner.execute(
+            migrations: migrations,
+            connection: connection,
+            upTo: 0 // Dont run the last migration
+        )
+
+        let onlyFirstMigration = try tableNames()
+        #expect(onlyFirstMigration.contains("foo"))
+        #expect(!onlyFirstMigration.contains("bar"))
+        
+        try MigrationRunner.execute(
+            migrations: migrations,
+            connection: connection,
+            upTo: nil // Now run all migrations
+        )
+
+        let allMigrations = try tableNames()
+        #expect(allMigrations.contains("foo"))
+        #expect(allMigrations.contains("bar"))
+    }
+    
     private func runMigrations() throws -> [Int] {
         return try query("SELECT * FROM \(MigrationRunner.migrationTableName) ORDER BY number ASC") { try $0.fetchAll() }
     }

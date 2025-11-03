@@ -15,12 +15,17 @@ public struct DatabaseConfig {
     /// In memory databases will be overriden to `1` regardless
     /// of the input
     public var maxConnectionCount: Int
+    /// If `true` the migrations will run when the connection is opened.
+    /// Default is `true`.
+    public var autoMigrate: Bool
 
     public init(
         path: String?,
-        maxConnectionCount: Int = 5
+        maxConnectionCount: Int = 5,
+        autoMigrate: Bool = true
     ) {
         self.path = path
         self.maxConnectionCount = maxConnectionCount
+        self.autoMigrate = autoMigrate
     }
 }

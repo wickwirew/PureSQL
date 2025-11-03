@@ -16,9 +16,21 @@ public protocol Connection: Sendable {
     /// Cancels the observation for the given subscriber
     func cancel(subscriber: DatabaseSubscriber)
 
+    /// Begins a transaction and passes it to the `execute` function.
+    /// If no error is thrown the changes are automatically commited.
+    /// If an error is thrown the changes are rolled back.
     func begin<Output>(
         _ kind: Transaction.Kind,
         execute: @Sendable (borrowing Transaction) throws -> Output
+    ) async throws -> Output
+    
+    /// Gets a raw connection to the database and allows for direct
+    /// SQL access. No transaction is automatically started.
+    ///
+    /// This is likely not the API you want, and should just use `begin`.
+    func withConnection<Output>(
+        isWrite: Bool,
+        execute: @Sendable (borrowing RawConnection) throws -> Output
     ) async throws -> Output
 }
 
@@ -35,6 +47,13 @@ public struct NoopConnection: Connection {
         execute: @Sendable (borrowing Transaction) throws -> Output
     ) async throws -> Output {
         try execute(Transaction(connection: NoopRawConnection(), kind: kind))
+    }
+    
+    public func withConnection<Output>(
+        isWrite: Bool,
+        execute: @Sendable (borrowing RawConnection) throws -> Output
+    ) async throws -> Output {
+        try execute(NoopRawConnection())
     }
 }
 
@@ -61,5 +80,12 @@ public extension ConnectionWrapper {
         execute: @Sendable (borrowing Transaction) throws -> Output
     ) async throws -> Output {
         try await connection.begin(kind, execute: execute)
+    }
+    
+    func withConnection<Output>(
+        isWrite: Bool,
+        execute: @Sendable (borrowing RawConnection) throws -> Output
+    ) async throws -> Output {
+        try await connection.withConnection(isWrite: isWrite, execute: execute)
     }
 }

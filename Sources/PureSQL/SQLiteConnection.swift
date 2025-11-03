@@ -9,8 +9,12 @@ import Collections
 import Foundation
 import SQLite3
 
-protocol RawConnection: Sendable {
+/// Represents a raw connection to the SQLite database
+public protocol RawConnection: Sendable {
+    /// Initializes a SQLite prepared statement
     func prepare(sql: String) throws(SQLError) -> OpaquePointer
+    /// Executes the SQL statement.
+    /// Equivalent to `sqlite3_exec`
     func execute(sql: String) throws(SQLError)
 }
 
