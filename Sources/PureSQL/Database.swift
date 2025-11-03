@@ -48,13 +48,15 @@ public extension Database {
             try ConnectionPool(
                 path: path,
                 limit: config.maxConnectionCount,
-                migrations: Self.sanitizedMigrations
+                migrations: Self.sanitizedMigrations,
+                runMigrations: config.autoMigrate
             )
         } else {
             try ConnectionPool(
                 path: ":memory:",
                 limit: 1,
-                migrations: Self.sanitizedMigrations
+                migrations: Self.sanitizedMigrations,
+                runMigrations: config.autoMigrate
             )
         }
 
@@ -64,6 +66,20 @@ public extension Database {
     /// Creates an in memory database.
     static func inMemory(adapters: Adapters) throws -> Self {
         return try Self(config: DatabaseConfig(path: nil), adapters: adapters)
+    }
+    
+    /// Runs the migrations up to and including the `maxMigration`.
+    ///
+    /// The `maxMigration` number is not equal to the filename, but
+    /// rather the zero based index.
+    func migrate(upTo maxMigration: Int? = nil) async throws {
+        try await connection.withConnection(isWrite: true) { conn in
+            try MigrationRunner.execute(
+                migrations: Self.sanitizedMigrations,
+                connection: conn,
+                upTo: maxMigration
+            )
+        }
     }
 }
 

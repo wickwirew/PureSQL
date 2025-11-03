@@ -9,8 +9,12 @@
 enum MigrationRunner {
     static let migrationTableName = "__puresqlMigration"
 
-    static func execute(migrations: [String], connection: SQLiteConnection) throws {
-        let previouslyRunMigrations = try runMigrations(connection: connection)
+    static func execute(
+        migrations: [String],
+        connection: RawConnection,
+        upTo maxMigration: Int? = nil
+    ) throws {
+        let previouslyRunMigrations = try getRanMigrations(connection: connection)
         let lastMigration = previouslyRunMigrations.last ?? Int.min
         
         let pendingMigrations = migrations.enumerated()
@@ -18,6 +22,8 @@ enum MigrationRunner {
             .filter { $0.number > lastMigration }
         
         for (number, migration) in pendingMigrations {
+            if let maxMigration, number > maxMigration { return }
+            
             // Run each migration in it's own transaction.
             let tx = try Transaction(connection: connection, kind: .write)
             
@@ -50,7 +56,7 @@ enum MigrationRunner {
     }
     
     /// Creates the migrations table and gets the last migration that ran.
-    private static func runMigrations(connection: SQLiteConnection) throws -> [Int] {
+    private static func getRanMigrations(connection: RawConnection) throws -> [Int] {
         let tx = try Transaction(connection: connection, kind: .write)
         
         // Create the migration table if need be.

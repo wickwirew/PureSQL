@@ -36,7 +36,8 @@ public actor ConnectionPool: Sendable {
     public init(
         path: String,
         limit: Int,
-        migrations: [String]
+        migrations: [String],
+        runMigrations: Bool = true
     ) throws {
         guard limit > 0 else {
             throw SQLError.poolCannotHaveZeroConnections
@@ -50,7 +51,11 @@ public actor ConnectionPool: Sendable {
         
         // Turn on WAL mode
         try connection.execute(sql: "PRAGMA journal_mode=WAL;")
-        try MigrationRunner.execute(migrations: migrations, connection: connection)
+        
+        if runMigrations {
+            try MigrationRunner.execute(migrations: migrations, connection: connection)
+        }
+        
         self.availableConnections = [connection]
     }
 
@@ -63,26 +68,32 @@ public actor ConnectionPool: Sendable {
     private func begin(
         _ kind: Transaction.Kind
     ) async throws(SQLError) -> sending Transaction {
-        // Writes must be exclusive, make sure to wait on any pending writes.
-        if kind == .write {
-            await writeLock.lock()
-        }
-        
-        return try await Transaction(connection: getConnection(), kind: kind)
+        return try await Transaction(
+            connection: getConnection(isWrite: kind == .write),
+            kind: kind
+        )
     }
     
     /// Gives the connection back to the pool.
-    private func reclaim(connection: RawConnection, kind: Transaction.Kind) async {
+    private func reclaim(
+        connection: RawConnection,
+        isWrite: Bool
+    ) async {
         availableConnections.append(connection)
         alertAnyWaitersOfAvailableConnection()
         
-        if kind == .write {
+        if isWrite {
             await writeLock.unlock()
         }
     }
     
     /// Will get, wait or create a connection to the database
-    private func getConnection() async throws(SQLError) -> RawConnection {
+    private func getConnection(isWrite: Bool) async throws(SQLError) -> RawConnection {
+        // Writes must be exclusive, make sure to wait on any pending writes.
+        if isWrite {
+            await writeLock.lock()
+        }
+        
         guard availableConnections.isEmpty else {
             // Have an available connection, just use it
             return availableConnections.removeLast()
@@ -169,11 +180,22 @@ extension ConnectionPool: Connection {
         
         do {
             let output = try await execute(tx)
-            await reclaim(connection: conn, kind: kind)
+            await reclaim(connection: conn, isWrite: kind == .write)
             return output
         } catch {
-            await reclaim(connection: conn, kind: kind)
+            await reclaim(connection: conn, isWrite: kind == .write)
             throw error
         }
+    }
+    
+    /// Gets a connection to the database. No tx is started.
+    public func withConnection<Output: Sendable>(
+        isWrite: Bool,
+        execute: @Sendable (borrowing RawConnection) throws -> Output
+    ) async throws -> Output {
+        let conn = try await getConnection(isWrite: isWrite)
+        let output = try execute(conn)
+        await reclaim(connection: conn, isWrite: isWrite)
+        return output
     }
 }
