@@ -69,6 +69,9 @@ public extension Database {
     }
     
     /// Runs the migrations up to and including the `maxMigration`.
+    ///
+    /// The `maxMigration` number is not equal to the filename, but
+    /// rather the zero based index.
     func migrate(upTo maxMigration: Int? = nil) async throws {
         try await connection.withConnection(isWrite: true) { conn in
             try MigrationRunner.execute(

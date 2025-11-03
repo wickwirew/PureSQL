@@ -14,7 +14,7 @@ enum MigrationRunner {
         connection: RawConnection,
         upTo maxMigration: Int? = nil
     ) throws {
-        let previouslyRunMigrations = try runMigrations(connection: connection)
+        let previouslyRunMigrations = try getRanMigrations(connection: connection)
         let lastMigration = previouslyRunMigrations.last ?? Int.min
         
         let pendingMigrations = migrations.enumerated()
@@ -56,7 +56,7 @@ enum MigrationRunner {
     }
     
     /// Creates the migrations table and gets the last migration that ran.
-    private static func runMigrations(connection: RawConnection) throws -> [Int] {
+    private static func getRanMigrations(connection: RawConnection) throws -> [Int] {
         let tx = try Transaction(connection: connection, kind: .write)
         
         // Create the migration table if need be.
