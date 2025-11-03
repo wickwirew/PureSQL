@@ -445,3 +445,6 @@ Below are some idea that I would love input on!
 
 ## Contributions
 Contributions are welcome and encouraged! Feel free to make a PR or open an issue. If the change is large please open an issue first to make sure the change is desired.
+
+## License
+PureSQL is available under the MIT license. See the LICENSE file for more info.
