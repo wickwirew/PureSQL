@@ -13,6 +13,8 @@ import Foundation
 public protocol Language {
     init(options: GenerationOptions)
     
+    var options: GenerationOptions { get }
+    
     var boolName: String { get }
     
     /// A list of types that have builtin adapters supplied by the library.
@@ -186,8 +188,12 @@ extension Language {
     }
     
     private func model(for table: Table) -> GeneratedModel {
-        GeneratedModel(
-            name: table.name.name.capitalizedFirst,
+        var name = table.name.name.capitalizedFirst
+        if let pattern = options.tableNamePattern {
+            name = String(format: pattern, name)
+        }
+        return GeneratedModel(
+            name: name,
             fields: table.columns.reduce(into: [:]) { fields, column in
                 let name = column.key.description
                 let type = column.value.type
@@ -365,15 +371,18 @@ public struct GenerationOptions: Sendable {
     public var databaseName: String
     public var imports: [String]
     public var createDirectoryIfNeeded: Bool
+    public var tableNamePattern: String?
     
     public init(
         databaseName: String,
         imports: [String] = [],
-        createDirectoryIfNeeded: Bool = true
+        createDirectoryIfNeeded: Bool = true,
+        tableNamePattern: String? = nil
     ) {
         self.databaseName = databaseName
         self.imports = imports
         self.createDirectoryIfNeeded = createDirectoryIfNeeded
+        self.tableNamePattern = tableNamePattern
     }
 }
 
