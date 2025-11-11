@@ -45,7 +45,8 @@ struct GenerateCommand: AsyncParsableCommand {
         let options = GenerationOptions(
             databaseName: config.databaseName ?? "DB",
             imports: config.additionalImports ?? [],
-            createDirectoryIfNeeded: !skipDirectoryCreate
+            createDirectoryIfNeeded: !skipDirectoryCreate,
+            tableNamePattern: config.tableNamePattern
         )
         
         try await generate(

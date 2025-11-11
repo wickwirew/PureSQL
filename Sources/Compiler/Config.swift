@@ -14,6 +14,7 @@ public struct Config: Codable {
     public let output: String?
     public let databaseName: String?
     public let additionalImports: [String]?
+    public let tableNamePattern: String?
     
     struct NotFoundError: Error, CustomStringConvertible {
         var description: String { "Config does not exist" }

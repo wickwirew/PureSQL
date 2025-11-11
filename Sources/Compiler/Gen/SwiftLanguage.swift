@@ -6,7 +6,7 @@
 //
 
 public struct SwiftLanguage: Language {
-    let options: GenerationOptions
+    public let options: GenerationOptions
     private var writer = SourceWriter()
     
     public init(options: GenerationOptions) {

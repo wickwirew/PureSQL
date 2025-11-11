@@ -12,7 +12,10 @@ import Foundation
 
 @Suite
 struct GenTests {
-    @Test func generation() throws {
+    @Test(arguments: [
+        ("Swift", GenerationOptions(databaseName: "DB")),
+        ("SwiftWithPattern", GenerationOptions(databaseName: "DB", tableNamePattern: "%@Record")),
+    ]) func generation(args: (outputFile: String, options: GenerationOptions)) throws {
         var compiler = Compiler()
         let migrations = try compiler.compile(migration: load(file: "Migrations"))
         let queries = try compiler.compile(queries: load(file: "Queries"))
@@ -27,14 +30,14 @@ struct GenTests {
         
         guard migrations.1.isEmpty && queries.1.isEmpty else { return }
         
-        let language = SwiftLanguage(options: GenerationOptions(databaseName: "DB"))
+        let language = SwiftLanguage(options: args.options)
         let rawOutput = try language.generate(
             migrations: [migrations.0.map(\.sanitizedSource).joined(separator: "\n\n")],
             queries: [("Queries", queries.0)],
             schema: compiler.schema
         )
-        
-        let expected = try load(file: "Swift", ext: "output")
+
+        let expected = try load(file: args.outputFile, ext: "output")
             .split(separator: "\n")
             .filter{ !$0.isEmpty }
         
