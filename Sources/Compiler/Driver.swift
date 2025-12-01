@@ -88,6 +88,7 @@ public actor Driver {
                 .filter { $0.usage == .migration }
                 .reduce(into: [:]) { $0[$1.fileName, default: []].append(contentsOf: $1.statements) }
                 .map { ($0.key, $0.value.map(\.sanitizedSource).joined(separator: "\n")) }
+                .sorted { $0.0 < $1.0 }
                 .map(\.1)
             
             // An array of all queries grouped by their file name
