@@ -265,10 +265,10 @@ public struct SwiftLanguage: Language {
     }
     
     private func queries(name: String, queries: [GeneratedQuery]) {
-        writer.write(line: "struct ", name, ": ConnectionWrapper, Sendable {")
+        writer.write(line: "struct ", name, ": PureSQL.ConnectionWrapper, Sendable {")
         writer.indent()
         
-        writer.write(line: "let connection: any Connection")
+        writer.write(line: "let connection: any PureSQL.Connection")
         
         for query in queries {
             writer.write(line: "var ", query.variableName, ": any ", query.typealiasName)
@@ -285,7 +285,7 @@ public struct SwiftLanguage: Language {
     }
     
     private func queriesLive(name: String, queries: [GeneratedQuery]) {
-        writer.write(line: "static func live(connection: Connection, adapters: DB.Adapters) -> ", name," {")
+        writer.write(line: "static func live(connection: PureSQL.Connection, adapters: DB.Adapters) -> ", name," {")
         writer.indent()
         
         writer.write(line: "return ", name, "(")

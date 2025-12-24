@@ -219,8 +219,8 @@ struct InputContainsArrayInput: Hashable, Sendable {
     let barNotNullText: String
 }
 
-struct QueriesQueries: ConnectionWrapper, Sendable {
-    let connection: any Connection
+struct QueriesQueries: PureSQL.ConnectionWrapper, Sendable {
+    let connection: any PureSQL.Connection
     var insertFooReturningFoo: any InsertFooReturningFooQuery
     var insertBarReturningIntPk: any InsertBarReturningIntPkQuery
     var insertBarReturningExtraColumn: any InsertBarReturningExtraColumnQuery
@@ -256,7 +256,7 @@ struct QueriesQueries: ConnectionWrapper, Sendable {
         )
     }
     
-    static func live(connection: Connection, adapters: DB.Adapters) -> QueriesQueries {
+    static func live(connection: PureSQL.Connection, adapters: DB.Adapters) -> QueriesQueries {
         return QueriesQueries(
             connection: connection,
             insertFooReturningFoo: DatabaseQuery<InsertFooReturningFooInput, InsertFooReturningFooOutput>(

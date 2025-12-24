@@ -219,4 +219,3 @@ public actor Driver {
         return result
     }
 }
-struct Foot: Swift.Error {}
