@@ -17,10 +17,10 @@ public struct Config: Codable {
     public let tableNamePattern: String?
     
     struct NotFoundError: Error, CustomStringConvertible {
-        let searchURL: URL
+        let searchPath: String
         
         var description: String {
-            "Config does not exist in \(searchURL.absoluteString)"
+            "Config does not exist in '\(searchPath)'"
         }
     }
     
@@ -32,7 +32,7 @@ public struct Config: Codable {
         }
         
         guard FileManager.default.fileExists(atPath: url.path) else {
-            throw NotFoundError(searchURL: url)
+            throw NotFoundError(searchPath: url.path)
         }
         
         let data = try Data(contentsOf: url)

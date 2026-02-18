@@ -35,6 +35,8 @@ struct GenerateCommand: AsyncParsableCommand {
     var dump = false
 
     mutating func run() async throws {
+        print("Path: \(path)")
+        
         let config = try Config(at: path)
         var project = config.project(at: path)
         
