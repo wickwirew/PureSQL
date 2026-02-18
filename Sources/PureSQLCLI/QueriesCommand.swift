@@ -25,7 +25,7 @@ struct QueriesCommand: ParsableCommand {
         
         func run() throws {
             let config = try Config(at: path)
-            let project = config.project(at: path)
+            let project = try config.project(at: path)
             
             guard !project.doesQueryExist(withName: name) else {
                 throw SQLError.queryAlreadyExists(fileName: name)
