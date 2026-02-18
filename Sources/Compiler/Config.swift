@@ -25,10 +25,9 @@ public struct Config: Codable {
     }
     
     public init(at path: String) throws {
-        print("Input Path: \(path)")
-        var url = URL(fileURLWithPath: path)
-        print("URL: \(url)")
-        print("URL not file: \(URL(string: path)!)")
+        guard var url = URL(string: path) else {
+            throw NotFoundError(searchPath: path)
+        }
         
         if url.lastPathComponent != "puresql.yaml" {
             url.appendPathComponent("puresql.yaml")
