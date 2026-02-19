@@ -36,7 +36,7 @@ struct GenerateCommand: AsyncParsableCommand {
 
     mutating func run() async throws {
         let config = try Config(at: path)
-        var project = config.project(at: path)
+        var project = try config.project(at: path)
         
         if let overrideOutput, let url = URL(string: overrideOutput) {
             project.generatedOutputFile = url

@@ -16,19 +16,31 @@ public struct Config: Codable {
     public let additionalImports: [String]?
     public let tableNamePattern: String?
     
-    struct NotFoundError: Error, CustomStringConvertible {
-        var description: String { "Config does not exist" }
+    enum ConfigError: Error, CustomStringConvertible {
+        case invalidURL(String)
+        case notFound(searchPath: String)
+        
+        var description: String {
+            switch self {
+            case .invalidURL(let url):
+                "Invalid URL '\(url)'"
+            case .notFound(let searchPath):
+                "Config does not exist in '\(searchPath)'"
+            }
+        }
     }
     
     public init(at path: String) throws {
-        var url = URL(fileURLWithPath: path)
+        guard var url = URL(string: path) else {
+            throw ConfigError.invalidURL(path)
+        }
         
         if url.lastPathComponent != "puresql.yaml" {
             url.appendPathComponent("puresql.yaml")
         }
         
         guard FileManager.default.fileExists(atPath: url.path) else {
-            throw NotFoundError()
+            throw ConfigError.notFound(searchPath: url.path)
         }
         
         let data = try Data(contentsOf: url)
@@ -37,8 +49,10 @@ public struct Config: Codable {
         self = try decoder.decode(Config.self, from: data)
     }
     
-    public func project(at path: String) -> Project {
-        let url = URL(fileURLWithPath: path)
+    public func project(at path: String) throws -> Project {
+        guard let url = URL(string: path) else {
+            throw ConfigError.invalidURL(path)
+        }
         
         return Project(
             generatedOutputFile: url.appendingPathComponent(output ?? "Queries.swift"),

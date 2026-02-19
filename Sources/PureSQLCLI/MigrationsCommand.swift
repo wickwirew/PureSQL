@@ -23,7 +23,7 @@ struct MigrationsCommand: ParsableCommand {
         
         func run() throws {
             let config = try Config(at: path)
-            let project = config.project(at: path)
+            let project = try config.project(at: path)
             try project.addMigration()
         }
     }
