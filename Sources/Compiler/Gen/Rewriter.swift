@@ -40,7 +40,13 @@ struct Rewriter {
             final.append(contentsOf: source[start..<stmt.location.upperBound])
         }
         
-        return final.trimmingCharacters(in: .whitespaces)
+        // Looks like the parser can sometimes pickup the ; and sometimes not.
+        // So make sure to append the ; if it is not there.
+        var stripped = final.trimmingCharacters(in: .whitespaces)
+        if stripped.last != ";" {
+            stripped.append(";")
+        }
+        return stripped
     }
     
     /// Splits the source into segments where each segment is either

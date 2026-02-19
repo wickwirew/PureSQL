@@ -31,8 +31,14 @@ public struct Config: Codable {
     }
     
     public init(at path: String) throws {
-        guard var url = URL(string: path) else {
-            throw ConfigError.invalidURL(path)
+        var url: URL
+        if path.hasPrefix("file://") {
+            guard let u = URL(string: path) else {
+                throw ConfigError.invalidURL(path)
+            }
+            url = u
+        } else {
+            url = URL(fileURLWithPath: path)
         }
         
         if url.lastPathComponent != "puresql.yaml" {
