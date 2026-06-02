@@ -192,9 +192,20 @@ public struct SwiftLanguage: Language {
         writer.braces {
             writer.write(line: options.accessModifier, "let connection: any PureSQL.Connection")
             self.adapters(adapters: adapters)
-            
+
+            // Explicitly generate the memberwise init so it can satisfy the
+            // `Database` protocol's `init(connection:adapters:)` requirement at
+            // the correct access level. The synthesized memberwise init is
+            // always internal, which a `public` type cannot use as a witness.
+            writer.blankLine()
+            writer.write(line: options.accessModifier, "init(connection: any PureSQL.Connection, adapters: Adapters) ")
+            writer.braces {
+                writer.write(line: "self.connection = connection")
+                writer.write(line: "self.adapters = adapters")
+            }
+
             writer.newline()
-            
+
             writer.write(line: options.accessModifier, "static var migrations: [String] ")
             writer.braces {
                 writer.write(line: "return ")

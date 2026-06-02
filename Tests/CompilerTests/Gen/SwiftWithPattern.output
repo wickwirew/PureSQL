@@ -422,6 +422,11 @@ struct DB: Database{
         }
     }
     
+    init(connection: any PureSQL.Connection, adapters: Adapters) {
+        self.connection = connection
+        self.adapters = adapters
+    }
+    
     static var migrations: [String] {
         return [
             """
