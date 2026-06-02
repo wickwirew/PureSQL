@@ -74,6 +74,20 @@ struct InsertFooReturningFooInput: Hashable, Sendable {
     let dateWithAdapterNotNull: Date
     let dateWithAdapterNullable: Date?
     let dateWithCustomAdapter: Date?
+    
+    init(
+        textNotNull: String,
+        textNullable: String?,
+        dateWithAdapterNotNull: Date,
+        dateWithAdapterNullable: Date?,
+        dateWithCustomAdapter: Date?
+    ) {
+        self.textNotNull = textNotNull
+        self.textNullable = textNullable
+        self.dateWithAdapterNotNull = dateWithAdapterNotNull
+        self.dateWithAdapterNullable = dateWithAdapterNullable
+        self.dateWithCustomAdapter = dateWithCustomAdapter
+    }
 }
 
 struct InsertFooReturningFooOutput: Hashable, Sendable, RowDecodableWithAdapters {
@@ -123,11 +137,27 @@ struct InsertFooReturningFooOutput: Hashable, Sendable, RowDecodableWithAdapters
 struct InsertBarReturningIntPkInput: Hashable, Sendable {
     let customNameIntPk: Int
     let barNotNullText: String
+    
+    init(
+        customNameIntPk: Int,
+        barNotNullText: String
+    ) {
+        self.customNameIntPk = customNameIntPk
+        self.barNotNullText = barNotNullText
+    }
 }
 
 struct InsertBarReturningExtraColumnInput: Hashable, Sendable {
     let intPk: Int
     let barNotNullText: String
+    
+    init(
+        intPk: Int,
+        barNotNullText: String
+    ) {
+        self.intPk = intPk
+        self.barNotNullText = barNotNullText
+    }
 }
 
 struct InsertBarReturningExtraColumnOutput: Hashable, Sendable, RowDecodable {
@@ -212,11 +242,27 @@ struct BothColumnsShouldNotBeNullableOutput: Hashable, Sendable, RowDecodable {
 struct SelectWithManyInputsInput: Hashable, Sendable {
     let intPk: Int
     let textNotNull: String
+    
+    init(
+        intPk: Int,
+        textNotNull: String
+    ) {
+        self.intPk = intPk
+        self.textNotNull = textNotNull
+    }
 }
 
 struct InputContainsArrayInput: Hashable, Sendable {
     let intPks: [Int]
     let barNotNullText: String
+    
+    init(
+        intPks: [Int],
+        barNotNullText: String
+    ) {
+        self.intPks = intPks
+        self.barNotNullText = barNotNullText
+    }
 }
 
 struct QueriesQueries: PureSQL.ConnectionWrapper, Sendable {

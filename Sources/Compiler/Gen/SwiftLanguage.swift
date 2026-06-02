@@ -527,8 +527,14 @@ public struct SwiftLanguage: Language {
             rowDecodableInit(for: model)
             writer.blankLine()
             memberWiseInit(for: model)
+        } else {
+            // Input structs only get a memberwise init so they can be
+            // constructed directly, including from outside the module when
+            // the generated code is `public`.
+            writer.blankLine()
+            memberWiseInit(for: model)
         }
-        
+
         if addDynamicLookup {
             for (fieldName, table, isOptional) in dynamicLookupTables {
                 dynamicMemberLookup(
