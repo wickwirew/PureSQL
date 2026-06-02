@@ -142,12 +142,12 @@ public struct SwiftLanguage: Language {
             writer.reset()
         }
         
-        writer.write("let connection: any PureSQL.Connection")
+        writer.write(options.accessModifier, "let connection: any PureSQL.Connection")
         take()
         self.adapters(adapters: adapters)
         take()
-        
-        writer.write("static var sanitizedMigrations: [String] ")
+
+        writer.write(options.accessModifier, "static var sanitizedMigrations: [String] ")
         writer.braces {
             writer.write(line: "return ")
             writer.brackets {
@@ -187,31 +187,31 @@ public struct SwiftLanguage: Language {
         migrations: [String],
         adapters: [AdapterReference]
     ) {
-        writer.write(line: "struct ", options.databaseName, ": Database")
-        
+        writer.write(line: options.accessModifier, "struct ", options.databaseName, ": Database")
+
         writer.braces {
-            writer.write(line: "let connection: any PureSQL.Connection")
+            writer.write(line: options.accessModifier, "let connection: any PureSQL.Connection")
             self.adapters(adapters: adapters)
             
             writer.newline()
             
-            writer.write(line: "static var migrations: [String] ")
+            writer.write(line: options.accessModifier, "static var migrations: [String] ")
             writer.braces {
                 writer.write(line: "return ")
                 writer.brackets {
                     for (position, migration) in migrations.positional() {
                         multilineStringLiteral(of: migration)
-                        
+
                         if !position.isLast {
                             writer.write(",")
                         }
                     }
                 }
             }
-            
+
             for (namespace, queries) in queries {
                 if let namespace {
-                    writer.write(line: "var ", namespace.lowercaseFirst, ": ", namespace, " ")
+                    writer.write(line: options.accessModifier, "var ", namespace.lowercaseFirst, ": ", namespace, " ")
                     
                     // Initialize queries object
                     writer.braces {
@@ -230,20 +230,20 @@ public struct SwiftLanguage: Language {
     }
     
     private func adapters(adapters: [AdapterReference]) {
-        writer.write(line: "let adapters: Adapters")
+        writer.write(line: options.accessModifier, "let adapters: Adapters")
         writer.newline()
-        
+
         if adapters.isEmpty {
-            writer.write(line: "typealias Adapters = DefaultAdapters")
+            writer.write(line: options.accessModifier, "typealias Adapters = DefaultAdapters")
         } else {
-            writer.write(line: "struct Adapters: PureSQL.Adapters ")
+            writer.write(line: options.accessModifier, "struct Adapters: PureSQL.Adapters ")
             writer.braces {
                 for adapter in adapters {
-                    writer.write(line: "let ", adapter.name, ": AnyDatabaseValueAdapter<", adapter.type, ">")
+                    writer.write(line: options.accessModifier, "let ", adapter.name, ": AnyDatabaseValueAdapter<", adapter.type, ">")
                 }
-                
+
                 writer.blankLine()
-                writer.write(line: "init(")
+                writer.write(line: options.accessModifier, "init(")
                 writer.indented {
                     for (position, adapter) in adapters.positional() {
                         writer.write(line: adapter.name, ": any DatabaseValueAdapter<", adapter.type, ">")
@@ -265,13 +265,13 @@ public struct SwiftLanguage: Language {
     }
     
     private func queries(name: String, queries: [GeneratedQuery]) {
-        writer.write(line: "struct ", name, ": PureSQL.ConnectionWrapper, Sendable {")
+        writer.write(line: options.accessModifier, "struct ", name, ": PureSQL.ConnectionWrapper, Sendable {")
         writer.indent()
-        
-        writer.write(line: "let connection: any PureSQL.Connection")
-        
+
+        writer.write(line: options.accessModifier, "let connection: any PureSQL.Connection")
+
         for query in queries {
-            writer.write(line: "var ", query.variableName, ": any ", query.typealiasName)
+            writer.write(line: options.accessModifier, "var ", query.variableName, ": any ", query.typealiasName)
         }
         
         writer.blankLine()
@@ -285,7 +285,7 @@ public struct SwiftLanguage: Language {
     }
     
     private func queriesLive(name: String, queries: [GeneratedQuery]) {
-        writer.write(line: "static func live(connection: PureSQL.Connection, adapters: DB.Adapters) -> ", name," {")
+        writer.write(line: options.accessModifier, "static func live(connection: PureSQL.Connection, adapters: DB.Adapters) -> ", name," {")
         writer.indent()
         
         writer.write(line: "return ", name, "(")
@@ -312,7 +312,7 @@ public struct SwiftLanguage: Language {
     }
     
     private func queriesNoop(name: String, queries: [GeneratedQuery]) {
-        writer.write(line: "static func noop(")
+        writer.write(line: options.accessModifier, "static func noop(")
         writer.indented {
             for (position, query) in queries.positional() {
                 writer.write(line: query.variableName, ": any ", query.typealiasName, " = ")
@@ -439,7 +439,7 @@ public struct SwiftLanguage: Language {
         databaseName: String
     ) {
         let variableName = underscoreName ? "_\(query.variableName)" : query.variableName
-        writer.write("var ", variableName, ": ", query.typeName)
+        writer.write(options.accessModifier, "var ", variableName, ": ", query.typeName)
         writer.braces {
             expression(for: query)
         }
@@ -475,7 +475,7 @@ public struct SwiftLanguage: Language {
             writer.write(line: "@dynamicMemberLookup")
         }
         
-        writer.write(line: "struct ", model.name, ": Hashable, Sendable")
+        writer.write(line: options.accessModifier, "struct ", model.name, ": Hashable, Sendable")
         
         if model.fields["id"] != nil {
             writer.write(", Identifiable")
@@ -496,13 +496,13 @@ public struct SwiftLanguage: Language {
         
         // Write out fields of struct
         for field in model.fields.values {
-            writer.write(line: "let ", field.name, ": ", field.typeName)
+            writer.write(line: options.accessModifier, "let ", field.name, ": ", field.typeName)
         }
-        
+
         if isOutput {
             writer.blankLine()
-            
-            writer.write(line: "static let nonOptionalIndices: [Int32] = [")
+
+            writer.write(line: options.accessModifier, "static let nonOptionalIndices: [Int32] = [")
             for (position, index) in model.nonOptionalIndices.positional() {
                 writer.write(index.description)
                 
@@ -549,7 +549,7 @@ public struct SwiftLanguage: Language {
         isOptional: Bool
     ) {
         writer.newline()
-        writer.write(line: "subscript<Value>(dynamicMember dynamicMember: ")
+        writer.write(line: options.accessModifier, "subscript<Value>(dynamicMember dynamicMember: ")
         writer.write("KeyPath<", typeName, ", Value>) -> Value")
         if isOptional {
             writer.write("?")
@@ -566,7 +566,7 @@ public struct SwiftLanguage: Language {
     
     private func rowDecodableInit(for model: GeneratedModel) {
         // Initializer signature
-        writer.write(line: "init(")
+        writer.write(line: options.accessModifier, "init(")
         writer.indent()
         writer.write(line: "row: borrowing PureSQL.Row,")
         writer.write(line: "startingAt start: Int32")
@@ -623,9 +623,9 @@ public struct SwiftLanguage: Language {
         for model: GeneratedModel
     ) {
         // Initializer signature
-        writer.write(line: "init(")
+        writer.write(line: options.accessModifier, "init(")
         writer.indent()
-        
+
         for (position, (name, field)) in model.fields.elements.positional() {
             writer.write(line: name, ": ", field.typeName)
             
@@ -648,14 +648,14 @@ public struct SwiftLanguage: Language {
     
     /// Creates a type alias for the query so it can be referenced as an existential
     private func typeAlias(for query: GeneratedQuery) {
-        writer.write(line: "typealias ", query.typealiasName, " = Query<", query.inputName, ", ", query.outputName, ">")
+        writer.write(line: options.accessModifier, "typealias ", query.typealiasName, " = Query<", query.inputName, ", ", query.outputName, ">")
     }
     
     /// Used in the macros, to create a typealias for the database query since those need
     /// to be referenced explicitly in their decl.
     private func dbTypeAlias(for query: GeneratedQuery, queryType: String = "Query") {
         let name = query.typealiasName.replacingOccurrences(of: "Query", with: "DatabaseQuery")
-        writer.write(line: "typealias ", name, " = DatabaseQuery<", query.inputName, ", ", query.outputName, ">")
+        writer.write(line: options.accessModifier, "typealias ", name, " = DatabaseQuery<", query.inputName, ", ", query.outputName, ">")
     }
     
     private func inputExtension(
@@ -728,7 +728,7 @@ public struct SwiftLanguage: Language {
         condition: (() -> Void)? = nil,
         builder: () -> Void
     ) {
-        writer.write(line: "extension ", type)
+        writer.write(line: options.accessModifier, "extension ", type)
         
         if let conformance {
             writer.write(": ", conformance)

@@ -181,6 +181,8 @@ queries: Sources/Queries
 # The path of the file to generate the Swift code into
 # ⚠️ This is not needed and ignored if using the plugin
 output: Sources/Queries.swift
+# If true all generated declarations are marked as `public`
+isPublic: true
 ```
 
 Optionally, this can be generated automatically via the cli by running the run the following command:

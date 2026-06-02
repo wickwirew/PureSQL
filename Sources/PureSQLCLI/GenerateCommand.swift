@@ -46,7 +46,8 @@ struct GenerateCommand: AsyncParsableCommand {
             databaseName: config.databaseName ?? "DB",
             imports: config.additionalImports ?? [],
             createDirectoryIfNeeded: !skipDirectoryCreate,
-            tableNamePattern: config.tableNamePattern
+            tableNamePattern: config.tableNamePattern,
+            isPublic: config.isPublic ?? false
         )
         
         try await generate(

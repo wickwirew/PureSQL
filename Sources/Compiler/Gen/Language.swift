@@ -372,17 +372,26 @@ public struct GenerationOptions: Sendable {
     public var imports: [String]
     public var createDirectoryIfNeeded: Bool
     public var tableNamePattern: String?
-    
+    /// Whether the generated declarations should be marked `public`.
+    public var isPublic: Bool
+
     public init(
         databaseName: String,
         imports: [String] = [],
         createDirectoryIfNeeded: Bool = true,
-        tableNamePattern: String? = nil
+        tableNamePattern: String? = nil,
+        isPublic: Bool = false
     ) {
         self.databaseName = databaseName
         self.imports = imports
         self.createDirectoryIfNeeded = createDirectoryIfNeeded
         self.tableNamePattern = tableNamePattern
+        self.isPublic = isPublic
+    }
+
+    /// The access modifier for all generated declarations
+    var accessModifier: String {
+        isPublic ? "public " : ""
     }
 }
 

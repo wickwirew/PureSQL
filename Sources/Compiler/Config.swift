@@ -15,6 +15,7 @@ public struct Config: Codable {
     public let databaseName: String?
     public let additionalImports: [String]?
     public let tableNamePattern: String?
+    public let isPublic: Bool?
     
     enum ConfigError: Error, CustomStringConvertible {
         case invalidURL(String)

@@ -15,6 +15,7 @@ struct GenTests {
     @Test(arguments: [
         ("Swift", GenerationOptions(databaseName: "DB")),
         ("SwiftWithPattern", GenerationOptions(databaseName: "DB", tableNamePattern: "%@Record")),
+        ("SwiftPublic", GenerationOptions(databaseName: "DB", isPublic: true)),
     ]) func generation(args: (outputFile: String, options: GenerationOptions)) throws {
         var compiler = Compiler()
         let migrations = try compiler.compile(migration: load(file: "Migrations"))
