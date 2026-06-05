@@ -22,6 +22,8 @@ public actor ConnectionPool: Sendable {
     private var count: Int = 1
     /// The maximum number of connections we can create
     private let limit: Int
+    /// Whether to enforce foreign key constraints on each connection.
+    private let foreignKeys: Bool
     /// Any connections available for use
     private var availableConnections: [RawConnection]
     /// Any caller waiting for a connection
@@ -37,7 +39,8 @@ public actor ConnectionPool: Sendable {
         path: String,
         limit: Int,
         migrations: [String],
-        runMigrations: Bool = true
+        runMigrations: Bool = true,
+        foreignKeys: Bool = true
     ) throws {
         guard limit > 0 else {
             throw SQLError.poolCannotHaveZeroConnections
@@ -45,12 +48,17 @@ public actor ConnectionPool: Sendable {
         
         self.path = path
         self.limit = limit
+        self.foreignKeys = foreignKeys
         
         let connection = try SQLiteConnection(path: path)
         self.observer.installHooks(into: connection)
         
         // Turn on WAL mode
         try connection.execute(sql: "PRAGMA journal_mode=WAL;")
+        
+        if foreignKeys {
+            try connection.execute(sql: "PRAGMA foreign_keys=ON;")
+        }
         
         if runMigrations {
             try MigrationRunner.execute(migrations: migrations, connection: connection)
@@ -115,6 +123,12 @@ public actor ConnectionPool: Sendable {
         count += 1
         let connection = try SQLiteConnection(path: path)
         observer.installHooks(into: connection)
+
+        // Foreign key enforcement is per connection
+        if foreignKeys {
+            try connection.execute(sql: "PRAGMA foreign_keys=ON;")
+        }
+
         return connection
     }
     

@@ -18,14 +18,18 @@ public struct DatabaseConfig {
     /// If `true` the migrations will run when the connection is opened.
     /// Default is `true`.
     public var autoMigrate: Bool
+    /// If `true`, `PRAGMA foreign_keys` is enabled on every connection.
+    public var foreignKeys: Bool
 
     public init(
         path: String?,
         maxConnectionCount: Int = 5,
-        autoMigrate: Bool = true
+        autoMigrate: Bool = true,
+        foreignKeys: Bool = true
     ) {
         self.path = path
         self.maxConnectionCount = maxConnectionCount
         self.autoMigrate = autoMigrate
+        self.foreignKeys = foreignKeys
     }
 }

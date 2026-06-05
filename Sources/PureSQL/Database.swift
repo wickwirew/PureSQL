@@ -49,14 +49,16 @@ public extension Database {
                 path: path,
                 limit: config.maxConnectionCount,
                 migrations: Self.sanitizedMigrations,
-                runMigrations: config.autoMigrate
+                runMigrations: config.autoMigrate,
+                foreignKeys: config.foreignKeys
             )
         } else {
             try ConnectionPool(
                 path: ":memory:",
                 limit: 1,
                 migrations: Self.sanitizedMigrations,
-                runMigrations: config.autoMigrate
+                runMigrations: config.autoMigrate,
+                foreignKeys: config.foreignKeys
             )
         }
 
