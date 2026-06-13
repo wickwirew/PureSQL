@@ -84,11 +84,11 @@ public actor Driver {
     ) throws {
         try measure("Generation") {
             // An array of all migrations source code
-            let migrations = results.values
+            let migrations = try results.values
                 .filter { $0.usage == .migration }
                 .reduce(into: [:]) { $0[$1.fileName, default: []].append(contentsOf: $1.statements) }
                 .map { ($0.key, $0.value.map(\.sanitizedSource).joined(separator: "\n")) }
-                .sorted { $0.0 < $1.0 }
+                .sorted { try migrationNumber(fileName: $0.0) < migrationNumber(fileName: $1.0) }
                 .map(\.1)
             
             // An array of all queries grouped by their file name
@@ -124,7 +124,7 @@ public actor Driver {
                     }
                 }
                 
-                try file.write(toFile: path, atomically: true, encoding: .utf8)
+                fileSystem.write(Data(file.utf8), to: path)
             } else {
                 // No output path, default to stdout.
                 print(file)
