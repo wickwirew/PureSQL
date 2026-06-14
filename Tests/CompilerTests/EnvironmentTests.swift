@@ -63,6 +63,40 @@ struct EnvironmentTests {
         #expect(.success(.real) == env.resolve(column: "rank", table: nil, schema: nil))
     }
     
+    @Test func normalTableHasRowidInserted() async throws {
+        let table = table(name: "foo")
+        var env = Environment()
+        env.import(table: table, isOptional: false)
+
+        #expect(table == env.resolve(table: "foo", schema: nil).value?.table)
+        #expect(.success(.integer) == env.resolve(column: "rowid", table: "foo", schema: nil))
+        #expect(.success(.integer) == env.resolve(column: "rowid", table: nil, schema: nil))
+    }
+
+    @Test func ftsTableHasRowidInserted() async throws {
+        let table = table(name: "fts", kind: .fts5)
+        var env = Environment()
+        env.import(table: table, isOptional: false)
+
+        #expect(.success(.integer) == env.resolve(column: "rowid", table: "fts", schema: nil))
+    }
+
+    @Test func withoutRowidTableHasNoRowid() async throws {
+        let table = table(name: "foo", isWithoutRowid: true)
+        var env = Environment()
+        env.import(table: table, isOptional: false)
+
+        #expect(.columnDoesNotExist("rowid") == env.resolve(column: "rowid", table: "foo", schema: nil))
+    }
+
+    @Test func viewHasNoRowid() async throws {
+        let table = table(name: "v", kind: .view)
+        var env = Environment()
+        env.import(table: table, isOptional: false)
+
+        #expect(.columnDoesNotExist("rowid") == env.resolve(column: "rowid", table: "v", schema: nil))
+    }
+
     @Test func tableImportedOptionallyHasOptionalColumns() async throws {
         let table = table(name: "foo")
         var env = Environment()
@@ -120,13 +154,15 @@ struct EnvironmentTests {
             "bar": Column(type: .integer),
             "baz": Column(type: .text)
         ],
-        kind: Table.Kind = .normal
+        kind: Table.Kind = .normal,
+        isWithoutRowid: Bool = false
     ) -> Table {
         return Table(
             name: QualifiedName(name: name, schema: schema),
             columns: columns,
             primaryKey: [],
-            kind: kind
+            kind: kind,
+            isWithoutRowid: isWithoutRowid
         )
     }
 }

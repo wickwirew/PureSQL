@@ -6,6 +6,7 @@
 -- CHECK-SCHEMA:       KEY quz
 -- CHECK-SCHEMA:       VALUE INTEGER
 -- CHECK-SCHEMA:   KIND fts5
+-- CHECK-SCHEMA:   IS_WITHOUT_ROWID false
 -- CHECK-ERROR: Missing column type
 CREATE VIRTUAL TABLE foo USING fts5 (
     bar TEXT,

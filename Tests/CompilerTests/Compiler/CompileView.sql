@@ -10,6 +10,7 @@ CREATE TABLE foo (bar INTEGER, baz TEXT);
 -- CHECK-SCHEMA:       KEY baz
 -- CHECK-SCHEMA:       VALUE TEXT?
 -- CHECK-SCHEMA:   KIND view
+-- CHECK-SCHEMA:   IS_WITHOUT_ROWID false
 CREATE VIEW view1 AS SELECT * FROM foo;
 
 -- CHECK-SCHEMA: TABLE
@@ -20,6 +21,7 @@ CREATE VIEW view1 AS SELECT * FROM foo;
 -- CHECK-SCHEMA:       KEY col2
 -- CHECK-SCHEMA:       VALUE TEXT?
 -- CHECK-SCHEMA:   KIND view
+-- CHECK-SCHEMA:   IS_WITHOUT_ROWID false
 CREATE VIEW view2 (col1, col2) AS SELECT * FROM foo;
 
 -- CHECK-SCHEMA: TABLE
@@ -28,6 +30,7 @@ CREATE VIEW view2 (col1, col2) AS SELECT * FROM foo;
 -- CHECK-SCHEMA:       KEY col1
 -- CHECK-SCHEMA:       VALUE INTEGER?
 -- CHECK-SCHEMA:   KIND view
+-- CHECK-SCHEMA:   IS_WITHOUT_ROWID false
 -- CHECK-ERROR: SELECT returns 2 columns but only have 1 names defined
 CREATE VIEW view3 (col1) AS SELECT * FROM foo;
 

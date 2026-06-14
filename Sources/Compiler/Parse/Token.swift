@@ -131,7 +131,6 @@ struct Token {
         .right,
         .rollback,
         .row,
-        .rowid,
         .rows,
         .savepoint,
         .select,
@@ -166,6 +165,7 @@ struct Token {
         static let `true`: Kind = .identifier("TRUE")
         static let `false`: Kind = .identifier("FALSE")
         static let unindexed: Kind = .identifier("UNINDEXED")
+        static let rowid: Kind = .identifier("ROWID")
 
         case identifier(Substring)
         case string(Substring)
@@ -295,7 +295,6 @@ struct Token {
         case right
         case rollback
         case row
-        case rowid
         case rows
         case savepoint
         case select
@@ -505,7 +504,6 @@ struct Token {
             case .right: "RIGHT"
             case .rollback: "ROLLBACK"
             case .row: "ROW"
-            case .rowid: "ROWID"
             case .rows: "ROWS"
             case .savepoint: "SAVEPOINT"
             case .select: "SELECT"

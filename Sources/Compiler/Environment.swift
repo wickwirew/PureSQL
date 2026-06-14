@@ -184,9 +184,19 @@ struct Environment {
         isOptional: Bool,
         qualifiedAccessOnly: Bool = false
     ) {
+        var additionalColumns: Columns = [:]
+       
+        if table.kind == .fts5 {
+            additionalColumns.append(Column(type: .real), for: "rank")
+        }
+        
+        if (table.kind == .normal || table.kind == .fts5), !table.isWithoutRowid {
+            additionalColumns.append(Column(type: .integer), for: "rowid")
+        }
+
         let importedTable = ImportedTable(
             table: isOptional ? table.mapTypes { $0.coerceToOptional() } : table,
-            additionalColumns: table.kind == .fts5 ? ["rank": Column(type: .real)] : nil,
+            additionalColumns: additionalColumns.count == 0 ? nil : additionalColumns,
             isOptional: isOptional
         )
         

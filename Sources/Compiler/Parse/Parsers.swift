@@ -1250,7 +1250,17 @@ enum Parsers {
             switch state.current.kind {
             case .without:
                 state.skip()
-                state.skip(.rowid)
+                if case let .identifier(value) = state.current.kind,
+                   value.uppercased() == "ROWID"
+                {
+                    state.skip()
+                } else {
+                    state.diagnostics.add(.unexpectedToken(
+                        of: state.current.kind,
+                        expected: .rowid,
+                        at: state.current.location
+                    ))
+                }
                 options = options.union(.withoutRowId)
             case .strict:
                 state.skip()

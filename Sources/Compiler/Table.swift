@@ -15,7 +15,9 @@ public struct Table: Sendable, Equatable {
     public let primaryKey: [Substring]
     /// What kind of table it is (FTS/CTE...)
     public let kind: Kind
-    
+    /// Whether the table was declared `WITHOUT ROWID`
+    public let isWithoutRowid: Bool
+
     public enum Kind: Sendable {
         case normal
         case view
@@ -23,17 +25,19 @@ public struct Table: Sendable, Equatable {
         case cte
         case subquery
     }
-    
+
     init(
         name: QualifiedName,
         columns: Columns,
         primaryKey: [Substring] = [],
-        kind: Kind
+        kind: Kind,
+        isWithoutRowid: Bool = false
     ) {
         self.name = name
         self.columns = columns
         self.primaryKey = primaryKey
         self.kind = kind
+        self.isWithoutRowid = isWithoutRowid
     }
     
     var type: Type {

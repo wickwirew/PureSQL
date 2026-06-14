@@ -1181,9 +1181,10 @@ extension StmtTypeChecker {
                 name: tableName,
                 columns: columns,
                 primaryKey: primaryKey(of: createTable, columns: columns),
-                kind: .normal
+                kind: .normal,
+                isWithoutRowid: options.kind.contains(.withoutRowId)
             )
-            
+
             if pragmas.contains(.requireStrictTables),
                !options.kind.contains(.strict)
             {

@@ -10,6 +10,7 @@
 -- CHECK:   PRIMARY_KEY
 -- CHECK:     bar
 -- CHECK:   KIND normal
+-- CHECK:   IS_WITHOUT_ROWID false
 CREATE TABLE foo (
     bar INTEGER PRIMARY KEY,
     baz TEXT CHECK (baz = 'baz')
@@ -28,6 +29,7 @@ ALTER TABLE foo ADD COLUMN qux TEXT;
 -- CHECK:     foo
 -- CHECK:     baz
 -- CHECK:   KIND normal
+-- CHECK:   IS_WITHOUT_ROWID false
 CREATE TABLE bar (
     foo TEXT,
     baz TEXT,
@@ -44,6 +46,7 @@ PRAGMA puresql_require_strict_tables = TRUE;
 -- CHECK:   PRIMARY_KEY
 -- CHECK:     foo
 -- CHECK:   KIND normal
+-- CHECK:   IS_WITHOUT_ROWID false
 -- CHECK-ERROR: Invalid type 'DECIMAL'
 -- CHECK-ERROR: Column 'bar' does not exist
 -- CHECK-ERROR: Missing STRICT table option
@@ -62,6 +65,7 @@ CREATE TABLE baz (
 -- CHECK:   PRIMARY_KEY
 -- CHECK:     bar
 -- CHECK:   KIND normal
+-- CHECK:   IS_WITHOUT_ROWID false
 -- CHECK-ERROR: Table 'qux' already has a primary key
 CREATE TABLE qux (
     foo TEXT PRIMARY KEY ON CONFLICT REPLACE REFERENCES qux (foo) ON DELETE CASCADE,
@@ -75,6 +79,7 @@ CREATE TABLE qux (
 -- CHECK:       KEY TABLE
 -- CHECK:       VALUE KEY?
 -- CHECK:   KIND normal
+-- CHECK:   IS_WITHOUT_ROWID false
 -- CHECK-ERROR: Invalid type 'KEY'
 CREATE TABLE "PRIMARY" (
     "TABLE" INTEGER,
@@ -95,6 +100,7 @@ CREATE TABLE "PRIMARY" (
 -- CHECK:       KEY any
 -- CHECK:       VALUE ANY?
 -- CHECK:   KIND normal
+-- CHECK:   IS_WITHOUT_ROWID false
 CREATE TABLE allValidTypes (
     int INT,
     integer INTEGER,
@@ -115,6 +121,7 @@ CREATE TABLE allValidTypes (
 -- CHECK:       KEY ref
 -- CHECK:       VALUE INTEGER?
 -- CHECK:   KIND normal
+-- CHECK:   IS_WITHOUT_ROWID false
 -- CHECK-ERROR: Column 'qux' does not exist
 -- CHECK-ERROR: Table 'dne' does not exist
 CREATE TABLE hasGenerated (
@@ -132,6 +139,7 @@ CREATE TABLE hasGenerated (
 -- CHECK:       KEY bar
 -- CHECK:       VALUE INTEGER?
 -- CHECK:   KIND normal
+-- CHECK:   IS_WITHOUT_ROWID false
 -- CHECK-ERROR: Column 'foooooo' does not exist
 -- CHECK-ERROR: Column 'typo' does not exist
 -- CHECK-ERROR: Table 'doesNotExist' does not exist
@@ -154,6 +162,7 @@ CREATE TABLE hasTableCheck (
 -- CHECK:       KEY qux
 -- CHECK:       VALUE TEXT?
 -- CHECK:   KIND normal
+-- CHECK:   IS_WITHOUT_ROWID false
 CREATE TABLE fromSelect AS SELECT * FROM foo;
 
 CREATE TABLE wontShow (bar INTEGER) STRICT;
