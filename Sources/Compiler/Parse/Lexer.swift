@@ -178,13 +178,20 @@ struct Lexer {
             currentColumn += 1
         }
     }
+
+    /// Gets `currentIndex` through a noninlined call. Used to work around
+    /// an optimizer bug using a stale value of `currentIndex`.
+    @inline(never)
+    private func currentIndexOptimizerWorkaround() -> String.Index {
+        return currentIndex
+    }
     
     // SQLite does not seem to really care what goes between the escape delimiters.
     // Table names will gladly take newlines and such.
     private mutating func parseEscapedIdentifier(closing: Character) -> Token {
         let tokenStart = startLocation()
         advance() // Opening
-        let identifierStart = currentIndex
+        let identifierStart = currentIndexOptimizerWorkaround()
         
         while let current, current != closing {
             advance()
@@ -323,7 +330,7 @@ struct Lexer {
         advance() // 0
         advance() // x or X
         
-        let numberStart = currentIndex
+        let numberStart = currentIndexOptimizerWorkaround()
         
         while let current, Lexer.hexDigits.contains(current) || current == "_" {
             advance()
@@ -345,8 +352,8 @@ struct Lexer {
     private mutating func parseStringContents() -> (Substring, SourceLocation) {
         let tokenStart = startLocation()
         advance()
-        let stringStart = currentIndex
-        
+        let stringStart = currentIndexOptimizerWorkaround()
+
         while let current, current != "'" {
             advance()
         }
