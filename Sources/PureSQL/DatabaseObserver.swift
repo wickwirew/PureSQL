@@ -6,7 +6,11 @@
 //
 
 import Foundation
+#if canImport(SQLite3)
 import SQLite3
+#else
+import CSQLite
+#endif
 
 /// A change that happened in the database.
 /// Represents many events. Changes are published

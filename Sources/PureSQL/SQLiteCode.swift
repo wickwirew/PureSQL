@@ -5,7 +5,11 @@
 //  Created by Wes Wickwire on 11/9/24.
 //
 
+#if canImport(SQLite3)
 import SQLite3
+#else
+import CSQLite
+#endif
 
 public enum SQLiteCode: Int32, Error {
     case sqliteOk = 0
