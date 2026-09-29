@@ -290,7 +290,7 @@ public struct DecimalDatabaseValueAdapter: DatabaseValueAdapter {
     public init() {}
     
     @inlinable public func encodeToDouble(value: Value) throws(SQLError) -> Double {
-        Double(truncating: value as NSNumber)
+        NSDecimalNumber(decimal: value).doubleValue
     }
 
     @inlinable public func decode(from primitive: Double) throws(SQLError) -> Decimal {
