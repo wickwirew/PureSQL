@@ -35,11 +35,21 @@ let package = Package(
             ]
         ),
 
+        .systemLibrary(
+            name: "CSQLite",
+            pkgConfig: "sqlite3",
+            providers: [
+                .apt(["libsqlite3-dev"]),
+                .yum(["sqlite-devel"]),
+            ]
+        ),
+
         .target(
             name: "PureSQL",
             dependencies: [
                 "PureSQLMacros",
                 .product(name: "Collections", package: "swift-collections"),
+                .target(name: "CSQLite", condition: .when(platforms: [.linux])),
             ]
         ),
 

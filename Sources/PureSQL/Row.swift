@@ -5,7 +5,11 @@
 //  Created by Wes Wickwire on 9/6/25.
 //
 
+#if canImport(SQLite3)
 import SQLite3
+#else
+import CSQLite
+#endif
 
 /// A raw SQLite row from a statement.
 public struct Row: ~Copyable {

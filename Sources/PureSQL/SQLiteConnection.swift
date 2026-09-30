@@ -7,7 +7,11 @@
 
 import Collections
 import Foundation
+#if canImport(SQLite3)
 import SQLite3
+#else
+import CSQLite
+#endif
 
 /// Represents a raw connection to the SQLite database
 public protocol RawConnection: Sendable {

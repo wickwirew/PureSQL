@@ -6,7 +6,11 @@
 //
 
 import Foundation
+#if canImport(SQLite3)
 import SQLite3
+#else
+import CSQLite
+#endif
 
 /// SQLite supports an `ANY` type. Mapping to a `Swift.Any` would
 /// not be a smart idea and would not implement things like

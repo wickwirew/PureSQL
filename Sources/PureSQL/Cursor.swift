@@ -5,7 +5,11 @@
 //  Created by Wes Wickwire on 2/16/25.
 //
 
+#if canImport(SQLite3)
 import SQLite3
+#else
+import CSQLite
+#endif
 
 /// A low-level iterator over the results of a prepared database statement.
 ///

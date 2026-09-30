@@ -16,3 +16,15 @@ jobs:
       run: swift build
     - name: Run tests
       run: swift test
+
+  build-linux:
+    runs-on: ubuntu-latest
+    container: swift:6.1-jammy
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install SQLite
+      run: apt-get update && apt-get install -y libsqlite3-dev
+    - name: Build
+      run: swift build
+    - name: Run tests
+      run: swift test

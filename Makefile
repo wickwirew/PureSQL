@@ -9,7 +9,7 @@ ifeq ($(UNAME_S),Darwin)
 	BUILD_FLAGS := -c release --product PureSQLCLI --arch arm64 --arch x86_64
 	BUILD_DIR := .build/apple/Products/Release
 else
-    BUILD_FLAGS := -c release --product PureSQLCLI
+	BUILD_FLAGS := -c release --product PureSQLCLI --static-swift-stdlib
 	BUILD_DIR := .build/release
 endif
 
