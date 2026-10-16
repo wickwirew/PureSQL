@@ -77,6 +77,19 @@ struct StatementTests {
             #expect(try cursor.next() == 2)
         }
     }
+
+    @Test(arguments: [Int.max, Int.min, Int(Int32.max) + 1, Int(Int32.min) - 1])
+    func testBindIntBeyondInt32Range(value: Int) throws {
+        try withStatement {
+            "CREATE TABLE foo (id INTEGER);"
+        } query: {
+            "SELECT ?"
+        } operation: { stmt in
+            try stmt.bind(value: value, to: 1)
+            var cursor = Cursor<Int>(of: stmt)
+            #expect(try cursor.next() == value)
+        }
+    }
     
     @Test func testBindWithAdapter() throws {
         try withStatement {

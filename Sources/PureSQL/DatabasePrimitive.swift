@@ -81,7 +81,7 @@ extension Int: DatabasePrimitive {
     }
 
     @inlinable public func bind(to statement: OpaquePointer, at index: Int32) throws(SQLError) {
-        sqlite3_bind_int(statement, index, Int32(self))
+        sqlite3_bind_int64(statement, index, Int64(self))
     }
     
     @inlinable public init<Adapter: DatabaseValueAdapter>(
