@@ -42,9 +42,16 @@ public struct Transaction: ~Copyable {
         try connection.execute(sql: sql)
     }
     
-    /// Commits any changes to the db
+    /// Commits any changes to the db. If it fails the changes are rolled
+    /// back, since SQLite can leave the transaction open on the connection.
     public consuming func commit() throws(SQLError) {
-        try connection.execute(sql: "COMMIT")
+        do {
+            try connection.execute(sql: "COMMIT")
+        } catch {
+            // SQLite may have already rolled it back, which is fine.
+            try? connection.execute(sql: "ROLLBACK")
+            throw error
+        }
     }
     
     /// Should be called on error. If it is a read then it will just commit
@@ -52,7 +59,7 @@ public struct Transaction: ~Copyable {
     public consuming func commitOrRollback() throws(SQLError) {
         switch kind {
         case .read:
-            try connection.execute(sql: "COMMIT")
+            try commit()
         case .write:
             try connection.execute(sql: "ROLLBACK")
         }

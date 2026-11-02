@@ -76,10 +76,14 @@ public actor ConnectionPool: Sendable {
     private func begin(
         _ kind: Transaction.Kind
     ) async throws(SQLError) -> sending Transaction {
-        return try await Transaction(
-            connection: getConnection(isWrite: kind == .write),
-            kind: kind
-        )
+        let connection = try await getConnection(isWrite: kind == .write)
+        
+        do {
+            return try Transaction(connection: connection, kind: kind)
+        } catch {
+            await reclaim(connection: connection, isWrite: kind == .write)
+            throw error
+        }
     }
     
     /// Gives the connection back to the pool.
