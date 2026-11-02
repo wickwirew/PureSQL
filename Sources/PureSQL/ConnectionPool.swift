@@ -208,8 +208,14 @@ extension ConnectionPool: Connection {
         execute: @Sendable (borrowing RawConnection) throws -> Output
     ) async throws -> Output {
         let conn = try await getConnection(isWrite: isWrite)
-        let output = try execute(conn)
-        await reclaim(connection: conn, isWrite: isWrite)
-        return output
+        
+        do {
+            let output = try execute(conn)
+            await reclaim(connection: conn, isWrite: isWrite)
+            return output
+        } catch {
+            await reclaim(connection: conn, isWrite: isWrite)
+            throw error
+        }
     }
 }

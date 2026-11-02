@@ -97,7 +97,7 @@ public final class Statement {
         switch code {
         case .sqliteDone: return .done
         case .sqliteRow: return .row
-        default: throw .sqlite(code, String(cString: sqlite3_errmsg(raw)))
+        default: throw .sqlite(code, String(cString: sqlite3_errmsg(sqlite3_db_handle(raw))))
         }
     }
     

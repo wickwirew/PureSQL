@@ -202,4 +202,19 @@ struct StatementTests {
             try operation(stmt)
         }
     }
+    
+    @Test func stepErrorHasTheMessageFromSQLite() async throws {
+        let pool = try ConnectionPool(
+            path: ":memory:",
+            limit: 1,
+            migrations: ["CREATE TABLE foo (bar INTEGER PRIMARY KEY)"]
+        )
+        
+        await #expect(throws: SQLError.sqlite(.sqliteConstraint, "UNIQUE constraint failed: foo.bar")) {
+            try await pool.begin(.write) { tx in
+                try tx.execute(sql: "INSERT INTO foo (bar) VALUES (1)")
+                _ = try Statement("INSERT INTO foo (bar) VALUES (1)", transaction: tx).step()
+            }
+        }
+    }
 }

@@ -43,6 +43,27 @@ struct ConnectionPoolTests {
         }
     }
     
+    @Test func withConnectionReclaimsConnectionOnError() async throws {
+        let pool = try ConnectionPool(
+            path: ":memory:",
+            limit: 1,
+            migrations: ["CREATE TABLE foo (bar INTEGER)"]
+        )
+        struct Err: Error {}
+        
+        // Will hang indefinitely if the connection and write
+        // lock arent given back after the error
+        for _ in 0..<10 {
+            await #expect(throws: Err.self) {
+                try await pool.withConnection(isWrite: true) { _ in throw Err() }
+            }
+        }
+        
+        try await pool.begin(.write) { tx in
+            try tx.execute(sql: "INSERT INTO foo (bar) VALUES (1)")
+        }
+    }
+    
     @Test func modificationsAreRolledBackOnError() async throws {
         let db = try TestDB.inMemory(adapters: TestDB.Adapters())
         struct Err: Error {}
