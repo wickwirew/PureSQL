@@ -118,14 +118,21 @@ public actor ConnectionPool: Sendable {
             }
         }
         
-        return try newConnection()
+        do {
+            return try newConnection()
+        } catch {
+            if isWrite {
+                await writeLock.unlock()
+            }
+            throw error
+        }
     }
     
     /// Initializes a new SQL connection
     private func newConnection() throws(SQLError) -> SQLiteConnection {
         assert(count < limit)
-        count += 1
         let connection = try SQLiteConnection(path: path)
+        count += 1
         observer.installHooks(into: connection)
 
         // Foreign key enforcement is per connection

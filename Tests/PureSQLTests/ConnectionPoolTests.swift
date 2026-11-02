@@ -64,6 +64,38 @@ struct ConnectionPoolTests {
         }
     }
     
+    @Test func failedNewConnectionReleasesWriteLock() async throws {
+        let manager = FileManager.default
+        let directory = manager.temporaryDirectory.appendingPathComponent("pool-\(UUID().uuidString)")
+        let moved = manager.temporaryDirectory.appendingPathComponent("pool-\(UUID().uuidString)")
+        try manager.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? manager.removeItem(at: directory) }
+        
+        let pool = try ConnectionPool(
+            path: directory.appendingPathComponent("test.sqlite").path,
+            limit: 2,
+            migrations: ["CREATE TABLE foo (bar INTEGER)"]
+        )
+        
+        // Holds the only connection so a write has to open a new one
+        try await pool.beginNoCommit(.read) { tx in
+            // Nothing to open while the folder is somewhere else
+            try FileManager.default.moveItem(at: directory, to: moved)
+            await #expect(throws: SQLError.self) {
+                try await pool.begin(.write) { _ in }
+            }
+            try FileManager.default.moveItem(at: moved, to: directory)
+            
+            // Will hang indefinitely if the write lock wasnt released, or the
+            // failed connection was counted so the pool thinks its at its limit
+            try await pool.begin(.write) { tx in
+                try tx.execute(sql: "INSERT INTO foo (bar) VALUES (1)")
+            }
+            
+            try tx.commit()
+        }
+    }
+    
     @Test func failedBeginReclaimsConnection() async throws {
         let pool = try ConnectionPool(
             path: ":memory:",
