@@ -155,6 +155,46 @@ struct ConnectionPoolTests {
         #expect(children == 0)
     }
     
+    @Test func writeTakesTheFileLockBeforeItsFirstStatement() async throws {
+        let path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(UUID().uuidString).sqlite").path
+        defer {
+            for suffix in ["", "-wal", "-shm"] {
+                try? FileManager.default.removeItem(atPath: path + suffix)
+            }
+        }
+        let holder = try ConnectionPool(path: path, limit: 1, migrations: ["CREATE TABLE foo (bar INTEGER)"])
+        let other = try ConnectionPool(path: path, limit: 1, migrations: [], runMigrations: false)
+        
+        // Separate pools so they dont just queue on the write lock, like another process.
+        try await holder.beginNoCommit(.write) { tx in
+            await #expect(throws: SQLError.self) {
+                try await other.begin(.write) { _ in }
+            }
+            try tx.commit()
+        }
+        
+        // and its let go of after
+        try await other.begin(.write) { tx in
+            try tx.execute(sql: "INSERT INTO foo (bar) VALUES (1)")
+        }
+    }
+    
+    @Test func readThenWriteWorks() async throws {
+        let pool = try ConnectionPool(path: ":memory:", limit: 1, migrations: ["CREATE TABLE foo (bar INTEGER)"])
+        
+        try await pool.begin(.write) { tx in
+            let count = try Statement("SELECT count(*) FROM foo", transaction: tx).fetchOne(of: Int.self)
+            #expect(count == 0)
+            try tx.execute(sql: "INSERT INTO foo (bar) VALUES (1)")
+        }
+        
+        let count = try await pool.begin(.read) { tx in
+            try Statement("SELECT count(*) FROM foo", transaction: tx).fetchOne(of: Int.self)
+        }
+        #expect(count == 1)
+    }
+    
     @Test func modificationsAreRolledBackOnError() async throws {
         let db = try TestDB.inMemory(adapters: TestDB.Adapters())
         struct Err: Error {}

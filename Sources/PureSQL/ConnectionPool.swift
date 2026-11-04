@@ -79,7 +79,13 @@ public actor ConnectionPool: Sendable {
         let connection = try await getConnection(isWrite: kind == .write)
         
         do {
-            return try Transaction(connection: connection, kind: kind)
+            // Writes take the lock up front. A deferred one that reads first
+            // can fail once it gets to its write if another process got in.
+            return try Transaction(
+                connection: connection,
+                kind: kind,
+                behavior: kind == .write ? .immediate : .deferred
+            )
         } catch {
             await reclaim(connection: connection, isWrite: kind == .write)
             throw error
